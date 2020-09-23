@@ -20,7 +20,6 @@ set(TARGET compositorclient)
 message("Setup ${TARGET} v${VERSION}...")
 
 find_package(EGL REQUIRED)
-find_package(${NAMESPACE}VirtualInput REQUIRED)
 
 if(VC6)
     find_package(GBM REQUIRED)

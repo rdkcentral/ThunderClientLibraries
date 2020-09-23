@@ -28,6 +28,8 @@ set(NAMESPACE ${PROJECT_NAME} CACHE STRING "Namespace of the project")
 
 message(STATUS "Setting up ${PROJECT_NAME} v${VERSION}")
 
+option(CODE_FROM_EXTERNAL_REPOSITORY "Include code from External Repository" OFF)
+
 if (BUILD_REFERENCE)
     add_definitions (-DBUILD_REFERENCE=${BUILD_REFERENCE})
 endif()

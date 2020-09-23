@@ -21,6 +21,7 @@ message("Setup ${TARGET} v${VERSION}...")
 
 find_package(EGL REQUIRED)
 find_package(NXCLIENT REQUIRED)
+find_package(${NAMESPACE}Definitions REQUIRED)
 
 add_library(${TARGET} SHARED Implementation.cpp)
 

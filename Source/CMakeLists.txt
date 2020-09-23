@@ -51,3 +51,7 @@ endif()
 if(PROVISIONPROXY)
     add_subdirectory(provisionproxy)
 endif()
+
+if(VIRTUALINPUT)
+    add_subdirectory(virtualinput)
+endif()
