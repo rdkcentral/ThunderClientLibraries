@@ -138,4 +138,4 @@ if(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY)
     InstallCMakeConfig(
         TARGETS ${TARGET}Software 
     )
-endif()
+endif(INCLUDE_SOFTWARE_LIB)
