@@ -1,4 +1,4 @@
-/*
+ /*
  * If not stated otherwise in this file or this component's LICENSE file the
  * following copyright and licenses apply:
  *
@@ -16,8 +16,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+ 
+#pragma once
 
-#include "Module.h"
+#ifndef MODULE_NAME
+#define MODULE_NAME OpenCDM
+#endif
+
 #include <core/core.h>
+#include <com/com.h>
 
-MODULE_NAME_DECLARATION(BUILD_REFERENCE)
+#if defined(__WINDOWS__) && defined(OCDM_EXPORTS)
+#undef EXTERNAL
+#define EXTERNAL EXTERNAL_EXPORT
+#endif
+

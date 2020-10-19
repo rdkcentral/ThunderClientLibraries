@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-#include "../Module.h"
+#include "Module.h"
 
 #include <EGL/egl.h>
 
@@ -30,10 +30,10 @@
 
 #include <algorithm>
 
-#include "core/core.h"
-#include "com/com.h"
-#include "interfaces/IComposition.h"
-#include "virtualinput/virtualinput.h"
+#include <core/core.h>
+#include <com/com.h>
+#include <interfaces/IComposition.h>
+#include <virtualinput/virtualinput.h>
 #include "../Client.h"
 
 int g_pipefd[2];

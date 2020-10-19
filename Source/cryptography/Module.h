@@ -17,7 +17,16 @@
  * limitations under the License.
  */
 
-#include "Module.h"
-#include <core/core.h>
+#pragma once
 
-MODULE_NAME_DECLARATION(BUILD_REFERENCE)
+#ifndef MODULE_NAME
+#define MODULE_NAME Cryptography
+#endif
+
+#include <core/core.h>
+#include <tracing/tracing.h>
+
+#if defined(__WINDOWS__) && defined(CRYPTOGRAPHY_EXPORTS)
+#undef EXTERNAL
+#define EXTERNAL EXTERNAL_EXPORT
+#endif

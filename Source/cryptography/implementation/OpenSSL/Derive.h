@@ -17,7 +17,17 @@
  * limitations under the License.
  */
 
-#include "Module.h"
-#include <core/core.h>
+#pragma once
 
-MODULE_NAME_DECLARATION(BUILD_REFERENCE)
+#include "../../Module.h"
+
+
+namespace Implementation {
+
+namespace Netflix {
+
+uint16_t DeriveWrappingKey(const uint8_t input[], const uint16_t inputSize, const uint16_t maxSize, uint8_t output[]);
+
+} // namespace Netflix
+
+} // namespace Implementation

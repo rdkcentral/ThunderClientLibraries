@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-#include "Module.h"
-#include <core/core.h>
+#pragma once
 
-MODULE_NAME_DECLARATION(BUILD_REFERENCE)
+#include "ICryptography.h"
+#include "INetflixSecurity.h"

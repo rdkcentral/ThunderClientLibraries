@@ -14,31 +14,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+include(GetExternalCode)
 
-set(TARGET compositorclient)
+set(CRYPTOGRAPHY_IMPLEMENTATION "None" CACHE STRING "Defines what implementation to use")
 
-option(PLUGIN_COMPOSITOR_IMPLEMENTATION "Defines which implementation is used." "None")
-
-message("Setup ${TARGET} v${VERSION}...")
-
-if("${PLUGIN_COMPOSITOR_IMPLEMENTATION}" STREQUAL "Nexus")
-    if (COMPOSITORCLIENT_IMPLEMENTATION_PATH)
-        add_subdirectory(${COMPOSITORCLIENT_IMPLEMENTATION_PATH})
+if(${CRYPTOGRAPHY_IMPLEMENTATION} STREQUAL "Nexus")
+    if (CRYPTOGRAPHY_IMPLEMENTATION_PATH)
+        add_subdirectory(${CRYPTOGRAPHY_IMPLEMENTATION_PATH})
     else()
         include(GetExternalCode)
-        set(COMPOSITORCLIENT_IMPLEMENTATION_VERSION "master" CACHE STRING "compositorclient implementation version")
         GetExternalCode(
-            GIT_REPOSITORY "https://code.rdkcentral.com/r/soc/broadcom/components/rdkcentral/thunder/compositorclient"
-            GIT_TAG ${COMPOSITORCLIENT_IMPLEMENTATION_VERSION}
+            GIT_REPOSITORY "git@github.com:WebPlatformForEmbedded/ICrypto-Nexus.git"
+            GIT_TAG "master"
             SOURCE_DIR "Nexus"
         )
         add_subdirectory(Nexus)
     endif()
-else()
-    add_subdirectory (${PLUGIN_COMPOSITOR_IMPLEMENTATION})
+elseif (EXISTS ${CMAKE_CURRENT_LIST_DIR}/${CRYPTOGRAPHY_IMPLEMENTATION})
+    add_subdirectory(${CRYPTOGRAPHY_IMPLEMENTATION})
+else ()
+    message(FATAL_ERROR "Invalid value \'${CRYPTOGRAPHY_IMPLEMENTATION}\' for CRYPTOGRAPHY_IMPLEMENTATION.")
 endif()
-
-install(
-	FILES Client.h
-        DESTINATION include/${NAMESPACE}/compositor
-)

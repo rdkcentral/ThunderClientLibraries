@@ -15,21 +15,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.3)
+set(TARGET implementation)
 
-project(WPEFramework)
+find_package(OpenSSL REQUIRED)
 
-set(VERSION_MAJOR 1)
-set(VERSION_MINOR 0)
-set(VERSION_PATCH 0)
+add_library(${TARGET} STATIC
+    Vault.cpp
+    Hash.cpp
+    Cipher.cpp
+    DiffieHellman.cpp
+    Derive.cpp
+)
 
-set(VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
-set(NAMESPACE ${PROJECT_NAME} CACHE STRING "Namespace of the project")
+target_link_libraries(${TARGET}
+    PUBLIC
+        ${NAMESPACE}Core::${NAMESPACE}Core
+        OpenSSL::SSL
+        OpenSSL::Crypto
+)
 
-message(STATUS "Setting up ${PROJECT_NAME} v${VERSION}")
-
-if (BUILD_REFERENCE)
-    add_definitions (-DBUILD_REFERENCE=${BUILD_REFERENCE})
-endif()
-
-add_subdirectory(Source)
+target_include_directories(${TARGET}
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>)

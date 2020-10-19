@@ -17,7 +17,22 @@
  * limitations under the License.
  */
 
-#include "Module.h"
-#include <core/core.h>
+#pragma once
 
-MODULE_NAME_DECLARATION(BUILD_REFERENCE)
+#include <stdint.h>
+#include "vault_implementation.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+uint32_t diffiehellman_generate(struct VaultImplementation* vault,
+                                const uint8_t generator, const uint16_t modulusSize, const uint8_t modulus[],
+                                uint32_t* private_key_id, uint32_t* public_key_id);
+
+uint32_t diffiehellman_derive(struct VaultImplementation* vault,
+                              const uint32_t private_key_id, const uint32_t peer_public_key_id, uint32_t* secret_id);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif

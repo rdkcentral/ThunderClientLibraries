@@ -31,6 +31,10 @@ option(SECURITYAGENT
         "Include the securityagent library." OFF)
 option(PROVISIONPROXY
         "Include the provisionproxy library." OFF)
+option(CDMI
+        "Include OpenCDM interface." OFF)
+option(CRYPTOGRAPHY
+        "Include the cryptography library." OFF)
 
 if(COMPOSITORCLIENT)
     add_subdirectory(compositorclient)
@@ -54,4 +58,12 @@ endif()
 
 if(VIRTUALINPUT)
     add_subdirectory(virtualinput)
+endif()
+
+if(CDMI)
+    add_subdirectory(ocdm)
+endif()
+
+if(CRYPTOGRAPHY)
+    add_subdirectory(cryptography)
 endif()

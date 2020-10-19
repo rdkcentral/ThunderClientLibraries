@@ -17,7 +17,11 @@
  * limitations under the License.
  */
 
-#include "Module.h"
-#include <core/core.h>
+#pragma once
 
-MODULE_NAME_DECLARATION(BUILD_REFERENCE)
+enum cryptographyvault {
+    CRYPTOGRAPHY_VAULT_DEFAULT = 0,
+    CRYPTOGRAPHY_VAULT_PLATFORM = 1,
+    CRYPTOGRAPHY_VAULT_PROVISIONING = 0x10,
+    CRYPTOGRAPHY_VAULT_NETFLIX = 0x11
+};
