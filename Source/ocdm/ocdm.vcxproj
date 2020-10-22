@@ -116,7 +116,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NDEBUG;OCDM_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..;$(SolutionDir)thirdparty/windows/include;$(SolutionDir)thirdparty/windows/include/zlib</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(FrameworkPath);$(WindowsPath);$(WindowsPath)zlib</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -126,7 +126,7 @@
       <AdditionalLibraryDirectories>$(OutDir)</AdditionalLibraryDirectories>
     </Link>
     <PreBuildEvent>
-      <Command>python "$(SolutionDir)tools\ProxyStubGenerator\StubGenerator.py" --namespace OCDM "$(ProjectDir)IOCDM.h"</Command>
+      <Command>python "$(ToolPath)\ProxyStubGenerator\StubGenerator.py" --namespace OCDM "$(ProjectDir)IOCDM.h"</Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>ProxyStub</Message>
@@ -140,7 +140,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;OCDM_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..;$(SolutionDir)thirdparty/windows/include;$(SolutionDir)thirdparty/windows/include/zlib</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(FrameworkPath);$(WindowsPath);$(WindowsPath)zlib</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -148,7 +148,7 @@
       <AdditionalLibraryDirectories>$(OutDir)</AdditionalLibraryDirectories>
     </Link>
     <PreBuildEvent>
-      <Command>python "$(SolutionDir)tools\ProxyStubGenerator\StubGenerator.py" --namespace OCDM "$(ProjectDir)IOCDM.h"</Command>
+      <Command>python "$(ToolPath)\ProxyStubGenerator\StubGenerator.py" --namespace OCDM "$(ProjectDir)IOCDM.h"</Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>ProxyStub</Message>
@@ -162,7 +162,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_DEBUG;OCDM_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..;$(SolutionDir)thirdparty/windows/include;$(SolutionDir)thirdparty/windows/include/zlib</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(FrameworkPath);$(WindowsPath);$(WindowsPath)zlib</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -170,7 +170,7 @@
       <AdditionalLibraryDirectories>$(OutDir)</AdditionalLibraryDirectories>
     </Link>
     <PreBuildEvent>
-      <Command>python "$(SolutionDir)tools\ProxyStubGenerator\StubGenerator.py" --namespace OCDM "$(ProjectDir)IOCDM.h"</Command>
+      <Command>python "$(ToolPath)\ProxyStubGenerator\StubGenerator.py" --namespace OCDM "$(ProjectDir)IOCDM.h"</Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>ProxyStub</Message>
@@ -186,7 +186,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;OCDM_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)..;$(SolutionDir)thirdparty/windows/include;$(SolutionDir)thirdparty/windows/include/zlib</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(FrameworkPath);$(WindowsPath);$(WindowsPath)zlib</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -196,7 +196,7 @@
       <AdditionalLibraryDirectories>$(OutDir)</AdditionalLibraryDirectories>
     </Link>
     <PreBuildEvent>
-      <Command>python "$(SolutionDir)tools\ProxyStubGenerator\StubGenerator.py" --namespace OCDM "$(ProjectDir)IOCDM.h"</Command>
+      <Command>python "$(ToolPath)\ProxyStubGenerator\StubGenerator.py" --namespace OCDM "$(ProjectDir)IOCDM.h"</Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>ProxyStub</Message>

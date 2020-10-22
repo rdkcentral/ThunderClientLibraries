@@ -234,7 +234,7 @@ private:
                 systemInterface->Release();
             }
 
-            return instances.size();
+            return static_cast<uint8_t>(instances.size());
         }
 
     private:
