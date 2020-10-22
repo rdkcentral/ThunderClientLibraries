@@ -593,7 +593,7 @@ namespace Wayland {
         virtual int FileDescriptor() const override;
         virtual int Process(const uint32_t data) override;
         virtual ISurface* Create(const std::string& name, const uint32_t width, const uint32_t height) override;
-
+	virtual void* GetNativeSurface(const std::string& name);
         inline bool IsOperational() const
         {
             return (_display != nullptr);

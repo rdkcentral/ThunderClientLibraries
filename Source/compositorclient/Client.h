@@ -190,6 +190,7 @@ namespace Compositor {
         virtual ISurface* Create(const std::string& name, const uint32_t width, const uint32_t height) = 0; //initial position on screen is fullscreen,x and y therefore implicit and 0
         virtual int Process(const uint32_t data) = 0;
         virtual int FileDescriptor() const = 0;
+	virtual void* GetNativeSurface(const std::string& name) = 0;
     };
 } // Compositor
 } // WPEFramework
