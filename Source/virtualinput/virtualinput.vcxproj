@@ -26,7 +26,6 @@
     <ClCompile Include="virtualinput.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="IVirtualInput.h" />
     <ClInclude Include="Module.h" />
     <ClInclude Include="virtualinput.h" />
   </ItemGroup>
