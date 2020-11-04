@@ -19,13 +19,15 @@
 
 #include "../../Module.h"
 
-#include <diffiehellman_implementation.h>
-
-
+#include <openssl/ossl_typ.h>
 #include <openssl/dh.h>
+#include <openssl/bn.h>
+#include <openssl/evp.h>
 #include <openssl/sha.h>
 #include <openssl/hmac.h>
+#include <OpenSSL/rsa.h>
 
+#include <diffiehellman_implementation.h>
 #include "Vault.h"
 #include "Derive.h"
 
@@ -70,10 +72,25 @@ public:
         ASSERT(key != nullptr);
 
         DHKeyHeader header;
+
+        #if OPENSSL_VERSION_NUMBER  >= 0x10100000L 
+        const BIGNUM* p;
+        const BIGNUM* g;
+        const BIGNUM* pub_key;
+        const BIGNUM* priv_key;
+
+        DH_get0_pqg(key, &p, nullptr, &g);
+        DH_get0_key(key, &pub_key, &priv_key);
+        header.primeSize = BN_num_bytes(p);
+        header.generatorSize = BN_num_bytes(g);
+        header.privateKeySize = BN_num_bytes(priv_key);
+        header.publicKeySize = BN_num_bytes(pub_key);
+        #else
         header.primeSize = BN_num_bytes(key->p);
-        header.generatorSize =  BN_num_bytes(key->g);
+        header.generatorSize = BN_num_bytes(key->g);
         header.privateKeySize = BN_num_bytes(key->priv_key);
         header.publicKeySize = BN_num_bytes(key->pub_key);
+        #endif
 
         uint32_t keySize = (sizeof(header) + header.primeSize + header.generatorSize + header.privateKeySize + header.publicKeySize);
         ASSERT(keySize < USHRT_MAX);
@@ -83,10 +100,21 @@ public:
 
         ::memcpy(keyBuf, &header, sizeof(header));
         uint16_t offset = sizeof(header);
+
+#if OPENSSL_VERSION_NUMBER  >= 0x10100000L 
+        DH_get0_pqg(key, &p, nullptr, &g);
+        DH_get0_key(key, &pub_key, &priv_key);
+
+        offset += BN_bn2bin(p, keyBuf + offset);
+        offset += BN_bn2bin(g, keyBuf + offset);
+        offset += BN_bn2bin(priv_key, keyBuf + offset);
+        offset += BN_bn2bin(pub_key, keyBuf + offset);
+#else
         offset += BN_bn2bin(key->p, keyBuf + offset);
         offset += BN_bn2bin(key->g, keyBuf + offset);
         offset += BN_bn2bin(key->priv_key, keyBuf + offset);
         offset += BN_bn2bin(key->pub_key, keyBuf + offset);
+#endif
 
         return (_vault->Import(keySize, keyBuf, false /* DH private key always sealed */));
     }
@@ -110,6 +138,25 @@ public:
                 ASSERT(key != nullptr);
 
                 DHKeyHeader* header = reinterpret_cast<DHKeyHeader*>(keyBuf);
+
+#if OPENSSL_VERSION_NUMBER  >= 0x10100000L
+                BIGNUM* p = BN_bin2bn(header->data, header->primeSize, nullptr);
+                BIGNUM* g = BN_bin2bn((header->data + header->primeSize), header->generatorSize, nullptr);
+                BIGNUM* priv_key = BN_bin2bn((header->data + header->primeSize + header->generatorSize), header->privateKeySize, nullptr);
+                BIGNUM* pub_key = BN_bin2bn((header->data + header->primeSize + header->generatorSize + header->privateKeySize), header->publicKeySize, nullptr);
+
+                ASSERT(p != nullptr);
+                ASSERT(g != nullptr);
+                ASSERT(priv_key != nullptr);
+                ASSERT(pub_key != nullptr);
+
+                if (DH_set0_pqg(key, p, nullptr, g) == 0) {
+                    ASSERT(false);
+                }
+                else if (DH_set0_key(key, pub_key, priv_key) == 0) {
+                    ASSERT(false);
+                }
+#else
                 key->p = BN_bin2bn(header->data, header->primeSize, nullptr);
                 key->g = BN_bin2bn((header->data + header->primeSize), header->generatorSize, nullptr);
                 key->priv_key = BN_bin2bn((header->data + header->primeSize + header->generatorSize), header->privateKeySize, nullptr);
@@ -119,6 +166,7 @@ public:
                 ASSERT(key->g != nullptr);
                 ASSERT(key->priv_key != nullptr);
                 ASSERT(key->pub_key != nullptr);
+#endif
             }
         }
     }
@@ -150,7 +198,14 @@ private:
         uint16_t generatorSize;
         uint16_t privateKeySize;
         uint16_t publicKeySize;
+#ifdef __WINDOWS__
+#pragma warning(disable: 4200)
+#endif
         uint8_t data[0];
+#ifdef __WINDOWS__
+#pragma warning(default: 4200)
+#endif
+
     };
 
     Implementation::Vault* _vault;
@@ -178,12 +233,25 @@ uint32_t GenerateDiffieHellmanKeys(KeyStore& store,
     if (dh == nullptr) {
         TRACE_L1(_T("DH_new() failed"));
     } else {
+#if OPENSSL_VERSION_NUMBER  >= 0x10100000L
+        BIGNUM* p = BN_bin2bn(modulus, modulusSize, NULL);
+        BIGNUM* g = BN_new();
+        ASSERT(p != nullptr);
+        ASSERT(g != nullptr);
+
+        BN_set_word(g, generator);
+
+        if (DH_set0_pqg(dh, p, nullptr, g) == 0) {
+            ASSERT(false);
+        }
+#else
         dh->p = BN_bin2bn(modulus, modulusSize, NULL);
         dh->g = BN_new();
         ASSERT(dh->p != nullptr);
         ASSERT(dh->g != nullptr);
 
         BN_set_word(dh->g, generator);
+#endif
 
         int codes = 0;
         if ((DH_check(dh, &codes) == 0) || (codes != 0)) {
@@ -193,7 +261,13 @@ uint32_t GenerateDiffieHellmanKeys(KeyStore& store,
                 TRACE_L1(_T("DH_generate_key() failed"));
             } else {
                 privateKeyId = store.Serialize(dh);
+#if OPENSSL_VERSION_NUMBER  >= 0x10100000L
+                const BIGNUM* pub_key;
+                DH_get0_key(dh, &pub_key, nullptr);
+                publicKeyId = store.Serialize(pub_key, true /* public key shall not be sealed */);
+#else
                 publicKeyId = store.Serialize(dh->pub_key, true /* public key shall not be sealed */);
+#endif
 
                 ASSERT(privateKeyId != 0);
                 ASSERT(publicKeyId != 0);
@@ -218,7 +292,7 @@ void DiffieHellmanDeriveSecret(DH* privateKey, const BIGNUM* peerPublicKey, BIGN
 
     int flags = 0;
     if ((DH_check_pub_key(privateKey, peerPublicKey, &flags) == 0) || (flags != 0)) {
-        TRACE_L1(_T("Peer public key is invalid"))
+        TRACE_L1(_T("Peer public key is invalid"));
     } else {
         uint16_t secretSize = DH_size(privateKey);
         ASSERT(secretSize != 0);

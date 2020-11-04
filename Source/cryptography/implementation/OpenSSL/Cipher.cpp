@@ -24,6 +24,7 @@
 #include <core/core.h>
 #include <cryptalgo/cryptalgo.h>
 
+#include <openssl/dh.h>
 #include <openssl/hmac.h>
 #include <openssl/sha.h>
 #include <openssl/evp.h>
@@ -111,7 +112,7 @@ private:
         } else if (maxOutputLength < inputLength) {
             // Note: Pitfall, AES CBC/ECB will use padding
             TRACE_L1(_T("Too small output buffer, expected: %i bytes"), inputLength);
-            result = (-inputLength);
+            result = (~inputLength);
         } else {
             uint8_t* keyBuf = reinterpret_cast<uint8_t*>(ALLOCA(_keyLength));
             ASSERT(keyBuf != nullptr);
@@ -226,13 +227,13 @@ struct CipherImplementation* cipher_create_aes(const struct VaultImplementation*
     const Implementation::Vault *vaultImpl = reinterpret_cast<const Implementation::Vault*>(vault);
 
     uint16_t keyLength = vaultImpl->Size(key_id, true);
-    if (keyLength == 0) {
+    if ( (keyLength == 0) || (keyLength > 0xFF)) {
         TRACE_L1(_T("Key 0x%08x does not exist"), key_id);
     } else {
-        const EVP_CIPHER* evpcipher = Implementation::AESCipher(keyLength, mode);
+        const EVP_CIPHER* evpcipher = Implementation::AESCipher(static_cast<uint8_t>(keyLength), mode);
         ASSERT(evpcipher != nullptr);
         if (evpcipher != nullptr) {
-            cipher = new Implementation::Cipher(vaultImpl, evpcipher, key_id, keyLength, 16);
+            cipher = new Implementation::Cipher(vaultImpl, evpcipher, key_id, static_cast<uint8_t>(keyLength), 16);
         }
     }
 

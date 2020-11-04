@@ -1,0 +1,63 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{79ff833a-782f-4364-a8e3-a9cac69a3afe}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{4ee8b702-cd68-4bec-8286-974510449363}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Implementation">
+      <UniqueIdentifier>{5d812b79-c997-4191-84d6-52e03a3078ff}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Implementation\Source Files">
+      <UniqueIdentifier>{bccc4e0c-4946-4fa0-a285-afa2a6f4667c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Implementation\Header Files">
+      <UniqueIdentifier>{be2ac6f5-ca5b-4ea2-a07a-be2321f1e7d4}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="cryptography.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ICryptography.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="INetflixSecurity.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Module.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="implementation\OpenSSL\Derive.h">
+      <Filter>Implementation\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="implementation\OpenSSL\Vault.h">
+      <Filter>Implementation\Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Cryptography.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="NetflixSecurity.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="implementation\OpenSSL\Cipher.cpp">
+      <Filter>Implementation\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="implementation\OpenSSL\Derive.cpp">
+      <Filter>Implementation\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="implementation\OpenSSL\DiffieHellman.cpp">
+      <Filter>Implementation\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="implementation\OpenSSL\Hash.cpp">
+      <Filter>Implementation\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="implementation\OpenSSL\Vault.cpp">
+      <Filter>Implementation\Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
