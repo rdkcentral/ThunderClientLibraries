@@ -16,6 +16,9 @@
     <Filter Include="Implementation\Header Files">
       <UniqueIdentifier>{be2ac6f5-ca5b-4ea2-a07a-be2321f1e7d4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="C Interface">
+      <UniqueIdentifier>{f2f6011c-af6e-47c3-bda7-3110e4658309}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cryptography.h">
@@ -35,6 +38,21 @@
     </ClInclude>
     <ClInclude Include="implementation\OpenSSL\Vault.h">
       <Filter>Implementation\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="implementation\cipher_implementation.h">
+      <Filter>C Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="implementation\diffiehellman_implementation.h">
+      <Filter>C Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="implementation\hash_implementation.h">
+      <Filter>C Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="implementation\netflix_security_implementation.h">
+      <Filter>C Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="implementation\vault_implementation.h">
+      <Filter>C Interface</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

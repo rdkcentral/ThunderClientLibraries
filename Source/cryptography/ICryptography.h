@@ -74,15 +74,19 @@ namespace Cryptography {
 
         virtual ~ICipher() { }
 
+        // Encryption and decryption, might require more bytes of data to complete succefully (like padding) to indicate the
+        // the encryption or decryption failed due to a lack of storage space, a negative length is returned. The abs(length)
+        // indicates the number of bytes required in the output buffer to succefully complete.
+
         /* Encrypt data */
-        virtual uint32_t Encrypt(const uint8_t ivLength, const uint8_t iv[] /* @length:ivLength */,
-                                 const uint32_t inputLength, const uint8_t input[] /* @length:inputLength */,
-                                 const uint32_t maxOutputLength, uint8_t output[] /* @out @maxlength:maxOutputLength */) const = 0;
+        virtual int32_t Encrypt(const uint8_t ivLength, const uint8_t iv[] /* @length:ivLength */,
+                                const uint32_t inputLength, const uint8_t input[] /* @length:inputLength */,
+                                const uint32_t maxOutputLength, uint8_t output[] /* @out @maxlength:maxOutputLength */) const = 0;
 
         /* Decrypt data */
-        virtual uint32_t Decrypt(const uint8_t ivLength, const uint8_t iv[] /* @length:ivLength */,
-                                 const uint32_t inputLength, const uint8_t input[] /* @length:inputLength */,
-                                 const uint32_t maxOutputLength, uint8_t output[] /* @out @maxlength:maxOutputLength */) const = 0;
+        virtual int32_t Decrypt(const uint8_t ivLength, const uint8_t iv[] /* @length:ivLength */,
+                                const uint32_t inputLength, const uint8_t input[] /* @length:inputLength */,
+                                const uint32_t maxOutputLength, uint8_t output[] /* @out @maxlength:maxOutputLength */) const = 0;
     };
 
     struct IDiffieHellman : virtual public Core::IUnknown {

@@ -21,8 +21,13 @@
   <ItemGroup>
     <ClInclude Include="cryptography.h" />
     <ClInclude Include="ICryptography.h" />
+    <ClInclude Include="implementation\cipher_implementation.h" />
+    <ClInclude Include="implementation\diffiehellman_implementation.h" />
+    <ClInclude Include="implementation\hash_implementation.h" />
+    <ClInclude Include="implementation\netflix_security_implementation.h" />
     <ClInclude Include="implementation\OpenSSL\Derive.h" />
     <ClInclude Include="implementation\OpenSSL\Vault.h" />
+    <ClInclude Include="implementation\vault_implementation.h" />
     <ClInclude Include="INetflixSecurity.h" />
     <ClInclude Include="Module.h" />
   </ItemGroup>
