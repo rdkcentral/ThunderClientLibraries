@@ -80,7 +80,7 @@ namespace Operation {
             return (EVP_DigestUpdate(ctx, d, cnt));
         }
         static int Final(EVP_MD_CTX* ctx, unsigned char* sig, size_t* siglen) {
-            uint32_t siglen32 = (*siglen);
+            uint32_t siglen32 = static_cast<uint32_t>(*siglen);
             int rv = EVP_DigestFinal(ctx, sig, &siglen32);
             (*siglen) = siglen32;
             return (rv);
@@ -194,9 +194,9 @@ public:
                     TRACE_L1(_T("Final() failed"));
                     _failure = true;
                 } else {
-                    TRACE_L2(_T("Calculated hash successfully, size: %i bytes"), len);
+                    TRACE_L2(_T("Calculated hash successfully, size: %i bytes"), static_cast<uint32_t>(len));
                     ASSERT(len == _size);
-                    result = len;
+                    result = static_cast<uint8_t>(len);
                 }
             }
         }

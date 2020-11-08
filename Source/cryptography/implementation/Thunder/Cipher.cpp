@@ -29,11 +29,13 @@
 
 
 struct CryptImplementation {
-    virtual uint32_t Operation(const uint8_t ivLength, const uint8_t iv[],
+
+    virtual ~CryptImplementation() = default;
+
+    virtual int32_t Operation(const uint8_t ivLength, const uint8_t iv[],
                                const uint32_t inputLength, const uint8_t input[],
                                const uint32_t maxOutputLength, uint8_t output[]) = 0;
 
-    virtual ~CryptImplementation() { }
 };
 
 
@@ -45,14 +47,14 @@ namespace Operation {
 
     struct Encrypt {
         typedef WPEFramework::Crypto::AESEncryption Implementation;
-        static uint32_t Operation(Implementation& impl, const uint32_t length, const uint8_t input[], uint8_t output[]) {
+        static int32_t Operation(Implementation& impl, const uint32_t length, const uint8_t input[], uint8_t output[]) {
             return (impl.Encrypt(length, input, output));
         }
     };
 
     struct Decrypt {
         typedef WPEFramework::Crypto::AESDecryption Implementation;
-        static uint32_t Operation(Implementation& impl, const uint32_t length, const uint8_t input[], uint8_t output[]) {
+        static int32_t Operation(Implementation& impl, const uint32_t length, const uint8_t input[], uint8_t output[]) {
             return (impl.Decrypt(length, input, output));
         }
     };
@@ -95,7 +97,7 @@ public:
             TRACE_L1(_T("Invalid IV length: %i"), ivLength);
         } else if (maxOutputLength < inputLength) {
             TRACE_L1(_T("Output buffer too small, need  %i bytes"), inputLength);
-            result = (-inputLength);
+            result = (-inputLength) + (16 - (inputLength % 16));
         } else {
             _cryptor.InitialVector(iv);
 

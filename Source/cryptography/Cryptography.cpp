@@ -167,14 +167,14 @@ namespace Implementation {
             }
 
         public:
-            uint32_t Encrypt(const uint8_t ivLength, const uint8_t iv[],
+            int32_t Encrypt(const uint8_t ivLength, const uint8_t iv[],
                             const uint32_t inputLength, const uint8_t input[],
                             const uint32_t maxOutputLength, uint8_t output[]) const override
             {
                 return (cipher_encrypt(_implementation, ivLength, iv, inputLength, input, maxOutputLength, output));
             }
 
-            uint32_t Decrypt(const uint8_t ivLength, const uint8_t iv[],
+            int32_t Decrypt(const uint8_t ivLength, const uint8_t iv[],
                             const uint32_t inputLength, const uint8_t input[],
                             const uint32_t maxOutputLength, uint8_t output[]) const override
             {

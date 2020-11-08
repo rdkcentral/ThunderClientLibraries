@@ -59,19 +59,27 @@ static constexpr uint8_t MAX_ESN_SIZE = 64;
         WPEFramework::Core::File file(path.c_str(), true);
 
         if (file.Open(true) == true) {
+            #ifdef __WINDOWS__
+            #pragma warning(disable: 4200)
+            #endif
+            #pragma pack(push,1)
             struct NetflixData {
                 uint8_t salt[16];
                 uint8_t kpe[16];
                 uint8_t kph[32];
                 uint8_t esn[0];
-            } __attribute__((packed));
+            };
+            #pragma pack(pop)
+            #ifdef __WINDOWS__
+            #pragma warning(default: 4200)
+            #endif
 
             uint64_t fileSize = file.Size();
 
             if ((fileSize > (IV_SIZE + sizeof(NetflixData))) && (fileSize <= (IV_SIZE + sizeof(NetflixData) + Netflix::MAX_ESN_SIZE))) {
-                uint8_t input[fileSize];
-                uint8_t output[fileSize - IV_SIZE];
-                uint16_t inSize = file.Read(input, fileSize);
+                uint8_t* input = reinterpret_cast<uint8_t*>(ALLOCA(fileSize));
+                uint8_t* output = reinterpret_cast<uint8_t*>(ALLOCA(fileSize - IV_SIZE));
+                uint16_t inSize = file.Read(input, static_cast<uint32_t>(fileSize));
                 uint16_t decryptedSize = vault.Cipher(false, inSize, input, sizeof(output), output);
 
                 if (decryptedSize >= sizeof(NetflixData)) {
@@ -182,7 +190,12 @@ uint16_t Vault::Cipher(bool encrypt, const uint16_t inSize, const uint8_t input[
         EVP_EncryptFinal_ex(ctx, (outputBuffer + outLen), &outLen);
         totalLen += outLen;
 
+        #if OPENSSL_VERSION_NUMBER >= 0x10100000L
+        EVP_CIPHER_CTX_reset(ctx);
+        #else
         EVP_CIPHER_CTX_cleanup(ctx);
+        #endif
+
     }
 
     return (totalLen);
