@@ -25,8 +25,8 @@ option(COMPOSITORCLIENT
         "Include a graphics backend abstraction for external applications." OFF)
 option(GSTREAMERCLIENT
         "Include a gstreamer sink abstraction for external applications." OFF)
-option(DEVICEINFO
-        "Include the deviceinfo COMRPC abstraction library." OFF)
+option(DEVICEIDENTIFICATION
+        "Include the deviceidentification COMRPC abstraction library." OFF)
 option(DISPLAYINFO
         "Include the displayinfo COMRPC abstraction library." OFF)
 option(SECURITYAGENT
@@ -47,7 +47,7 @@ if(GSTREAMERCLIENT)
 endif()
 
 if(DEVICEINFO)
-    add_subdirectory(deviceinfo)
+    add_subdirectory(deviceidentification)
 endif()
 
 if(DISPLAYINFO)

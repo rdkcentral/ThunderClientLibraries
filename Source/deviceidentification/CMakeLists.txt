@@ -1,9 +1,9 @@
-set(TARGET deviceinfo)
+set(TARGET deviceidentification)
 
-set(PUBLIC_HEADERS "include/deviceinfo.h")
+set(PUBLIC_HEADERS "include/deviceidentification.h")
 
 add_library(${TARGET}  SHARED 
-    DeviceInfo.cpp
+    DeviceIdentification.cpp
 )
 
 target_link_libraries(${TARGET}
@@ -46,8 +46,8 @@ install(
         LIBRARY DESTINATION lib COMPONENT libs      # shared lib
         RUNTIME DESTINATION bin COMPONENT libs      # binaries
         FRAMEWORK DESTINATION bin COMPONENT libs    # for mac
-        PUBLIC_HEADER DESTINATION include/${NAMESPACE}/deviceinfo COMPONENT devel   # headers for mac (note the different component -> different package)
-        INCLUDES DESTINATION include/${NAMESPACE}/deviceinfo # headers
+        PUBLIC_HEADER DESTINATION include/${NAMESPACE}/deviceidentification COMPONENT devel   # headers for mac (note the different component -> different package)
+        INCLUDES DESTINATION include/${NAMESPACE}/deviceidentification # headers
 )
 
 InstallCMakeConfig(
