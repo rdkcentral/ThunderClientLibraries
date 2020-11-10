@@ -26,7 +26,7 @@ option(COMPOSITORCLIENT
 option(GSTREAMERCLIENT
         "Include a gstreamer sink abstraction for external applications." OFF)
 option(DEVICEIDENTIFICATION
-        "Include the deviceidentification COMRPC abstraction library." OFF)
+        "Include the deviceidentification COMRPC abstraction library." ON)
 option(DISPLAYINFO
         "Include the displayinfo COMRPC abstraction library." OFF)
 option(SECURITYAGENT
@@ -46,7 +46,7 @@ if(GSTREAMERCLIENT)
     add_subdirectory(gstreamerclient)
 endif()
 
-if(DEVICEINFO)
+if(DEVICEIDENTIFICATION)
     add_subdirectory(deviceidentification)
 endif()
 

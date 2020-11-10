@@ -62,7 +62,7 @@ EXTERNAL int16_t deviceidentification_firmware_version(struct deviceidentificati
  * @param length Size of the @ref buffer
  * @return int16_t if the buffer is not big enough returns -LENGHTH of required buffer
  */
-EXTERNAL int16_t deviceidentification_id(struct deviceidentification_type* instance, char buffer[], const uint8_t length);
+EXTERNAL int16_t deviceidentification_id(struct deviceidentification_type* instance, uint8_t buffer[], const uint8_t length);
 
 #ifdef __cplusplus
 } // extern "C"

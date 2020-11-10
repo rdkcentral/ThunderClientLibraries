@@ -19,12 +19,6 @@
 namespace WPEFramework {
 class DeviceIdentification : public Core::IReferenceCounted {
 private:
-    mutable int _refCount;
-    const string _name;
-    Exchange::IDeviceProperties* _deviceConnection;
-    PluginHost::ISubSystem::IIdentifier* _identifier;
-    static DisplayInfo::DisplayInfoAdministration _administration;
-
 #ifdef __WINDOWS__
 #pragma warning(disable : 4355)
 #endif
@@ -32,7 +26,7 @@ private:
         : _refCount(1)
         , _name(deviceName)
         , _deviceConnection(interface)
-        , _identifier(interface != nullptr ? interface->QueryInterface<PluginHost::ISubSystem::IIdentifier>() : nullptr))
+        , _identifier(interface != nullptr ? interface->QueryInterface<PluginHost::ISubSystem::IIdentifier>() : nullptr)
     {
         ASSERT(_deviceConnection != nullptr);
         _deviceConnection->AddRef();
@@ -160,6 +154,12 @@ private:
         Core::ProxyType<RPC::CommunicatorClient> _comChannel;
     };
 
+    mutable int _refCount;
+    const string _name;
+    Exchange::IDeviceProperties* _deviceConnection;
+    PluginHost::ISubSystem::IIdentifier* _identifier;
+    static DeviceIdentification::DeviceIdAdministration _administration;
+
 public:
     DeviceIdentification() = delete;
     DeviceIdentification(const DeviceIdentification&) = delete;
@@ -180,31 +180,52 @@ public:
 
     const string& Name() const { return _name; }
 
-    const string& Chipset() const
+    int16_t Chipset(char buffer[], const uint8_t length) const
     {
+        ASSERT(_deviceConnection != nullptr);
+
         if (_deviceConnection != nullptr) {
-            return _deviceConnection->Chipset();
+            string chipset = _deviceConnection->Chipset();
+            strncpy(buffer, chipset.c_str(), length);
+
+            if (length < chipset.length()) {
+                return -chipset.length();
+            }
         }
-        return string();
+        return 0;
     }
 
-    const string& FirmwareVersion() const
+    int16_t FirmwareVersion(char buffer[], const uint8_t length) const
     {
+        ASSERT(_deviceConnection != nullptr);
+
         if (_deviceConnection != nullptr) {
-            return _deviceConnection->FirmwareVersion();
+            string firmware = _deviceConnection->FirmwareVersion();
+            strncpy(buffer, firmware.c_str(), length);
+
+            if (length < firmware.length()) {
+                return -firmware.length();
+            }
         }
-        return string();
+        return 0;
     }
 
-    const string& Identifier() const
+    int16_t Identifier(uint8_t buffer[], const uint8_t length) const
     {
+        ASSERT(_identifier != nullptr);
+        uint8_t result = 0;
+
         if (_identifier != nullptr) {
-            return _identifier->Identifier();
+
+            result = _identifier->Identifier(length, buffer);
+            if (length < result) {
+                return -result;
+            }
         }
-        return string();
+        return 0;
     }
 };
-/* static */ DeviceIdentification::DisplayInfoAdministration DisplayInfo::_administration;
+/* static */ DeviceIdentification::DeviceIdAdministration DeviceIdentification::_administration;
 
 } // namespace WPEFramework
 
@@ -215,39 +236,24 @@ struct deviceidentification_type* deviceidentification_instance(const char name[
 {
     return reinterpret_cast<deviceidentification_type*>(DeviceIdentification::Instance(string(name)));
 }
+
 void deviceidentification_release(struct deviceidentification_type* instance)
 {
     reinterpret_cast<DeviceIdentification*>(instance)->Release();
 }
+
 int16_t deviceidentification_chipset(struct deviceidentification_type* instance, char buffer[], const uint8_t length)
 {
-    string chipset = reinterpret_cast<DeviceIdentification*>(instance)->Chipset();
-    strncpy(buffer, chipset.c_str(), length);
-
-    if (length < chipset.length()) {
-        return -chipset.length();
-    }
-    return 0;
+    return reinterpret_cast<DeviceIdentification*>(instance)->Chipset(buffer, length);
 }
+
 int16_t deviceidentification_firmware_version(struct deviceidentification_type* instance, char buffer[], const uint8_t length)
 {
-    string firmware = reinterpret_cast<DeviceIdentification*>(instance)->FirmwareVersion();
-    strncpy(buffer, firmware.c_str(), length);
-
-    if (length < firmware.length()) {
-        return -firmware.length();
-    }
-    return 0;
+    return reinterpret_cast<DeviceIdentification*>(instance)->FirmwareVersion(buffer, length);
 }
 
-int16_t deviceidentification_id(struct deviceidentification_type* instance, char buffer[], const uint8_t length)
+int16_t deviceidentification_id(struct deviceidentification_type* instance, uint8_t buffer[], const uint8_t length)
 {
-    string id = reinterpret_cast<DeviceIdentification*>(instance)->Identifier();
-    strncpy(buffer, id.c_str(), length);
-
-    if (length < id.length()) {
-        return -id.length();
-    }
-    return 0;
+    return reinterpret_cast<DeviceIdentification*>(instance)->Identifier(buffer, length);
 }
 }
