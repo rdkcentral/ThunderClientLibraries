@@ -33,7 +33,7 @@ EXTERNAL struct deviceidentification_type* deviceidentification_instance(const c
  * 
  * @param instance  Instance of @ref deviceidentification_type
  */
-EXTERNAL void deviceidentification_release(struct deviceidentification_type * instance);
+EXTERNAL void deviceidentification_release(struct deviceidentification_type* instance);
 
 /**
  * @brief Get the device chipset name 
@@ -63,7 +63,6 @@ EXTERNAL int16_t deviceidentification_firmware_version(struct deviceidentificati
  * @return int16_t if the buffer is not big enough returns -LENGHTH of required buffer
  */
 EXTERNAL int16_t deviceidentification_id(struct deviceidentification_type* instance, char buffer[], const uint8_t length);
-
 
 #ifdef __cplusplus
 } // extern "C"

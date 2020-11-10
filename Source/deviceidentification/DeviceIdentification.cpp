@@ -22,6 +22,7 @@ private:
     mutable int _refCount;
     const string _name;
     Exchange::IDeviceProperties* _deviceConnection;
+    PluginHost::ISubSystem::IIdentifier* _identifier;
     static DisplayInfo::DisplayInfoAdministration _administration;
 
 #ifdef __WINDOWS__
@@ -31,6 +32,7 @@ private:
         : _refCount(1)
         , _name(deviceName)
         , _deviceConnection(interface)
+        , _identifier(interface != nullptr ? interface->QueryInterface<PluginHost::ISubSystem::IIdentifier>() : nullptr))
     {
         ASSERT(_deviceConnection != nullptr);
         _deviceConnection->AddRef();
@@ -42,6 +44,9 @@ private:
     {
         if (_deviceConnection != nullptr) {
             _deviceConnection->Release();
+        }
+        if (_identifier != nullptr) {
+            _identifier->Release();
         }
     }
     class DeviceIdAdministration : protected std::list<DeviceIdentification*> {
@@ -177,7 +182,6 @@ public:
 
     const string& Chipset() const
     {
-        ASSERT(_deviceConnection != nullptr);
         if (_deviceConnection != nullptr) {
             return _deviceConnection->Chipset();
         }
@@ -186,9 +190,16 @@ public:
 
     const string& FirmwareVersion() const
     {
-        ASSERT(_deviceConnection != nullptr);
         if (_deviceConnection != nullptr) {
             return _deviceConnection->FirmwareVersion();
+        }
+        return string();
+    }
+
+    const string& Identifier() const
+    {
+        if (_identifier != nullptr) {
+            return _identifier->Identifier();
         }
         return string();
     }
@@ -229,5 +240,14 @@ int16_t deviceidentification_firmware_version(struct deviceidentification_type* 
     return 0;
 }
 
+int16_t deviceidentification_id(struct deviceidentification_type* instance, char buffer[], const uint8_t length)
+{
+    string id = reinterpret_cast<DeviceIdentification*>(instance)->Identifier();
+    strncpy(buffer, id.c_str(), length);
 
+    if (length < id.length()) {
+        return -id.length();
+    }
+    return 0;
+}
 }
