@@ -42,7 +42,7 @@ EXTERNAL void deviceidentification_release(struct deviceidentification_type * in
  * @param buffer Buffer that will contain the chipset name
  * @param length Size of the @ref buffer
  */
-EXTERNAL void deviceidentification_chipset(struct deviceidentification_type* instance, char buffer[], const uint8_t length);
+EXTERNAL int16_t deviceidentification_chipset(struct deviceidentification_type* instance, char buffer[], const uint8_t length);
 
 /**
  * @brief Get the device firmware version 
@@ -50,8 +50,9 @@ EXTERNAL void deviceidentification_chipset(struct deviceidentification_type* ins
  * @param instance Instance of @ref deviceidentification_type
  * @param buffer Buffer that will contain the firmware version
  * @param length Size of the @ref buffer
+ * @return int16_t if the buffer is not big enough returns -LENGHTH of required buffer
  */
-EXTERNAL void deviceidentification_firmwareversion(struct deviceidentification_type* instance, char buffer[], const uint8_t length);
+EXTERNAL int16_t deviceidentification_firmware_version(struct deviceidentification_type* instance, char buffer[], const uint8_t length);
 
 /**
  * @brief Get the device ID  
@@ -59,8 +60,9 @@ EXTERNAL void deviceidentification_firmwareversion(struct deviceidentification_t
  * @param instance Instance of @ref deviceidentification_type
  * @param buffer Buffer that will contain the device ID
  * @param length Size of the @ref buffer
+ * @return int16_t if the buffer is not big enough returns -LENGHTH of required buffer
  */
-EXTERNAL void deviceidentification_id(struct deviceidentification_type* instance, char buffer[], const uint8_t length);
+EXTERNAL int16_t deviceidentification_id(struct deviceidentification_type* instance, char buffer[], const uint8_t length);
 
 
 #ifdef __cplusplus
