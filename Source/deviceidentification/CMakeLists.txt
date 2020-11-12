@@ -56,3 +56,4 @@ InstallCMakeConfig(
 InstallPackageConfig(
         TARGETS ${TARGET} 
         DESCRIPTION "communications channel abstraction to get the device properties")
+        add_subdirectory(device_identification)
