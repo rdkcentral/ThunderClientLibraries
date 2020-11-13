@@ -106,7 +106,8 @@ private:
             std::list<DisplayInfo*>::iterator index(std::list<DisplayInfo*>::begin());
 
             while (index != std::list<DisplayInfo*>::end()) {
-                Trace("Closing %s", (*index)->Name().c_str());
+                Trace("Removing DisplayInfoAdministration with an instance unreleased. <%s>", (*index)->Name().c_str());
+                ++index;
             }
 
             ASSERT(std::list<DisplayInfo*>::size() == 0);
