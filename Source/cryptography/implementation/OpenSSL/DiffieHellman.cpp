@@ -25,7 +25,7 @@
 #include <openssl/evp.h>
 #include <openssl/sha.h>
 #include <openssl/hmac.h>
-#include <OpenSSL/rsa.h>
+#include <openssl/rsa.h>
 
 #include <diffiehellman_implementation.h>
 #include "Vault.h"
