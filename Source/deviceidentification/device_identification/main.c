@@ -9,7 +9,7 @@
         fprintf(stdout, "<< " fmt "\n", ##__VA_ARGS__); \
         fflush(stdout);                                 \
     } while (0)
-#define BUFFER_LENGTH 50
+#define BUFFER_LENGTH 150
 
 
 void ShowMenu()
@@ -45,26 +45,49 @@ int main(int argc, char* argv[])
                 Trace("Exiting: getting interface failed.");
                 character = 'Q';
             }
+            else
+            {
+                Trace("Created instance");
+            }
+            
 
             break;
         }
         case 'I': {
-            deviceidentification_id(device, buffer, BUFFER_LENGTH);
-            Trace("ID: %s", buffer);
-            ResetBuffer(buffer);
+            if(deviceidentification_id(device, buffer, BUFFER_LENGTH) > 0){
+                Trace("ID: %s", buffer);
+                ResetBuffer(buffer);
+            }
+            else
+            {
+                Trace("Buffer too small");
+            }
+            
+            
             break;
             
         }
         case 'C': {
-            deviceidentification_chipset(device, buffer, BUFFER_LENGTH);
-            Trace("Chipset: %s", buffer);
-            ResetBuffer(buffer);
+            if(deviceidentification_chipset(device, buffer, BUFFER_LENGTH) > 0){
+                Trace("Chipset: %s", buffer);
+                ResetBuffer(buffer);
+            }
+            else
+            {
+                Trace("Buffer too small");
+            }
+            
             break;
         }
         case 'F': {
-            deviceidentification_firmware_version(device, buffer, BUFFER_LENGTH);
-            Trace("Firmware Version: %s", buffer);
-            ResetBuffer(buffer);
+            if(deviceidentification_firmware_version(device, buffer, BUFFER_LENGTH) > 0){
+                Trace("Firmware Version: %s", buffer);
+                ResetBuffer(buffer);
+            }
+             else
+            {
+                Trace("Buffer too small");
+            }
             break;
 
         }

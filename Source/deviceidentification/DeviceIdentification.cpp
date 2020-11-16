@@ -1,20 +1,10 @@
 #include <com/com.h>
 #include <core/core.h>
 #include <stdlib.h>
+#include <tracing/tracing.h>
 
 #include <deviceidentification.h>
 #include <interfaces/IDeviceIdentification.h>
-
-#ifndef __DEBUG__
-#define Trace(fmt, ...)                                                       \
-    do {                                                                      \
-        fprintf(stdout, "\033[1;32m[%s:%d](%s){%p}<%d>:" fmt "\n\033[0m",     \
-            __FILE__, __LINE__, __FUNCTION__, this, getpid(), ##__VA_ARGS__); \
-        fflush(stdout);                                                       \
-    } while (0)
-#else
-#define Trace(fmt, ...)
-#endif
 
 namespace WPEFramework {
 class DeviceIdentification : public Core::IReferenceCounted {
@@ -63,7 +53,7 @@ private:
             std::list<DeviceIdentification*>::iterator index(std::list<DeviceIdentification*>::begin());
 
             while (index != std::list<DeviceIdentification*>::end()) {
-                Trace("Closing %s", (*index)->Name().c_str());
+                TRACE_L1(_T("Closing %s"), (*index)->Name().c_str());
             }
 
             ASSERT(std::list<DeviceIdentification*>::size() == 0);
@@ -182,47 +172,52 @@ public:
 
     int16_t Chipset(char buffer[], const uint8_t length) const
     {
-        ASSERT(_deviceConnection != nullptr);
+        int16_t stringLength = 0;
 
         if (_deviceConnection != nullptr) {
             string chipset = _deviceConnection->Chipset();
-            strncpy(buffer, chipset.c_str(), length);
+            stringLength = chipset.length();
 
-            if (length < chipset.length()) {
-                return -chipset.length();
+            if (length > stringLength) {
+                strncpy(buffer, chipset.c_str(), length);
+            } else {
+                return -stringLength;
             }
         }
-        return 0;
+        return stringLength;
     }
 
     int16_t FirmwareVersion(char buffer[], const uint8_t length) const
     {
-        ASSERT(_deviceConnection != nullptr);
+        int16_t stringLength = 0;
 
         if (_deviceConnection != nullptr) {
             string firmware = _deviceConnection->FirmwareVersion();
-            strncpy(buffer, firmware.c_str(), length);
+            stringLength = firmware.length();
 
-            if (length < firmware.length()) {
-                return -firmware.length();
+            if (length > stringLength) {
+                strncpy(buffer, firmware.c_str(), length);
+            } else {
+                return -stringLength;
             }
         }
-        return 0;
+        return stringLength;
     }
 
     int16_t Identifier(uint8_t buffer[], const uint8_t length) const
     {
-        ASSERT(_identifier != nullptr);
-        uint8_t result = 0;
+        int16_t result = 0;
 
         if (_identifier != nullptr) {
 
             result = _identifier->Identifier(length, buffer);
-            if (length < result) {
+
+            if (length <= result) {
+
                 return -result;
             }
         }
-        return 0;
+        return result;
     }
 };
 /* static */ DeviceIdentification::DeviceIdAdministration DeviceIdentification::_administration;
@@ -232,7 +227,7 @@ public:
 using namespace WPEFramework;
 extern "C" {
 
-struct deviceidentification_type* deviceidentification_instance(const char name[] = "DeviceIdentification")
+struct deviceidentification_type* deviceidentification_instance(const char name[])
 {
     return reinterpret_cast<deviceidentification_type*>(DeviceIdentification::Instance(string(name)));
 }
