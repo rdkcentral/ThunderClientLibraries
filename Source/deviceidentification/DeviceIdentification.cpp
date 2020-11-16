@@ -208,7 +208,9 @@ public:
     {
         int16_t result = 0;
 
+        //fprintf(stderr, "Identifier is nullptr\n");
         if (_identifier != nullptr) {
+            // fprintf(stderr, "Identifier is not nullptr\n");
 
             result = _identifier->Identifier(length, buffer);
 
