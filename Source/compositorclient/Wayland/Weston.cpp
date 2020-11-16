@@ -972,7 +972,6 @@ namespace Wayland {
             surface->_wait_for_configure = true;
             wl_surface_commit(surface->_surface);
 
-            xdg_toplevel_set_fullscreen(surface->_xdg_toplevel, NULL);
         }
 
         // Wait till we are fully registered.
