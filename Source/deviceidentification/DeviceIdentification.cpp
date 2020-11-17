@@ -213,9 +213,9 @@ public:
 
             result = _identifier->Identifier(length, buffer);
 
-            if (length <= result) {
-
-                return -result;
+            if (result == length) {
+                uint8_t newBuffer[2048];
+                return -_identifier->Identifier(sizeof(newBuffer), newBuffer);
             }
         }
         return result;
