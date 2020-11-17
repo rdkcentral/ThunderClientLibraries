@@ -55,7 +55,8 @@ int main(int argc, char* argv[])
             break;
         }
         case 'I': {
-            if(result = deviceidentification_id(device, buffer, BUFFER_LENGTH) > 0){
+            result = deviceidentification_id(device, buffer, BUFFER_LENGTH);
+            if(result > 0){
                 Trace("ID: %s", buffer);
                 ResetBuffer(buffer);
             }
@@ -66,7 +67,7 @@ int main(int argc, char* argv[])
             
             else
             {
-                Trace("Buffer too small, or invalid parameters");
+                Trace("Buffer too small (or invlid parameters), should be at least of size %d ", -result);
             }
             
             
@@ -74,7 +75,8 @@ int main(int argc, char* argv[])
             
         }
         case 'C': {
-            if(result = deviceidentification_chipset(device, buffer, BUFFER_LENGTH) > 0){
+            result = deviceidentification_chipset(device, buffer, BUFFER_LENGTH);
+            if(result > 0){
                 Trace("Chipset: %s", buffer);
                 ResetBuffer(buffer);
             }
@@ -83,13 +85,14 @@ int main(int argc, char* argv[])
             }
             else
             {
-                Trace("Buffer too small");
+                Trace("Buffer too small, should be at least of size %d ", -result);
             }
             
             break;
         }
         case 'F': {
-            if(result = deviceidentification_firmware_version(device, buffer, BUFFER_LENGTH) > 0){
+            result = deviceidentification_firmware_version(device, buffer, BUFFER_LENGTH);
+            if( result > 0){
                 Trace("Firmware Version: %s", buffer);
                 ResetBuffer(buffer);
             }
@@ -98,7 +101,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                Trace("Buffer too small");
+                Trace("Buffer too small, should be at least of size %d ", -result);
             }
             break;
 
