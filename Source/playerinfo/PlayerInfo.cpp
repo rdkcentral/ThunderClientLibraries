@@ -166,6 +166,28 @@ public:
     }
 
     const string& Name() const { return _name; }
+
+    bool IsAudioEquivalenceEnabled() const
+    {
+        bool value = false;
+        if (_playerConnection != nullptr) {
+            if (_playerConnection->IsAudioEquivalenceEnabled(value) != Core::ERROR_NONE) {
+                value = false;
+            }
+        }
+        return value;
+    }
+
+    Exchange::IPlayerProperties::PlaybackResolution PlaybackResolution() const
+    {
+        Exchange::IPlayerProperties::PlaybackResolution value = Exchange::IPlayerProperties::PlaybackResolution::RESOLUTION_UNKNOWN;
+        if (_playerConnection != nullptr) {
+            if (_playerConnection->Resolution(value) != Core::ERROR_NONE) {
+                value = Exchange::IPlayerProperties::PlaybackResolution::RESOLUTION_UNKNOWN;
+            }
+        }
+        return value;
+    }
 };
 
 /* static */ PlayerInfo::PlayerInfoAdministration PlayerInfo::_administration;
@@ -173,4 +195,71 @@ public:
 
 using namespace WPEFramework;
 extern "C" {
+
+EXTERNAL struct playerinfo_type* playerinfo_instance(const char name[])
+{
+    if (name != NULL) {
+        return reinterpret_cast<playerinfo_type*>(PlayerInfo::Instance(string(name)));
+    }
+    return NULL;
+}
+
+EXTERNAL void playerinfo_release(struct playerinfo_type* instance)
+{
+    if (instance != NULL) {
+        reinterpret_cast<PlayerInfo*>(instance)->Release();
+    }
+}
+
+EXTERNAL playerinfo_playback_resolution_t playerinfo_playback_resolution(struct playerinfo_type* instance)
+{
+
+    playerinfo_playback_resolution_t result = PLAYERINFO_RESOLUTION_UNKNOWN;
+    if (instance != NULL) {
+        switch (reinterpret_cast<PlayerInfo*>(instance)->PlaybackResolution()) {
+        case Exchange::IPlayerProperties::PlaybackResolution::RESOLUTION_UNKNOWN:
+            result = PLAYERINFO_RESOLUTION_UNKNOWN;
+            break;
+        case Exchange::IPlayerProperties::PlaybackResolution::RESOLUTION_480I:
+            result = PLAYERINFO_RESOLUTION_480I;
+            break;
+        case Exchange::IPlayerProperties::PlaybackResolution::RESOLUTION_480P:
+            result = PLAYERINFO_RESOLUTION_480P;
+            break;
+        case Exchange::IPlayerProperties::PlaybackResolution::RESOLUTION_576I:
+            result = PLAYERINFO_RESOLUTION_576I;
+            break;
+        case Exchange::IPlayerProperties::PlaybackResolution::RESOLUTION_576P:
+            result = PLAYERINFO_RESOLUTION_576P;
+            break;
+        case Exchange::IPlayerProperties::PlaybackResolution::RESOLUTION_720P:
+            result = PLAYERINFO_RESOLUTION_720P;
+            break;
+        case Exchange::IPlayerProperties::PlaybackResolution::RESOLUTION_1080I:
+            result = PLAYERINFO_RESOLUTION_1080I;
+            break;
+        case Exchange::IPlayerProperties::PlaybackResolution::RESOLUTION_1080P:
+            result = PLAYERINFO_RESOLUTION_1080P;
+            break;
+        case Exchange::IPlayerProperties::PlaybackResolution::RESOLUTION_2160P30:
+            result = PLAYERINFO_RESOLUTION_2160P30;
+            break;
+        case Exchange::IPlayerProperties::PlaybackResolution::RESOLUTION_2160P60:
+            result = PLAYERINFO_RESOLUTION_2160P60;
+            break;
+        default:
+            result = PLAYERINFO_RESOLUTION_UNKNOWN;
+            break;
+        }
+    }
+    return result;
+}
+
+EXTERNAL bool playerinfo_is_audio_equivalence_enabled(struct playerinfo_type* instance)
+{
+    if (instance != NULL) {
+        return reinterpret_cast<PlayerInfo*>(instance)->IsAudioEquivalenceEnabled();
+    }
+    return false;
+}
 }
