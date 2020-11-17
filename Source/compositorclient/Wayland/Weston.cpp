@@ -430,7 +430,7 @@ namespace Wayland {
 
             wl_region_destroy(region);
 
-            Trace("Creating a surface of size: %d x %d\n", width, height);
+            Trace("Creating a surface of size: %d x %d _surface=%p\n", width, height, _surface);
 
             _native = wl_egl_window_create(_surface, width, height);
 
@@ -947,6 +947,28 @@ namespace Wayland {
         _collect |= true;
     }
 
+    void* Display::GetNativeSurface(const std::string& name)
+    {
+        Trace("Display::GetNativeSurface() name=%s\n", name.c_str());
+	//iterate through waylandsurface map return wl_surface with matching name
+
+	_adminLock.Lock();
+
+        WaylandSurfaceMap::iterator entry(_waylandSurfaces.begin());
+
+        while (entry != _waylandSurfaces.end()) {
+	  if (entry->second->Name().compare(name) == 0); {
+	    Trace("Display::GetNativeSurface - surface names match (name=%s)!\n", name.c_str());
+	    _adminLock.Unlock();
+	    //return wl_surface to upper layers
+	    return entry->first;
+	  }
+          entry++;
+        }
+	Trace("Display::GetNativeSurface() surface not found!-");
+	_adminLock.Unlock();
+	return nullptr;
+    }
 
     Compositor::IDisplay::ISurface* Display::Create(const std::string& name, const uint32_t width, const uint32_t height)
     {
@@ -972,7 +994,6 @@ namespace Wayland {
             surface->_wait_for_configure = true;
             wl_surface_commit(surface->_surface);
 
-            xdg_toplevel_set_fullscreen(surface->_xdg_toplevel, NULL);
         }
 
         // Wait till we are fully registered.
