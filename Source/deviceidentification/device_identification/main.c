@@ -30,6 +30,7 @@ int main(int argc, char* argv[])
 {
     struct deviceidentification_type* device = NULL;
     char buffer[BUFFER_LENGTH];
+    int16_t result = 0;
 
     ShowMenu();
 
@@ -54,13 +55,18 @@ int main(int argc, char* argv[])
             break;
         }
         case 'I': {
-            if(deviceidentification_id(device, buffer, BUFFER_LENGTH) > 0){
+            if(result = deviceidentification_id(device, buffer, BUFFER_LENGTH) > 0){
                 Trace("ID: %s", buffer);
                 ResetBuffer(buffer);
             }
+            else if(result == 0)
+            {
+                Trace("No ID available for this device, or instance or buffer is null");
+            }
+            
             else
             {
-                Trace("Buffer too small");
+                Trace("Buffer too small, or invalid parameters");
             }
             
             
@@ -68,9 +74,12 @@ int main(int argc, char* argv[])
             
         }
         case 'C': {
-            if(deviceidentification_chipset(device, buffer, BUFFER_LENGTH) > 0){
+            if(result = deviceidentification_chipset(device, buffer, BUFFER_LENGTH) > 0){
                 Trace("Chipset: %s", buffer);
                 ResetBuffer(buffer);
+            }
+            else if(result == 0){
+                Trace("Instance or buffer is null");
             }
             else
             {
@@ -80,11 +89,14 @@ int main(int argc, char* argv[])
             break;
         }
         case 'F': {
-            if(deviceidentification_firmware_version(device, buffer, BUFFER_LENGTH) > 0){
+            if(result = deviceidentification_firmware_version(device, buffer, BUFFER_LENGTH) > 0){
                 Trace("Firmware Version: %s", buffer);
                 ResetBuffer(buffer);
             }
-             else
+            else if(result == 0){
+                Trace("Instance or buffer is null");
+            }
+            else
             {
                 Trace("Buffer too small");
             }
@@ -100,9 +112,8 @@ int main(int argc, char* argv[])
         }
     } while (character != 'Q');
 
-    if(device != NULL){
-        deviceidentification_release(device);
-    }
+    deviceidentification_release(device);
+    
 
     Trace("Done");
 

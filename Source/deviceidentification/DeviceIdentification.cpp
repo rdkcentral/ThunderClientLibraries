@@ -54,6 +54,7 @@ private:
 
             while (index != std::list<DeviceIdentification*>::end()) {
                 TRACE_L1(_T("Closing %s"), (*index)->Name().c_str());
+                ++index;
             }
 
             ASSERT(std::list<DeviceIdentification*>::size() == 0);
@@ -208,9 +209,7 @@ public:
     {
         int16_t result = 0;
 
-        //fprintf(stderr, "Identifier is nullptr\n");
         if (_identifier != nullptr) {
-            // fprintf(stderr, "Identifier is not nullptr\n");
 
             result = _identifier->Identifier(length, buffer);
 
@@ -231,26 +230,40 @@ extern "C" {
 
 struct deviceidentification_type* deviceidentification_instance(const char name[])
 {
-    return reinterpret_cast<deviceidentification_type*>(DeviceIdentification::Instance(string(name)));
+    if (name != NULL) {
+        return reinterpret_cast<deviceidentification_type*>(DeviceIdentification::Instance(string(name)));
+    }
+    return NULL;
 }
 
 void deviceidentification_release(struct deviceidentification_type* instance)
 {
-    reinterpret_cast<DeviceIdentification*>(instance)->Release();
+    if (instance != NULL) {
+        reinterpret_cast<DeviceIdentification*>(instance)->Release();
+    }
 }
 
 int16_t deviceidentification_chipset(struct deviceidentification_type* instance, char buffer[], const uint8_t length)
 {
-    return reinterpret_cast<DeviceIdentification*>(instance)->Chipset(buffer, length);
+    if (instance != NULL && buffer != NULL) {
+        return reinterpret_cast<DeviceIdentification*>(instance)->Chipset(buffer, length);
+    }
+    return 0;
 }
 
 int16_t deviceidentification_firmware_version(struct deviceidentification_type* instance, char buffer[], const uint8_t length)
 {
-    return reinterpret_cast<DeviceIdentification*>(instance)->FirmwareVersion(buffer, length);
+    if (instance != NULL && buffer != NULL) {
+        return reinterpret_cast<DeviceIdentification*>(instance)->FirmwareVersion(buffer, length);
+    }
+    return 0;
 }
 
 int16_t deviceidentification_id(struct deviceidentification_type* instance, uint8_t buffer[], const uint8_t length)
 {
-    return reinterpret_cast<DeviceIdentification*>(instance)->Identifier(buffer, length);
+    if (instance != NULL && buffer != NULL) {
+        return reinterpret_cast<DeviceIdentification*>(instance)->Identifier(buffer, length);
+    }
+    return 0;
 }
 }
