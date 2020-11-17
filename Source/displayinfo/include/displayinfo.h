@@ -56,9 +56,9 @@ typedef enum displayinfo_hdcp_protection_type {
 } displayinfo_hdcp_protection_t;
 
 typedef enum displayinfo_error_type {
-    ERROR_NONE = 0,
-    ERROR_UNKNOWN = 1,
-    ERROR_INVALID_INSTANCE = 2,
+    DISPLAYINFO_ERROR_NONE = 0,
+    DISPLAYINFO_ERROR_UNKNOWN = 1,
+    DISPLAYINFO_ERROR_INVALID_INSTANCE = 2,
 } displayinfo_error_t;
 
 /**
