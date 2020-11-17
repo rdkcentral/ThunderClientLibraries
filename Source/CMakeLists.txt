@@ -26,7 +26,7 @@ option(COMPOSITORCLIENT
 option(GSTREAMERCLIENT
         "Include a gstreamer sink abstraction for external applications." OFF)
 option(DEVICEIDENTIFICATION
-        "Include the deviceidentification COMRPC abstraction library." ON)
+        "Include the deviceidentification COMRPC abstraction library." OFF)
 option(DISPLAYINFO
         "Include the displayinfo COMRPC abstraction library." OFF)
 option(SECURITYAGENT
