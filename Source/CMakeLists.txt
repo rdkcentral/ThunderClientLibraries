@@ -29,6 +29,8 @@ option(DISPLAYINFO
         "Include the displayinfo COMRPC abstraction library." OFF)
 option(SECURITYAGENT
         "Include the securityagent library." OFF)
+option(PLAYERINFO
+        "Include the playerinfo COMRPC abstraction library." ON)
 option(PROVISIONPROXY
         "Include the provisionproxy library." OFF)
 option(CDMI
@@ -50,6 +52,10 @@ endif()
 
 if(SECURITYAGENT)
     add_subdirectory(securityagent)
+endif()
+
+if(PLAYERINFO)
+    add_subdirectory(playerinfo)
 endif()
 
 if(PROVISIONPROXY)
