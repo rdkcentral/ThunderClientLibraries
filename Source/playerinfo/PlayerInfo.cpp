@@ -188,6 +188,23 @@ public:
         }
         return value;
     }
+
+    int8_t VideoCodecs(playerinfo_videocodec_t array[], const uint8_t length)
+    {   
+        //TODO
+        int8_t value = 0;
+        Exchange::IPlayerProperties::IVideoCodecIterator* videoCodecs;
+        if(_playerConnection != nullptr){
+            if(_playerConnection->VideoCodecs(videoCodecs) != Core::ERROR_NONE){
+
+            }
+        }
+        return value;
+    }
+
+    int8_t AudioCodecs(playerinfo_audiocodec_t array[], const uint8_t length)
+    {
+    }
 };
 
 /* static */ PlayerInfo::PlayerInfoAdministration PlayerInfo::_administration;
@@ -196,7 +213,7 @@ public:
 using namespace WPEFramework;
 extern "C" {
 
-EXTERNAL struct playerinfo_type* playerinfo_instance(const char name[])
+struct playerinfo_type* playerinfo_instance(const char name[])
 {
     if (name != NULL) {
         return reinterpret_cast<playerinfo_type*>(PlayerInfo::Instance(string(name)));
@@ -204,14 +221,14 @@ EXTERNAL struct playerinfo_type* playerinfo_instance(const char name[])
     return NULL;
 }
 
-EXTERNAL void playerinfo_release(struct playerinfo_type* instance)
+void playerinfo_release(struct playerinfo_type* instance)
 {
     if (instance != NULL) {
         reinterpret_cast<PlayerInfo*>(instance)->Release();
     }
 }
 
-EXTERNAL playerinfo_playback_resolution_t playerinfo_playback_resolution(struct playerinfo_type* instance)
+playerinfo_playback_resolution_t playerinfo_playback_resolution(struct playerinfo_type* instance)
 {
 
     playerinfo_playback_resolution_t result = PLAYERINFO_RESOLUTION_UNKNOWN;
@@ -255,11 +272,20 @@ EXTERNAL playerinfo_playback_resolution_t playerinfo_playback_resolution(struct 
     return result;
 }
 
-EXTERNAL bool playerinfo_is_audio_equivalence_enabled(struct playerinfo_type* instance)
+bool playerinfo_is_audio_equivalence_enabled(struct playerinfo_type* instance)
 {
     if (instance != NULL) {
         return reinterpret_cast<PlayerInfo*>(instance)->IsAudioEquivalenceEnabled();
     }
     return false;
+}
+
+//TODO
+int8_t playerinfo_audio_codecs(struct playerinfo_type* instance, playerinfo_audiocodec_t array[], const uint8_t length)
+{
+}
+
+int8_t playerinfo_video_codecs(struct playerinfo_type* instance, playerinfo_videocodec_t array[], const uint8_t length)
+{
 }
 }

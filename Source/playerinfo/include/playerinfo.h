@@ -96,8 +96,10 @@ EXTERNAL playerinfo_playback_resolution_t playerinfo_playback_resolution(struct 
 EXTERNAL bool playerinfo_is_audio_equivalence_enabled(struct playerinfo_type* instance);
 
 
+//TODO
+EXTERNAL int8_t playerinfo_audio_codecs(struct playerinfo_type* instance, playerinfo_audiocodec_t array[], const uint8_t length);
 
-
+EXTERNAL int8_t playerinfo_video_codecs(struct playerinfo_type* instance, playerinfo_videocodec_t array[], const uint8_t length);
 
 #ifdef __cplusplus
 } // extern "C"
