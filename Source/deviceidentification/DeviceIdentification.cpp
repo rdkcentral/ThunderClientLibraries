@@ -103,7 +103,7 @@ private:
 
             _adminLock.Lock();
 
-            if (Core::InterlockedDecrement(refCount) == 0) {
+            if (--refCount == 0) {
                 std::list<DeviceIdentification*>::iterator index(
                     std::find(std::list<DeviceIdentification*>::begin(), std::list<DeviceIdentification*>::end(), deviceIdentification));
 
