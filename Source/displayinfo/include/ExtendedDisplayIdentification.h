@@ -302,6 +302,24 @@ namespace Plugin {
             return IsValid() ? _base[22] : 0;
         }
 
+        // EDID v1.3 - https://glenwing.github.io/docs/VESA-EEDID-A1.pdf
+        // EDID v1.4 - https://glenwing.github.io/docs/VESA-EEDID-A2.pdf        
+        // According the VESA standard:
+        //
+        // 3.10.1 First Detailed Timing Descriptor Block
+        // The first Detailed Timing (at addresses 36h→47h) shall only be used to indicate the mode 
+        // that the monitor vendor has determined will give an optimal image. For LCD monitors, 
+        // this will in most cases be the panel "native timing" and “native resolution”. 
+        // Use of the EDID Preferred Timing bit shall be used to indicate that the timing indeed 
+        // conforms to this definition.
+        uint16_t PreferredWidthInPixels() const {
+            return IsValid() ? (((_base[0x3A] & 0xF0 ) << 4) + _base[0x38]) : 0;
+        }
+        
+        uint16_t PreferredHeightInPixels() const {
+            return IsValid() ? (((_base[0x3D] & 0xF0 ) << 4) + _base[0x3B]) : 0;
+        }
+
         void Clear() {
             _base[0] = 0x55;
             _segments.clear();
