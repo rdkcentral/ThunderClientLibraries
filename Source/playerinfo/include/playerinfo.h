@@ -79,7 +79,7 @@ EXTERNAL void playerinfo_release(struct playerinfo_type* instance);
 /**
  * \brief Get current video playback resolution
  * 
- * \param instance Instance of \ref playerinfo_type.
+ * \param instance Instance of @ref playerinfo_type.
  * 
  * \return The current resolution, RESOLUTION_UNKNOWN on error or invalid connection
  * 
@@ -89,16 +89,30 @@ EXTERNAL playerinfo_playback_resolution_t playerinfo_playback_resolution(struct 
 /**
  * \brief Checks Loudness Equivalence in platform
  * 
- * \param instance Instance of \ref displayinfo_type.
+ * \param instance Instance of @ref displayinfo_type.
  * 
  * \return true if enabled, false otherwise.
  **/
 EXTERNAL bool playerinfo_is_audio_equivalence_enabled(struct playerinfo_type* instance);
 
-
-//TODO
+/**
+ * @brief Gets Player audio codecs
+ * 
+ * @param instance Instance of @ref displayinfo_type.
+ * @param array array which will contain audio codecs used by the player
+ * @param length length of given array
+ * @return NUMBER OF CODECS used, ot if array is not large enough return -NUMBER OF CODECS
+ */
 EXTERNAL int8_t playerinfo_audio_codecs(struct playerinfo_type* instance, playerinfo_audiocodec_t array[], const uint8_t length);
 
+/**
+ * @brief Gets Player video codecs
+ * 
+ * @param instance Instance of @ref displayinfo_type.
+ * @param array array which will contain video codecs used by the player
+ * @param length length of given array
+ * @return NUMBER OF CODECS used, ot if array is not large enough return -NUMBER OF CODECS
+ */
 EXTERNAL int8_t playerinfo_video_codecs(struct playerinfo_type* instance, playerinfo_videocodec_t array[], const uint8_t length);
 
 #ifdef __cplusplus
