@@ -434,12 +434,12 @@ public:
     uint64_t TotalGpuRam() const 
     {
         uint64_t memory(0);
-        return _graphicsProperties != nullptr ? _graphicsProperties->TotalGpuRam(memory) : memory;
+        return (_graphicsProperties != nullptr ? (_graphicsProperties->TotalGpuRam(memory) == Core::ERROR_NONE ? memory : 0) : 0);
     }
     uint64_t FreeGpuRam() const 
     {
         uint64_t memory(0);
-        return _graphicsProperties != nullptr ? _graphicsProperties->FreeGpuRam(memory) : memory;
+        return (_graphicsProperties != nullptr ? (_graphicsProperties->FreeGpuRam(memory) == Core::ERROR_NONE ? memory : 0) : 0);
     }
 
 private:
