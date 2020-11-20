@@ -593,7 +593,24 @@ namespace Wayland {
         virtual int FileDescriptor() const override;
         virtual int Process(const uint32_t data) override;
         virtual ISurface* Create(const std::string& name, const uint32_t width, const uint32_t height) override;
-	virtual void* GetNativeSurface(const std::string& name);
+	virtual ISurface* SurfaceByName(const std::string& name) override
+	{
+	    //iterate through waylandsurface map return wl_surface with matching name
+	    _adminLock.Lock();
+
+	    WaylandSurfaceMap::iterator entry(_waylandSurfaces.begin());
+
+	    while (entry != _waylandSurfaces.end()) {
+	      if (entry->second->Name().compare(name) == 0) {
+	        _adminLock.Unlock();
+	        //return iSurface to upper layers
+	        return entry->second;
+	      }
+	      entry++;
+	    }
+	    _adminLock.Unlock();
+	    return nullptr;
+	}
         inline bool IsOperational() const
         {
             return (_display != nullptr);

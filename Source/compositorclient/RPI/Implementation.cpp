@@ -898,6 +898,12 @@ int Display::FileDescriptor() const
     return (g_pipefd[0]);
 }
 
+Compositor::IDisplay::ISurface* Display::SurfaceByName(const std::string& name)
+{
+    //TODO not implemented
+    return nullptr;
+}
+
 Compositor::IDisplay::ISurface* Display::Create(
     const std::string& name, const uint32_t width, const uint32_t height)
 {

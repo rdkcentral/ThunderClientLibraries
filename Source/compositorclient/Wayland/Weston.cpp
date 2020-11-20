@@ -947,29 +947,6 @@ namespace Wayland {
         _collect |= true;
     }
 
-    void* Display::GetNativeSurface(const std::string& name)
-    {
-        Trace("Display::GetNativeSurface() name=%s\n", name.c_str());
-	//iterate through waylandsurface map return wl_surface with matching name
-
-	_adminLock.Lock();
-
-        WaylandSurfaceMap::iterator entry(_waylandSurfaces.begin());
-
-        while (entry != _waylandSurfaces.end()) {
-	  if (entry->second->Name().compare(name) == 0); {
-	    Trace("Display::GetNativeSurface - surface names match (name=%s)!\n", name.c_str());
-	    _adminLock.Unlock();
-	    //return wl_surface to upper layers
-	    return entry->first;
-	  }
-          entry++;
-        }
-	Trace("Display::GetNativeSurface() surface not found!-");
-	_adminLock.Unlock();
-	return nullptr;
-    }
-
     Compositor::IDisplay::ISurface* Display::Create(const std::string& name, const uint32_t width, const uint32_t height)
     {
         IDisplay::ISurface* result = nullptr;
