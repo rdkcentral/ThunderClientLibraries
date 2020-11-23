@@ -190,20 +190,128 @@ public:
     }
 
     int8_t VideoCodecs(playerinfo_videocodec_t array[], const uint8_t length)
-    {   
-        //TODO
-        int8_t value = 0;
+    {
         Exchange::IPlayerProperties::IVideoCodecIterator* videoCodecs;
-        if(_playerConnection != nullptr){
-            if(_playerConnection->VideoCodecs(videoCodecs) != Core::ERROR_NONE){
+        int8_t value = 0;
 
+        if (_playerConnection != nullptr) {
+
+            if (_playerConnection->VideoCodecs(videoCodecs) == Core::ERROR_NONE && videoCodecs != nullptr) {
+
+                Exchange::IPlayerProperties::VideoCodec codec;
+
+                uint8_t numberOfCodecs = 0;
+                playerinfo_videocodec_t newArray[50];
+
+                while (videoCodecs->Next(codec) && numberOfCodecs < sizeof(newArray)) {
+                    switch (codec) {
+                    case Exchange::IPlayerProperties::VideoCodec::VIDEO_UNDEFINED:
+                        newArray[numberOfCodecs] = PLAYERINFO_VIDEO_UNDEFINED;
+                        break;
+                    case Exchange::IPlayerProperties::VideoCodec::VIDEO_H263:
+                        newArray[numberOfCodecs] = PLAYERINFO_VIDEO_H263;
+                        break;
+                    case Exchange::IPlayerProperties::VideoCodec::VIDEO_H264:
+                        newArray[numberOfCodecs] = PLAYERINFO_VIDEO_H264;
+                        break;
+                    case Exchange::IPlayerProperties::VideoCodec::VIDEO_H265:
+                        newArray[numberOfCodecs] = PLAYERINFO_VIDEO_H265;
+                        break;
+                    case Exchange::IPlayerProperties::VideoCodec::VIDEO_H265_10:
+                        newArray[numberOfCodecs] = PLAYERINFO_VIDEO_H265_10;
+                        break;
+                    case Exchange::IPlayerProperties::VideoCodec::VIDEO_MPEG:
+                        newArray[numberOfCodecs] = PLAYERINFO_VIDEO_MPEG;
+                        break;
+                    case Exchange::IPlayerProperties::VideoCodec::VIDEO_VP8:
+                        newArray[numberOfCodecs] = PLAYERINFO_VIDEO_VP8;
+                        break;
+                    case Exchange::IPlayerProperties::VideoCodec::VIDEO_VP9:
+                        newArray[numberOfCodecs] = PLAYERINFO_VIDEO_VP9;
+                        break;
+                    case Exchange::IPlayerProperties::VideoCodec::VIDEO_VP10:
+                        newArray[numberOfCodecs] = PLAYERINFO_VIDEO_VP10;
+                        break;
+                    }
+                    ++numberOfCodecs;
+                }
+                if (numberOfCodecs < length) {
+                    value = numberOfCodecs;
+                    ::memcpy(array, newArray, numberOfCodecs * sizeof(playerinfo_videocodec_t));
+                } else {
+                    value = -numberOfCodecs;
+                }
             }
         }
+
         return value;
     }
 
     int8_t AudioCodecs(playerinfo_audiocodec_t array[], const uint8_t length)
     {
+        Exchange::IPlayerProperties::IAudioCodecIterator* audioCodecs;
+        int8_t value = 0;
+
+        if (_playerConnection != nullptr) {
+
+            if (_playerConnection->AudioCodecs(audioCodecs) == Core::ERROR_NONE && audioCodecs != nullptr) {
+
+                Exchange::IPlayerProperties::AudioCodec codec;
+
+                uint8_t numberOfCodecs = 0;
+                playerinfo_audiocodec_t newArray[50];
+
+                while (audioCodecs->Next(codec) && numberOfCodecs < sizeof(newArray)) {
+                    switch (codec) {
+                    case Exchange::IPlayerProperties::AudioCodec::AUDIO_UNDEFINED:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_UNDEFINED;
+                        break;
+                    case Exchange::IPlayerProperties::AudioCodec::AUDIO_AAC:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_AAC;
+                        break;
+                    case Exchange::IPlayerProperties::AudioCodec::AUDIO_AC3:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_AC3;
+                        break;
+                    case Exchange::IPlayerProperties::AudioCodec::AUDIO_AC3_PLUS:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_AC3_PLUS;
+                        break;
+                    case Exchange::IPlayerProperties::AudioCodec::AUDIO_DTS:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_DTS;
+                        break;
+                    case Exchange::IPlayerProperties::AudioCodec::AUDIO_MPEG1:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_MPEG1;
+                        break;
+                    case Exchange::IPlayerProperties::AudioCodec::AUDIO_MPEG2:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_MPEG2;
+                        break;
+                    case Exchange::IPlayerProperties::AudioCodec::AUDIO_MPEG3:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_MPEG3;
+                        break;
+                    case Exchange::IPlayerProperties::AudioCodec::AUDIO_MPEG4:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_MPEG4;
+                        break;
+                    case Exchange::IPlayerProperties::AudioCodec::AUDIO_OPUS:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_OPUS;
+                        break;
+                    case Exchange::IPlayerProperties::AudioCodec::AUDIO_VORBIS_OGG:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_VORBIS_OGG;
+                        break;
+                    case Exchange::IPlayerProperties::AudioCodec::AUDIO_WAV:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_WAV;
+                        break;
+                    }
+                    ++numberOfCodecs;
+                }
+                if (numberOfCodecs < length) {
+                    value = numberOfCodecs;
+                    ::memcpy(array, newArray, numberOfCodecs * sizeof(playerinfo_audiocodec_t));
+                } else {
+                    value = -numberOfCodecs;
+                }
+            }
+        }
+
+        return value;
     }
 };
 
@@ -280,12 +388,19 @@ bool playerinfo_is_audio_equivalence_enabled(struct playerinfo_type* instance)
     return false;
 }
 
-//TODO
-int8_t playerinfo_audio_codecs(struct playerinfo_type* instance, playerinfo_audiocodec_t array[], const uint8_t length)
-{
-}
-
 int8_t playerinfo_video_codecs(struct playerinfo_type* instance, playerinfo_videocodec_t array[], const uint8_t length)
 {
+    if (instance != NULL && array != NULL) {
+        return reinterpret_cast<PlayerInfo*>(instance)->VideoCodecs(array, length);
+    }
+    return 0;
+}
+
+int8_t playerinfo_audio_codecs(struct playerinfo_type* instance, playerinfo_audiocodec_t array[], const uint8_t length)
+{
+    if (instance != NULL && array != NULL) {
+        return reinterpret_cast<PlayerInfo*>(instance)->AudioCodecs(array, length);
+    }
+    return 0;
 }
 }
