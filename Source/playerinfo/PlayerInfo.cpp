@@ -189,7 +189,7 @@ public:
         return value;
     }
 
-    int8_t VideoCodecs(playerinfo_videocodec_t array[], const uint8_t length)
+    int8_t VideoCodecs(playerinfo_videocodec_t array[], const uint8_t length) const
     {
         Exchange::IPlayerProperties::IVideoCodecIterator* videoCodecs;
         int8_t value = 0;
@@ -247,7 +247,7 @@ public:
         return value;
     }
 
-    int8_t AudioCodecs(playerinfo_audiocodec_t array[], const uint8_t length)
+    int8_t AudioCodecs(playerinfo_audiocodec_t array[], const uint8_t length) const
     {
         Exchange::IPlayerProperties::IAudioCodecIterator* audioCodecs;
         int8_t value = 0;
