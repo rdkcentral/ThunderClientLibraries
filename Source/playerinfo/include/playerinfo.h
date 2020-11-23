@@ -81,7 +81,7 @@ EXTERNAL void playerinfo_release(struct playerinfo_type* instance);
  * 
  * \param instance Instance of @ref playerinfo_type.
  * 
- * \return The current resolution, RESOLUTION_UNKNOWN on error or invalid connection
+ * \return The current resolution, RESOLUTION_UNKNOWN on: error, instance == NULL, or invalid connection
  * 
  **/
 EXTERNAL playerinfo_playback_resolution_t playerinfo_playback_resolution(struct playerinfo_type* instance);
@@ -91,7 +91,7 @@ EXTERNAL playerinfo_playback_resolution_t playerinfo_playback_resolution(struct 
  * 
  * \param instance Instance of @ref displayinfo_type.
  * 
- * \return true if enabled, false otherwise.
+ * \return true if enabled, false if: disabled, instance == NULL, or invalid connection.
  **/
 EXTERNAL bool playerinfo_is_audio_equivalence_enabled(struct playerinfo_type* instance);
 
@@ -101,7 +101,8 @@ EXTERNAL bool playerinfo_is_audio_equivalence_enabled(struct playerinfo_type* in
  * @param instance Instance of @ref displayinfo_type.
  * @param array array which will contain audio codecs used by the player
  * @param length length of given array
- * @return NUMBER OF CODECS used, ot if array is not large enough return -NUMBER OF CODECS
+ * @return NUMBER OF CODECS used, or if array is not large enough return -NUMBER OF CODECS, 
+ *         0 if: buffer or instance is NULL, or invalid connection.
  */
 EXTERNAL int8_t playerinfo_audio_codecs(struct playerinfo_type* instance, playerinfo_audiocodec_t array[], const uint8_t length);
 
@@ -111,7 +112,8 @@ EXTERNAL int8_t playerinfo_audio_codecs(struct playerinfo_type* instance, player
  * @param instance Instance of @ref displayinfo_type.
  * @param array array which will contain video codecs used by the player
  * @param length length of given array
- * @return NUMBER OF CODECS used, ot if array is not large enough return -NUMBER OF CODECS
+ * @return NUMBER OF CODECS used, ot if array is not large enough return -NUMBER OF CODECS,
+ *         0 if: buffer or instance is NULL, or invalid connection.
  */
 EXTERNAL int8_t playerinfo_video_codecs(struct playerinfo_type* instance, playerinfo_videocodec_t array[], const uint8_t length);
 
