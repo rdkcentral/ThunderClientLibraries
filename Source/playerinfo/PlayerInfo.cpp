@@ -201,9 +201,10 @@ public:
                 Exchange::IPlayerProperties::VideoCodec codec;
 
                 uint8_t numberOfCodecs = 0;
-                playerinfo_videocodec_t newArray[50];
+                const uint8_t newArraySize = 50;
+                playerinfo_videocodec_t newArray[newArraySize];
 
-                while (videoCodecs->Next(codec) && numberOfCodecs < sizeof(newArray)) {
+                while (videoCodecs->Next(codec) && numberOfCodecs < newArraySize) {
                     switch (codec) {
                     case Exchange::IPlayerProperties::VideoCodec::VIDEO_UNDEFINED:
                         newArray[numberOfCodecs] = PLAYERINFO_VIDEO_UNDEFINED;
@@ -232,6 +233,9 @@ public:
                     case Exchange::IPlayerProperties::VideoCodec::VIDEO_VP10:
                         newArray[numberOfCodecs] = PLAYERINFO_VIDEO_VP10;
                         break;
+                    default:
+                        newArray[numberOfCodecs] = PLAYERINFO_VIDEO_OTHER_DEFINED_CODEC;
+                        break;
                     }
                     ++numberOfCodecs;
                 }
@@ -259,9 +263,10 @@ public:
                 Exchange::IPlayerProperties::AudioCodec codec;
 
                 uint8_t numberOfCodecs = 0;
-                playerinfo_audiocodec_t newArray[50];
+                const uint8_t newArraySize = 50;
+                playerinfo_audiocodec_t newArray[newArraySize];
 
-                while (audioCodecs->Next(codec) && numberOfCodecs < sizeof(newArray)) {
+                while (audioCodecs->Next(codec) && numberOfCodecs < newArraySize) {
                     switch (codec) {
                     case Exchange::IPlayerProperties::AudioCodec::AUDIO_UNDEFINED:
                         newArray[numberOfCodecs] = PLAYERINFO_AUDIO_UNDEFINED;
@@ -298,6 +303,9 @@ public:
                         break;
                     case Exchange::IPlayerProperties::AudioCodec::AUDIO_WAV:
                         newArray[numberOfCodecs] = PLAYERINFO_AUDIO_WAV;
+                        break;
+                    default:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_OTHER_DEFINED_CODEC;
                         break;
                     }
                     ++numberOfCodecs;
@@ -373,7 +381,7 @@ playerinfo_playback_resolution_t playerinfo_playback_resolution(struct playerinf
             result = PLAYERINFO_RESOLUTION_2160P60;
             break;
         default:
-            result = PLAYERINFO_RESOLUTION_UNKNOWN;
+            result = PLAYERINFO_OTHER_DEFINED_RESOLUTION;
             break;
         }
     }
