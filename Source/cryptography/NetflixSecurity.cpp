@@ -39,7 +39,7 @@ namespace Implementation {
         {
             std::string esn;
 
-            uint8_t length = netflix_security_esn(0, nullptr);
+            uint8_t length = static_cast<uint8_t>(netflix_security_esn(0, nullptr));
             if (length != 0) {
                 uint8_t* buffer = reinterpret_cast<uint8_t*>(ALLOCA(length));
                 ASSERT(buffer != nullptr);
