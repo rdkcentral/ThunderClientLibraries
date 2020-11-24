@@ -55,54 +55,72 @@ int main(int argc, char* argv[])
             break;
         }
         case 'L': {
-            Trace("Loudnes %s enabled", playerinfo_is_audio_equivalence_enabled(player) ? "is" : "not");
+            bool is_enabled = false;
+            if (playerinfo_is_audio_equivalence_enabled(player, &is_enabled) == 1) {
+                Trace("Loudnes %s enabled", is_enabled ? "is" : "not");
+            } else {
+                Trace("Instance is null, or invalid connection");
+            }
+
             break;
         }
 
         case 'R': {
-            switch (playerinfo_playback_resolution(player)) {
-            case PLAYERINFO_RESOLUTION_480I: {
-                Trace("PLAYERINFO_RESOLUTION_480I");
-                break;
+            playerinfo_playback_resolution_t resolution;
+            if (playerinfo_playback_resolution(player, &resolution) == 0) {
+                Trace("Instance is null, or invalid connection");
+            } else {
+                switch (resolution) {
+                case PLAYERINFO_RESOLUTION_UNKNOWN: {
+                    Trace("PLAYERINFO_RESOLUTION_UNKNOWN");
+                    break;
+                }
+                case PLAYERINFO_OTHER_DEFINED_RESOLUTION: {
+                    Trace("PLAYERINFO_OTHER_DEFINED_RESOLUTION");
+                    break;
+                }
+                case PLAYERINFO_RESOLUTION_480I: {
+                    Trace("PLAYERINFO_RESOLUTION_480I");
+                    break;
+                }
+                case PLAYERINFO_RESOLUTION_480P: {
+                    Trace("PLAYERINFO_RESOLUTION_480P");
+                    break;
+                }
+                case PLAYERINFO_RESOLUTION_576I: {
+                    Trace("PLAYERINFO_RESOLUTION_576I");
+                    break;
+                }
+                case PLAYERINFO_RESOLUTION_576P: {
+                    Trace("PLAYERINFO_RESOLUTION_576P");
+                    break;
+                }
+                case PLAYERINFO_RESOLUTION_720P: {
+                    Trace("PLAYERINFO_RESOLUTION_720P");
+                    break;
+                }
+                case PLAYERINFO_RESOLUTION_1080I: {
+                    Trace("PLAYERINFO_RESOLUTION_1080I");
+                    break;
+                }
+                case PLAYERINFO_RESOLUTION_1080P: {
+                    Trace("PLAYERINFO_RESOLUTION_1080P");
+                    break;
+                }
+                case PLAYERINFO_RESOLUTION_2160P30: {
+                    Trace("PLAYERINFO_RESOLUTION_2160P30");
+                    break;
+                }
+                case PLAYERINFO_RESOLUTION_2160P60: {
+                    Trace("PLAYERINFO_RESOLUTION_2160P60");
+                    break;
+                }
+                default: {
+                    Trace("Resolution not specified in client switch-case.");
+                    break;
+                }
+                }
             }
-            case PLAYERINFO_RESOLUTION_480P: {
-                Trace("PLAYERINFO_RESOLUTION_480P");
-                break;
-            }
-            case PLAYERINFO_RESOLUTION_576I: {
-                Trace("PLAYERINFO_RESOLUTION_576I");
-                break;
-            }
-            case PLAYERINFO_RESOLUTION_576P: {
-                Trace("PLAYERINFO_RESOLUTION_576P");
-                break;
-            }
-            case PLAYERINFO_RESOLUTION_720P: {
-                Trace("PLAYERINFO_RESOLUTION_720P");
-                break;
-            }
-            case PLAYERINFO_RESOLUTION_1080I: {
-                Trace("PLAYERINFO_RESOLUTION_1080I");
-                break;
-            }
-            case PLAYERINFO_RESOLUTION_1080P: {
-                Trace("PLAYERINFO_RESOLUTION_1080P");
-                break;
-            }
-            case PLAYERINFO_RESOLUTION_2160P30: {
-                Trace("PLAYERINFO_RESOLUTION_2160P30");
-                break;
-            }
-            case PLAYERINFO_RESOLUTION_2160P60: {
-                Trace("PLAYERINFO_RESOLUTION_2160P60");
-                break;
-            }
-            default: {
-                Trace("PLAYERINFO_RESOLUTION_UNKNOWN");
-                break;
-            }
-            }
-
             break;
         }
         case 'A': {
@@ -152,8 +170,11 @@ int main(int argc, char* argv[])
                     case PLAYERINFO_AUDIO_WAV:
                         Trace("PLAYERINFO_AUDIO_WAV");
                         break;
+                    case PLAYERINFO_AUDIO_OTHER_DEFINED_CODEC:
+                        Trace("PLAYERINFO_AUDIO_OTHER_DEFINED_CODEC");
+                        break;
                     default:
-                        Trace("PLAYERINFO_AUDIO_UNDEFINED");
+                        Trace("Audio codec not specified in client switch-case.");
                         break;
                     }
                 }
@@ -201,8 +222,11 @@ int main(int argc, char* argv[])
                     case PLAYERINFO_VIDEO_VP10:
                         Trace("PLAYERINFO_VIDEO_VP10");
                         break;
+                    case PLAYERINFO_VIDEO_OTHER_DEFINED_CODEC:
+                        Trace("PLAYERINFO_VIDEO_OTHER_DEFINED_CODEC");
+                        break;
                     default:
-                        Trace("PLAYERINFO_VIDEO_UNDEFINED");
+                        Trace("Audio codec not specified in client switch-case.");
                         break;
                     }
                 }
