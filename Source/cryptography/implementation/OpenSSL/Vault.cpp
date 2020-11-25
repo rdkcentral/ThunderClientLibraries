@@ -26,8 +26,6 @@
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 
-#include <limits.h>
-
 #include "Vault.h"
 #include "Derive.h"
 
