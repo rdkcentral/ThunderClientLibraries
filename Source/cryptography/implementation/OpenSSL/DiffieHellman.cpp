@@ -125,14 +125,14 @@ public:
 
         uint16_t keySize = _vault->Size(keyId, true);
         if (keySize == 0) {
-            TRACE_L1(_T("Key 0x%08x does not exist"), keyId);
+            TRACE_L1("Key 0x%08x does not exist", keyId);
         } else {
             uint8_t* keyBuf = reinterpret_cast<uint8_t*>(ALLOCA(keySize));
             ASSERT(keyBuf != nullptr);
 
             keySize = _vault->Export(keyId, keySize, reinterpret_cast<uint8_t*>(keyBuf), true);
             if (keySize == 0) {
-                TRACE_L1(_T("Failed to acces key 0x%08x"), keyId);
+                TRACE_L1("Failed to acces key 0x%08x", keyId);
             } else {
                 key = DH_new();
                 ASSERT(key != nullptr);
@@ -177,14 +177,14 @@ public:
 
         uint16_t keySize = _vault->Size(keyId, true);
         if (keySize == 0) {
-            TRACE_L1(_T("Key 0x%08x does not exist"), keyId);
+            TRACE_L1("Key 0x%08x does not exist", keyId);
         } else {
             uint8_t* keyBuf = reinterpret_cast<uint8_t*>(ALLOCA(keySize));
             ASSERT(keyBuf != nullptr);
 
             keySize = _vault->Export(keyId, keySize, keyBuf, true);
             if (keySize == 0) {
-                TRACE_L1(_T("Failed to access key 0x%08x"), keyId);
+                TRACE_L1("Failed to access key 0x%08x", keyId);
             } else {
                 key = BN_bin2bn(keyBuf, keySize, nullptr);
                 ASSERT(key != nullptr);
@@ -224,14 +224,14 @@ uint32_t GenerateDiffieHellmanKeys(KeyStore& store,
     privateKeyId = 0;
     publicKeyId = 0;
 
-    TRACE_L2(_T("Generator: %i"), generator);
-    TRACE_L2(_T("Modulus: %02x %02x %02x... (%i bytes)"), modulus[0], modulus[1], modulus[2], modulusSize);
+    TRACE_L2("Generator: %i", generator);
+    TRACE_L2("Modulus: %02x %02x %02x... (%i bytes)", modulus[0], modulus[1], modulus[2], modulusSize);
 
     DH* dh = DH_new();
     ASSERT(dh != nullptr);
 
     if (dh == nullptr) {
-        TRACE_L1(_T("DH_new() failed"));
+        TRACE_L1("DH_new() failed");
     } else {
 #if OPENSSL_VERSION_NUMBER  >= 0x10100000L
         BIGNUM* p = BN_bin2bn(modulus, modulusSize, NULL);
@@ -255,10 +255,10 @@ uint32_t GenerateDiffieHellmanKeys(KeyStore& store,
 
         int codes = 0;
         if ((DH_check(dh, &codes) == 0) || (codes != 0)) {
-            TRACE_L1(_T("DH parameters are invalid [0x%08x]!"), codes);
+            TRACE_L1("DH parameters are invalid [0x%08x]!", codes);
         } else {
             if (DH_generate_key(dh) == 0) {
-                TRACE_L1(_T("DH_generate_key() failed"));
+                TRACE_L1("DH_generate_key() failed");
             } else {
                 privateKeyId = store.Serialize(dh);
 #if OPENSSL_VERSION_NUMBER  >= 0x10100000L
@@ -292,7 +292,7 @@ void DiffieHellmanDeriveSecret(DH* privateKey, const BIGNUM* peerPublicKey, BIGN
 
     int flags = 0;
     if ((DH_check_pub_key(privateKey, peerPublicKey, &flags) == 0) || (flags != 0)) {
-        TRACE_L1(_T("Peer public key is invalid"));
+        TRACE_L1("Peer public key is invalid");
     } else {
         uint16_t secretSize = DH_size(privateKey);
         ASSERT(secretSize != 0);
@@ -302,7 +302,7 @@ void DiffieHellmanDeriveSecret(DH* privateKey, const BIGNUM* peerPublicKey, BIGN
 
         secretSize = DH_compute_key(secretBuf, peerPublicKey, privateKey);
         if (secretSize == 0) {
-            TRACE_L1(_T("DH_compute_key() failed"));
+            TRACE_L1("DH_compute_key() failed");
         } else {
             secret = BN_bin2bn(secretBuf, secretSize, nullptr);
             ASSERT(secret != nullptr);
@@ -323,19 +323,19 @@ uint32_t DiffieHellmanDeriveSecret(KeyStore& store, const uint32_t privateKeyId,
     ASSERT(peerPublicKey != nullptr);
 
     if ((privateKey == nullptr) || (peerPublicKey == nullptr)) {
-        TRACE_L1(_T("Failed to retrieve source keys from the vault"));
+        TRACE_L1("Failed to retrieve source keys from the vault");
     } else {
         BIGNUM* secret = nullptr;
         DiffieHellmanDeriveSecret(privateKey, peerPublicKey, secret);
 
         if (secret == nullptr) {
-            TRACE_L1(_T("Failed to compute a Diffie-Hellman secret"));
+            TRACE_L1("Failed to compute a Diffie-Hellman secret");
         } else {
             secretId = store.Serialize(secret);
             if (secretId == 0) {
-                TRACE_L1(_T("Failed to store computed Diffie-Hellman secret"));
+                TRACE_L1("Failed to store computed Diffie-Hellman secret");
             } else {
-                TRACE_L2(_T("Computed Diffie-Hellman secret as 0x%08x"), secretId);
+                TRACE_L2("Computed Diffie-Hellman secret as 0x%08x", secretId);
                 result = 0;
             }
 
@@ -377,13 +377,13 @@ uint32_t DiffieHellmanAuthenticatedDeriveSecret(KeyStore& store,
     ASSERT(derivationKey != nullptr);
 
     if ((privateKey == nullptr) || (peerPublicKey == nullptr) || (derivationKey == nullptr)) {
-        TRACE_L1(_T("Failed to retrieve source keys from the vault"));
+        TRACE_L1("Failed to retrieve source keys from the vault");
     } else {
         BIGNUM* secret = nullptr;
         DiffieHellmanDeriveSecret(privateKey, peerPublicKey, secret);
 
         if (secret == nullptr) {
-            TRACE_L1(_T("Failed to compute a (standard) Diffie-Hellman secret"));
+            TRACE_L1("Failed to compute a (standard) Diffie-Hellman secret");
         } else {
             // Load the standard DH shared secret
             uint16_t secretSize = BN_num_bytes(secret);
@@ -439,9 +439,9 @@ uint32_t DiffieHellmanAuthenticatedDeriveSecret(KeyStore& store,
 
             result = !((encryptionKeyId != 0) && (hmacKeyId != 0) && (wrappingKeyId != 0));
             if (result != 0) {
-                TRACE_L1(_T("Failed to store computed keys into the vault"));
+                TRACE_L1("Failed to store computed keys into the vault");
             } else {
-                TRACE_L2(_T("Computed authenticated Diffie-Hellman keys (encryption: 0x%08x, hmac: 0x%08x, wrapping: 0x%08x)"),
+                TRACE_L2("Computed authenticated Diffie-Hellman keys (encryption: 0x%08x, hmac: 0x%08x, wrapping: 0x%08x)",
                             encryptionKeyId, hmacKeyId, wrappingKeyId);
                 result = 0;
             }

@@ -108,10 +108,10 @@ private:
         ASSERT(inputLength != 0);
 
         if (ivLength != _ivLength) {
-            TRACE_L1(_T("Invalid IV length! [%i]"), ivLength);
+            TRACE_L1("Invalid IV length! [%i]", ivLength);
         } else if (maxOutputLength < inputLength) {
             // Note: Pitfall, AES CBC/ECB will use padding
-            TRACE_L1(_T("Too small output buffer, expected: %i bytes"), inputLength);
+            TRACE_L1("Too small output buffer, expected: %i bytes", inputLength);
             result = (-static_cast<int32_t>(inputLength  + (16 - (inputLength % 16))) );
         } else {
             uint8_t* keyBuf = reinterpret_cast<uint8_t*>(ALLOCA(_keyLength));
@@ -121,27 +121,27 @@ private:
             ASSERT(length != 0);
 
             if (length != _keyLength) {
-                TRACE_L1(_T("Failed to retrieve a valid encryption key from id 0x%08x"), _keyId);
+                TRACE_L1("Failed to retrieve a valid encryption key from id 0x%08x", _keyId);
             } else {
                 int len = 0;
                 int initResult = EVP_CipherInit_ex(_context, _cipher, nullptr, keyBuf, iv, encrypt);
                 ::memset(keyBuf, 0xFF, length);
 
                 if (initResult == 0) {
-                    TRACE_L1(_T("EVP_CipherInit_ex() failed"));
+                    TRACE_L1("EVP_CipherInit_ex() failed");
                 } else {
                     if (EVP_CipherUpdate(_context, output, &len, input, inputLength) == 0) {
-                        TRACE_L1(_T("EVP_CipherUpdate() failed"));
+                        TRACE_L1("EVP_CipherUpdate() failed");
                     } else {
                         result = len;
                         // Note: EVP_CipherFinal_ex() can still write to the output buffer!
                         if (EVP_CipherFinal_ex(_context, (output + len), &len) == 0) {
-                            TRACE_L1(_T("EVP_CipherFinal_ex() failed"));
+                            TRACE_L1("EVP_CipherFinal_ex() failed");
                             result = 0;
                         } else {
                             result += len;
-                            TRACE_L2(_T("Completed %scryption, input size: %i, output size: %i"),
-                                        (encrypt? "en" : "de"), inputLength, result);
+                            TRACE_L2("Completed %scryption, input size: %i, output size: %i",
+                                     (encrypt? "en" : "de"), inputLength, result);
                         }
                     }
                 }
@@ -196,7 +196,7 @@ const EVP_CIPHER* AESCipher(const uint8_t keySize, const aes_mode mode)
         idx = 6;
         break;
     default:
-        TRACE_L1(_T("Unsupported AES cipher block mode %i"), mode);
+        TRACE_L1("Unsupported AES cipher block mode %i", mode);
     }
 
     if (idx != UCHAR_MAX) {
@@ -207,7 +207,7 @@ const EVP_CIPHER* AESCipher(const uint8_t keySize, const aes_mode mode)
         } else if (keySize == 32) {
             cipher = cipherTable[2][idx]();
         } else {
-            TRACE_L1(_T("Unsupported AES key size: %i bits"), (keySize * 8));
+            TRACE_L1("Unsupported AES key size: %i bits", (keySize * 8));
         }
     }
 
@@ -228,7 +228,7 @@ struct CipherImplementation* cipher_create_aes(const struct VaultImplementation*
 
     uint16_t keyLength = vaultImpl->Size(key_id, true);
     if ( (keyLength == 0) || (keyLength > 0xFF)) {
-        TRACE_L1(_T("Key 0x%08x does not exist"), key_id);
+        TRACE_L1("Key 0x%08x does not exist", key_id);
     } else {
         const EVP_CIPHER* evpcipher = Implementation::AESCipher(static_cast<uint8_t>(keyLength), mode);
         ASSERT(evpcipher != nullptr);

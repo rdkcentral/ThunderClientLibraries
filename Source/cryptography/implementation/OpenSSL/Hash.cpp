@@ -61,7 +61,7 @@ const EVP_MD* Algorithm(const hash_type type)
         md = EVP_sha512();
         break;
     default:
-        TRACE_L1(_T("Hashing algorithm %i not supported"), type);
+        TRACE_L1("Hashing algorithm %i not supported", type);
         break;
     }
 
@@ -120,7 +120,7 @@ public:
         ASSERT(_ctx != nullptr);
 
         if (EVP_DigestInit_ex(_ctx, digest, NULL) == 0) {
-            TRACE_L1(_T("EVP_DigestInit_ex() failed"));
+            TRACE_L1("EVP_DigestInit_ex() failed");
             _failure = true;
         } else {
             _size = EVP_MD_size(digest);
@@ -150,7 +150,7 @@ public:
                 ::memset(secret, 0xFF, secretLen);
 
                 if (OPERATION::Init(_ctx, nullptr, digest, _pkey) == 0) {
-                    TRACE_L1(_T("Init() failed"));
+                    TRACE_L1("Init() failed");
                     _failure = true;
                 }
             }
@@ -171,7 +171,7 @@ public:
 
         if (_failure == false) {
             if (OPERATION::Update(_ctx, data, length) == 0) {
-                TRACE_L1(_T("Update() failed"));
+                TRACE_L1("Update() failed");
                 _failure = true;
             }
         }
@@ -184,17 +184,17 @@ public:
         uint8_t result = 0;
 
         if (_failure == true) {
-            TRACE_L1(_T("Hash calculation failure"));
+            TRACE_L1("Hash calculation failure");
         } else {
             if (maxLength < _size) {
-                TRACE_L1(_T("Output buffer to small, need %i bytes, got %i bytes"), _size, maxLength);
+                TRACE_L1("Output buffer to small, need %i bytes, got %i bytes", _size, maxLength);
             } else {
                 size_t len = maxLength;
                 if (OPERATION::Final(_ctx, data, &len) == 0) {
-                    TRACE_L1(_T("Final() failed"));
+                    TRACE_L1("Final() failed");
                     _failure = true;
                 } else {
-                    TRACE_L2(_T("Calculated hash successfully, size: %i bytes"), static_cast<uint32_t>(len));
+                    TRACE_L2("Calculated hash successfully, size: %i bytes", static_cast<uint32_t>(len));
                     ASSERT(len == _size);
                     result = static_cast<uint8_t>(len);
                 }
@@ -236,7 +236,7 @@ HashImplementation* hash_create_hmac(const VaultImplementation* vault, const has
 
     uint16_t secretLength = vaultImpl->Size(secret_id, true);
     if (secretLength == 0) {
-        TRACE_L1(_T("Failed to retrieve secret id 0x%08x"), secret_id);
+        TRACE_L1("Failed to retrieve secret id 0x%08x", secret_id);
     } else {
         const EVP_MD* md = Implementation::Algorithm(type);
         if (md != nullptr) {
