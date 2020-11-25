@@ -28,7 +28,11 @@ static string GetEndPoint()
 {
     TCHAR* value = ::getenv(_T("PROVISION_PATH"));
 
+#ifdef __WINDOWS__
+    return (value == nullptr ? _T("127.0.0.1:7777") : value);
+#else
     return (value == nullptr ? _T("/tmp/provision") : value);
+#endif
 }
 
 extern "C" {
