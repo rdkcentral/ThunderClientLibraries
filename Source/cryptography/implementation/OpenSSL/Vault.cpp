@@ -98,7 +98,7 @@ static constexpr uint8_t MAX_ESN_SIZE = 64;
                     ASSERT(kdwId == Netflix::KPW_ID);
 
                     // Let's (ab)use the vault to hold the ESN as well
-                    vault._lastHandle = Netflix::ESN_ID;
+                    vault._lastHandle = (Netflix::ESN_ID - 1);
                     uint32_t esnId = vault.Import((decryptedSize - sizeof(NetflixData)), data->esn, true);
                     ASSERT(esnId == Netflix::ESN_ID);
 
