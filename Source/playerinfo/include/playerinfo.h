@@ -22,7 +22,6 @@ extern "C" {
 struct playerinfo_type;
 
 typedef enum playerinfo_audiocodec_type {
-    PLAYERINFO_AUDIO_OTHER_DEFINED_CODEC,
     PLAYERINFO_AUDIO_UNDEFINED,
     PLAYERINFO_AUDIO_AAC,
     PLAYERINFO_AUDIO_AC3,
@@ -38,7 +37,6 @@ typedef enum playerinfo_audiocodec_type {
 } playerinfo_audiocodec_t;
 
 typedef enum playerinfo_videocodec_type {
-    PLAYERINFO_VIDEO_OTHER_DEFINED_CODEC,
     PLAYERINFO_VIDEO_UNDEFINED,
     PLAYERINFO_VIDEO_H263,
     PLAYERINFO_VIDEO_H264,
@@ -51,7 +49,6 @@ typedef enum playerinfo_videocodec_type {
 } playerinfo_videocodec_t;
 
 typedef enum playerinfo_playback_resolution_type {
-    PLAYERINFO_OTHER_DEFINED_RESOLUTION,
     PLAYERINFO_RESOLUTION_UNKNOWN,
     PLAYERINFO_RESOLUTION_480I,
     PLAYERINFO_RESOLUTION_480P,
@@ -82,8 +79,8 @@ EXTERNAL void playerinfo_release(struct playerinfo_type* instance);
 /**
  * @brief Get current video playback resolution
  * @param instance instance Instance of @ref playerinfo_type.
- * @param resolution The current resolution, PLAYERINFO_OTHER_DEFINED_RESOLUTION if ThunderInterfaces contains new resolution not defined in this library,
- * @return 1 on succes, 0 if instance or resolution param is NULL or invalid connection.
+ * @param resolution The current resolution, PLAYER_INFO_RESOLUTION_UNKNOWN MIGHT occur if ThunderInterfaces contains new resolution not defined in this library,
+ * @return 1 on succes, 0 if: instance or resolution param is NULL, or invalid connection.
  */
 EXTERNAL int8_t playerinfo_playback_resolution(struct playerinfo_type* instance, playerinfo_playback_resolution_t* resolution);
 
@@ -100,8 +97,8 @@ EXTERNAL int8_t playerinfo_is_audio_equivalence_enabled(struct playerinfo_type* 
  * 
  * @param instance Instance of @ref displayinfo_type.
  * @param array array which will contain audio codecs used by the player,
- *              if element == PLAYERINFO_AUDIO_OTHER_DEFINED_CODEC - ThunderInterfaces
- *              contains new codec not defined in this library. 
+ *              if element == PLAYERINFO_AUDIO_UNDEFINED - MIGHT be a case when
+ *              ThunderInterfaces contains new codec not defined in this library. 
  * @param length length of given array
  * @return NUMBER OF CODECS used, or if array is not large enough return -NUMBER OF CODECS, 
  *         0 if: buffer or instance is NULL, or invalid connection.
@@ -113,8 +110,8 @@ EXTERNAL int8_t playerinfo_audio_codecs(struct playerinfo_type* instance, player
  * 
  * @param instance Instance of @ref displayinfo_type.
  * @param array array which will contain video codecs used by the player,
- *              if element == PLAYERINFO_VIDEO_OTHER_DEFINED_CODEC - ThunderInterfaces
- *              contains new codec not defined in this library. 
+ *              if element == PLAYERINFO_VIDEO_UNDEFINED - MIGHT be a case when
+ *              ThunderInterfaces contains new codec not defined in this library. 
  * @param length length of given array
  * @return NUMBER OF CODECS used, ot if array is not large enough return -NUMBER OF CODECS,
  *         0 if: buffer or instance is NULL, or invalid connection.

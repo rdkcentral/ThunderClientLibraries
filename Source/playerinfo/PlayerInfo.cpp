@@ -232,7 +232,9 @@ public:
                         newArray[numberOfCodecs] = PLAYERINFO_VIDEO_VP10;
                         break;
                     default:
-                        newArray[numberOfCodecs] = PLAYERINFO_VIDEO_OTHER_DEFINED_CODEC;
+                        fprintf(stderr, "New video codec in the interface, not handled in client library!\n");
+                        ASSERT(false && "Invalid enum");
+                        newArray[numberOfCodecs] = PLAYERINFO_VIDEO_UNDEFINED;
                         break;
                     }
                     ++numberOfCodecs;
@@ -303,7 +305,9 @@ public:
                         newArray[numberOfCodecs] = PLAYERINFO_AUDIO_WAV;
                         break;
                     default:
-                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_OTHER_DEFINED_CODEC;
+                        fprintf(stderr, "New audio codec in the interface, not handled in client library!\n");
+                        ASSERT(false && "Invalid enum");
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_UNDEFINED;
                         break;
                     }
                     ++numberOfCodecs;
@@ -381,7 +385,9 @@ int8_t playerinfo_playback_resolution(struct playerinfo_type* instance, playerin
                 *resolution = PLAYERINFO_RESOLUTION_2160P60;
                 break;
             default:
-                *resolution = PLAYERINFO_OTHER_DEFINED_RESOLUTION;
+                fprintf(stderr, "New resolution in the interface, not handled in client library!\n");
+                ASSERT(false && "Invalid enum");
+                *resolution = PLAYERINFO_RESOLUTION_UNKNOWN;
                 break;
             }
             return 1;
