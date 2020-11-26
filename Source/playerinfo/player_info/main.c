@@ -59,7 +59,7 @@ int main(int argc, char* argv[])
             if (playerinfo_is_audio_equivalence_enabled(player, &is_enabled) == 1) {
                 Trace("Loudnes %s enabled", is_enabled ? "is" : "not");
             } else {
-                Trace("Instance is null, or invalid connection");
+                Trace("Instance or is_enabled param is NULL, or invalid connection");
             }
 
             break;
@@ -68,15 +68,11 @@ int main(int argc, char* argv[])
         case 'R': {
             playerinfo_playback_resolution_t resolution;
             if (playerinfo_playback_resolution(player, &resolution) == 0) {
-                Trace("Instance is null, or invalid connection");
+                Trace("Instance or resolution param is null, or invalid connection");
             } else {
                 switch (resolution) {
                 case PLAYERINFO_RESOLUTION_UNKNOWN: {
                     Trace("PLAYERINFO_RESOLUTION_UNKNOWN");
-                    break;
-                }
-                case PLAYERINFO_OTHER_DEFINED_RESOLUTION: {
-                    Trace("PLAYERINFO_OTHER_DEFINED_RESOLUTION");
                     break;
                 }
                 case PLAYERINFO_RESOLUTION_480I: {
@@ -170,9 +166,6 @@ int main(int argc, char* argv[])
                     case PLAYERINFO_AUDIO_WAV:
                         Trace("PLAYERINFO_AUDIO_WAV");
                         break;
-                    case PLAYERINFO_AUDIO_OTHER_DEFINED_CODEC:
-                        Trace("PLAYERINFO_AUDIO_OTHER_DEFINED_CODEC");
-                        break;
                     default:
                         Trace("Audio codec not specified in client switch-case.");
                         break;
@@ -221,9 +214,6 @@ int main(int argc, char* argv[])
                         break;
                     case PLAYERINFO_VIDEO_VP10:
                         Trace("PLAYERINFO_VIDEO_VP10");
-                        break;
-                    case PLAYERINFO_VIDEO_OTHER_DEFINED_CODEC:
-                        Trace("PLAYERINFO_VIDEO_OTHER_DEFINED_CODEC");
                         break;
                     default:
                         Trace("Audio codec not specified in client switch-case.");
