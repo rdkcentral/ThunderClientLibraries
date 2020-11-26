@@ -83,7 +83,7 @@ EXTERNAL void playerinfo_release(struct playerinfo_type* instance);
  * @brief Get current video playback resolution
  * @param instance instance Instance of @ref playerinfo_type.
  * @param resolution The current resolution, PLAYERINFO_OTHER_DEFINED_RESOLUTION if ThunderInterfaces contains new resolution not defined in this library,
- * @return 1 on succes, 0 if instance is NULL or invalid connection.
+ * @return 1 on succes, 0 if instance or resolution param is NULL or invalid connection.
  */
 EXTERNAL int8_t playerinfo_playback_resolution(struct playerinfo_type* instance, playerinfo_playback_resolution_t* resolution);
 
@@ -91,7 +91,7 @@ EXTERNAL int8_t playerinfo_playback_resolution(struct playerinfo_type* instance,
  * @brief Checks Loudness Equivalence in platform
  * @param instance Instance of @ref displayinfo_type.
  * @param loudness true if enabled, false if disabled
- * @return  1 on succes, 0 if instance is NULL or invalid connection.
+ * @return  1 on succes, 0 if instance or is_enabled param is NULL or invalid connection.
  */
 EXTERNAL int8_t playerinfo_is_audio_equivalence_enabled(struct playerinfo_type* instance, bool* is_enabled);
 

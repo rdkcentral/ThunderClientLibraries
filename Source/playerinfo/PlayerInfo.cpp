@@ -167,20 +167,20 @@ public:
 
     const string& Name() const { return _name; }
 
-    int8_t IsAudioEquivalenceEnabled(bool* isEnabled) const
+    int8_t IsAudioEquivalenceEnabled(bool& outIsEnabled) const
     {
         if (_playerConnection != nullptr) {
-            if (_playerConnection->IsAudioEquivalenceEnabled(*isEnabled) == Core::ERROR_NONE) {
+            if (_playerConnection->IsAudioEquivalenceEnabled(outIsEnabled) == Core::ERROR_NONE) {
                 return 1;
             }
         }
         return 0;
     }
 
-    int8_t PlaybackResolution(Exchange::IPlayerProperties::PlaybackResolution* resolution) const
+    int8_t PlaybackResolution(Exchange::IPlayerProperties::PlaybackResolution& outResolution) const
     {
         if (_playerConnection != nullptr) {
-            if (_playerConnection->Resolution(*resolution) == Core::ERROR_NONE) {
+            if (_playerConnection->Resolution(outResolution) == Core::ERROR_NONE) {
                 return 1;
             }
         }
@@ -345,10 +345,10 @@ void playerinfo_release(struct playerinfo_type* instance)
 int8_t playerinfo_playback_resolution(struct playerinfo_type* instance, playerinfo_playback_resolution_t* resolution)
 {
 
-    if (instance != NULL) {
+    if (instance != NULL && resolution != NULL) {
         Exchange::IPlayerProperties::PlaybackResolution value = Exchange::IPlayerProperties::PlaybackResolution::RESOLUTION_UNKNOWN;
 
-        if (reinterpret_cast<PlayerInfo*>(instance)->PlaybackResolution(&value) == 1) {
+        if (reinterpret_cast<PlayerInfo*>(instance)->PlaybackResolution(value) == 1) {
             switch (value) {
             case Exchange::IPlayerProperties::PlaybackResolution::RESOLUTION_UNKNOWN:
                 *resolution = PLAYERINFO_RESOLUTION_UNKNOWN;
@@ -392,8 +392,8 @@ int8_t playerinfo_playback_resolution(struct playerinfo_type* instance, playerin
 
 int8_t playerinfo_is_audio_equivalence_enabled(struct playerinfo_type* instance, bool* is_enabled)
 {
-    if (instance != NULL) {
-        return reinterpret_cast<PlayerInfo*>(instance)->IsAudioEquivalenceEnabled(is_enabled);
+    if (instance != NULL && is_enabled != NULL) {
+        return reinterpret_cast<PlayerInfo*>(instance)->IsAudioEquivalenceEnabled(*is_enabled);
     }
     return 0;
 }
