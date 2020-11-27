@@ -26,8 +26,6 @@
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 
-#include <limits.h>
-
 #include "Vault.h"
 #include "Derive.h"
 
@@ -77,13 +75,14 @@ static constexpr uint8_t MAX_ESN_SIZE = 64;
             uint64_t fileSize = file.Size();
 
             if ((fileSize > (IV_SIZE + sizeof(NetflixData))) && (fileSize <= (IV_SIZE + sizeof(NetflixData) + Netflix::MAX_ESN_SIZE))) {
+                uint16_t blobSize = (static_cast<uint16_t>(fileSize) - IV_SIZE);
+                uint8_t* decryptedBlob = reinterpret_cast<uint8_t*>(ALLOCA(blobSize));
                 uint8_t* input = reinterpret_cast<uint8_t*>(ALLOCA(fileSize));
-                uint8_t* output = reinterpret_cast<uint8_t*>(ALLOCA(fileSize - IV_SIZE));
                 uint16_t inSize = file.Read(input, static_cast<uint32_t>(fileSize));
-                uint16_t decryptedSize = vault.Cipher(false, inSize, input, sizeof(output), output);
+                blobSize = vault.Cipher(false, (IV_SIZE + blobSize), input, blobSize, decryptedBlob);
 
-                if (decryptedSize >= sizeof(NetflixData)) {
-                    NetflixData *data = reinterpret_cast<NetflixData*>(output);
+                if (blobSize >= sizeof(NetflixData)) {
+                    NetflixData *data = reinterpret_cast<NetflixData*>(decryptedBlob);
 
                     uint32_t kpeId = vault.Import(sizeof(NetflixData::kpe), data->kpe, false);
                     ASSERT(kpeId == Netflix::KPE_ID);
@@ -98,11 +97,11 @@ static constexpr uint8_t MAX_ESN_SIZE = 64;
                     ASSERT(kdwId == Netflix::KPW_ID);
 
                     // Let's (ab)use the vault to hold the ESN as well
-                    vault._lastHandle = Netflix::ESN_ID;
-                    uint32_t esnId = vault.Import((decryptedSize - sizeof(NetflixData)), data->esn, true);
+                    vault._lastHandle = (Netflix::ESN_ID - 1);
+                    uint32_t esnId = vault.Import((blobSize - sizeof(NetflixData)), data->esn, true);
                     ASSERT(esnId == Netflix::ESN_ID);
 
-                    TRACE_L1(_T("Imported pre-shared keys and ESN into the Netflix vault"));
+                    TRACE_L1("Imported pre-shared keys and ESN into the Netflix vault");
                 }
             }
 
@@ -211,13 +210,14 @@ uint16_t Vault::Size(const uint32_t id, bool allowSealed) const
     if (it != _items.end()) {
         if ((allowSealed == true) || (*it).second.IsExportable() == true) {
             size = ((*it).second.Size() - IV_SIZE);
-            TRACE_L2(_T("Blob id 0x%08x size: %i"), id, size);
+            TRACE_L2("%sBlob id 0x%08x size: %i",
+                     (((allowSealed == true) || ((*it).second.IsExportable() == false))? "Internal: ": ""), id, size);
         } else {
-            TRACE_L2(_T("Blob id 0x%08x is sealed"), id);
+            TRACE_L2("Blob id 0x%08x is sealed, won't tell its size", id);
             size = USHRT_MAX;
         }
     } else {
-        TRACE_L1(_T("Failed to look up blob id 0x%08x"), id);
+        TRACE_L1("Failed to look up blob id 0x%08x", id);
     }
     _lock.Unlock();
 
@@ -242,7 +242,7 @@ uint32_t Vault::Import(const uint16_t size, const uint8_t blob[], bool exportabl
 
             _lastHandle = id;
 
-            TRACE_L2(_T("Added a %s data blob of size %i as id 0x%08x"), (exportable? "clear": "sealed"), (len - IV_SIZE), id);
+            TRACE_L2("Added a %s data blob of size %i as id 0x%08x", (exportable? "clear": "sealed"), (len - IV_SIZE), id);
         }
         _lock.Unlock();
     }
@@ -261,12 +261,13 @@ uint16_t Vault::Export(const uint32_t id, const uint16_t size, uint8_t blob[], b
             if ((allowSealed == true) || ((*it).second.IsExportable() == true)) {
                 outSize = Cipher(false, (*it).second.Size(), (*it).second.Buffer(), size, blob);
 
-                TRACE_L2(_T("Exported %i bytes from blob id 0x%08x"), outSize, id);
+                TRACE_L2("%sExported %i bytes from blob id 0x%08x",
+                         (((allowSealed == true) || ((*it).second.IsExportable() == false))? "Internal: ": ""), outSize, id);
             } else {
-                TRACE_L1(_T("Blob id 0x%08x is sealed, can't export"), id);
+                TRACE_L1("Blob id 0x%08x is sealed, can't export", id);
             }
         } else {
-            TRACE_L1(_T("Failed to look up blob id 0x%08x"), id);
+            TRACE_L1("Failed to look up blob id 0x%08x", id);
         }
         _lock.Unlock();
     }
@@ -288,7 +289,7 @@ uint32_t Vault::Put(const uint16_t size, const uint8_t blob[])
 
             _lastHandle = id;
 
-            TRACE_L2(_T("Inserted a sealed data blob of size %i as id 0x%08x"), size, id);
+            TRACE_L2("Inserted a sealed data blob of size %i as id 0x%08x", size, id);
         }
         _lock.Unlock();
     }
@@ -306,7 +307,7 @@ uint16_t Vault::Get(const uint32_t id, const uint16_t size, uint8_t blob[]) cons
         if (it != _items.end()) {
             result = std::min(size, static_cast<uint16_t>((*it).second.Size()));
             ::memcpy(blob, (*it).second.Buffer(), result);
-            TRACE_L2(_T("Retrieved a sealed data blob id 0x%08x of size %i bytes"), id, result);
+            TRACE_L2("Retrieved a sealed data blob id 0x%08x of size %i bytes", id, result);
         }
         _lock.Unlock();
     }
@@ -348,7 +349,7 @@ VaultImplementation* vault_instance(const cryptographyvault id)
             vault = &Implementation::Vault::PlatformInstance();
             break;
         default:
-            TRACE_L1(_T("Vault not supported: %d"), static_cast<uint32_t>(id));
+            TRACE_L1("Vault not supported: %d", static_cast<uint32_t>(id));
             break;
     }
 

@@ -19,7 +19,7 @@
 
 #include "../../Module.h"
 #include <map>
-
+#include <climits>
 
 namespace Implementation {
 
