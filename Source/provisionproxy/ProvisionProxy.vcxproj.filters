@@ -12,6 +12,9 @@
     <ClInclude Include="IPCProvision.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="AccessProvision.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Source Files">

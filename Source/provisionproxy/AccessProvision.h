@@ -20,6 +20,14 @@
 #ifndef __ACCESS_PROVISION_H__
 #define __ACCESS_PROVISION_H__
 
+#if defined(WIN32) || defined(_WINDOWS) || defined (__CYGWIN__)
+#if !defined(PROVISIONPROXY_EXPORTS)
+#pragma comment(lib, "provision.lib")
+#pragma comment(lib, "libcrypto.lib")
+#pragma comment(lib, "provisionproxy.lib")
+#endif
+#endif
+
 extern "C" {
 
 /*
