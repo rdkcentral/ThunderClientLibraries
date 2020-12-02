@@ -243,6 +243,15 @@ EXTERNAL uint8_t displayinfo_width_in_centimeters(struct displayinfo_type* insta
  **/
 EXTERNAL uint8_t displayinfo_height_in_centimeters(struct displayinfo_type* instance);
 
+/**
+ * \brief Checks if Dolby ATMOS is enabled.
+ *
+ * \param instance Instance of \ref displayinfo_type.
+ *
+ * \return true if Dolby ATMOS is enabled, false otherwise.
+ **/
+EXTERNAL bool displayinfo_is_atmos_supported(struct displayinfo_type* instance);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

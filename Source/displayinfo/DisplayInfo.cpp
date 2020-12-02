@@ -593,4 +593,9 @@ uint8_t displayinfo_height_in_centimeters(struct displayinfo_type* displayinfo)
     return reinterpret_cast<DisplayInfo*>(displayinfo)->HeightInCentimeters();
 }
 
+bool displayinfo_is_atmos_supported(struct displayinfo_type* displayinfo)
+{
+    return false;
+}
+
 } // extern "C"
