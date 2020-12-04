@@ -613,6 +613,7 @@ public:
     }
     virtual int Process(const uint32_t data) override;
     virtual int FileDescriptor() const override;
+    virtual ISurface* SurfaceByName(const std::string& name) override;
     virtual ISurface* Create(
         const std::string& name,
         const uint32_t width, const uint32_t height) override;
