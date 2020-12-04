@@ -19,7 +19,6 @@
 
 #include "../../Module.h"
 #include "Vault.h"
-#define MAX_FILE_SIZE 300
 namespace Implementation {
 
     
@@ -40,8 +39,9 @@ namespace Implementation {
             WPEFramework::Core::File file(path.c_str(), true);
             /*Send an empty buffer for cases where boundndkymsg File is not required or  present.
             The buffer content will be ignored by Secapi-Netflix lib for such cases*/    
-            uint8_t buf[MAX_FILE_SIZE]={0};
-            uint16_t inSize = MAX_FILE_SIZE;
+            static constexpr uint32_t MaxFileSize = 300;
+            uint8_t buf[MaxFileSize]={0};
+            uint16_t inSize = MaxFileSize;
             if (file.Open(true) == true) {
                 uint64_t fileSize = file.Size();
                 inSize = file.Read(buf, fileSize);
