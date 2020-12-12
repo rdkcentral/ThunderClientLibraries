@@ -19,7 +19,6 @@
 
 #include "../../Module.h"
 #include "Vault.h"
-
 namespace Implementation {
 
     
@@ -38,14 +37,18 @@ namespace Implementation {
             std::string path;
             WPEFramework::Core::SystemInfo::GetEnvironment(_T("NETFLIX_VAULT"), path);
             WPEFramework::Core::File file(path.c_str(), true);
+            /*Send an empty buffer for cases where boundndkymsg File is not required or  present.
+            The buffer content will be ignored by Secapi-Netflix lib for such cases*/    
+            static constexpr uint32_t MaxFileSize = 300;
+            uint8_t buf[MaxFileSize]={0};
+            uint16_t inSize = MaxFileSize;
             if (file.Open(true) == true) {
                 uint64_t fileSize = file.Size();
-                uint8_t buf[fileSize];
-                uint16_t inSize = file.Read(buf, fileSize);
+                inSize = file.Read(buf, fileSize);
                 file.Close();
-                bool result = netflix.loadBoundKeys(buf, inSize);
-                ASSERT(result == true);
             }
+            bool result = netflix.loadBoundKeys(buf, inSize);
+            ASSERT(result == true);
         };
 
         auto dtor = [](VaultNetflix& netflix) {
