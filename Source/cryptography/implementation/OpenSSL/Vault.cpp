@@ -84,21 +84,21 @@ static constexpr uint8_t MAX_ESN_SIZE = 64;
                 if (blobSize >= sizeof(NetflixData)) {
                     NetflixData *data = reinterpret_cast<NetflixData*>(decryptedBlob);
 
-                    uint32_t kpeId = vault.Import(sizeof(NetflixData::kpe), data->kpe, false);
+                    VARIABLE_IS_NOT_USED uint32_t kpeId = vault.Import(sizeof(NetflixData::kpe), data->kpe, false);
                     ASSERT(kpeId == Netflix::KPE_ID);
 
-                    uint32_t kphId = vault.Import(sizeof(NetflixData::kph), data->kph, false);
+                    VARIABLE_IS_NOT_USED uint32_t kphId = vault.Import(sizeof(NetflixData::kph), data->kph, false);
                     ASSERT(kphId == Netflix::KPH_ID);
 
                     uint8_t kpw[32];
                     // kpe and kph are already concatenated in the correct order
                     Netflix::DeriveWrappingKey(data->kpe, (sizeof(data->kpe) + sizeof(data->kph)), sizeof(kpw), kpw);
-                    uint32_t kdwId = vault.Import(16, kpw, false); // take the first 16 bytes only!
+                    VARIABLE_IS_NOT_USED uint32_t kdwId = vault.Import(16, kpw, false); // take the first 16 bytes only!
                     ASSERT(kdwId == Netflix::KPW_ID);
 
                     // Let's (ab)use the vault to hold the ESN as well
                     vault._lastHandle = (Netflix::ESN_ID - 1);
-                    uint32_t esnId = vault.Import((blobSize - sizeof(NetflixData)), data->esn, true);
+                    VARIABLE_IS_NOT_USED uint32_t esnId = vault.Import((blobSize - sizeof(NetflixData)), data->esn, true);
                     ASSERT(esnId == Netflix::ESN_ID);
 
                     TRACE_L1("Imported pre-shared keys and ESN into the Netflix vault");

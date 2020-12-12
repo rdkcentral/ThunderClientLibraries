@@ -430,7 +430,7 @@ uint32_t DiffieHellmanAuthenticatedDeriveSecret(KeyStore& store,
 
             // Derive the wrapping key
             uint8_t wrappingKeyBuf[SHA256_DIGEST_LENGTH];
-            uint32_t wrappingKeyBufSize = DeriveWrappingKey(hmac, hmacSize, sizeof(wrappingKeyBuf), wrappingKeyBuf);
+            VARIABLE_IS_NOT_USED uint32_t wrappingKeyBufSize = DeriveWrappingKey(hmac, hmacSize, sizeof(wrappingKeyBuf), wrappingKeyBuf);
             ASSERT(wrappingKeyBufSize == SHA256_DIGEST_LENGTH);
 
             // Take the first 16 bytes as the "wrapping key" (AES 128-bit)
