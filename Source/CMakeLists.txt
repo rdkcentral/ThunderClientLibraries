@@ -26,17 +26,20 @@ option(COMPOSITORCLIENT
 option(GSTREAMERCLIENT
         "Include a gstreamer sink abstraction for external applications." OFF)
 option(DISPLAYINFO
-        "Include the displayinfo COMRPC abstraction library." OFF)
+        "Include the displayinfo COMRPC abstraction library." ON)
 option(SECURITYAGENT
         "Include the securityagent library." OFF)
 option(PLAYERINFO
-        "Include the playerinfo COMRPC abstraction library." OFF)
+        "Include the playerinfo COMRPC abstraction library." ON)
 option(PROVISIONPROXY
         "Include the provisionproxy library." OFF)
 option(CDMI
         "Include OpenCDM interface." OFF)
 option(CRYPTOGRAPHY
         "Include the cryptography library." OFF)
+option(RECONNECTION
+        "Include the reconnection library." ON)
+
 
 if(COMPOSITORCLIENT)
     add_subdirectory(compositorclient)
@@ -73,3 +76,8 @@ endif()
 if(CRYPTOGRAPHY)
     add_subdirectory(cryptography)
 endif()
+
+if(RECONNECTION)
+    add_subdirectory(reconnection)
+endif()
+
