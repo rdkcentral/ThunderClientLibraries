@@ -19,7 +19,6 @@ Core::NodeId Connector()
 
 int main()
 {
-    std::vector<string> instances;
 
     Core::ProxyType<RPC::InvokeServerType<1, 0, 4>> engine(Core::ProxyType<RPC::InvokeServerType<1, 0, 4>>::Create());
     ASSERT(engine != nullptr);
@@ -32,14 +31,14 @@ int main()
     PluginHost::IShell* systemInterface = comChannel->Open<PluginHost::IShell>(string());
     if (systemInterface != nullptr) {
         Core::Sink<Catalog> mySink;
-        mySink.Load(systemInterface, instances);
+        mySink.Register(systemInterface);
+        while (true) {
+            /* code */
+        }
         fprintf(stderr, "Before release\n");
+        mySink.Unregister(systemInterface);
         systemInterface->Release();
     }
-
-    for (const auto& i : instances) {
-        fprintf(stderr, "%s\n", i);
-    }
-
+    Core::Singleton::Dispose();
     return 0;
 }

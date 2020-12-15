@@ -1,11 +1,10 @@
 #pragma once
-#include <stdio.h>
-#include <stdlib.h>
 
 #include <com/com.h>
 #include <core/core.h>
+#include <plugins/IShell.h>
 
-#include <interfaces/IDisplayInfo.h>
+
 
 namespace WPEFramework {
 class Catalog : protected PluginHost::IPlugin::INotification {
@@ -16,36 +15,33 @@ public:
     Catalog() = default;
     ~Catalog() override = default;
 
-    void Load(PluginHost::IShell* systemInterface, std::vector<string>& modules)
+    void Register(PluginHost::IShell* systemInterface)
     {
-        ASSERT(_instances.size() == 0);
-
-        fprintf(stderr, "Before register\n");
-
         systemInterface->Register(this);
-        // systemInterface->Unregister(this);
 
-        fprintf(stderr, "Before while loop, size: %d\n", _instances.size());
-        while (_instances.size() > 0) {
-            fprintf(stderr, "In while loop\n");
-            PluginHost::IShell* current = _instances.back();
-            //Exchange::IConnectionProperties* props = current->QueryInterface<Exchange::IConnectionProperties>();
+        _isRegistered = true;
+    }
 
-            //if (props != nullptr) {
-            modules.push_back(current->Callsign());
-            //      props->Release();
-            //}
-            current->Release();
-            _instances.pop_back();
-        }
+    void Unregister(PluginHost::IShell* systemInterface)
+    {
+        systemInterface->Unregister(this);
     }
 
 private:
     void StateChange(PluginHost::IShell* plugin) override
     {
-        fprintf(stderr, "state change\n");
-        plugin->AddRef();
-        _instances.push_back(plugin);
+        ASSERT(plugin != nullptr);
+
+        if (_isRegistered) {
+            if (plugin->Callsign() == _callsign) {
+                if (plugin->State() == PluginHost::IShell::ACTIVATION) {
+                    fprintf(stderr, "Activating\n");
+                }
+                if (plugin->State() == PluginHost::IShell::DEACTIVATION) {
+                    fprintf(stderr, "Deactivating\n");
+                }
+            }
+        }
     }
 
     BEGIN_INTERFACE_MAP(Catalog)
@@ -53,6 +49,7 @@ private:
     END_INTERFACE_MAP
 
 private:
-    std::vector<PluginHost::IShell*> _instances;
+    bool _isRegistered = false;
+    std::string _callsign = "PlayerInfo";
 };
 }
