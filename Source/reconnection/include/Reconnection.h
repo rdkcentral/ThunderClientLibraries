@@ -4,30 +4,46 @@
 #include <core/core.h>
 #include <plugins/IShell.h>
 
-/*TODO:
-1. Change catalog name 
-2. Catalog must be observable
-3. Catalog must connect and get systemInterface by itself
-4. Make mock class for IObserver
-*/
-
 struct IObserver {
+    virtual ~IObserver() {}
     virtual void NotifyActivation(const std::string& callsign) = 0;
     virtual void NotifyDeactivation(const std::string& callsign) = 0;
 };
 
 struct IObservable {
+    virtual ~IObservable() {}
     virtual void Register(const std::string& callsign, IObserver* observer) = 0;
     virtual void Unregister(const std::string& callsign, IObserver* observer) = 0;
 };
 
 namespace WPEFramework {
-class Catalog : public ::IObservable {
+class Observer : public ::IObserver {
 public:
-    Catalog(const Catalog&) = delete;
-    Catalog& operator=(const Catalog&) = delete;
+    explicit Observer(int number)
+        : _observerNumber(number)
+    {
+    }
+    ~Observer() {}
 
-    Catalog()
+    void NotifyActivation(const std::string& callsign) override
+    {
+        fprintf(stderr, "Observer: %d received activation notification of %s plugin\n", _observerNumber, callsign.c_str());
+    }
+    void NotifyDeactivation(const std::string& callsign) override
+    {
+        fprintf(stderr, "Observer: %d received deactivation notification of %s plugin\n", _observerNumber, callsign.c_str());
+    }
+
+private:
+    int _observerNumber;
+};
+
+class StateChangeNotifier : public ::IObservable {
+public:
+    StateChangeNotifier(const StateChangeNotifier&) = delete;
+    StateChangeNotifier& operator=(const StateChangeNotifier&) = delete;
+
+    StateChangeNotifier()
         : _systemInterface(nullptr)
         , _callsign(string())
         , _engine(Core::ProxyType<RPC::InvokeServerType<1, 0, 8>>::Create())
@@ -44,7 +60,7 @@ public:
 
         _callsign = "PlayerInfo";
     }
-    ~Catalog()
+    ~StateChangeNotifier()
     {
         _notification.Deinitialize();
     }
@@ -68,8 +84,8 @@ public:
         auto upper = _observers.upper_bound(callsign);
 
         for (auto it = lower; it != upper; ++it) {
-            if (lower->first == callsign) {
-                if (lower->second == observer) {
+            if (it->first == callsign) {
+                if (it->second == observer) {
                     _observers.erase(it);
                 }
             }
@@ -86,7 +102,7 @@ private:
         Notification& operator=(const Notification&) = delete;
         ~Notification() = default;
 
-        explicit Notification(Catalog* parent)
+        explicit Notification(StateChangeNotifier* parent)
             : _parent(*parent)
             , _client(nullptr)
             , _isRegistered(false)
@@ -127,7 +143,7 @@ private:
         END_INTERFACE_MAP
 
     private:
-        Catalog& _parent;
+        StateChangeNotifier& _parent;
         bool _isRegistered;
         PluginHost::IShell* _client;
     };
@@ -135,18 +151,19 @@ private:
     void StateChange(PluginHost::IShell* plugin)
     {
         std::string callsign = plugin->Callsign();
-        auto observer = _observers.find(callsign);
-        if (observer == _observers.end()) {
-            return;
-        }
 
-        if (plugin->State() == PluginHost::IShell::ACTIVATION) {
-            fprintf(stderr, "Activating\n");
-            observer->second->NotifyActivation(callsign);
-        }
-        if (plugin->State() == PluginHost::IShell::DEACTIVATION) {
-            fprintf(stderr, "Deactivating\n");
-            observer->second->NotifyDeactivation(callsign);
+        auto lower = _observers.lower_bound(callsign);
+        auto upper = _observers.upper_bound(callsign);
+
+        for (auto it = lower; it != upper; ++it) {
+            if (it->first == callsign) {
+                if (plugin->State() == PluginHost::IShell::ACTIVATION) {
+                    it->second->NotifyActivation(callsign);
+                }
+                if (plugin->State() == PluginHost::IShell::DEACTIVATION) {
+                    it->second->NotifyDeactivation(callsign);
+                }
+            }
         }
     }
 

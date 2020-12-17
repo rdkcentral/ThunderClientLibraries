@@ -19,31 +19,17 @@ Core::NodeId Connector()
 
 int main()
 {
-    Catalog catalog;
+    StateChangeNotifier notifier;
+    Observer obs1(1);
+    Observer obs2(2);
+
+    notifier.Register("PlayerInfo", &obs1);
+    notifier.Register("DisplayInfo", &obs1);
+    notifier.Register("DisplayInfo", &obs2);
+
     while (true) {
     }
 
-    /*
-    Core::ProxyType<RPC::InvokeServerType<1, 0, 4>> engine(Core::ProxyType<RPC::InvokeServerType<1, 0, 4>>::Create());
-    ASSERT(engine != nullptr);
-    Core::ProxyType<RPC::CommunicatorClient> comChannel(
-        Core::ProxyType<RPC::CommunicatorClient>::Create(Connector(),
-            Core::ProxyType<Core::IIPCServer>(engine)));
-    ASSERT(comChannel != nullptr);
-    engine->Announcements(comChannel->Announcement());
-
-    PluginHost::IShell* systemInterface = comChannel->Open<PluginHost::IShell>(string());
-    if (systemInterface != nullptr) {
-        Core::Sink<Catalog> mySink;
-        mySink.Register(systemInterface);
-        while (true) {
-            /* code 
-        }
-        fprintf(stderr, "Before release\n");
-        mySink.Unregister(systemInterface);
-        systemInterface->Release();
-    }
-*/
     Core::Singleton::Dispose();
     return 0;
 }
