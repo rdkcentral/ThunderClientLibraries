@@ -19,7 +19,11 @@ Core::NodeId Connector()
 
 int main()
 {
+    Catalog catalog;
+    while (true) {
+    }
 
+    /*
     Core::ProxyType<RPC::InvokeServerType<1, 0, 4>> engine(Core::ProxyType<RPC::InvokeServerType<1, 0, 4>>::Create());
     ASSERT(engine != nullptr);
     Core::ProxyType<RPC::CommunicatorClient> comChannel(
@@ -33,12 +37,13 @@ int main()
         Core::Sink<Catalog> mySink;
         mySink.Register(systemInterface);
         while (true) {
-            /* code */
+            /* code 
         }
         fprintf(stderr, "Before release\n");
         mySink.Unregister(systemInterface);
         systemInterface->Release();
     }
+*/
     Core::Singleton::Dispose();
     return 0;
 }
