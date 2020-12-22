@@ -468,7 +468,7 @@ private:
         SurfaceImplementation(
             Display* compositor, const std::string& name,
             const uint32_t width, const uint32_t height);
-        virtual ~SurfaceImplementation();
+        ~SurfaceImplementation() override;
 
     public:
         std::string Name() const override {
@@ -553,7 +553,7 @@ private:
 public:
     typedef std::map<const string, Display*> DisplayMap;
     
-    virtual ~Display();
+    ~Display() override;
 
     static Display& Instance(const string& displayName){
         Display* result(nullptr);
@@ -576,7 +576,7 @@ public:
         return (*result);
     } 
 
-    virtual void AddRef() const
+    void AddRef() const override
     {
         if (Core::InterlockedIncrement(_refCount) == 1) {
             const_cast<Display*>(this)->Initialize();
@@ -584,7 +584,7 @@ public:
         return;
     }
 
-    virtual uint32_t Release() const
+    uint32_t Release() const override
     {
         if (Core::InterlockedDecrement(_refCount) == 0) {
             _displaysMapLock.Lock();
@@ -603,18 +603,18 @@ public:
         }
         return (Core::ERROR_NONE);
     }
-    virtual EGLNativeDisplayType Native() const override
+    EGLNativeDisplayType Native() const override
     {
         return (Platform::Instance().Display());
     }
-    virtual const std::string& Name() const final
+    const std::string& Name() const final override
     {
         return (_displayName);
     }
-    virtual int Process(const uint32_t data) override;
-    virtual int FileDescriptor() const override;
-    virtual ISurface* SurfaceByName(const std::string& name) override;
-    virtual ISurface* Create(
+    int Process(const uint32_t data) override;
+    int FileDescriptor() const override;
+    ISurface* SurfaceByName(const std::string& name) override;
+    ISurface* Create(
         const std::string& name,
         const uint32_t width, const uint32_t height) override;
 
