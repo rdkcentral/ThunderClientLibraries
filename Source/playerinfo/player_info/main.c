@@ -252,12 +252,8 @@ int main(int argc, char* argv[])
 
         case 'M': {
             bool is_supported = false;
-            if (playerinfo_dolby_atmos_metadata(player, &is_supported) == 1) {
-                Trace("Dolby Atmos metadata %s supported", is_supported ? "is" : "not");
-            } else {
-                Trace("Instance or is_supported param is NULL, or invalid connection");
-            }
-
+            is_supported = playerinfo_dolby_atmos_metadata(player);
+            Trace("Dolby Atmos metadata %s supported", is_supported ? "is" : "not");
             break;
         }
 

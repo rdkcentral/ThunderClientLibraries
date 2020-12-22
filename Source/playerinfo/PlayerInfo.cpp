@@ -388,15 +388,16 @@ public:
         return value;
     }
 
-    int8_t IsAtmosMetadataSupported(bool& outIsSupported) const
+    bool IsAtmosMetadataSupported() const
     {
-        ASSERT(_dolby != nullptr);
-
-        if (_dolby->AtmosMetadata(outIsSupported) == Core::ERROR_NONE) {
-            return 1;
+        if (_dolby != nullptr) {
+            bool isSupported = false;
+            if (_dolby->AtmosMetadata(isSupported) != Core::ERROR_NONE) {
+                return false;
+            }
+            return isSupported;
         }
-
-        return 0;
+        return false;
     }
 
     int8_t DolbySoundMode(Exchange::Dolby::IOutput::SoundModes& mode) const
@@ -550,12 +551,12 @@ int8_t playerinfo_audio_codecs(struct playerinfo_type* instance, playerinfo_audi
     return 0;
 }
 
-int8_t playerinfo_dolby_atmos_metadata(struct playerinfo_type* instance, bool* is_supported)
+bool playerinfo_dolby_atmos_metadata(struct playerinfo_type* instance)
 {
-    if (instance != NULL && is_supported != NULL) {
-        return reinterpret_cast<PlayerInfo*>(instance)->IsAtmosMetadataSupported(*is_supported);
+    if (instance != NULL) {
+        return reinterpret_cast<PlayerInfo*>(instance)->IsAtmosMetadataSupported();
     }
-    return 0;
+    return false;
 }
 
 int8_t playerinfo_dolby_soundmode(struct playerinfo_type* instance, playerinfo_dolby_sound_mode_t* sound_mode)

@@ -165,10 +165,9 @@ EXTERNAL int8_t playerinfo_video_codecs(struct playerinfo_type* instance, player
  * @brief Atmos capabilities of Sink
  * 
  * @param instance Instance of @ref playerinfo_type.
- * @param is_supported atmos supported or unsupported
- * @return 1 on succes, 0 if instance or is_supported param is NULL or invalid connection.
+ * @return true if atmos is supported, false otherwise
  */
-EXTERNAL int8_t playerinfo_dolby_atmos_metadata(struct playerinfo_type* instance, bool* is_supported);
+EXTERNAL bool playerinfo_dolby_atmos_metadata(struct playerinfo_type* instance);
 
 /**
  * @brief Get Sound Mode - Mono/Stereo/Surround etc.
