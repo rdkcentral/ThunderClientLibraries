@@ -122,18 +122,22 @@ EXTERNAL void playerinfo_release(struct playerinfo_type* instance);
 /**
  * @brief Get current video playback resolution
  * @param instance instance Instance of @ref playerinfo_type.
- * @param resolution The current resolution, PLAYER_INFO_RESOLUTION_UNKNOWN MIGHT occur if ThunderInterfaces contains new resolution not defined in this library,
- * @return 1 on succes, 0 if: instance or resolution param is NULL, or invalid connection.
+ * @param resolution The current resolution, PLAYER_INFO_RESOLUTION_UNKNOWN MIGHT occur if ThunderInterfaces contains new resolution 
+ *        not defined in this library,
+ * @return ERROR_NONE on succes, 
+ *         ERROR_UNKNOWN_KEY if: ThunderInterfaces contains new resolution not defined in this library 
+ *         ERROR_UNAVAILABLE if: instance or resolution param is NULL
  */
-EXTERNAL int8_t playerinfo_playback_resolution(struct playerinfo_type* instance, playerinfo_playback_resolution_t* resolution);
+EXTERNAL uint32_t playerinfo_playback_resolution(struct playerinfo_type* instance, playerinfo_playback_resolution_t* resolution);
 
 /**
  * @brief Checks Loudness Equivalence in platform
  * @param instance Instance of @ref playerinfo_type.
  * @param loudness true if enabled, false if disabled
- * @return  1 on succes, 0 if instance or is_enabled param is NULL or invalid connection.
+ * @return ERROR_NONE on succes,
+ *         ERROR_UNAVAILABLE if instance or is_enabled param is NULL.
  */
-EXTERNAL int8_t playerinfo_is_audio_equivalence_enabled(struct playerinfo_type* instance, bool* is_enabled);
+EXTERNAL uint32_t playerinfo_is_audio_equivalence_enabled(struct playerinfo_type* instance, bool* is_enabled);
 
 /**
  * @brief Gets Player audio codecs
@@ -143,7 +147,8 @@ EXTERNAL int8_t playerinfo_is_audio_equivalence_enabled(struct playerinfo_type* 
  *              if element == PLAYERINFO_AUDIO_UNDEFINED - MIGHT be a case when
  *              ThunderInterfaces contains new codec not defined in this library. 
  * @param length length of given array
- * @return NUMBER OF CODECS used, or if array is not large enough return -NUMBER OF CODECS, 
+ * @return NUMBER OF CODECS used
+ *         -NUMBER OF CODECS if array is not large enough, 
  *         0 if: buffer or instance is NULL, or invalid connection.
  */
 EXTERNAL int8_t playerinfo_audio_codecs(struct playerinfo_type* instance, playerinfo_audiocodec_t array[], const uint8_t length);
@@ -156,7 +161,8 @@ EXTERNAL int8_t playerinfo_audio_codecs(struct playerinfo_type* instance, player
  *              if element == PLAYERINFO_VIDEO_UNDEFINED - MIGHT be a case when
  *              ThunderInterfaces contains new codec not defined in this library. 
  * @param length length of given array
- * @return NUMBER OF CODECS used, ot if array is not large enough return -NUMBER OF CODECS,
+ * @return NUMBER OF CODECS used, 
+ *         -NUMBER OF CODECS if: array is not large enough return 
  *         0 if: buffer or instance is NULL, or invalid connection.
  */
 EXTERNAL int8_t playerinfo_video_codecs(struct playerinfo_type* instance, playerinfo_videocodec_t array[], const uint8_t length);
@@ -165,7 +171,8 @@ EXTERNAL int8_t playerinfo_video_codecs(struct playerinfo_type* instance, player
  * @brief Atmos capabilities of Sink
  * 
  * @param instance Instance of @ref playerinfo_type.
- * @return true if atmos is supported, false otherwise
+ * @return true if atmos is supported, 
+ *         false otherwise
  */
 EXTERNAL bool playerinfo_dolby_atmos_metadata(struct playerinfo_type* instance);
 
@@ -174,36 +181,42 @@ EXTERNAL bool playerinfo_dolby_atmos_metadata(struct playerinfo_type* instance);
  * 
  * @param instance Instance of @ref playerinfo_type
  * @param sound_mode Current sound mode, PLAYERINFO_DOLBY_SOUND_UNKNOWN MIGHT occur if ThunderInterfaces contains new resolution not defined in this library
- * @return 1 on succes, 0 if instance or sound_mode param is NULL or invalid connection. 
+ * @return ERROR_NONE on succes, 
+ *         ERROR_UNAVAILABLE if instance or sound_mode param is NULL
  */
-EXTERNAL int8_t playerinfo_dolby_soundmode(struct playerinfo_type* instance, playerinfo_dolby_sound_mode_t* sound_mode);
+EXTERNAL uint32_t playerinfo_dolby_soundmode(struct playerinfo_type* instance, playerinfo_dolby_sound_mode_t* sound_mode);
 
 /**
  * @brief Enable Atmos Audio Output
  * 
  * @param instance Instance of @ref playerinfo_type
  * @param is_enabled Enable or disable Atmos Audio Output
- * @return 1 on succes, 0 on invalid connection.
+ * @return ERROR_NONE on succes
+ *         ERROR_UNAVAILABLE if instance == NULL 
  */
-EXTERNAL int8_t playerinfo_enable_atmos_output(struct playerinfo_type* instance, const bool is_enabled);
+EXTERNAL uint32_t playerinfo_enable_atmos_output(struct playerinfo_type* instance, const bool is_enabled);
 
 /**
  * @brief Set the dolby mode 
  * 
  * @param instance Instance of @ref playerinfo_type
  * @param mode dolby mode to be set
- * @return 1 on succes, 0 on invalid connection or unknown mode
+ * @return ERROR_NONE on succes,
+ *         ERROR_UNAVAILABLE on instance == NULL
+ *         ERROR_UNKNOWN_KEY on unknown mode
  */
-EXTERNAL int8_t playerinfo_set_dolby_mode(struct playerinfo_type* instance, const playerinfo_dolby_mode_t mode);
+EXTERNAL uint32_t playerinfo_set_dolby_mode(struct playerinfo_type* instance, const playerinfo_dolby_mode_t mode);
 
 /**
  * @brief Get the dolby mode object
  * 
  * @param instance Instance of @ref playerinfo_type
  * @param mode Current dolby mode, PLAYERINFO_DOLBY_MODE_AUTO MIGHT occur if ThunderInterfaces contains new resolution not defined in this library
- * @return 1 on succes, 0 on invalid connection
+ * @return ERROR_NONE on succes,
+ *         ERROR_UNAVAILABLE on instance == NULL
+ *         ERROR_UNKNOWN_KEY on unknown mode
  */
-EXTERNAL int8_t playerinfo_get_dolby_mode(struct playerinfo_type* instance, playerinfo_dolby_mode_t* mode);
+EXTERNAL uint32_t playerinfo_get_dolby_mode(struct playerinfo_type* instance, playerinfo_dolby_mode_t* mode);
 
 #ifdef __cplusplus
 } // extern "C"
