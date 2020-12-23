@@ -380,7 +380,7 @@ public:
         return value;
     }
 
-    bool IsAtmosMetadataSupported() const
+    bool IsDolbyAtmosSupported() const
     {
         if (_dolby != nullptr) {
             bool isSupported = false;
@@ -531,10 +531,10 @@ int8_t playerinfo_audio_codecs(struct playerinfo_type* instance, playerinfo_audi
     return Core::ERROR_UNAVAILABLE;
 }
 
-bool playerinfo_dolby_atmos_metadata(struct playerinfo_type* instance)
+bool playerinfo_is_dolby_atmos_supported(struct playerinfo_type* instance)
 {
     if (instance != NULL) {
-        return reinterpret_cast<PlayerInfo*>(instance)->IsAtmosMetadataSupported();
+        return reinterpret_cast<PlayerInfo*>(instance)->IsDolbyAtmosSupported();
     }
     return false;
 }

@@ -174,7 +174,7 @@ EXTERNAL int8_t playerinfo_video_codecs(struct playerinfo_type* instance, player
  * @return true if atmos is supported, 
  *         false otherwise
  */
-EXTERNAL bool playerinfo_dolby_atmos_metadata(struct playerinfo_type* instance);
+EXTERNAL bool playerinfo_is_dolby_atmos_supported(struct playerinfo_type* instance);
 
 /**
  * @brief Get Sound Mode - Mono/Stereo/Surround etc.
