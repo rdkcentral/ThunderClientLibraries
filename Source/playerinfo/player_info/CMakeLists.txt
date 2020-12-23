@@ -4,7 +4,6 @@ target_include_directories(player_info
     PRIVATE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
         $<INSTALL_INTERFACE:include/playerinfo.h> 
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../Portability
 )
 
 target_link_libraries(player_info
