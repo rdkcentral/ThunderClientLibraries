@@ -954,7 +954,7 @@ void Display::OfferClientInterface(Exchange::IComposition::IClient* client)
         }
     } else {
 #if defined(COMPOSITORSERVERPLUGIN)
-        SYSLOG(Trace::Fatal, (_T("The CompositorServer plugin is included in the build, but not able to reach!")));
+        SYSLOG(Logging::Fatal, (_T("The CompositorServer plugin is included in the build, but not able to reach!")));
         ASSERT(false && "The CompositorServer plugin is included in the build, but not able to reach!");
 #endif
     }
@@ -972,7 +972,7 @@ void Display::RevokeClientInterface(Exchange::IComposition::IClient* client)
         }
     }else {
 #if defined(COMPOSITORSERVERPLUGIN)
-        SYSLOG(Trace::Fatal, (_T("The CompositorServer plugin is included in the build, but not able to reach!")));
+        SYSLOG(Logging::Fatal, (_T("The CompositorServer plugin is included in the build, but not able to reach!")));
         ASSERT(false && "The CompositorServer plugin is included in the build, but not able to reach!");
 #endif
     }
