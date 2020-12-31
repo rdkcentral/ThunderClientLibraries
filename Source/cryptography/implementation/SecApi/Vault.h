@@ -30,9 +30,10 @@
 
 #include "../../Module.h"
 #include "cryptography_vault_ids.h"
+#include "vault_implementation.h"
 
 #define globalDir "/opt/drm/"
-#define appDir "/tmp"
+#define appDir "/tmp/"
 
 #define DH_PUBLIC_KEY_MAX    (129)
 #define KEYLEN_AES_HMAC_128  (16)
@@ -44,6 +45,7 @@
 #define KEY_PUBLIC	     (2)
 #define NFLX_DH_ALG          (5)
 #define ENC_ID           (1)        
+#define SEC_ID_SIZE          (16)
 
 namespace Implementation {
 
@@ -58,6 +60,7 @@ namespace Implementation {
     public:
         static Vault& NetflixInstance();
         Vault();
+        Vault(const char* storagePath);
         ~Vault();
 
     private:
@@ -112,6 +115,8 @@ namespace Implementation {
         uint32_t Put(const uint16_t size, const uint8_t blob[]);
         uint16_t Get(const uint32_t id, const uint16_t size, uint8_t blob[]) const;
         bool Delete(const uint32_t id);
+        uint32_t ImportNamedKey(const  string keyFileName, bool  exportable);
+        uint32_t CreateNamedKey(const string keyFile,bool exportable ,const key_type keyType);
 
     private:
         mutable WPEFramework::Core::CriticalSection _lock;

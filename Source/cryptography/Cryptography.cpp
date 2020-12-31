@@ -112,6 +112,16 @@ namespace Implementation {
             return (vault_delete(_implementation, id));
         }
 
+        uint32_t ImportNamedKey(const string keyFile) override
+        {
+            return(vault_import_namedkey(_implementation,keyFile.c_str()));
+        }
+    
+        uint32_t CreateNamedKey(const string keyFile,bool exportable ,const WPEFramework::Cryptography::keytype keyType) override
+        {
+            return(vault_create_namedkey(_implementation,keyFile.c_str(),exportable,static_cast<key_type>(keyType)));
+        }
+
         VaultImplementation* Implementation()
         {
             return _implementation;
@@ -309,10 +319,10 @@ namespace Implementation {
             return (hash);
         }
 
-        WPEFramework::Cryptography::IVault* Vault(const cryptographyvault id) override
+        WPEFramework::Cryptography::IVault* Vault(const cryptographyvault id,const std::string storagePath ="") override
         {
             WPEFramework::Cryptography::IVault* vault(nullptr);
-            VaultImplementation* impl = vault_instance(id);
+            VaultImplementation* impl = vault_instance(id,storagePath.c_str());
 
             if (impl != nullptr) {
                 vault = WPEFramework::Core::Service<Implementation::VaultImpl>::Create<WPEFramework::Cryptography::IVault>(impl);

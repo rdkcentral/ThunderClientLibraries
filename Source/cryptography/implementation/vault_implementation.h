@@ -27,10 +27,19 @@
 extern "C" {
 #endif
 
+typedef enum {
+    AES128,
+    AES256,
+    HMAC128,
+    HMAC160,
+    HMAC256,
+}key_type;
+
+
 struct VaultImplementation;
 
 
-struct VaultImplementation* vault_instance(const enum cryptographyvault id);
+struct VaultImplementation* vault_instance(const enum cryptographyvault id,const char storagePath[]);
 
 uint16_t vault_size(const struct VaultImplementation* vault, const uint32_t id);
 
@@ -43,6 +52,10 @@ uint32_t vault_set(struct VaultImplementation* vault, const uint16_t length, con
 uint16_t vault_get(const struct VaultImplementation* vault, const uint32_t id, const uint16_t max_length, uint8_t blob[]);
 
 bool vault_delete(struct VaultImplementation* vault, const uint32_t id);
+
+uint32_t vault_import_namedkey(struct VaultImplementation* vault, const char namedKeyFile[]);
+
+uint32_t vault_create_namedkey(struct VaultImplementation* vault, const char namedKeyFile[],bool exportable ,const key_type keyType);
 
 #ifdef __cplusplus
 } // extern "C"

@@ -55,6 +55,14 @@ namespace Cryptography {
         SHA512 = 64
     };
 
+    enum keytype {
+        AES128,
+        AES256,
+        HMAC128,
+        HMAC160,
+        HMAC256
+    };
+
     struct IHash : virtual public Core::IUnknown {
 
         enum { ID = ID_HASH };
@@ -130,6 +138,12 @@ namespace Cryptography {
         // Delete a data blob from the vault
         virtual bool Delete(const uint32_t id) = 0;
 
+        // Import a NamedKey to  the vault
+        virtual uint32_t ImportNamedKey(const string keyFile ) = 0;
+
+        // Create a new random  named key when needed by any application
+        virtual uint32_t CreateNamedKey(const string keyFile ,bool exportable ,const keytype keyType) = 0;
+
 
         // Crypto operations using the vault for key storage
         // -----------------------------------------------------
@@ -152,7 +166,7 @@ namespace Cryptography {
         virtual IHash* Hash(const hashtype hashType) = 0;
 
         // Retrieve a vault (TEE identified by ID)
-        virtual IVault* Vault(const cryptographyvault id) = 0;
+        virtual IVault* Vault(const cryptographyvault id, std::string storagePath ="") = 0;
     };
 
 } // namespace Cryptography

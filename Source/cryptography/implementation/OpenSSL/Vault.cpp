@@ -337,7 +337,7 @@ extern "C" {
 
 // Vault
 
-VaultImplementation* vault_instance(const cryptographyvault id)
+VaultImplementation* vault_instance(const cryptographyvault id,const char storagePath[])
 {
     Implementation::Vault* vault = nullptr;
 
@@ -398,6 +398,18 @@ bool vault_delete(VaultImplementation* vault, const uint32_t id)
     return (vaultImpl->Delete(id));
 }
 
+uint32_t vault_import_namedkey(struct VaultImplementation* vault, const char namedKeyFile[])
+{
+    //NOT IMPLEMENTED FOR OPENSSL
+    return 0;
+
+}
+
+uint32_t vault_create_namedkey(struct VaultImplementation* vault, const char namedKeyFile[],bool exportable ,const key_type keyType)
+{
+    //NOT IMPLEMENTED FOR OPENSSL
+    return 0;
+}
 
 // Netflix Security
 
