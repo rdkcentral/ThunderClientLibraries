@@ -92,7 +92,7 @@ typedef void (*playerinfo_dolby_audio_updated_cb)(struct playerinfo_type* sessio
  * @param name Name of the implementation
  * @return EXTERNAL struct* @ref instance, NULL if error.
  */
-EXTERNAL struct playerinfo_type* playerinfo_instance(const char name[]);
+EXTERNAL struct playerinfo_type** playerinfo_instance(const char name[]);
 
 /**
  * @brief Register for the updates of the Dolby Audio Mode changes
