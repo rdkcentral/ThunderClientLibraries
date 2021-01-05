@@ -24,6 +24,7 @@
 #endif
 
 #include <core/core.h>
+#include <core/Singleton.h>
 #include <com/com.h>
 
 #if defined(__WINDOWS__) && defined(OCDM_EXPORTS)
