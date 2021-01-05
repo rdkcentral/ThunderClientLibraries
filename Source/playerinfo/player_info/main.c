@@ -57,7 +57,6 @@ int main(int argc, char* argv[])
         switch (character) {
         case 'I': {
             player = playerinfo_instance("PlayerInfo");
-            playerinfo_register_for_updates(&player);
 
             if (player == NULL) {
                 Trace("Exiting: getting interface failed.");
@@ -78,8 +77,11 @@ int main(int argc, char* argv[])
         }
 
         case 'U': {
+            playerinfo_register_for_updates(&player);
+            /*
             playerinfo_unregister(player, OnEvent);
             Trace("Unregistered from an event");
+            */
             break;
         }
 

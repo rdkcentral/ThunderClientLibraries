@@ -618,7 +618,8 @@ private:
     playerinfo_type*& _player;
     std::string _callsign;
     StateChangeNotifier _notifier;
-    bool _isToBeCreated;
+    bool _isToBeCreated; //instance cannot be created during Notification (comrpc limitations), so
+        // i set this flag and create instance on next function call
 
     static Reconnector* _instance;
     Reconnector(playerinfo_type*& player, const std::string& callsign)
@@ -658,30 +659,42 @@ private:
     }
 
 public:
+    //This class is singleton (to avoid global variable) to enable instance creation in each C function if state changed
+    //TODO Fix issues that can occur if you return nullptr, what to do if instance created multiple times etc.
     static void CreateInstance(playerinfo_type*& player, const std::string& callsign)
     {
-        assert(!_instance);
+        ASSERT(_instance == nullptr);
         _instance = new Reconnector(player, callsign);
     }
 
     static void DestroyInstance()
     {
-        assert(_instance);
+        ASSERT(_instance != nullptr);
         delete _instance;
+        _instance = nullptr;
     }
 
     static Reconnector* GetInstance()
     {
-        assert(_instance);
+        ASSERT(_instance != nullptr);
         return _instance;
     }
 
-    void PlayerInfoInstance()
+    playerinfo_type* PlayerInfoInstance()
     {
-        if (_player == NULL && _isToBeCreated) {
+        if (_player == NULL) {
             _player = reinterpret_cast<playerinfo_type*>(PlayerInfo::Instance(_callsign));
             fprintf(stderr, "IN CLASS: %d\n", _player);
+            _isToBeCreated = false;
+            return _player;
         }
+        return nullptr;
+    }
+
+    // if plugin has been deactivated and then activated that means on next function call an instance needs to be created
+    bool IsPlayerInstanceToBeUpdated() const
+    {
+        return _isToBeCreated;
     }
 };
 
@@ -725,6 +738,7 @@ void playerinfo_release(struct playerinfo_type* instance)
 {
     if (instance != NULL) {
         reinterpret_cast<PlayerInfo*>(instance)->Release();
+        Reconnector::GetInstance()->DestroyInstance(); //probably should not be here???
     }
 }
 
@@ -780,7 +794,16 @@ int8_t playerinfo_playback_resolution(struct playerinfo_type* instance, playerin
 
 int8_t playerinfo_is_audio_equivalence_enabled(struct playerinfo_type* instance, bool* is_enabled)
 {
-    Reconnector::GetInstance()->PlayerInfoInstance();
+    //This boiler-plate code, in my implementation, needs to be inside each C function
+    auto reconnector = Reconnector::GetInstance();
+    if (reconnector != nullptr) {
+        if (reconnector->IsPlayerInstanceToBeUpdated()) {
+            instance = Reconnector::GetInstance()->PlayerInfoInstance(); //PlayerinfoInstance changes state of the instance reference, but this is
+                // a method where the old value of instance has been passed (NULL), so i modify
+                //the local copy of instance as well
+            fprintf(stderr, "AFTER UPDATE: %d\n", instance);
+        }
+    }
 
     if (instance != NULL && is_enabled != NULL) {
         return reinterpret_cast<PlayerInfo*>(instance)->IsAudioEquivalenceEnabled(*is_enabled);
