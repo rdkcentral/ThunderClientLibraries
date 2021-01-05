@@ -105,6 +105,7 @@ private:
                 fprintf(stderr, "OPENED\n");
 
                 if (interface != nullptr) {
+                    fprintf(stderr, "INTERFACE NOT NULL\n");
                     result = new PlayerInfo(name, interface);
                     std::list<PlayerInfo*>::emplace_back(result);
                     interface->Release();
@@ -614,14 +615,18 @@ private:
 
 class Reconnector : public IObserver {
 private:
-    playerinfo_type*& _instance;
+    playerinfo_type*& _player;
     std::string _callsign;
     StateChangeNotifier _notifier;
+    bool _isToBeCreated;
 
-public:
-    Reconnector(playerinfo_type*& instance, const std::string& callsign)
-        : _instance(instance)
+    static Reconnector* _instance;
+    Reconnector(playerinfo_type*& player, const std::string& callsign)
+        : _player(player)
         , _callsign(callsign)
+        , _notifier()
+        , _isToBeCreated(false)
+
     {
         _notifier.Register(_callsign, this);
     }
@@ -631,36 +636,56 @@ public:
         _notifier.Unregister(_callsign, this);
     }
 
-private:
-    void Instance()
+    void PlayerInfoRelease()
     {
-        if (_instance == NULL) {
-            _instance = reinterpret_cast<playerinfo_type*>(PlayerInfo::Instance(_callsign));
-            fprintf(stderr, "IN CLASS: %d\n", _instance);
-        }
-    }
-
-    void Release()
-    {
-        if (_instance != NULL) {
-            reinterpret_cast<PlayerInfo*>(_instance)->Release();
-            _instance = NULL;
+        if (_player != NULL) {
+            reinterpret_cast<PlayerInfo*>(_player)->Release();
+            _player = NULL;
+            _isToBeCreated = false;
             fprintf(stderr, "RELEASED IN CLASS\n");
         }
     }
 
     void NotifyActivation(const std::string& callsign) override
     {
-        fprintf(stderr, "ACTIVATING\n");
-        Instance();
+        _isToBeCreated = true;
     }
 
     void NotifyDeactivation(const std::string& callsign) override
     {
         fprintf(stderr, "DEACTIVATING\n");
-        Release();
+        PlayerInfoRelease();
+    }
+
+public:
+    static void CreateInstance(playerinfo_type*& player, const std::string& callsign)
+    {
+        assert(!_instance);
+        _instance = new Reconnector(player, callsign);
+    }
+
+    static void DestroyInstance()
+    {
+        assert(_instance);
+        delete _instance;
+    }
+
+    static Reconnector* GetInstance()
+    {
+        assert(_instance);
+        return _instance;
+    }
+
+    void PlayerInfoInstance()
+    {
+        if (_player == NULL && _isToBeCreated) {
+            _player = reinterpret_cast<playerinfo_type*>(PlayerInfo::Instance(_callsign));
+            fprintf(stderr, "IN CLASS: %d\n", _player);
+        }
     }
 };
+
+Reconnector* Reconnector::_instance;
 
 // \RECONNECTION
 
@@ -671,7 +696,7 @@ extern "C" {
 
 void playerinfo_register_for_updates(struct playerinfo_type** instance)
 {
-    static Reconnector reconnector(*instance, "PlayerInfo");
+    Reconnector::CreateInstance(*instance, reinterpret_cast<PlayerInfo*>(*instance)->Name());
 }
 
 struct playerinfo_type* playerinfo_instance(const char name[])
@@ -755,6 +780,8 @@ int8_t playerinfo_playback_resolution(struct playerinfo_type* instance, playerin
 
 int8_t playerinfo_is_audio_equivalence_enabled(struct playerinfo_type* instance, bool* is_enabled)
 {
+    Reconnector::GetInstance()->PlayerInfoInstance();
+
     if (instance != NULL && is_enabled != NULL) {
         return reinterpret_cast<PlayerInfo*>(instance)->IsAudioEquivalenceEnabled(*is_enabled);
     }
