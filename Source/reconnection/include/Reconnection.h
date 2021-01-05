@@ -45,7 +45,6 @@ public:
 
     StateChangeNotifier()
         : _systemInterface(nullptr)
-        , _callsign(string())
         , _engine(Core::ProxyType<RPC::InvokeServerType<1, 0, 8>>::Create())
         , _comChannel(Core::ProxyType<RPC::CommunicatorClient>::Create(Connector(), Core::ProxyType<Core::IIPCServer>(_engine)))
         , _notification(this)
@@ -57,8 +56,6 @@ public:
         _systemInterface = _comChannel->Open<PluginHost::IShell>(string());
         ASSERT(_systemInterface != nullptr);
         _notification.Initialize(_systemInterface);
-
-        _callsign = "PlayerInfo";
     }
     ~StateChangeNotifier()
     {
@@ -184,7 +181,6 @@ private:
 
 private:
     std::multimap<std::string, ::IObserver*> _observers;
-    std::string _callsign;
     PluginHost::IShell* _systemInterface;
     Core::Sink<Notification> _notification;
     mutable Core::CriticalSection _adminLock;

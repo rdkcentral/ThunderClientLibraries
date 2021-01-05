@@ -44,7 +44,7 @@ void OnEvent(struct playerinfo_type* session, void* data)
 
 int main(int argc, char* argv[])
 {
-    struct playerinfo_type** player = NULL;
+    struct playerinfo_type* player = NULL;
     playerinfo_videocodec_t videoCodecs[BUFFER_LENGTH];
     playerinfo_audiocodec_t audioCodecs[BUFFER_LENGTH];
 
@@ -57,8 +57,9 @@ int main(int argc, char* argv[])
         switch (character) {
         case 'I': {
             player = playerinfo_instance("PlayerInfo");
+            playerinfo_register_for_updates(&player);
 
-            if (*player == NULL) {
+            if (player == NULL) {
                 Trace("Exiting: getting interface failed.");
                 character = 'Q';
             } else {
@@ -68,20 +69,24 @@ int main(int argc, char* argv[])
             break;
         }
         case 'S': {
-            playerinfo_register(*player, OnEvent, NULL);
-            Trace("Registered for an event");
+            playerinfo_release(player);
+            Trace("RELEASED IN MAIN\n");
+            player = NULL;
+            //playerinfo_register(*player, OnEvent, NULL);
+            //Trace("Registered for an event");
             break;
         }
 
         case 'U': {
-            playerinfo_unregister(*player, OnEvent);
+            playerinfo_unregister(player, OnEvent);
             Trace("Unregistered from an event");
             break;
         }
 
         case 'L': {
+            fprintf(stderr, "IN MAIN: %d\n", player);
             bool is_enabled = false;
-            if (playerinfo_is_audio_equivalence_enabled(*player, &is_enabled) == 1) {
+            if (playerinfo_is_audio_equivalence_enabled(player, &is_enabled) == 1) {
                 Trace("Loudnes %s enabled", is_enabled ? "is" : "not");
             } else {
                 Trace("Instance or is_enabled param is NULL, or invalid connection");
@@ -92,7 +97,7 @@ int main(int argc, char* argv[])
 
         case 'R': {
             playerinfo_playback_resolution_t resolution;
-            if (playerinfo_playback_resolution(*player, &resolution) == 0) {
+            if (playerinfo_playback_resolution(player, &resolution) == 0) {
                 Trace("Instance or resolution param is null, or invalid connection");
             } else {
                 switch (resolution) {
@@ -145,7 +150,7 @@ int main(int argc, char* argv[])
             break;
         }
         case 'A': {
-            int8_t numberOfCodecs = playerinfo_audio_codecs(*player, audioCodecs, BUFFER_LENGTH);
+            int8_t numberOfCodecs = playerinfo_audio_codecs(player, audioCodecs, BUFFER_LENGTH);
             if (numberOfCodecs < 0) {
                 Trace("Buffer too small, need at least %d length", -numberOfCodecs);
 
@@ -203,7 +208,7 @@ int main(int argc, char* argv[])
         }
 
         case 'V': {
-            int8_t numberOfCodecs = playerinfo_video_codecs(*player, videoCodecs, BUFFER_LENGTH);
+            int8_t numberOfCodecs = playerinfo_video_codecs(player, videoCodecs, BUFFER_LENGTH);
             if (numberOfCodecs < 0) {
                 Trace("Buffer too small, need at least %d length", -numberOfCodecs);
 
@@ -252,7 +257,7 @@ int main(int argc, char* argv[])
 
         case 'M': {
             bool is_supported = false;
-            if (playerinfo_dolby_atmos_metadata(*player, &is_supported) == 1) {
+            if (playerinfo_dolby_atmos_metadata(player, &is_supported) == 1) {
                 Trace("Dolby Atmos metadata %s supported", is_supported ? "is" : "not");
             } else {
                 Trace("Instance or is_supported param is NULL, or invalid connection");
@@ -263,7 +268,7 @@ int main(int argc, char* argv[])
 
         case 'B': {
             playerinfo_dolby_sound_mode_t sound_mode;
-            if (playerinfo_dolby_soundmode(*player, &sound_mode) == 0) {
+            if (playerinfo_dolby_soundmode(player, &sound_mode) == 0) {
                 Trace("Instance or sound_mode param is null, or invalid connection");
             } else {
                 switch (sound_mode) {
@@ -290,7 +295,7 @@ int main(int argc, char* argv[])
             break;
         }
         case 'E': {
-            if (playerinfo_enable_atmos_output(*player, true) == 1) {
+            if (playerinfo_enable_atmos_output(player, true) == 1) {
                 Trace("Enabled Atmos output");
 
             } else {
@@ -300,7 +305,7 @@ int main(int argc, char* argv[])
         }
 
         case 'D': {
-            if (playerinfo_enable_atmos_output(*player, false) == 1) {
+            if (playerinfo_enable_atmos_output(player, false) == 1) {
                 Trace("Disable Atmos output");
 
             } else {
@@ -310,7 +315,7 @@ int main(int argc, char* argv[])
         }
 
         case 'O': {
-            if (playerinfo_set_dolby_mode(*player, PLAYERINFO_DOLBY_MODE_DIGITAL_PCM) == 1) {
+            if (playerinfo_set_dolby_mode(player, PLAYERINFO_DOLBY_MODE_DIGITAL_PCM) == 1) {
                 Trace("Setting succeded");
 
             } else {
@@ -321,7 +326,7 @@ int main(int argc, char* argv[])
 
         case 'P': {
             playerinfo_dolby_mode_t mode;
-            if (playerinfo_get_dolby_mode(*player, &mode) == 1) {
+            if (playerinfo_get_dolby_mode(player, &mode) == 1) {
                 switch (mode) {
 
                 case PLAYERINFO_DOLBY_MODE_DIGITAL_PCM:
@@ -358,7 +363,7 @@ int main(int argc, char* argv[])
         }
     } while (character != 'Q');
 
-    playerinfo_release(*player);
+    playerinfo_release(player);
 
     Trace("Done");
 

@@ -77,6 +77,8 @@ typedef enum playerinfo_dolby_sound_mode_type {
     PLAYERINFO_DOLBY_SOUND_PASSTHRU
 } playerinfo_dolby_sound_mode_t;
 
+EXTERNAL void playerinfo_register_for_updates(struct playerinfo_type** instance);
+
 /**
 * @brief Will be called if there are changes regarding Dolby Audio Output, you need to query 
 *        yourself what exactly is changed
@@ -92,7 +94,7 @@ typedef void (*playerinfo_dolby_audio_updated_cb)(struct playerinfo_type* sessio
  * @param name Name of the implementation
  * @return EXTERNAL struct* @ref instance, NULL if error.
  */
-EXTERNAL struct playerinfo_type** playerinfo_instance(const char name[]);
+EXTERNAL struct playerinfo_type* playerinfo_instance(const char name[]);
 
 /**
  * @brief Register for the updates of the Dolby Audio Mode changes

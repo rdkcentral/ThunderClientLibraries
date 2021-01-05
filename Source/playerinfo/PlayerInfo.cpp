@@ -31,6 +31,7 @@ private:
     {
         if (_playerConnection != nullptr) {
             _playerConnection->Release();
+            fprintf(stderr, "Playerconnection release in dtor\n");
         }
         if (_dolby != nullptr) {
             _dolby->Release();
@@ -97,16 +98,19 @@ private:
             _adminLock.Lock();
 
             result = Find(name);
-
             if (result == nullptr) {
+                fprintf(stderr, "NOT FOUND\n");
 
                 Exchange::IPlayerProperties* interface = _comChannel->Open<Exchange::IPlayerProperties>(name);
+                fprintf(stderr, "OPENED\n");
 
                 if (interface != nullptr) {
                     result = new PlayerInfo(name, interface);
                     std::list<PlayerInfo*>::emplace_back(result);
                     interface->Release();
                 }
+            } else {
+                fprintf(stderr, " FOUND\n");
             }
             _adminLock.Unlock();
 
@@ -144,6 +148,7 @@ private:
                     std::list<PlayerInfo*>::erase(index);
                 }
                 delete const_cast<PlayerInfo*>(playerInfo);
+                _comChannel->Close(1000);
                 result = Core::ERROR_DESTRUCTION_SUCCEEDED;
             }
 
@@ -463,7 +468,6 @@ public:
 
     StateChangeNotifier()
         : _systemInterface(nullptr)
-        , _callsign(string())
         , _engine(Core::ProxyType<RPC::InvokeServerType<1, 0, 8>>::Create())
         , _comChannel(Core::ProxyType<RPC::CommunicatorClient>::Create(Connector(), Core::ProxyType<Core::IIPCServer>(_engine)))
         , _notification(this)
@@ -475,8 +479,6 @@ public:
         _systemInterface = _comChannel->Open<PluginHost::IShell>(string());
         ASSERT(_systemInterface != nullptr);
         _notification.Initialize(_systemInterface);
-
-        _callsign = "PlayerInfo";
     }
     ~StateChangeNotifier()
     {
@@ -602,7 +604,6 @@ private:
 
 private:
     std::multimap<std::string, IObserver*> _observers;
-    std::string _callsign;
     PluginHost::IShell* _systemInterface;
     Core::Sink<Notification> _notification;
     mutable Core::CriticalSection _adminLock;
@@ -612,52 +613,52 @@ private:
 };
 
 class Reconnector : public IObserver {
-    playerinfo_type* _type;
+private:
+    playerinfo_type*& _instance;
     std::string _callsign;
     StateChangeNotifier _notifier;
 
 public:
-    Reconnector() = default;
+    Reconnector(playerinfo_type*& instance, const std::string& callsign)
+        : _instance(instance)
+        , _callsign(callsign)
+    {
+        _notifier.Register(_callsign, this);
+    }
 
     ~Reconnector()
     {
-        Unregister();
+        _notifier.Unregister(_callsign, this);
     }
 
-    playerinfo_type** Instance(const std::string& name)
+private:
+    void Instance()
     {
-        _callsign = name;
-        _type = reinterpret_cast<playerinfo_type*>(PlayerInfo::Instance(_callsign));
-        return &_type;
+        if (_instance == NULL) {
+            _instance = reinterpret_cast<playerinfo_type*>(PlayerInfo::Instance(_callsign));
+            fprintf(stderr, "IN CLASS: %d\n", _instance);
+        }
     }
 
     void Release()
     {
-        reinterpret_cast<PlayerInfo*>(_type)->Release();
-        _type = NULL;
+        if (_instance != NULL) {
+            reinterpret_cast<PlayerInfo*>(_instance)->Release();
+            _instance = NULL;
+            fprintf(stderr, "RELEASED IN CLASS\n");
+        }
     }
 
     void NotifyActivation(const std::string& callsign) override
     {
         fprintf(stderr, "ACTIVATING\n");
-        //if (_type == nullptr) {
-        _type = reinterpret_cast<playerinfo_type*>(PlayerInfo::Instance(_callsign));
-        //}
+        Instance();
     }
+
     void NotifyDeactivation(const std::string& callsign) override
     {
         fprintf(stderr, "DEACTIVATING\n");
-        //if (_type != nullptr) {
         Release();
-        //}
-    }
-    void Register()
-    {
-        _notifier.Register(_callsign, this);
-    }
-    void Unregister()
-    {
-        _notifier.Unregister(_callsign, this);
     }
 };
 
@@ -668,15 +669,15 @@ public:
 using namespace WPEFramework;
 extern "C" {
 
-struct playerinfo_type** playerinfo_instance(const char name[])
+void playerinfo_register_for_updates(struct playerinfo_type** instance)
 {
-    static Reconnector reconnector;
-    if (name != NULL) {
+    static Reconnector reconnector(*instance, "PlayerInfo");
+}
 
-        playerinfo_type** type = reconnector.Instance(string(name));
-        reconnector.Register();
-        return type;
-        //return reinterpret_cast<playerinfo_type*>(PlayerInfo::Instance(string(name)));
+struct playerinfo_type* playerinfo_instance(const char name[])
+{
+    if (name != NULL) {
+        return reinterpret_cast<playerinfo_type*>(PlayerInfo::Instance(string(name)));
     }
     return NULL;
 }
