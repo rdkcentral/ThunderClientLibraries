@@ -92,15 +92,10 @@ private:
 
         DisplayInfoAdministration()
             : _adminLock()
-            , _engine(Core::ProxyType<RPC::InvokeServerType<1, 0, 8>>::Create())
-            , _comChannel(Core::ProxyType<RPC::CommunicatorClient>::Create(Connector(),Core::ProxyType<Core::IIPCServer>(_engine)))
+            , _engine()
+            , _comChannel()
         {
-            ASSERT(_engine != nullptr);
-            ASSERT(_comChannel != nullptr);
-            _engine->Announcements(_comChannel->Announcement());
         }
-
-
         ~DisplayInfoAdministration()
         {
             std::list<DisplayInfo*>::iterator index(std::list<DisplayInfo*>::begin());
@@ -109,7 +104,6 @@ private:
                 Trace("Removing DisplayInfoAdministration with an instance unreleased. <%s>", (*index)->Name().c_str());
                 ++index;
             }
-
             ASSERT(std::list<DisplayInfo*>::size() == 0);
             if (_comChannel.IsValid() == true) {
                _comChannel.Release();
@@ -118,11 +112,17 @@ private:
 
         DisplayInfo* Instance(const string& name)
         {
-            DisplayInfo* result(nullptr);
-
             _adminLock.Lock();
 
-            result = Find(name);
+            if (_comChannel == nullptr) {
+                _engine = Core::ProxyType<RPC::InvokeServerType<1, 0, 8>>::Create();
+                _comChannel = Core::ProxyType<RPC::CommunicatorClient>::Create(Connector(),Core::ProxyType<Core::IIPCServer>(_engine));
+                ASSERT(_engine != nullptr);
+                ASSERT(_comChannel != nullptr);
+                _engine->Announcements(_comChannel->Announcement());
+             }
+
+            DisplayInfo* result = Find(name);
 
             if (result == nullptr) {
                 Exchange::IConnectionProperties* displayInterface = _comChannel->Open<Exchange::IConnectionProperties>(name);
@@ -170,6 +170,10 @@ private:
                 }
                 delete const_cast<DisplayInfo*>(displayInfo);
                 result = Core::ERROR_DESTRUCTION_SUCCEEDED;
+
+                if ((_comChannel.IsValid() == true) && (std::list<DisplayInfo*>::size() == 0)) {
+                   _comChannel.Release();
+                }
             }
 
             _adminLock.Unlock();
