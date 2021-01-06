@@ -111,6 +111,9 @@ private:
             }
 
             ASSERT(std::list<DisplayInfo*>::size() == 0);
+            if (_comChannel.IsValid() == true) {
+               _comChannel.Release();
+            }
         }
 
         DisplayInfo* Instance(const string& name)
