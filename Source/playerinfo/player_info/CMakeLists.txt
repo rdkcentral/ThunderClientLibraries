@@ -1,4 +1,10 @@
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 add_executable(player_info main.c)
+
+target_link_libraries(player_info PRIVATE Threads::Threads)
+
 
 target_include_directories(player_info 
     PRIVATE

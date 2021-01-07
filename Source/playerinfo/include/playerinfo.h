@@ -77,14 +77,19 @@ typedef enum playerinfo_dolby_sound_mode_type {
     PLAYERINFO_DOLBY_SOUND_PASSTHRU
 } playerinfo_dolby_sound_mode_t;
 
-/**
- * @brief Register for automatic changes of the created instance whenever PlayerInfo plugin will be activated/deactivated.
- *        If plugin is deactivated instance will be NULL, and if plugin was deactivated and now is activated, value of
- *        instance will be changed to valid pointer on next call of any of the following functions.
- * 
- * @param instance pointer to instance crated via playerinfo_instance function
- */
-EXTERNAL void playerinfo_register_for_automatic_reconnection(struct playerinfo_type** instance);
+typedef enum playerinfo_plugin_state {
+    ACTIVATING,
+    DEACTIVATING
+} playerinfo_plugin_state_t;
+
+typedef void (*playerinfo_state_changed_cb)(void* userdata, playerinfo_plugin_state_t state);
+
+//do not call playerinfo_instance, trigger event/set soe flags only!!!
+EXTERNAL void playerinfo_register_state_change(playerinfo_state_changed_cb callback, void* userdata);
+
+EXTERNAL void playerinfo_unregister_state_change(playerinfo_state_changed_cb callback);
+
+EXTERNAL void playerinfo_notify_on_activation(bool to_notify);
 
 /**
 * @brief Will be called if there are changes regarding Dolby Audio Output, you need to query 

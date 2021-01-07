@@ -609,82 +609,73 @@ private:
     Core::ProxyType<RPC::CommunicatorClient> _comChannel;
 };
 
-class Reconnector : public IObserver {
+class PlayerInfoStateNotifier : public IObserver {
 private:
-    playerinfo_type*& _player;
-    std::string _callsign;
+    typedef std::map<playerinfo_state_changed_cb, void*> Callbacks;
+
     StateChangeNotifier _notifier;
-    bool _isToBeCreated; //instance cannot be created during Notification (comrpc limitations), so
-        // i set this flag and create instance on next function call
+    Callbacks _callbacks;
+    bool _toNotifyOnActivation;
 
-    static Reconnector* _instance;
-    Reconnector(playerinfo_type*& player, const std::string& callsign)
-        : _player(player)
-        , _callsign(callsign)
-        , _notifier()
-        , _isToBeCreated(false)
-
+    PlayerInfoStateNotifier()
+        : _notifier()
+        , _toNotifyOnActivation(false)
     {
-        _notifier.Register(_callsign, this);
+        _notifier.Register("PlayerInfo", this);
     }
 
-    ~Reconnector()
+    ~PlayerInfoStateNotifier()
     {
-        _notifier.Unregister(_callsign, this);
-    }
-
-    void PlayerInfoRelease()
-    {
-        if (_player != NULL) {
-            reinterpret_cast<PlayerInfo*>(_player)->Release();
-            _player = NULL;
-            _isToBeCreated = false;
-        }
+        _notifier.Unregister("PlayerInfo", this);
     }
 
     void NotifyActivation(const std::string& callsign) override
     {
-        _isToBeCreated = true;
+        if (_toNotifyOnActivation) {
+            for (const auto& i : _callbacks) {
+                i.first(i.second, ACTIVATING);
+            }
+        }
     }
 
     void NotifyDeactivation(const std::string& callsign) override
     {
-        PlayerInfoRelease();
+        for (const auto& i : _callbacks) {
+            i.first(i.second, DEACTIVATING);
+        }
     }
 
 public:
-    //This class is singleton (to avoid global variable) to enable instance creation in each C function if state changed
-    static void CreateInstance(playerinfo_type*& player, const std::string& callsign)
+    static PlayerInfoStateNotifier& GetInstance()
     {
-        if (_instance == nullptr) {
-            _instance = new Reconnector(player, callsign);
+        static PlayerInfoStateNotifier singleton;
+        return singleton;
+    }
+
+    void Register(playerinfo_state_changed_cb callback, void* userdata)
+    {
+        Callbacks::iterator index(_callbacks.find(callback));
+
+        if (index == _callbacks.end()) {
+            _callbacks.emplace(std::piecewise_construct,
+                std::forward_as_tuple(callback),
+                std::forward_as_tuple(userdata));
+        }
+    }
+    void Unregister(playerinfo_state_changed_cb callback)
+    {
+        Callbacks::iterator index(_callbacks.find(callback));
+
+        if (index != _callbacks.end()) {
+            _callbacks.erase(index);
         }
     }
 
-    static void DestroyInstance()
+    void ToNotifyOnActivation(bool toNotify)
     {
-        if (_instance != nullptr) {
-            delete _instance;
-            _instance = nullptr;
-        }
-    }
-
-    static Reconnector* GetInstance()
-    {
-        return _instance;
-    }
-
-    playerinfo_type* PlayerInfoInstance()
-    {
-        if (_isToBeCreated == true && _player == NULL) {
-            _player = reinterpret_cast<playerinfo_type*>(PlayerInfo::Instance(_callsign));
-            _isToBeCreated = false;
-        }
-        return _player;
+        _toNotifyOnActivation = toNotify;
     }
 };
-
-Reconnector* Reconnector::_instance;
 
 // \RECONNECTION
 
@@ -693,11 +684,20 @@ Reconnector* Reconnector::_instance;
 using namespace WPEFramework;
 extern "C" {
 
-void playerinfo_register_for_automatic_reconnection(struct playerinfo_type** instance)
+//do not call playerinfo_instance, trigger event/set soe flags only!!!
+void playerinfo_register_state_change(playerinfo_state_changed_cb callback, void* userdata)
 {
-    if (*instance != NULL) {
-        Reconnector::CreateInstance(*instance, reinterpret_cast<PlayerInfo*>(*instance)->Name());
-    }
+    PlayerInfoStateNotifier::GetInstance().Register(callback, userdata);
+}
+
+void playerinfo_unregister_state_change(playerinfo_state_changed_cb callback)
+{
+    PlayerInfoStateNotifier::GetInstance().Unregister(callback);
+}
+
+void playerinfo_notify_on_activation(bool to_notify)
+{
+    PlayerInfoStateNotifier::GetInstance().ToNotifyOnActivation(to_notify);
 }
 
 struct playerinfo_type* playerinfo_instance(const char name[])
@@ -726,20 +726,11 @@ void playerinfo_release(struct playerinfo_type* instance)
 {
     if (instance != NULL) {
         reinterpret_cast<PlayerInfo*>(instance)->Release();
-        Reconnector::GetInstance()->DestroyInstance();
     }
 }
 
 int8_t playerinfo_playback_resolution(struct playerinfo_type* instance, playerinfo_playback_resolution_t* resolution)
 {
-    //This boiler-plate code, in my implementation, needs to be inside each C function
-    auto reconnector = Reconnector::GetInstance();
-    if (reconnector != nullptr) {
-        instance = reconnector->PlayerInfoInstance(); //PlayerinfoInstance changes state of the instance reference, but this is
-            // a method where the old value of instance has been passed (NULL), so i modify
-            //the local copy of instance as well
-    }
-
     if (instance != NULL && resolution != NULL) {
         Exchange::IPlayerProperties::PlaybackResolution value = Exchange::IPlayerProperties::PlaybackResolution::RESOLUTION_UNKNOWN;
 
@@ -789,11 +780,6 @@ int8_t playerinfo_playback_resolution(struct playerinfo_type* instance, playerin
 
 int8_t playerinfo_is_audio_equivalence_enabled(struct playerinfo_type* instance, bool* is_enabled)
 {
-    auto reconnector = Reconnector::GetInstance();
-    if (reconnector != nullptr) {
-        instance = reconnector->PlayerInfoInstance();
-    }
-
     if (instance != NULL && is_enabled != NULL) {
         return reinterpret_cast<PlayerInfo*>(instance)->IsAudioEquivalenceEnabled(*is_enabled);
     }
@@ -802,11 +788,6 @@ int8_t playerinfo_is_audio_equivalence_enabled(struct playerinfo_type* instance,
 
 int8_t playerinfo_video_codecs(struct playerinfo_type* instance, playerinfo_videocodec_t array[], const uint8_t length)
 {
-    auto reconnector = Reconnector::GetInstance();
-    if (reconnector != nullptr) {
-        instance = reconnector->PlayerInfoInstance();
-    }
-
     if (instance != NULL && array != NULL) {
         return reinterpret_cast<PlayerInfo*>(instance)->VideoCodecs(array, length);
     }
@@ -815,11 +796,6 @@ int8_t playerinfo_video_codecs(struct playerinfo_type* instance, playerinfo_vide
 
 int8_t playerinfo_audio_codecs(struct playerinfo_type* instance, playerinfo_audiocodec_t array[], const uint8_t length)
 {
-    auto reconnector = Reconnector::GetInstance();
-    if (reconnector != nullptr) {
-        instance = reconnector->PlayerInfoInstance();
-    }
-
     if (instance != NULL && array != NULL) {
         return reinterpret_cast<PlayerInfo*>(instance)->AudioCodecs(array, length);
     }
@@ -828,11 +804,6 @@ int8_t playerinfo_audio_codecs(struct playerinfo_type* instance, playerinfo_audi
 
 int8_t playerinfo_dolby_atmos_metadata(struct playerinfo_type* instance, bool* is_supported)
 {
-    auto reconnector = Reconnector::GetInstance();
-    if (reconnector != nullptr) {
-        instance = reconnector->PlayerInfoInstance();
-    }
-
     if (instance != NULL && is_supported != NULL) {
         return reinterpret_cast<PlayerInfo*>(instance)->IsAtmosMetadataSupported(*is_supported);
     }
@@ -841,11 +812,6 @@ int8_t playerinfo_dolby_atmos_metadata(struct playerinfo_type* instance, bool* i
 
 int8_t playerinfo_dolby_soundmode(struct playerinfo_type* instance, playerinfo_dolby_sound_mode_t* sound_mode)
 {
-    auto reconnector = Reconnector::GetInstance();
-    if (reconnector != nullptr) {
-        instance = reconnector->PlayerInfoInstance();
-    }
-
     if (instance != NULL && sound_mode != NULL) {
         Exchange::Dolby::IOutput::SoundModes value = Exchange::Dolby::IOutput::SoundModes::UNKNOWN;
         if (reinterpret_cast<PlayerInfo*>(instance)->DolbySoundMode(value) == 1) {
@@ -877,11 +843,6 @@ int8_t playerinfo_dolby_soundmode(struct playerinfo_type* instance, playerinfo_d
 }
 int8_t playerinfo_enable_atmos_output(struct playerinfo_type* instance, const bool is_enabled)
 {
-    auto reconnector = Reconnector::GetInstance();
-    if (reconnector != nullptr) {
-        instance = reconnector->PlayerInfoInstance();
-    }
-
     if (instance != NULL) {
         return reinterpret_cast<PlayerInfo*>(instance)->EnableAtmosOutput(is_enabled);
     }
@@ -890,11 +851,6 @@ int8_t playerinfo_enable_atmos_output(struct playerinfo_type* instance, const bo
 
 int8_t playerinfo_set_dolby_mode(struct playerinfo_type* instance, const playerinfo_dolby_mode_t mode)
 {
-    auto reconnector = Reconnector::GetInstance();
-    if (reconnector != nullptr) {
-        instance = reconnector->PlayerInfoInstance();
-    }
-
     if (instance != NULL) {
         switch (mode) {
         case PLAYERINFO_DOLBY_MODE_DIGITAL_PCM:
@@ -913,11 +869,6 @@ int8_t playerinfo_set_dolby_mode(struct playerinfo_type* instance, const playeri
 
 int8_t playerinfo_get_dolby_mode(struct playerinfo_type* instance, playerinfo_dolby_mode_t* mode)
 {
-    auto reconnector = Reconnector::GetInstance();
-    if (reconnector != nullptr) {
-        instance = reconnector->PlayerInfoInstance();
-    }
-
     if (instance != NULL && mode != NULL) {
 
         Exchange::Dolby::IOutput::Type value = Exchange::Dolby::IOutput::Type::AUTO;

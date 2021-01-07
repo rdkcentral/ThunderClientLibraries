@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <playerinfo.h>
+#include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -42,9 +43,43 @@ void OnEvent(struct playerinfo_type* session, void* data)
     Trace("Event triggered");
 }
 
+bool create_instance = false;
+struct playerinfo_type* player = NULL;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t condition = PTHREAD_COND_INITIALIZER;
+
+void PlayerInfoStateChanged(void* userdata, playerinfo_plugin_state_t state)
+{
+    pthread_mutex_lock(&mutex);
+
+    if (state == ACTIVATING) {
+        create_instance = true;
+        pthread_cond_signal(&condition); //wake up thread 1
+
+    } else {
+        playerinfo_release(player);
+        player = NULL;
+    }
+
+    pthread_mutex_unlock(&mutex);
+}
+
+void* ChangeInstance(void* data)
+{
+    pthread_mutex_lock(&mutex); //mutex lock
+    while (!create_instance) {
+        pthread_cond_wait(&condition, &mutex); //wait for the condition
+    }
+
+    player = playerinfo_instance("PlayerInfo");
+
+    pthread_mutex_unlock(&mutex);
+}
+
 int main(int argc, char* argv[])
 {
-    struct playerinfo_type* player = NULL;
+    pthread_t thread_id;
+
     playerinfo_videocodec_t videoCodecs[BUFFER_LENGTH];
     playerinfo_audiocodec_t audioCodecs[BUFFER_LENGTH];
 
@@ -76,7 +111,9 @@ int main(int argc, char* argv[])
         }
 
         case 'U': {
-            playerinfo_register_for_automatic_reconnection(&player);
+            playerinfo_register_state_change(PlayerInfoStateChanged, NULL);
+            playerinfo_notify_on_activation(true);
+            pthread_create(&thread_id, NULL, ChangeInstance, NULL);
             /*
             playerinfo_unregister(player, OnEvent);
             Trace("Unregistered from an event");
