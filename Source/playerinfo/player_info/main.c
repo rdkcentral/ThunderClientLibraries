@@ -69,7 +69,6 @@ int main(int argc, char* argv[])
         }
         case 'S': {
             playerinfo_release(player);
-            Trace("RELEASED IN MAIN\n");
             player = NULL;
             //playerinfo_register(*player, OnEvent, NULL);
             //Trace("Registered for an event");
@@ -77,7 +76,7 @@ int main(int argc, char* argv[])
         }
 
         case 'U': {
-            playerinfo_register_for_updates(&player);
+            playerinfo_register_for_automatic_reconnection(&player);
             /*
             playerinfo_unregister(player, OnEvent);
             Trace("Unregistered from an event");
@@ -86,7 +85,6 @@ int main(int argc, char* argv[])
         }
 
         case 'L': {
-            fprintf(stderr, "IN MAIN: %d\n", player);
             bool is_enabled = false;
             if (playerinfo_is_audio_equivalence_enabled(player, &is_enabled) == 1) {
                 Trace("Loudnes %s enabled", is_enabled ? "is" : "not");

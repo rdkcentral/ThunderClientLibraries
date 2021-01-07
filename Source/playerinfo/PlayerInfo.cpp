@@ -31,7 +31,6 @@ private:
     {
         if (_playerConnection != nullptr) {
             _playerConnection->Release();
-            fprintf(stderr, "Playerconnection release in dtor\n");
         }
         if (_dolby != nullptr) {
             _dolby->Release();
@@ -99,19 +98,14 @@ private:
 
             result = Find(name);
             if (result == nullptr) {
-                fprintf(stderr, "NOT FOUND\n");
 
                 Exchange::IPlayerProperties* interface = _comChannel->Open<Exchange::IPlayerProperties>(name);
-                fprintf(stderr, "OPENED\n");
 
                 if (interface != nullptr) {
-                    fprintf(stderr, "INTERFACE NOT NULL\n");
                     result = new PlayerInfo(name, interface);
                     std::list<PlayerInfo*>::emplace_back(result);
                     interface->Release();
                 }
-            } else {
-                fprintf(stderr, " FOUND\n");
             }
             _adminLock.Unlock();
 
@@ -450,6 +444,8 @@ public:
 /* static */ PlayerInfo::PlayerInfoAdministration PlayerInfo::_administration;
 
 //RECONNECTION
+//IObserver and IObservable probably should be moved to the ThunderNanoInterfaces
+
 struct IObserver {
     virtual ~IObserver() {}
     virtual void NotifyActivation(const std::string& callsign) = 0;
@@ -643,7 +639,6 @@ private:
             reinterpret_cast<PlayerInfo*>(_player)->Release();
             _player = NULL;
             _isToBeCreated = false;
-            fprintf(stderr, "RELEASED IN CLASS\n");
         }
     }
 
@@ -654,47 +649,38 @@ private:
 
     void NotifyDeactivation(const std::string& callsign) override
     {
-        fprintf(stderr, "DEACTIVATING\n");
         PlayerInfoRelease();
     }
 
 public:
     //This class is singleton (to avoid global variable) to enable instance creation in each C function if state changed
-    //TODO Fix issues that can occur if you return nullptr, what to do if instance created multiple times etc.
     static void CreateInstance(playerinfo_type*& player, const std::string& callsign)
     {
-        ASSERT(_instance == nullptr);
-        _instance = new Reconnector(player, callsign);
+        if (_instance == nullptr) {
+            _instance = new Reconnector(player, callsign);
+        }
     }
 
     static void DestroyInstance()
     {
-        ASSERT(_instance != nullptr);
-        delete _instance;
-        _instance = nullptr;
+        if (_instance != nullptr) {
+            delete _instance;
+            _instance = nullptr;
+        }
     }
 
     static Reconnector* GetInstance()
     {
-        ASSERT(_instance != nullptr);
         return _instance;
     }
 
     playerinfo_type* PlayerInfoInstance()
     {
-        if (_player == NULL) {
+        if (_isToBeCreated == true && _player == NULL) {
             _player = reinterpret_cast<playerinfo_type*>(PlayerInfo::Instance(_callsign));
-            fprintf(stderr, "IN CLASS: %d\n", _player);
             _isToBeCreated = false;
-            return _player;
         }
-        return nullptr;
-    }
-
-    // if plugin has been deactivated and then activated that means on next function call an instance needs to be created
-    bool IsPlayerInstanceToBeUpdated() const
-    {
-        return _isToBeCreated;
+        return _player;
     }
 };
 
@@ -707,9 +693,11 @@ Reconnector* Reconnector::_instance;
 using namespace WPEFramework;
 extern "C" {
 
-void playerinfo_register_for_updates(struct playerinfo_type** instance)
+void playerinfo_register_for_automatic_reconnection(struct playerinfo_type** instance)
 {
-    Reconnector::CreateInstance(*instance, reinterpret_cast<PlayerInfo*>(*instance)->Name());
+    if (*instance != NULL) {
+        Reconnector::CreateInstance(*instance, reinterpret_cast<PlayerInfo*>(*instance)->Name());
+    }
 }
 
 struct playerinfo_type* playerinfo_instance(const char name[])
@@ -738,12 +726,19 @@ void playerinfo_release(struct playerinfo_type* instance)
 {
     if (instance != NULL) {
         reinterpret_cast<PlayerInfo*>(instance)->Release();
-        Reconnector::GetInstance()->DestroyInstance(); //probably should not be here???
+        Reconnector::GetInstance()->DestroyInstance();
     }
 }
 
 int8_t playerinfo_playback_resolution(struct playerinfo_type* instance, playerinfo_playback_resolution_t* resolution)
 {
+    //This boiler-plate code, in my implementation, needs to be inside each C function
+    auto reconnector = Reconnector::GetInstance();
+    if (reconnector != nullptr) {
+        instance = reconnector->PlayerInfoInstance(); //PlayerinfoInstance changes state of the instance reference, but this is
+            // a method where the old value of instance has been passed (NULL), so i modify
+            //the local copy of instance as well
+    }
 
     if (instance != NULL && resolution != NULL) {
         Exchange::IPlayerProperties::PlaybackResolution value = Exchange::IPlayerProperties::PlaybackResolution::RESOLUTION_UNKNOWN;
@@ -794,15 +789,9 @@ int8_t playerinfo_playback_resolution(struct playerinfo_type* instance, playerin
 
 int8_t playerinfo_is_audio_equivalence_enabled(struct playerinfo_type* instance, bool* is_enabled)
 {
-    //This boiler-plate code, in my implementation, needs to be inside each C function
     auto reconnector = Reconnector::GetInstance();
     if (reconnector != nullptr) {
-        if (reconnector->IsPlayerInstanceToBeUpdated()) {
-            instance = Reconnector::GetInstance()->PlayerInfoInstance(); //PlayerinfoInstance changes state of the instance reference, but this is
-                // a method where the old value of instance has been passed (NULL), so i modify
-                //the local copy of instance as well
-            fprintf(stderr, "AFTER UPDATE: %d\n", instance);
-        }
+        instance = reconnector->PlayerInfoInstance();
     }
 
     if (instance != NULL && is_enabled != NULL) {
@@ -813,6 +802,11 @@ int8_t playerinfo_is_audio_equivalence_enabled(struct playerinfo_type* instance,
 
 int8_t playerinfo_video_codecs(struct playerinfo_type* instance, playerinfo_videocodec_t array[], const uint8_t length)
 {
+    auto reconnector = Reconnector::GetInstance();
+    if (reconnector != nullptr) {
+        instance = reconnector->PlayerInfoInstance();
+    }
+
     if (instance != NULL && array != NULL) {
         return reinterpret_cast<PlayerInfo*>(instance)->VideoCodecs(array, length);
     }
@@ -821,6 +815,11 @@ int8_t playerinfo_video_codecs(struct playerinfo_type* instance, playerinfo_vide
 
 int8_t playerinfo_audio_codecs(struct playerinfo_type* instance, playerinfo_audiocodec_t array[], const uint8_t length)
 {
+    auto reconnector = Reconnector::GetInstance();
+    if (reconnector != nullptr) {
+        instance = reconnector->PlayerInfoInstance();
+    }
+
     if (instance != NULL && array != NULL) {
         return reinterpret_cast<PlayerInfo*>(instance)->AudioCodecs(array, length);
     }
@@ -829,6 +828,11 @@ int8_t playerinfo_audio_codecs(struct playerinfo_type* instance, playerinfo_audi
 
 int8_t playerinfo_dolby_atmos_metadata(struct playerinfo_type* instance, bool* is_supported)
 {
+    auto reconnector = Reconnector::GetInstance();
+    if (reconnector != nullptr) {
+        instance = reconnector->PlayerInfoInstance();
+    }
+
     if (instance != NULL && is_supported != NULL) {
         return reinterpret_cast<PlayerInfo*>(instance)->IsAtmosMetadataSupported(*is_supported);
     }
@@ -837,6 +841,11 @@ int8_t playerinfo_dolby_atmos_metadata(struct playerinfo_type* instance, bool* i
 
 int8_t playerinfo_dolby_soundmode(struct playerinfo_type* instance, playerinfo_dolby_sound_mode_t* sound_mode)
 {
+    auto reconnector = Reconnector::GetInstance();
+    if (reconnector != nullptr) {
+        instance = reconnector->PlayerInfoInstance();
+    }
+
     if (instance != NULL && sound_mode != NULL) {
         Exchange::Dolby::IOutput::SoundModes value = Exchange::Dolby::IOutput::SoundModes::UNKNOWN;
         if (reinterpret_cast<PlayerInfo*>(instance)->DolbySoundMode(value) == 1) {
@@ -868,6 +877,11 @@ int8_t playerinfo_dolby_soundmode(struct playerinfo_type* instance, playerinfo_d
 }
 int8_t playerinfo_enable_atmos_output(struct playerinfo_type* instance, const bool is_enabled)
 {
+    auto reconnector = Reconnector::GetInstance();
+    if (reconnector != nullptr) {
+        instance = reconnector->PlayerInfoInstance();
+    }
+
     if (instance != NULL) {
         return reinterpret_cast<PlayerInfo*>(instance)->EnableAtmosOutput(is_enabled);
     }
@@ -876,6 +890,11 @@ int8_t playerinfo_enable_atmos_output(struct playerinfo_type* instance, const bo
 
 int8_t playerinfo_set_dolby_mode(struct playerinfo_type* instance, const playerinfo_dolby_mode_t mode)
 {
+    auto reconnector = Reconnector::GetInstance();
+    if (reconnector != nullptr) {
+        instance = reconnector->PlayerInfoInstance();
+    }
+
     if (instance != NULL) {
         switch (mode) {
         case PLAYERINFO_DOLBY_MODE_DIGITAL_PCM:
@@ -894,6 +913,11 @@ int8_t playerinfo_set_dolby_mode(struct playerinfo_type* instance, const playeri
 
 int8_t playerinfo_get_dolby_mode(struct playerinfo_type* instance, playerinfo_dolby_mode_t* mode)
 {
+    auto reconnector = Reconnector::GetInstance();
+    if (reconnector != nullptr) {
+        instance = reconnector->PlayerInfoInstance();
+    }
+
     if (instance != NULL && mode != NULL) {
 
         Exchange::Dolby::IOutput::Type value = Exchange::Dolby::IOutput::Type::AUTO;
