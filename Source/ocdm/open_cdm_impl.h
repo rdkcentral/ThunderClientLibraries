@@ -55,7 +55,7 @@ private:
 private:
     typedef std::map<string, OpenCDMSession*> KeyMap;
 
-private:
+protected:
     OpenCDMAccessor(const TCHAR domainName[])
         : _refCount(1)
         , _engine(Core::ProxyType<RPC::InvokeServerType<1, 0, 4>>::Create())
@@ -67,7 +67,6 @@ private:
         , _sessionKeys()
     {
         printf("Trying to open an OCDM connection @ %s\n", domainName);
-        Reconnect();
     }
 
     void Reconnect() const
@@ -89,31 +88,15 @@ private:
 public:
     static OpenCDMAccessor* Instance()
     {
-        _systemLock.Lock();
-
-        if (_singleton == nullptr) {
-            // See if we have an environment variable set.
-            string connector;
-            if ((Core::SystemInfo::GetEnvironment(_T("OPEN_CDM_SERVER"), connector) == false) || (connector.empty() == true)) {
-                connector = _T("/tmp/ocdm");
-            }
-
-            OpenCDMAccessor* result = new OpenCDMAccessor(connector.c_str());
-
-            if (result->_remote != nullptr) {
-                _singleton = result;
-            } else {
-                delete result;
-            }
-        } else {
-            // Reconnect if server is down
-            _singleton->Reconnect();
+        string connector;
+        if ((Core::SystemInfo::GetEnvironment(_T("OPEN_CDM_SERVER"), connector) == false) || (connector.empty() == true)) {
+            connector = _T("/tmp/ocdm");
         }
-
-        _systemLock.Unlock();
-
-        return (_singleton);
+        static OpenCDMAccessor& result = Core::SingletonType<OpenCDMAccessor>::Instance(connector.c_str());
+        result.Reconnect();
+        return &result;
     }
+
     ~OpenCDMAccessor()
     {
         if (_remote != nullptr) {
@@ -124,7 +107,6 @@ public:
             _client.Release();
         }
 
-        _singleton = nullptr;
         TRACE_L1("Destructed the OpenCDMAccessor %p", this);
     }
     bool WaitForKey(const uint8_t keyLength, const uint8_t keyId[],
@@ -326,7 +308,6 @@ private:
     mutable Core::Event _signal;
     mutable volatile uint32_t _interested;
     KeyMap _sessionKeys;
-    static OpenCDMAccessor* _singleton;
 };
 
 struct OpenCDMSession {

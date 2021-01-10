@@ -98,7 +98,6 @@ KeyStatus CDMState(const OCDM::ISession::KeyStatus state)
     return KeyStatus::InternalError;
 }
 
-/* static */ OpenCDMAccessor* OpenCDMAccessor::_singleton = nullptr;
 
 /**
  * Destructs an \ref OpenCDMAccessor instance.
