@@ -52,13 +52,12 @@ void PlayerInfoStateChanged(void* userdata, playerinfo_plugin_state_t state)
 {
     pthread_mutex_lock(&mutex);
 
-    if (state == ACTIVATING) {
-        create_instance = true;
-        pthread_cond_signal(&condition); //wake up thread 1
-
-    } else {
+    if (state == DEACTIVATING) {
         playerinfo_release(player);
         player = NULL;
+    } else {
+        create_instance = true;
+        pthread_cond_signal(&condition);
     }
 
     pthread_mutex_unlock(&mutex);
@@ -66,9 +65,11 @@ void PlayerInfoStateChanged(void* userdata, playerinfo_plugin_state_t state)
 
 void* ChangeInstance(void* data)
 {
-    pthread_mutex_lock(&mutex); //mutex lock
+    //   pthread_detach(pthread_self());
+
+    pthread_mutex_lock(&mutex);
     while (!create_instance) {
-        pthread_cond_wait(&condition, &mutex); //wait for the condition
+        pthread_cond_wait(&condition, &mutex);
     }
 
     player = playerinfo_instance("PlayerInfo");
@@ -104,6 +105,7 @@ int main(int argc, char* argv[])
         }
         case 'S': {
             playerinfo_release(player);
+            playerinfo_unregister_state_change(PlayerInfoStateChanged);
             player = NULL;
             //playerinfo_register(*player, OnEvent, NULL);
             //Trace("Registered for an event");

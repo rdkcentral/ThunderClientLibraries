@@ -256,11 +256,13 @@ public:
     int8_t VideoCodecs(playerinfo_videocodec_t array[], const uint8_t length) const
     {
         Exchange::IPlayerProperties::IVideoCodecIterator* videoCodecs;
+
         int8_t value = 0;
 
         ASSERT(_playerConnection != nullptr);
 
         if (_playerConnection->VideoCodecs(videoCodecs) == Core::ERROR_NONE && videoCodecs != nullptr) {
+            videoCodecs->AddRef();
 
             Exchange::IPlayerProperties::VideoCodec codec;
 
@@ -299,6 +301,7 @@ public:
                     break;
                 default:
                     fprintf(stderr, "New video codec in the interface, not handled in client library!\n");
+                    videoCodecs->Release();
                     ASSERT(false && "Invalid enum");
                     newArray[numberOfCodecs] = PLAYERINFO_VIDEO_UNDEFINED;
                     break;
@@ -311,6 +314,7 @@ public:
             } else {
                 value = -numberOfCodecs;
             }
+            videoCodecs->Release();
         }
 
         return value;
@@ -324,6 +328,7 @@ public:
         ASSERT(_playerConnection != nullptr);
 
         if (_playerConnection->AudioCodecs(audioCodecs) == Core::ERROR_NONE && audioCodecs != nullptr) {
+            audioCodecs->AddRef();
 
             Exchange::IPlayerProperties::AudioCodec codec;
 
@@ -371,6 +376,7 @@ public:
                     break;
                 default:
                     fprintf(stderr, "New audio codec in the interface, not handled in client library!\n");
+                    audioCodecs->Release();
                     ASSERT(false && "Invalid enum");
                     newArray[numberOfCodecs] = PLAYERINFO_AUDIO_UNDEFINED;
                     break;
@@ -384,6 +390,7 @@ public:
                 value = -numberOfCodecs;
             }
         }
+        audioCodecs->Release();
 
         return value;
     }
@@ -448,7 +455,7 @@ public:
 
 struct IObserver {
     virtual ~IObserver() {}
-    virtual void NotifyActivation(const std::string& callsign) = 0;
+    virtual void NotifyActivated(const std::string& callsign) = 0;
     virtual void NotifyDeactivation(const std::string& callsign) = 0;
 };
 
@@ -574,8 +581,8 @@ private:
 
         for (auto it = lower; it != upper; ++it) {
             if (it->first == callsign) {
-                if (plugin->State() == PluginHost::IShell::ACTIVATION) {
-                    it->second->NotifyActivation(callsign);
+                if (plugin->State() == PluginHost::IShell::ACTIVATED) {
+                    it->second->NotifyActivated(callsign);
                 }
                 if (plugin->State() == PluginHost::IShell::DEACTIVATION) {
                     it->second->NotifyDeactivation(callsign);
@@ -629,11 +636,11 @@ private:
         _notifier.Unregister("PlayerInfo", this);
     }
 
-    void NotifyActivation(const std::string& callsign) override
+    void NotifyActivated(const std::string& callsign) override
     {
         if (_toNotifyOnActivation) {
             for (const auto& i : _callbacks) {
-                i.first(i.second, ACTIVATING);
+                i.first(i.second, ACTIVATED);
             }
         }
     }

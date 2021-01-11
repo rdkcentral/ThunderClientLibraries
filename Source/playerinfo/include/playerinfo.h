@@ -78,7 +78,7 @@ typedef enum playerinfo_dolby_sound_mode_type {
 } playerinfo_dolby_sound_mode_t;
 
 typedef enum playerinfo_plugin_state {
-    ACTIVATING,
+    ACTIVATED,
     DEACTIVATING
 } playerinfo_plugin_state_t;
 
