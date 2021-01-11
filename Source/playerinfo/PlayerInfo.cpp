@@ -3,9 +3,12 @@
 #include <stdlib.h>
 #include <tracing/tracing.h>
 
+#include <condition_variable>
 #include <interfaces/IDolby.h>
 #include <interfaces/IPlayerInfo.h>
+#include <mutex>
 #include <playerinfo.h>
+#include <thread>
 
 namespace WPEFramework {
 class PlayerInfo : public Core::IReferenceCounted {
@@ -615,14 +618,36 @@ private:
     typedef std::map<playerinfo_state_changed_cb, void*> Callbacks;
 
     StateChangeNotifier _notifier;
-    Callbacks _callbacks;
     bool _toNotifyOnActivation;
+    Callbacks _callbacks;
+    playerinfo_type*& _player;
 
-    PlayerInfoStateNotifier()
+    std::mutex _mtx;
+    std::condition_variable _cv;
+    std::thread _thread;
+
+    static PlayerInfoStateNotifier* _instance;
+
+    PlayerInfoStateNotifier(playerinfo_type*& player, bool toInstantiateOnActivation,
+        playerinfo_state_changed_cb callback, void* userdata)
         : _notifier()
-        , _toNotifyOnActivation(false)
+        , _player(player)
+        , _toNotifyOnActivation(toInstantiateOnActivation)
+
     {
         _notifier.Register("PlayerInfo", this);
+
+        if (callback != NULL) {
+            Callbacks::iterator index(_callbacks.find(callback));
+
+            if (index == _callbacks.end()) {
+                _callbacks.emplace(std::piecewise_construct,
+                    std::forward_as_tuple(callback),
+                    std::forward_as_tuple(userdata));
+            }
+        }
+
+        _thread = std::thread(&PlayerInfoStateNotifier::CreatePlayerInfoInstance, this);
     }
 
     ~PlayerInfoStateNotifier()
@@ -632,37 +657,65 @@ private:
 
     void Notify(const std::string& callsign, PluginHost::IShell::state state) override
     {
+        std::lock_guard<std::mutex> lg(_mtx);
+
         if (state == PluginHost::IShell::ACTIVATED) {
+            fprintf(stderr, "Activation\n");
+            ASSERT(_player == NULL);
+
             if (_toNotifyOnActivation) {
-                for (const auto& i : _callbacks) {
-                    i.first(i.second, ACTIVATED);
-                }
+                _cv.notify_all();
             }
+            for (const auto& i : _callbacks) {
+                i.first(i.second, ACTIVATED);
+            }
+
         } else if (state == PluginHost::IShell::DEACTIVATION) {
+            fprintf(stderr, "Deactivation\n");
+
+            ASSERT(_player != NULL);
+
+            reinterpret_cast<PlayerInfo*>(_player)->Release();
+            _player = NULL;
+
             for (const auto& i : _callbacks) {
                 i.first(i.second, DEACTIVATING);
             }
         }
     }
 
-public:
-    static PlayerInfoStateNotifier& GetInstance()
+    void CreatePlayerInfoInstance()
     {
-        static PlayerInfoStateNotifier singleton;
-        return singleton;
-    }
-
-    void Register(playerinfo_state_changed_cb callback, void* userdata)
-    {
-        Callbacks::iterator index(_callbacks.find(callback));
-
-        if (index == _callbacks.end()) {
-            _callbacks.emplace(std::piecewise_construct,
-                std::forward_as_tuple(callback),
-                std::forward_as_tuple(userdata));
+        while (_toNotifyOnActivation) {
+            std::unique_lock<std::mutex> ul(_mtx);
+            _cv.wait(ul);
+            fprintf(stderr, "Creating instance\n");
+            _player = reinterpret_cast<playerinfo_type*>(PlayerInfo::Instance("PlayerInfo"));
         }
     }
-    void Unregister(playerinfo_state_changed_cb callback)
+
+public:
+    static void CreateInstance(playerinfo_type*& player, bool toInstantiateOnActivation,
+        playerinfo_state_changed_cb callback, void* userdata)
+    {
+        if (_instance == nullptr) {
+            _instance = new PlayerInfoStateNotifier(player, toInstantiateOnActivation, callback, userdata);
+        }
+    }
+    static void DestroyInstance()
+    {
+        if (_instance != nullptr) {
+            delete _instance;
+            _instance = nullptr;
+        }
+    }
+
+    static PlayerInfoStateNotifier* GetInstance()
+    {
+        return _instance;
+    }
+
+    void UnregisterCallback(playerinfo_state_changed_cb callback)
     {
         Callbacks::iterator index(_callbacks.find(callback));
 
@@ -671,11 +724,12 @@ public:
         }
     }
 
-    void ToNotifyOnActivation(bool toNotify)
+    void ToInstantiateOnActivation(bool toInstantiate)
     {
-        _toNotifyOnActivation = toNotify;
+        _toNotifyOnActivation = toInstantiate;
     }
 };
+PlayerInfoStateNotifier* PlayerInfoStateNotifier::_instance;
 
 // \RECONNECTION
 
@@ -685,19 +739,19 @@ using namespace WPEFramework;
 extern "C" {
 
 //do not call playerinfo_instance, trigger event/set soe flags only!!!
-void playerinfo_register_state_change(playerinfo_state_changed_cb callback, void* userdata)
+void playerinfo_register_state_change(playerinfo_type** type)
 {
-    PlayerInfoStateNotifier::GetInstance().Register(callback, userdata);
+
+    PlayerInfoStateNotifier::CreateInstance(*type, true, NULL, NULL);
 }
 
-void playerinfo_unregister_state_change(playerinfo_state_changed_cb callback)
+void playerinfo_unregister_state_change()
 {
-    PlayerInfoStateNotifier::GetInstance().Unregister(callback);
+    PlayerInfoStateNotifier::DestroyInstance();
 }
 
 void playerinfo_notify_on_activation(bool to_notify)
 {
-    PlayerInfoStateNotifier::GetInstance().ToNotifyOnActivation(to_notify);
 }
 
 struct playerinfo_type* playerinfo_instance(const char name[])

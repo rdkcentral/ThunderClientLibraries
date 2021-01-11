@@ -43,43 +43,10 @@ void OnEvent(struct playerinfo_type* session, void* data)
     Trace("Event triggered");
 }
 
-bool create_instance = false;
 struct playerinfo_type* player = NULL;
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t condition = PTHREAD_COND_INITIALIZER;
-
-void PlayerInfoStateChanged(void* userdata, playerinfo_plugin_state_t state)
-{
-    pthread_mutex_lock(&mutex);
-
-    if (state == DEACTIVATING) {
-        playerinfo_release(player);
-        player = NULL;
-    } else {
-        create_instance = true;
-        pthread_cond_signal(&condition);
-    }
-
-    pthread_mutex_unlock(&mutex);
-}
-
-void* ChangeInstance(void* data)
-{
-    //   pthread_detach(pthread_self());
-
-    pthread_mutex_lock(&mutex);
-    while (!create_instance) {
-        pthread_cond_wait(&condition, &mutex);
-    }
-
-    player = playerinfo_instance("PlayerInfo");
-
-    pthread_mutex_unlock(&mutex);
-}
 
 int main(int argc, char* argv[])
 {
-    pthread_t thread_id;
 
     playerinfo_videocodec_t videoCodecs[BUFFER_LENGTH];
     playerinfo_audiocodec_t audioCodecs[BUFFER_LENGTH];
@@ -105,7 +72,6 @@ int main(int argc, char* argv[])
         }
         case 'S': {
             playerinfo_release(player);
-            playerinfo_unregister_state_change(PlayerInfoStateChanged);
             player = NULL;
             //playerinfo_register(*player, OnEvent, NULL);
             //Trace("Registered for an event");
@@ -113,9 +79,7 @@ int main(int argc, char* argv[])
         }
 
         case 'U': {
-            playerinfo_register_state_change(PlayerInfoStateChanged, NULL);
-            playerinfo_notify_on_activation(true);
-            pthread_create(&thread_id, NULL, ChangeInstance, NULL);
+            playerinfo_register_state_change(&player);
             /*
             playerinfo_unregister(player, OnEvent);
             Trace("Unregistered from an event");

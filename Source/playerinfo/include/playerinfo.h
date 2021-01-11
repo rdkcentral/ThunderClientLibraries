@@ -85,9 +85,9 @@ typedef enum playerinfo_plugin_state {
 typedef void (*playerinfo_state_changed_cb)(void* userdata, playerinfo_plugin_state_t state);
 
 //do not call playerinfo_instance, trigger event/set soe flags only!!!
-EXTERNAL void playerinfo_register_state_change(playerinfo_state_changed_cb callback, void* userdata);
+EXTERNAL void playerinfo_register_state_change(struct playerinfo_type** type);
 
-EXTERNAL void playerinfo_unregister_state_change(playerinfo_state_changed_cb callback);
+EXTERNAL void playerinfo_unregister_state_change();
 
 EXTERNAL void playerinfo_notify_on_activation(bool to_notify);
 
