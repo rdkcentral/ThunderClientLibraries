@@ -15,6 +15,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_LIST_DIR}")
+    # building in standalone mode
+    cmake_minimum_required(VERSION 3.3)
+
+    project(Cryptography)
+
+    find_package(WPEFramework)
+    find_package(${NAMESPACE}Core REQUIRED)
+    find_package(${NAMESPACE}Tracing REQUIRED)
+    find_package(CompileSettingsDebug CONFIG REQUIRED)
+
+    set(VERSION_MAJOR 1)
+    set(VERSION_MINOR 0)
+    set(VERSION_PATCH 0)
+
+    set(VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
+
+    if (BUILD_REFERENCE)
+        add_definitions (-DBUILD_REFERENCE=${BUILD_REFERENCE})
+    endif()
+endif()
+
 set(TARGET ${NAMESPACE}Cryptography)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -138,4 +160,4 @@ if(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY)
     InstallCMakeConfig(
         TARGETS ${TARGET}Software 
     )
-endif(INCLUDE_SOFTWARE_LIB)
+endif()
