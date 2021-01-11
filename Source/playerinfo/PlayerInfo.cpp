@@ -455,8 +455,7 @@ public:
 
 struct IObserver {
     virtual ~IObserver() {}
-    virtual void NotifyActivated(const std::string& callsign) = 0;
-    virtual void NotifyDeactivation(const std::string& callsign) = 0;
+    virtual void Notify(const std::string& callsign, PluginHost::IShell::state state) = 0;
 };
 
 struct IObservable {
@@ -581,12 +580,7 @@ private:
 
         for (auto it = lower; it != upper; ++it) {
             if (it->first == callsign) {
-                if (plugin->State() == PluginHost::IShell::ACTIVATED) {
-                    it->second->NotifyActivated(callsign);
-                }
-                if (plugin->State() == PluginHost::IShell::DEACTIVATION) {
-                    it->second->NotifyDeactivation(callsign);
-                }
+                it->second->Notify(callsign, plugin->State());
             }
         }
     }
@@ -636,19 +630,18 @@ private:
         _notifier.Unregister("PlayerInfo", this);
     }
 
-    void NotifyActivated(const std::string& callsign) override
+    void Notify(const std::string& callsign, PluginHost::IShell::state state) override
     {
-        if (_toNotifyOnActivation) {
-            for (const auto& i : _callbacks) {
-                i.first(i.second, ACTIVATED);
+        if (state == PluginHost::IShell::ACTIVATED) {
+            if (_toNotifyOnActivation) {
+                for (const auto& i : _callbacks) {
+                    i.first(i.second, ACTIVATED);
+                }
             }
-        }
-    }
-
-    void NotifyDeactivation(const std::string& callsign) override
-    {
-        for (const auto& i : _callbacks) {
-            i.first(i.second, DEACTIVATING);
+        } else if (state == PluginHost::IShell::DEACTIVATION) {
+            for (const auto& i : _callbacks) {
+                i.first(i.second, DEACTIVATING);
+            }
         }
     }
 
