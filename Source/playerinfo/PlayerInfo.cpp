@@ -625,27 +625,18 @@ private:
     std::mutex _mtx;
     std::condition_variable _cv;
     std::thread _thread;
+    std::atomic_bool _timeToEnd;
 
     static PlayerInfoStateNotifier* _instance;
 
-    PlayerInfoStateNotifier(playerinfo_type*& player, bool toInstantiateOnActivation,
-        playerinfo_state_changed_cb callback, void* userdata)
+    PlayerInfoStateNotifier(playerinfo_type*& player, bool toInstantiateOnActivation)
         : _notifier()
         , _player(player)
         , _toNotifyOnActivation(toInstantiateOnActivation)
+        , _timeToEnd(false)
 
     {
         _notifier.Register("PlayerInfo", this);
-
-        if (callback != NULL) {
-            Callbacks::iterator index(_callbacks.find(callback));
-
-            if (index == _callbacks.end()) {
-                _callbacks.emplace(std::piecewise_construct,
-                    std::forward_as_tuple(callback),
-                    std::forward_as_tuple(userdata));
-            }
-        }
 
         _thread = std::thread(&PlayerInfoStateNotifier::CreatePlayerInfoInstance, this);
     }
@@ -653,6 +644,12 @@ private:
     ~PlayerInfoStateNotifier()
     {
         _notifier.Unregister("PlayerInfo", this);
+        _timeToEnd = true;
+        _cv.notify_all();
+
+        if (_thread.joinable()) {
+            _thread.join();
+        }
     }
 
     void Notify(const std::string& callsign, PluginHost::IShell::state state) override
@@ -686,20 +683,25 @@ private:
 
     void CreatePlayerInfoInstance()
     {
-        while (_toNotifyOnActivation) {
+        while (true) {
             std::unique_lock<std::mutex> ul(_mtx);
             _cv.wait(ul);
-            fprintf(stderr, "Creating instance\n");
-            _player = reinterpret_cast<playerinfo_type*>(PlayerInfo::Instance("PlayerInfo"));
+
+            if (_timeToEnd) {
+                return;
+            }
+            if (_toNotifyOnActivation) {
+                fprintf(stderr, "Creating instance\n");
+                _player = reinterpret_cast<playerinfo_type*>(PlayerInfo::Instance("PlayerInfo"));
+            }
         }
     }
 
 public:
-    static void CreateInstance(playerinfo_type*& player, bool toInstantiateOnActivation,
-        playerinfo_state_changed_cb callback, void* userdata)
+    static void CreateInstance(playerinfo_type*& player, bool toInstantiateOnActivation)
     {
         if (_instance == nullptr) {
-            _instance = new PlayerInfoStateNotifier(player, toInstantiateOnActivation, callback, userdata);
+            _instance = new PlayerInfoStateNotifier(player, toInstantiateOnActivation);
         }
     }
     static void DestroyInstance()
@@ -713,6 +715,19 @@ public:
     static PlayerInfoStateNotifier* GetInstance()
     {
         return _instance;
+    }
+
+    void RegisterCallback(playerinfo_state_changed_cb callback, void* userdata)
+    {
+        if (callback != NULL) {
+            Callbacks::iterator index(_callbacks.find(callback));
+
+            if (index == _callbacks.end()) {
+                _callbacks.emplace(std::piecewise_construct,
+                    std::forward_as_tuple(callback),
+                    std::forward_as_tuple(userdata));
+            }
+        }
     }
 
     void UnregisterCallback(playerinfo_state_changed_cb callback)
@@ -738,20 +753,24 @@ PlayerInfoStateNotifier* PlayerInfoStateNotifier::_instance;
 using namespace WPEFramework;
 extern "C" {
 
-//do not call playerinfo_instance, trigger event/set soe flags only!!!
-void playerinfo_register_state_change(playerinfo_type** type)
+void playerinfo_register_state_change(struct playerinfo_type** type, bool to_instantiate)
 {
+    PlayerInfoStateNotifier::CreateInstance(*type, to_instantiate);
+}
 
-    PlayerInfoStateNotifier::CreateInstance(*type, true, NULL, NULL);
+void playerinfo_register_state_change_callback(playerinfo_state_changed_cb callback, void* userdata)
+{
+    PlayerInfoStateNotifier::GetInstance()->RegisterCallback(callback, userdata);
+}
+
+void playerinfo_unregister_state_change_callback(playerinfo_state_changed_cb callback, void* userdata)
+{
+    PlayerInfoStateNotifier::GetInstance()->UnregisterCallback(callback);
 }
 
 void playerinfo_unregister_state_change()
 {
     PlayerInfoStateNotifier::DestroyInstance();
-}
-
-void playerinfo_notify_on_activation(bool to_notify)
-{
 }
 
 struct playerinfo_type* playerinfo_instance(const char name[])

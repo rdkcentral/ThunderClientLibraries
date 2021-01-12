@@ -72,6 +72,7 @@ int main(int argc, char* argv[])
         }
         case 'S': {
             playerinfo_release(player);
+            playerinfo_unregister_state_change();
             player = NULL;
             //playerinfo_register(*player, OnEvent, NULL);
             //Trace("Registered for an event");
@@ -79,7 +80,7 @@ int main(int argc, char* argv[])
         }
 
         case 'U': {
-            playerinfo_register_state_change(&player);
+            playerinfo_register_state_change(&player, true);
             /*
             playerinfo_unregister(player, OnEvent);
             Trace("Unregistered from an event");
