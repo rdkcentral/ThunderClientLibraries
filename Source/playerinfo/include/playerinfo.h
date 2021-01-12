@@ -78,15 +78,44 @@ typedef enum playerinfo_dolby_sound_mode_type {
 } playerinfo_dolby_sound_mode_t;
 
 typedef enum playerinfo_plugin_state {
+    DEACTIVATED,
+    DEACTIVATION,
     ACTIVATED,
-    DEACTIVATING
+    ACTIVATION,
+    PRECONDITION,
+    DESTROYED
 } playerinfo_plugin_state_t;
 
 typedef void (*playerinfo_state_changed_cb)(void* userdata, playerinfo_plugin_state_t state);
 
+/**
+ * @brief Register for plugin state changes. Upon deactivation of the plugin passed instance will be released to enable
+ *        plugin to deactivate properly
+ * 
+ * @param type pointer to created instance via playerinfo_instance
+ * @param to_instantiate true if the instance shall be reinitialized after activation of the plugin
+ */
 EXTERNAL void playerinfo_register_state_change(struct playerinfo_type** type, bool to_instantiate);
+
+/**
+ * @brief Register callback that will be called upon state change of the plugin. Registering callbacks is possible only if
+ *        client has registered for state change using playerinfo_register_state_change
+ * 
+ * @param callback callback that will be called
+ * @param userdata data passed to the callback
+ */
 EXTERNAL void playerinfo_register_state_change_callback(playerinfo_state_changed_cb callback, void* userdata);
-EXTERNAL void playerinfo_unregister_state_change_callback(playerinfo_state_changed_cb callback, void* userdata);
+
+/**
+ * @brief Unregister callback
+ * 
+ * @param callback callback that shall be unregistered
+ */
+EXTERNAL void playerinfo_unregister_state_change_callback(playerinfo_state_changed_cb callback);
+
+/**
+ * @brief Unregister from state changes, should be called at the end of the program if client has registered
+ */
 EXTERNAL void playerinfo_unregister_state_change();
 
 /**

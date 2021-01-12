@@ -658,8 +658,9 @@ private:
     {
         _lock.Lock();
 
-        if (state == PluginHost::IShell::ACTIVATED) {
-            fprintf(stderr, "Activation\n");
+        switch (state) {
+        //Creating instance
+        case PluginHost::IShell::ACTIVATED:
             ASSERT(_player == NULL);
 
             if (_toNotifyOnActivation) {
@@ -668,18 +669,46 @@ private:
             for (const auto& i : _callbacks) {
                 i.first(i.second, ACTIVATED);
             }
+            break;
 
-        } else if (state == PluginHost::IShell::DEACTIVATION) {
-            fprintf(stderr, "Deactivation\n");
-
+        //Destroying instance
+        case PluginHost::IShell::DEACTIVATION:
             ASSERT(_player != NULL);
 
             reinterpret_cast<PlayerInfo*>(_player)->Release();
             _player = NULL;
 
             for (const auto& i : _callbacks) {
-                i.first(i.second, DEACTIVATING);
+                i.first(i.second, DEACTIVATION);
             }
+            break;
+
+        case PluginHost::IShell::DEACTIVATED:
+            for (const auto& i : _callbacks) {
+                i.first(i.second, DEACTIVATED);
+            }
+            break;
+
+        case PluginHost::IShell::ACTIVATION:
+            for (const auto& i : _callbacks) {
+                i.first(i.second, ACTIVATION);
+            }
+            break;
+
+        case PluginHost::IShell::PRECONDITION:
+            for (const auto& i : _callbacks) {
+                i.first(i.second, PRECONDITION);
+            }
+            break;
+
+        case PluginHost::IShell::DESTROYED:
+            for (const auto& i : _callbacks) {
+                i.first(i.second, PRECONDITION);
+            }
+            break;
+
+        default:
+            break;
         }
 
         _lock.Unlock();
@@ -696,7 +725,6 @@ private:
                 return;
             }
             if (_toNotifyOnActivation) {
-                fprintf(stderr, "Creating instance\n");
                 _player = reinterpret_cast<playerinfo_type*>(PlayerInfo::Instance("PlayerInfo"));
             }
         }
@@ -760,7 +788,9 @@ extern "C" {
 
 void playerinfo_register_state_change(struct playerinfo_type** type, bool to_instantiate)
 {
-    PlayerInfoStateNotifier::CreateInstance(*type, to_instantiate);
+    if (*type != NULL) {
+        PlayerInfoStateNotifier::CreateInstance(*type, to_instantiate);
+    }
 }
 
 void playerinfo_register_state_change_callback(playerinfo_state_changed_cb callback, void* userdata)
@@ -768,7 +798,7 @@ void playerinfo_register_state_change_callback(playerinfo_state_changed_cb callb
     PlayerInfoStateNotifier::GetInstance()->RegisterCallback(callback, userdata);
 }
 
-void playerinfo_unregister_state_change_callback(playerinfo_state_changed_cb callback, void* userdata)
+void playerinfo_unregister_state_change_callback(playerinfo_state_changed_cb callback)
 {
     PlayerInfoStateNotifier::GetInstance()->UnregisterCallback(callback);
 }
