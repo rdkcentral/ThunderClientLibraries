@@ -43,6 +43,16 @@ void OnEvent(struct playerinfo_type* session, void* data)
     Trace("Event triggered");
 }
 
+void StateChangedCallback(void* userdata, playerinfo_plugin_state_t state)
+{
+    if (state == ACTIVATED) {
+        Trace("PlayerInfo plugin has been just activated!");
+    }
+    if (state == DEACTIVATED) {
+        Trace("PlayerInfo plugin has been just deactivated!");
+    }
+}
+
 struct playerinfo_type* player = NULL;
 
 int main(int argc, char* argv[])
@@ -66,25 +76,22 @@ int main(int argc, char* argv[])
                 character = 'Q';
             } else {
                 Trace("Created instance");
+                playerinfo_register_state_change(&player, true);
+                playerinfo_register_state_change_callback(StateChangedCallback, NULL);
+                Trace("Registered for reconnection and passed callback");
             }
 
             break;
         }
         case 'S': {
-            playerinfo_release(player);
-            playerinfo_unregister_state_change();
-            player = NULL;
-            //playerinfo_register(*player, OnEvent, NULL);
-            //Trace("Registered for an event");
+            playerinfo_register(player, OnEvent, NULL);
+            Trace("Registered for an event");
             break;
         }
 
         case 'U': {
-            playerinfo_register_state_change(&player, true);
-            /*
             playerinfo_unregister(player, OnEvent);
             Trace("Unregistered from an event");
-            */
             break;
         }
 
@@ -367,7 +374,9 @@ int main(int argc, char* argv[])
         }
     } while (character != 'Q');
 
+    playerinfo_unregister_state_change_callback(StateChangedCallback);
     playerinfo_release(player);
+    playerinfo_unregister_state_change();
 
     Trace("Done");
 
