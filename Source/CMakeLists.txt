@@ -37,8 +37,6 @@ option(CDMI
         "Include OpenCDM interface." OFF)
 option(CRYPTOGRAPHY
         "Include the cryptography library." OFF)
-option(RECONNECTION
-        "Include the reconnection library." ON)
 
 
 if(COMPOSITORCLIENT)
@@ -77,7 +75,4 @@ if(CRYPTOGRAPHY)
     add_subdirectory(cryptography)
 endif()
 
-if(RECONNECTION)
-    add_subdirectory(reconnection)
-endif()
 
