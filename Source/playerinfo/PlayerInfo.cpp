@@ -265,7 +265,6 @@ public:
         ASSERT(_playerConnection != nullptr);
 
         if (_playerConnection->VideoCodecs(videoCodecs) == Core::ERROR_NONE && videoCodecs != nullptr) {
-            videoCodecs->AddRef();
 
             Exchange::IPlayerProperties::VideoCodec codec;
 
@@ -304,7 +303,6 @@ public:
                     break;
                 default:
                     fprintf(stderr, "New video codec in the interface, not handled in client library!\n");
-                    videoCodecs->Release();
                     ASSERT(false && "Invalid enum");
                     newArray[numberOfCodecs] = PLAYERINFO_VIDEO_UNDEFINED;
                     break;
@@ -317,7 +315,6 @@ public:
             } else {
                 value = -numberOfCodecs;
             }
-            videoCodecs->Release();
         }
 
         return value;
@@ -331,7 +328,6 @@ public:
         ASSERT(_playerConnection != nullptr);
 
         if (_playerConnection->AudioCodecs(audioCodecs) == Core::ERROR_NONE && audioCodecs != nullptr) {
-            audioCodecs->AddRef();
 
             Exchange::IPlayerProperties::AudioCodec codec;
 
@@ -379,7 +375,6 @@ public:
                     break;
                 default:
                     fprintf(stderr, "New audio codec in the interface, not handled in client library!\n");
-                    audioCodecs->Release();
                     ASSERT(false && "Invalid enum");
                     newArray[numberOfCodecs] = PLAYERINFO_AUDIO_UNDEFINED;
                     break;
@@ -393,7 +388,6 @@ public:
                 value = -numberOfCodecs;
             }
         }
-        audioCodecs->Release();
 
         return value;
     }
