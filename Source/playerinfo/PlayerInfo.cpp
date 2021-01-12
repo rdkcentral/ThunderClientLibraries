@@ -584,6 +584,8 @@ uint32_t playerinfo_set_dolby_mode(struct playerinfo_type* instance, const playe
 {
     if (instance != NULL) {
         switch (mode) {
+        case PLAYERINFO_DOLBY_MODE_AUTO:
+            return reinterpret_cast<PlayerInfo*>(instance)->SetDolbyMode(Exchange::Dolby::IOutput::Type::AUTO);
         case PLAYERINFO_DOLBY_MODE_DIGITAL_PCM:
             return reinterpret_cast<PlayerInfo*>(instance)->SetDolbyMode(Exchange::Dolby::IOutput::Type::DIGITAL_PCM);
         case PLAYERINFO_DOLBY_MODE_DIGITAL_AC3:
