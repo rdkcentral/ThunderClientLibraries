@@ -622,10 +622,10 @@ private:
     Callbacks _callbacks;
     playerinfo_type*& _player;
 
-    std::mutex _mtx;
-    std::condition_variable _cv;
+    bool _timeToEnd;
     std::thread _thread;
-    std::atomic_bool _timeToEnd;
+    Core::CriticalSection _lock;
+    Core::Event _event;
 
     static PlayerInfoStateNotifier* _instance;
 
@@ -634,6 +634,7 @@ private:
         , _player(player)
         , _toNotifyOnActivation(toInstantiateOnActivation)
         , _timeToEnd(false)
+        , _event(false, true)
 
     {
         _notifier.Register("PlayerInfo", this);
@@ -645,7 +646,8 @@ private:
     {
         _notifier.Unregister("PlayerInfo", this);
         _timeToEnd = true;
-        _cv.notify_all();
+
+        _event.SetEvent();
 
         if (_thread.joinable()) {
             _thread.join();
@@ -654,14 +656,14 @@ private:
 
     void Notify(const std::string& callsign, PluginHost::IShell::state state) override
     {
-        std::lock_guard<std::mutex> lg(_mtx);
+        _lock.Lock();
 
         if (state == PluginHost::IShell::ACTIVATED) {
             fprintf(stderr, "Activation\n");
             ASSERT(_player == NULL);
 
             if (_toNotifyOnActivation) {
-                _cv.notify_all();
+                _event.SetEvent();
             }
             for (const auto& i : _callbacks) {
                 i.first(i.second, ACTIVATED);
@@ -679,13 +681,16 @@ private:
                 i.first(i.second, DEACTIVATING);
             }
         }
+
+        _lock.Unlock();
     }
 
     void CreatePlayerInfoInstance()
     {
         while (true) {
-            std::unique_lock<std::mutex> ul(_mtx);
-            _cv.wait(ul);
+
+            _event.Lock();
+            _event.ResetEvent();
 
             if (_timeToEnd) {
                 return;
