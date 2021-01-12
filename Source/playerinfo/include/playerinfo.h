@@ -184,7 +184,7 @@ EXTERNAL bool playerinfo_is_dolby_atmos_supported(struct playerinfo_type* instan
  * @return ERROR_NONE on succes, 
  *         ERROR_UNAVAILABLE if instance or sound_mode param is NULL
  */
-EXTERNAL uint32_t playerinfo_dolby_soundmode(struct playerinfo_type* instance, playerinfo_dolby_sound_mode_t* sound_mode);
+EXTERNAL uint32_t playerinfo_set_dolby_sound_mode(struct playerinfo_type* instance, playerinfo_dolby_sound_mode_t* sound_mode);
 
 /**
  * @brief Enable Atmos Audio Output

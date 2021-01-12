@@ -259,7 +259,7 @@ int main(int argc, char* argv[])
 
         case 'B': {
             playerinfo_dolby_sound_mode_t sound_mode;
-            if (playerinfo_dolby_soundmode(player, &sound_mode) != 0) {
+            if (playerinfo_set_dolby_sound_mode(player, &sound_mode) != 0) {
                 Trace("Instance or sound_mode param is null");
             } else {
                 switch (sound_mode) {

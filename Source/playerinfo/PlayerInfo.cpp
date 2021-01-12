@@ -539,7 +539,7 @@ bool playerinfo_is_dolby_atmos_supported(struct playerinfo_type* instance)
     return false;
 }
 
-uint32_t playerinfo_dolby_soundmode(struct playerinfo_type* instance, playerinfo_dolby_sound_mode_t* sound_mode)
+uint32_t playerinfo_set_dolby_sound_mode(struct playerinfo_type* instance, playerinfo_dolby_sound_mode_t* sound_mode)
 {
     if (instance != NULL && sound_mode != NULL) {
         Exchange::Dolby::IOutput::SoundModes value = Exchange::Dolby::IOutput::SoundModes::UNKNOWN;
@@ -590,6 +590,8 @@ uint32_t playerinfo_set_dolby_mode(struct playerinfo_type* instance, const playe
             return reinterpret_cast<PlayerInfo*>(instance)->SetDolbyMode(Exchange::Dolby::IOutput::Type::DIGITAL_AC3);
         case PLAYERINFO_DOLBY_MODE_DIGITAL_PLUS:
             return reinterpret_cast<PlayerInfo*>(instance)->SetDolbyMode(Exchange::Dolby::IOutput::Type::DIGITAL_PLUS);
+        case PLAYERINFO_DOLBY_MODE_MS12:
+            return reinterpret_cast<PlayerInfo*>(instance)->SetDolbyMode(Exchange::Dolby::IOutput::Type::MS12);
         default:
             fprintf(stderr, "Unknown enum value, not included in playerinfo_dolby_mode_type?\n");
             return Core::ERROR_UNKNOWN_KEY;
