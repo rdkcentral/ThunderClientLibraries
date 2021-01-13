@@ -16,10 +16,18 @@ void ShowMenu()
 {
     printf("Enter\n"
            "\tI : Get instance.\n"
+           "\tS : Register for an event.\n"
+           "\tU : Unregister from an event.\n"
            "\tL : Check Loudness Equivalence in platform .\n"
            "\tR : Check playback resolution.\n"
            "\tA : Check audio codecs.\n"
            "\tV : Check video codecs.\n"
+           "\tM : Is Atmos metadata supported.\n"
+           "\tB : Get Dolby soundmode .\n"
+           "\tE : Enable Atmos output.\n"
+           "\tD : Disable Atmos output.\n"
+           "\tO : Set Dolby Mode (to PLAYERINFO_DOLBY_MODE_DIGITAL_PCM).\n"
+           "\tP : Get Dolby Mode.\n"
            "\t? : Help\n"
            "\tQ : Quit\n");
 }
@@ -27,6 +35,11 @@ void ShowMenu()
 void ResetBuffer(char buffer[])
 {
     memset(buffer, 0, BUFFER_LENGTH);
+}
+
+void OnEvent(struct playerinfo_type* session, void* data)
+{
+    Trace("Event triggered");
 }
 
 int main(int argc, char* argv[])
@@ -54,12 +67,24 @@ int main(int argc, char* argv[])
 
             break;
         }
+        case 'S': {
+            playerinfo_register(player, OnEvent, NULL);
+            Trace("Registered for an event");
+            break;
+        }
+
+        case 'U': {
+            playerinfo_unregister(player, OnEvent);
+            Trace("Unregistered from an event");
+            break;
+        }
+
         case 'L': {
             bool is_enabled = false;
-            if (playerinfo_is_audio_equivalence_enabled(player, &is_enabled) == 1) {
+            if (playerinfo_is_audio_equivalence_enabled(player, &is_enabled) == 0) {
                 Trace("Loudnes %s enabled", is_enabled ? "is" : "not");
             } else {
-                Trace("Instance or is_enabled param is NULL, or invalid connection");
+                Trace("Instance or is_enabled param is NULL");
             }
 
             break;
@@ -67,8 +92,8 @@ int main(int argc, char* argv[])
 
         case 'R': {
             playerinfo_playback_resolution_t resolution;
-            if (playerinfo_playback_resolution(player, &resolution) == 0) {
-                Trace("Instance or resolution param is null, or invalid connection");
+            if (playerinfo_playback_resolution(player, &resolution) != 0) {
+                Trace("Instance or resolution param is null");
             } else {
                 switch (resolution) {
                 case PLAYERINFO_RESOLUTION_UNKNOWN: {
@@ -222,6 +247,100 @@ int main(int argc, char* argv[])
                 }
                 memset(videoCodecs, 0, BUFFER_LENGTH * sizeof(playerinfo_videocodec_t));
             }
+            break;
+        }
+
+        case 'M': {
+            bool is_supported = false;
+            is_supported = playerinfo_is_dolby_atmos_supported(player);
+            Trace("Dolby Atmos %s supported", is_supported ? "is" : "not");
+            break;
+        }
+
+        case 'B': {
+            playerinfo_dolby_sound_mode_t sound_mode;
+            if (playerinfo_set_dolby_sound_mode(player, &sound_mode) != 0) {
+                Trace("Instance or sound_mode param is null");
+            } else {
+                switch (sound_mode) {
+                case PLAYERINFO_DOLBY_SOUND_UNKNOWN:
+                    Trace("PLAYERINFO_DOLBY_SOUND_UNKNOWN");
+                    break;
+                case PLAYERINFO_DOLBY_SOUND_MONO:
+                    Trace("PLAYERINFO_DOLBY_SOUND_MONO");
+                    break;
+                case PLAYERINFO_DOLBY_SOUND_STEREO:
+                    Trace("PLAYERINFO_DOLBY_SOUND_STEREO");
+                    break;
+                case PLAYERINFO_DOLBY_SOUND_SURROUND:
+                    Trace("PLAYERINFO_DOLBY_SOUND_SURROUND");
+                    break;
+                case PLAYERINFO_DOLBY_SOUND_PASSTHRU:
+                    Trace("PLAYERINFO_DOLBY_SOUND_PASSTHRU");
+                    break;
+                default:
+                    Trace("Sound mode not specified in client switch-case");
+                    break;
+                }
+            }
+            break;
+        }
+        case 'E': {
+            if (playerinfo_enable_atmos_output(player, true) == 0) {
+                Trace("Enabled Atmos output");
+
+            } else {
+                Trace("Error enabling atmos output");
+            }
+            break;
+        }
+
+        case 'D': {
+            if (playerinfo_enable_atmos_output(player, false) == 0) {
+                Trace("Disable Atmos output");
+
+            } else {
+                Trace("Error disabling atmos output");
+            }
+            break;
+        }
+
+        case 'O': {
+            if (playerinfo_set_dolby_mode(player, PLAYERINFO_DOLBY_MODE_DIGITAL_PCM) == 0) {
+                Trace("Setting succeded");
+
+            } else {
+                Trace("Setting failed");
+            }
+            break;
+        }
+
+        case 'P': {
+            playerinfo_dolby_mode_t mode;
+            if (playerinfo_get_dolby_mode(player, &mode) == 0) {
+                switch (mode) {
+
+                case PLAYERINFO_DOLBY_MODE_DIGITAL_PCM:
+                    Trace("PLAYERINFO_DOLBY_MODE_DIGITAL_PCM");
+                    break;
+                case PLAYERINFO_DOLBY_MODE_DIGITAL_PLUS:
+                    Trace("PLAYERINFO_DOLBY_MODE_DIGITAL_PLUS");
+                    break;
+                case PLAYERINFO_DOLBY_MODE_DIGITAL_AC3:
+                    Trace("PLAYERINFO_DOLBY_MODE_DIGITAL_AC3");
+                    break;
+                case PLAYERINFO_DOLBY_MODE_AUTO:
+                    Trace("PLAYERINFO_DOLBY_MODE_AUTO");
+                    break;
+                case PLAYERINFO_DOLBY_MODE_MS12:
+                    Trace("PLAYERINFO_DOLBY_MODE_MS12");
+                    break;
+                default:
+                    Trace("Dolby mode not specified in client switch-case");
+                    break;
+                }
+            }
+
             break;
         }
 
