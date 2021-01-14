@@ -40,6 +40,11 @@ private:
         }
     }
 
+    PluginHost::IShell*& GetSystemInterface()
+    {
+        return _administration.GetSystemInterface();
+    }
+
     typedef std::map<playerinfo_dolby_audio_updated_cb, void*> Callbacks;
 
     class Notification : public Exchange::Dolby::IOutput::INotification {
@@ -233,6 +238,33 @@ private:
             }
         }
 
+        void RegisterCallback(playerinfo_state_changed_cb callback, void* userdata)
+        {
+            if (callback != NULL) {
+                Callbacks::iterator index(_callbacks.find(callback));
+
+                if (index == _callbacks.end()) {
+                    _callbacks.emplace(std::piecewise_construct,
+                        std::forward_as_tuple(callback),
+                        std::forward_as_tuple(userdata));
+                }
+            }
+        }
+
+        void UnregisterCallback(playerinfo_state_changed_cb callback)
+        {
+            Callbacks::iterator index(_callbacks.find(callback));
+
+            if (index != _callbacks.end()) {
+                _callbacks.erase(index);
+            }
+        }
+
+        void ToInstantiateOnActivation(bool toInstantiate)
+        {
+            _toNotifyOnActivation = toInstantiate;
+        }
+
     private:
         class Notification : protected PluginHost::IPlugin::INotification {
         public:
@@ -287,6 +319,7 @@ private:
             PluginHost::IShell* _client;
         };
 
+    private:
         void CreatePlayerInfoInstance()
         {
             while (true) {
@@ -305,22 +338,65 @@ private:
 
         void StateChange(PluginHost::IShell* plugin)
         {
+            _lock.Lock();
 
             PluginHost::IShell::state state = plugin->State();
             if (_callsign == plugin->Callsign()) {
-
-                if (state == PluginHost::IShell::DEACTIVATION) {
-                    ASSERT(_player != NULL);
-                    reinterpret_cast<PlayerInfo*>(_player)->Release();
-                    _player = NULL;
-                } else if (state == PluginHost::IShell::ACTIVATED) {
+                switch (state) {
+                //Creating instance
+                case PluginHost::IShell::ACTIVATED:
                     ASSERT(_player == NULL);
 
                     if (_toNotifyOnActivation) {
                         _event.SetEvent();
                     }
+                    for (const auto& i : _callbacks) {
+                        i.first(i.second, ACTIVATED);
+                    }
+                    break;
+
+                //Destroying instance
+                case PluginHost::IShell::DEACTIVATION:
+                    ASSERT(_player != NULL);
+
+                    reinterpret_cast<PlayerInfo*>(_player)->Release();
+                    _player = NULL;
+
+                    for (const auto& i : _callbacks) {
+                        i.first(i.second, DEACTIVATION);
+                    }
+                    break;
+
+                case PluginHost::IShell::DEACTIVATED:
+                    for (const auto& i : _callbacks) {
+                        i.first(i.second, DEACTIVATED);
+                    }
+                    break;
+
+                case PluginHost::IShell::ACTIVATION:
+                    for (const auto& i : _callbacks) {
+                        i.first(i.second, ACTIVATION);
+                    }
+                    break;
+
+                case PluginHost::IShell::PRECONDITION:
+                    for (const auto& i : _callbacks) {
+                        i.first(i.second, PRECONDITION);
+                    }
+                    break;
+
+                case PluginHost::IShell::DESTROYED:
+                    for (const auto& i : _callbacks) {
+                        i.first(i.second, PRECONDITION);
+                    }
+                    break;
+
+                default:
+                    break;
                 }
             }
+
+            _lock.Unlock();
         }
 
     private:
@@ -370,10 +446,23 @@ public:
             _notifier = nullptr;
         }
     }
-
-    PluginHost::IShell*& GetSystemInterface()
+    static void RegisterCallback(playerinfo_state_changed_cb callback, void* userdata)
     {
-        return _administration.GetSystemInterface();
+        if (_notifier != nullptr) {
+            _notifier->RegisterCallback(callback, userdata);
+        }
+    }
+    static void UnregisterCallback(playerinfo_state_changed_cb callback)
+    {
+        if (_notifier != nullptr) {
+            _notifier->UnregisterCallback(callback);
+        }
+    }
+    static void ToInstantiateOnActivation(bool toInstantiate)
+    {
+        if (_notifier != nullptr) {
+            _notifier->ToInstantiateOnActivation(toInstantiate);
+        }
     }
 
     void AddRef() const
@@ -648,15 +737,22 @@ void playerinfo_register_state_change(struct playerinfo_type** type, bool to_ins
 
 void playerinfo_register_state_change_callback(playerinfo_state_changed_cb callback, void* userdata)
 {
+    PlayerInfo::RegisterCallback(callback, userdata);
 }
 
 void playerinfo_unregister_state_change_callback(playerinfo_state_changed_cb callback)
 {
+    PlayerInfo::UnregisterCallback(callback);
 }
 
 void playerinfo_unregister_state_change()
 {
     PlayerInfo::DisableAutomaticReconnection();
+}
+
+void playerinfo_to_instantiate_on_reconnection(bool to_instantiate)
+{
+    PlayerInfo::ToInstantiateOnActivation(to_instantiate);
 }
 
 struct playerinfo_type* playerinfo_instance(const char name[])

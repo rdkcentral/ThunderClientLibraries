@@ -77,6 +77,7 @@ typedef enum playerinfo_dolby_sound_mode_type {
     PLAYERINFO_DOLBY_SOUND_PASSTHRU
 } playerinfo_dolby_sound_mode_t;
 
+//AUTOMATIC RECONNECTION
 typedef enum playerinfo_plugin_state {
     DEACTIVATED,
     DEACTIVATION,
@@ -117,6 +118,10 @@ EXTERNAL void playerinfo_unregister_state_change_callback(playerinfo_state_chang
  * @brief Unregister from state changes, should be called at the end of the program if client has registered
  */
 EXTERNAL void playerinfo_unregister_state_change();
+
+EXTERNAL void playerinfo_to_instantiate_on_reconnection(bool to_instantiate);
+
+//!AUTOMATIC RECONNECTION
 
 /**
 * @brief Will be called if there are changes regarding Dolby Audio Output, you need to query 

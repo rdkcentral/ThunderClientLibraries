@@ -85,6 +85,7 @@ int main(int argc, char* argv[])
         }
         case 'S': {
             playerinfo_release(player);
+            playerinfo_unregister_state_change();
             player = NULL;
             Trace("Released");
 
