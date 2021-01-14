@@ -99,6 +99,11 @@ private:
             _comChannel->Close(1000);
         }
 
+        PluginHost::IShell*& GetSystemInterface()
+        {
+            return _systemInterface;
+        }
+
         PlayerInfo* Instance(const string& name)
         {
             PlayerInfo* result(nullptr);
@@ -110,7 +115,7 @@ private:
                 fprintf(stderr, "not found\n");
 
                 //Exchange::IPlayerProperties* interface = _comChannel->Open<Exchange::IPlayerProperties>(name);
-                Exchange::IPlayerProperties* interface = _systemInterface->QueryInterface<Exchange::IPlayerProperties>();
+                Exchange::IPlayerProperties* interface = _systemInterface->QueryInterfaceByCallsign<Exchange::IPlayerProperties>(name);
 
                 if (interface != nullptr) {
                     fprintf(stderr, "jestem\n");
@@ -208,6 +213,12 @@ public:
     {
         return _administration.Instance(name);
     }
+
+    PluginHost::IShell*& GetSystemInterface()
+    {
+        return _administration.GetSystemInterface();
+    }
+
     void AddRef() const
     {
         Core::InterlockedIncrement(_refCount);
@@ -479,8 +490,8 @@ public:
     StateChangeNotifier(const StateChangeNotifier&) = delete;
     StateChangeNotifier& operator=(const StateChangeNotifier&) = delete;
 
-    StateChangeNotifier()
-        : _systemInterface(nullptr)
+    StateChangeNotifier(PluginHost::IShell*& systemInterface)
+        : _systemInterface(systemInterface != nullptr ? systemInterface : nullptr)
         , _notification(this)
     {
         ASSERT(_systemInterface != nullptr);
@@ -628,7 +639,7 @@ private:
     static PlayerInfoStateNotifier* _instance;
 
     PlayerInfoStateNotifier(playerinfo_type*& player, bool toInstantiateOnActivation)
-        : _notifier()
+        : _notifier(reinterpret_cast<PlayerInfo*>(player)->GetSystemInterface())
         , _player(player)
         , _toNotifyOnActivation(toInstantiateOnActivation)
         , _timeToEnd(false)

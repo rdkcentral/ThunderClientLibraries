@@ -76,9 +76,9 @@ int main(int argc, char* argv[])
                 character = 'Q';
             } else {
                 Trace("Created instance");
-                // playerinfo_register_state_change(&player, true);
-                // playerinfo_register_state_change_callback(StateChangedCallback, NULL);
-                // Trace("Registered for reconnection and passed callback");
+                playerinfo_register_state_change(&player, true);
+                playerinfo_register_state_change_callback(StateChangedCallback, NULL);
+                Trace("Registered for reconnection and passed callback");
             }
 
             break;
