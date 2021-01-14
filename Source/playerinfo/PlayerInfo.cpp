@@ -100,7 +100,10 @@ private:
             }
 
             ASSERT(std::list<PlayerInfo*>::size() == 0);
-            _systemInterface->Release();
+
+            if (_systemInterface != nullptr) {
+                _systemInterface->Release();
+            }
             _comChannel->Close(1000);
         }
 
@@ -117,18 +120,13 @@ private:
 
             result = Find(name);
             if (result == nullptr) {
-                fprintf(stderr, "not found\n");
 
-                //Exchange::IPlayerProperties* interface = _comChannel->Open<Exchange::IPlayerProperties>(name);
                 Exchange::IPlayerProperties* interface = _systemInterface->QueryInterfaceByCallsign<Exchange::IPlayerProperties>(name);
 
                 if (interface != nullptr) {
-                    fprintf(stderr, "jestem\n");
                     result = new PlayerInfo(name, interface);
                     std::list<PlayerInfo*>::emplace_back(result);
                     interface->Release();
-                } else {
-                    fprintf(stderr, "interface null\n");
                 }
             }
             _adminLock.Unlock();
@@ -167,7 +165,6 @@ private:
                     std::list<PlayerInfo*>::erase(index);
                 }
                 delete const_cast<PlayerInfo*>(playerInfo);
-                //_comChannel->Close(1000);
                 result = Core::ERROR_DESTRUCTION_SUCCEEDED;
             }
 
@@ -214,7 +211,7 @@ private:
             , _notification(this)
             , _player(player)
             , _callsign(callsign)
-            , _toNotifyOnActivation(toInstantiateOnActivation)
+            , _toInstantiateOnActivation(toInstantiateOnActivation)
             , _timeToEnd(false)
             , _event(false, true)
 
@@ -262,7 +259,7 @@ private:
 
         void ToInstantiateOnActivation(bool toInstantiate)
         {
-            _toNotifyOnActivation = toInstantiate;
+            _toInstantiateOnActivation = toInstantiate;
         }
 
     private:
@@ -330,7 +327,7 @@ private:
                 if (_timeToEnd) {
                     return;
                 }
-                if (_toNotifyOnActivation) {
+                if (_toInstantiateOnActivation) {
                     _player = reinterpret_cast<playerinfo_type*>(PlayerInfo::Instance("PlayerInfo"));
                 }
             }
@@ -347,7 +344,7 @@ private:
                 case PluginHost::IShell::ACTIVATED:
                     ASSERT(_player == NULL);
 
-                    if (_toNotifyOnActivation) {
+                    if (_toInstantiateOnActivation) {
                         _event.SetEvent();
                     }
                     for (const auto& i : _callbacks) {
@@ -404,7 +401,7 @@ private:
         Core::Sink<Notification> _notification;
         mutable Core::CriticalSection _adminLock;
 
-        bool _toNotifyOnActivation;
+        bool _toInstantiateOnActivation;
         Callbacks _callbacks;
         playerinfo_type*& _player;
         std::string _callsign;
@@ -446,13 +443,13 @@ public:
             _notifier = nullptr;
         }
     }
-    static void RegisterCallback(playerinfo_state_changed_cb callback, void* userdata)
+    static void RegisterPluginStateChangeCallback(playerinfo_state_changed_cb callback, void* userdata)
     {
         if (_notifier != nullptr) {
             _notifier->RegisterCallback(callback, userdata);
         }
     }
-    static void UnregisterCallback(playerinfo_state_changed_cb callback)
+    static void UnregisterPluginStateChangeCallback(playerinfo_state_changed_cb callback)
     {
         if (_notifier != nullptr) {
             _notifier->UnregisterCallback(callback);
@@ -728,7 +725,7 @@ PlayerInfo::StateChangeNotifier* PlayerInfo::_notifier;
 using namespace WPEFramework;
 extern "C" {
 
-void playerinfo_register_state_change(struct playerinfo_type** type, bool to_instantiate)
+void playerinfo_enable_automatic_reconnection(struct playerinfo_type** type, bool to_instantiate)
 {
     if (*type != NULL) {
         PlayerInfo::EnableAutomaticReconnection(*type, to_instantiate);
@@ -737,15 +734,15 @@ void playerinfo_register_state_change(struct playerinfo_type** type, bool to_ins
 
 void playerinfo_register_state_change_callback(playerinfo_state_changed_cb callback, void* userdata)
 {
-    PlayerInfo::RegisterCallback(callback, userdata);
+    PlayerInfo::RegisterPluginStateChangeCallback(callback, userdata);
 }
 
 void playerinfo_unregister_state_change_callback(playerinfo_state_changed_cb callback)
 {
-    PlayerInfo::UnregisterCallback(callback);
+    PlayerInfo::UnregisterPluginStateChangeCallback(callback);
 }
 
-void playerinfo_unregister_state_change()
+void playerinfo_disable_automatic_reconnection()
 {
     PlayerInfo::DisableAutomaticReconnection();
 }

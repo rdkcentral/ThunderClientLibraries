@@ -76,7 +76,7 @@ int main(int argc, char* argv[])
                 character = 'Q';
             } else {
                 Trace("Created instance");
-                playerinfo_register_state_change(&player, true);
+                playerinfo_enable_automatic_reconnection(&player, true);
                 playerinfo_register_state_change_callback(StateChangedCallback, NULL);
                 Trace("Registered for reconnection and passed callback");
             }
@@ -84,13 +84,8 @@ int main(int argc, char* argv[])
             break;
         }
         case 'S': {
-            playerinfo_release(player);
-            playerinfo_unregister_state_change();
-            player = NULL;
-            Trace("Released");
-
-            //playerinfo_register(player, OnEvent, NULL);
-            //Trace("Registered for an event");
+            playerinfo_register(player, OnEvent, NULL);
+            Trace("Registered for an event");
             break;
         }
 
@@ -381,7 +376,7 @@ int main(int argc, char* argv[])
 
     playerinfo_unregister_state_change_callback(StateChangedCallback);
     playerinfo_release(player);
-    playerinfo_unregister_state_change();
+    playerinfo_disable_automatic_reconnection();
 
     Trace("Done");
 

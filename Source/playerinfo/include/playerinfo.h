@@ -96,7 +96,7 @@ typedef void (*playerinfo_state_changed_cb)(void* userdata, playerinfo_plugin_st
  * @param type pointer to created instance via playerinfo_instance
  * @param to_instantiate true if the instance shall be reinitialized after activation of the plugin
  */
-EXTERNAL void playerinfo_register_state_change(struct playerinfo_type** type, bool to_instantiate);
+EXTERNAL void playerinfo_enable_automatic_reconnection(struct playerinfo_type** type, bool to_instantiate);
 
 /**
  * @brief Register callback that will be called upon state change of the plugin. Registering callbacks is possible only if
@@ -117,8 +117,13 @@ EXTERNAL void playerinfo_unregister_state_change_callback(playerinfo_state_chang
 /**
  * @brief Unregister from state changes, should be called at the end of the program if client has registered
  */
-EXTERNAL void playerinfo_unregister_state_change();
+EXTERNAL void playerinfo_disable_automatic_reconnection();
 
+/**
+ * @brief Decide, whether passed instance shall be initialized after plugin has activated again, or should it remain NULL
+ * 
+ * @param to_instantiate to reinstantiate or not
+ */
 EXTERNAL void playerinfo_to_instantiate_on_reconnection(bool to_instantiate);
 
 //!AUTOMATIC RECONNECTION
