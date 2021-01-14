@@ -199,14 +199,14 @@ private:
         Core::ProxyType<RPC::CommunicatorClient> _comChannel;
     };
 
-    class StateChangeNotifier {
+    class Reconnector {
         typedef std::map<playerinfo_state_changed_cb, void*> Callbacks;
 
     public:
-        StateChangeNotifier(const StateChangeNotifier&) = delete;
-        StateChangeNotifier& operator=(const StateChangeNotifier&) = delete;
+        Reconnector(const Reconnector&) = delete;
+        Reconnector& operator=(const Reconnector&) = delete;
 
-        StateChangeNotifier(PluginHost::IShell*& systemInterface, playerinfo_type*& player, const std::string& callsign, bool toInstantiateOnActivation)
+        Reconnector(PluginHost::IShell*& systemInterface, playerinfo_type*& player, const std::string& callsign, bool toInstantiateOnActivation)
             : _systemInterface(systemInterface != nullptr ? systemInterface : nullptr)
             , _notification(this)
             , _player(player)
@@ -218,11 +218,11 @@ private:
         {
             ASSERT(_systemInterface != nullptr);
 
-            _thread = std::thread(&StateChangeNotifier::CreatePlayerInfoInstance, this);
+            _thread = std::thread(&Reconnector::CreatePlayerInfoInstance, this);
 
             _notification.Initialize(_systemInterface);
         }
-        ~StateChangeNotifier()
+        ~Reconnector()
         {
             _notification.Deinitialize();
 
@@ -270,7 +270,7 @@ private:
             Notification& operator=(const Notification&) = delete;
             ~Notification() = default;
 
-            explicit Notification(StateChangeNotifier* parent)
+            explicit Notification(Reconnector* parent)
                 : _parent(*parent)
                 , _client(nullptr)
                 , _isRegistered(false)
@@ -311,7 +311,7 @@ private:
             END_INTERFACE_MAP
 
         private:
-            StateChangeNotifier& _parent;
+            Reconnector& _parent;
             bool _isRegistered;
             PluginHost::IShell* _client;
         };
@@ -419,7 +419,7 @@ private:
     Core::Sink<Notification> _notification;
     Callbacks _callbacks;
     static PlayerInfo::PlayerInfoAdministration _administration;
-    static PlayerInfo::StateChangeNotifier* _notifier;
+    static PlayerInfo::Reconnector* _notifier;
 
 public:
     PlayerInfo() = delete;
@@ -433,7 +433,7 @@ public:
 
     static void EnableAutomaticReconnection(playerinfo_type*& type, bool toInstantiateOnActivation)
     {
-        _notifier = new StateChangeNotifier(reinterpret_cast<PlayerInfo*>(type)->GetSystemInterface(),
+        _notifier = new Reconnector(reinterpret_cast<PlayerInfo*>(type)->GetSystemInterface(),
             type, reinterpret_cast<PlayerInfo*>(type)->Name(), toInstantiateOnActivation);
     }
     static void DisableAutomaticReconnection()
@@ -713,7 +713,7 @@ public:
 };
 
 /* static */ PlayerInfo::PlayerInfoAdministration PlayerInfo::_administration;
-PlayerInfo::StateChangeNotifier* PlayerInfo::_notifier;
+PlayerInfo::Reconnector* PlayerInfo::_notifier;
 
 //RECONNECTION
 //IObserver and IObservable probably should be moved to the ThunderNanoInterfaces
