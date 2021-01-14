@@ -196,6 +196,149 @@ private:
         Core::ProxyType<RPC::InvokeServerType<1, 0, 8>> _engine;
         Core::ProxyType<RPC::CommunicatorClient> _comChannel;
     };
+
+    class StateChangeNotifier {
+        typedef std::map<playerinfo_state_changed_cb, void*> Callbacks;
+
+    public:
+        StateChangeNotifier(const StateChangeNotifier&) = delete;
+        StateChangeNotifier& operator=(const StateChangeNotifier&) = delete;
+
+        StateChangeNotifier(PluginHost::IShell*& systemInterface, playerinfo_type*& player, const std::string& callsign, bool toInstantiateOnActivation)
+            : _systemInterface(systemInterface != nullptr ? systemInterface : nullptr)
+            , _notification(this)
+            , _player(player)
+            , _callsign(callsign)
+            , _toNotifyOnActivation(toInstantiateOnActivation)
+            , _timeToEnd(false)
+            , _event(false, true)
+
+        {
+            ASSERT(_systemInterface != nullptr);
+
+            _thread = std::thread(&StateChangeNotifier::CreatePlayerInfoInstance, this);
+
+            _notification.Initialize(_systemInterface);
+        }
+        ~StateChangeNotifier()
+        {
+            _notification.Deinitialize();
+
+            _timeToEnd = true;
+
+            _event.SetEvent();
+
+            if (_thread.joinable()) {
+                _thread.join();
+            }
+        }
+
+    private:
+        class Notification : protected PluginHost::IPlugin::INotification {
+        public:
+            Notification() = delete;
+            Notification(const Notification&) = delete;
+            Notification& operator=(const Notification&) = delete;
+            ~Notification() = default;
+
+            explicit Notification(StateChangeNotifier* parent)
+                : _parent(*parent)
+                , _client(nullptr)
+                , _isRegistered(false)
+            {
+                ASSERT(parent != nullptr);
+            }
+
+            void Initialize(PluginHost::IShell* client)
+            {
+                ASSERT(client != nullptr);
+                _client = client;
+                _client->AddRef();
+                _client->Register(this);
+                _isRegistered = true;
+            }
+            void Deinitialize()
+            {
+                ASSERT(_client != nullptr);
+                if (_client != nullptr) {
+                    _client->Unregister(this);
+                    _isRegistered = false;
+                    _client->Release();
+                    _client = nullptr;
+                }
+            }
+
+            void StateChange(PluginHost::IShell* plugin) override
+            {
+                ASSERT(plugin != nullptr);
+
+                if (_isRegistered) {
+                    _parent.StateChange(plugin);
+                }
+            }
+
+            BEGIN_INTERFACE_MAP(Notification)
+            INTERFACE_ENTRY(PluginHost::IPlugin::INotification)
+            END_INTERFACE_MAP
+
+        private:
+            StateChangeNotifier& _parent;
+            bool _isRegistered;
+            PluginHost::IShell* _client;
+        };
+
+        void CreatePlayerInfoInstance()
+        {
+            while (true) {
+
+                _event.Lock();
+                _event.ResetEvent();
+
+                if (_timeToEnd) {
+                    return;
+                }
+                if (_toNotifyOnActivation) {
+                    _player = reinterpret_cast<playerinfo_type*>(PlayerInfo::Instance("PlayerInfo"));
+                }
+            }
+        }
+
+        void StateChange(PluginHost::IShell* plugin)
+        {
+
+            PluginHost::IShell::state state = plugin->State();
+            if (_callsign == plugin->Callsign()) {
+
+                if (state == PluginHost::IShell::DEACTIVATION) {
+                    ASSERT(_player != NULL);
+                    reinterpret_cast<PlayerInfo*>(_player)->Release();
+                    _player = NULL;
+                } else if (state == PluginHost::IShell::ACTIVATED) {
+                    ASSERT(_player == NULL);
+
+                    if (_toNotifyOnActivation) {
+                        _event.SetEvent();
+                    }
+                }
+            }
+        }
+
+    private:
+        PluginHost::IShell* _systemInterface;
+        Core::Sink<Notification> _notification;
+        mutable Core::CriticalSection _adminLock;
+
+        bool _toNotifyOnActivation;
+        Callbacks _callbacks;
+        playerinfo_type*& _player;
+        std::string _callsign;
+
+        bool _timeToEnd;
+        std::thread _thread;
+        Core::CriticalSection _lock;
+        Core::Event _event;
+    };
+
     mutable int _refCount;
     const string _name;
     Exchange::IPlayerProperties* _playerConnection;
@@ -203,6 +346,7 @@ private:
     Core::Sink<Notification> _notification;
     Callbacks _callbacks;
     static PlayerInfo::PlayerInfoAdministration _administration;
+    static PlayerInfo::StateChangeNotifier* _notifier;
 
 public:
     PlayerInfo() = delete;
@@ -212,6 +356,19 @@ public:
     static PlayerInfo* Instance(const string& name)
     {
         return _administration.Instance(name);
+    }
+
+    static void EnableAutomaticReconnection(playerinfo_type*& type, bool toInstantiateOnActivation)
+    {
+        _notifier = new StateChangeNotifier(reinterpret_cast<PlayerInfo*>(type)->GetSystemInterface(),
+            type, reinterpret_cast<PlayerInfo*>(type)->Name(), toInstantiateOnActivation);
+    }
+    static void DisableAutomaticReconnection()
+    {
+        if (_notifier != nullptr) {
+            delete _notifier;
+            _notifier = nullptr;
+        }
     }
 
     PluginHost::IShell*& GetSystemInterface()
@@ -470,323 +627,10 @@ public:
 };
 
 /* static */ PlayerInfo::PlayerInfoAdministration PlayerInfo::_administration;
+PlayerInfo::StateChangeNotifier* PlayerInfo::_notifier;
 
 //RECONNECTION
 //IObserver and IObservable probably should be moved to the ThunderNanoInterfaces
-
-struct IObserver {
-    virtual ~IObserver() {}
-    virtual void Notify(const std::string& callsign, PluginHost::IShell::state state) = 0;
-};
-
-struct IObservable {
-    virtual ~IObservable() {}
-    virtual void Register(const std::string& callsign, IObserver* observer) = 0;
-    virtual void Unregister(const std::string& callsign, IObserver* observer) = 0;
-};
-
-class StateChangeNotifier : public IObservable {
-public:
-    StateChangeNotifier(const StateChangeNotifier&) = delete;
-    StateChangeNotifier& operator=(const StateChangeNotifier&) = delete;
-
-    StateChangeNotifier(PluginHost::IShell*& systemInterface)
-        : _systemInterface(systemInterface != nullptr ? systemInterface : nullptr)
-        , _notification(this)
-    {
-        ASSERT(_systemInterface != nullptr);
-
-        _notification.Initialize(_systemInterface);
-    }
-    ~StateChangeNotifier()
-    {
-        _notification.Deinitialize();
-    }
-
-    void Register(const std::string& callsign, IObserver* observer) override
-    {
-        ASSERT(observer != nullptr);
-        _adminLock.Lock();
-
-        _observers.emplace(std::piecewise_construct,
-            std::forward_as_tuple(callsign),
-            std::forward_as_tuple(observer));
-
-        _adminLock.Unlock();
-    }
-    void Unregister(const std::string& callsign, IObserver* observer) override
-    {
-        _adminLock.Lock();
-
-        auto lower = _observers.lower_bound(callsign);
-        auto upper = _observers.upper_bound(callsign);
-
-        for (auto it = lower; it != upper; ++it) {
-            if (it->first == callsign) {
-                if (it->second == observer) {
-                    _observers.erase(it);
-                }
-            }
-        }
-
-        _adminLock.Unlock();
-    }
-
-private:
-    class Notification : protected PluginHost::IPlugin::INotification {
-    public:
-        Notification() = delete;
-        Notification(const Notification&) = delete;
-        Notification& operator=(const Notification&) = delete;
-        ~Notification() = default;
-
-        explicit Notification(StateChangeNotifier* parent)
-            : _parent(*parent)
-            , _client(nullptr)
-            , _isRegistered(false)
-        {
-            ASSERT(parent != nullptr);
-        }
-
-        void Initialize(PluginHost::IShell* client)
-        {
-            ASSERT(client != nullptr);
-            _client = client;
-            _client->AddRef();
-            _client->Register(this);
-            _isRegistered = true;
-        }
-        void Deinitialize()
-        {
-            ASSERT(_client != nullptr);
-            if (_client != nullptr) {
-                _client->Unregister(this);
-                _isRegistered = false;
-                _client->Release();
-                _client = nullptr;
-            }
-        }
-
-        void StateChange(PluginHost::IShell* plugin) override
-        {
-            ASSERT(plugin != nullptr);
-
-            if (_isRegistered) {
-                _parent.StateChange(plugin);
-            }
-        }
-
-        BEGIN_INTERFACE_MAP(Notification)
-        INTERFACE_ENTRY(PluginHost::IPlugin::INotification)
-        END_INTERFACE_MAP
-
-    private:
-        StateChangeNotifier& _parent;
-        bool _isRegistered;
-        PluginHost::IShell* _client;
-    };
-
-    void StateChange(PluginHost::IShell* plugin)
-    {
-        std::string callsign = plugin->Callsign();
-
-        auto lower = _observers.lower_bound(callsign);
-        auto upper = _observers.upper_bound(callsign);
-
-        for (auto it = lower; it != upper; ++it) {
-            if (it->first == callsign) {
-                it->second->Notify(callsign, plugin->State());
-            }
-        }
-    }
-
-    static Core::NodeId Connector()
-    {
-        const TCHAR* comPath = ::getenv(_T("COMMUNICATOR_PATH"));
-
-        if (comPath == nullptr) {
-#ifdef __WINDOWS__
-            comPath = _T("127.0.0.1:62000");
-#else
-            comPath = _T("/tmp/communicator");
-#endif
-        }
-
-        return Core::NodeId(comPath);
-    }
-
-private:
-    std::multimap<std::string, IObserver*> _observers;
-    PluginHost::IShell* _systemInterface;
-    Core::Sink<Notification> _notification;
-    mutable Core::CriticalSection _adminLock;
-};
-
-class PlayerInfoStateNotifier : public IObserver {
-private:
-    typedef std::map<playerinfo_state_changed_cb, void*> Callbacks;
-
-    StateChangeNotifier _notifier;
-    bool _toNotifyOnActivation;
-    Callbacks _callbacks;
-    playerinfo_type*& _player;
-
-    bool _timeToEnd;
-    std::thread _thread;
-    Core::CriticalSection _lock;
-    Core::Event _event;
-
-    static PlayerInfoStateNotifier* _instance;
-
-    PlayerInfoStateNotifier(playerinfo_type*& player, bool toInstantiateOnActivation)
-        : _notifier(reinterpret_cast<PlayerInfo*>(player)->GetSystemInterface())
-        , _player(player)
-        , _toNotifyOnActivation(toInstantiateOnActivation)
-        , _timeToEnd(false)
-        , _event(false, true)
-
-    {
-        _notifier.Register("PlayerInfo", this);
-
-        _thread = std::thread(&PlayerInfoStateNotifier::CreatePlayerInfoInstance, this);
-    }
-
-    ~PlayerInfoStateNotifier()
-    {
-        _notifier.Unregister("PlayerInfo", this);
-        _timeToEnd = true;
-
-        _event.SetEvent();
-
-        if (_thread.joinable()) {
-            _thread.join();
-        }
-    }
-
-    void Notify(const std::string& callsign, PluginHost::IShell::state state) override
-    {
-        _lock.Lock();
-
-        switch (state) {
-        //Creating instance
-        case PluginHost::IShell::ACTIVATED:
-            ASSERT(_player == NULL);
-
-            if (_toNotifyOnActivation) {
-                _event.SetEvent();
-            }
-            for (const auto& i : _callbacks) {
-                i.first(i.second, ACTIVATED);
-            }
-            break;
-
-        //Destroying instance
-        case PluginHost::IShell::DEACTIVATION:
-            ASSERT(_player != NULL);
-
-            reinterpret_cast<PlayerInfo*>(_player)->Release();
-            _player = NULL;
-
-            for (const auto& i : _callbacks) {
-                i.first(i.second, DEACTIVATION);
-            }
-            break;
-
-        case PluginHost::IShell::DEACTIVATED:
-            for (const auto& i : _callbacks) {
-                i.first(i.second, DEACTIVATED);
-            }
-            break;
-
-        case PluginHost::IShell::ACTIVATION:
-            for (const auto& i : _callbacks) {
-                i.first(i.second, ACTIVATION);
-            }
-            break;
-
-        case PluginHost::IShell::PRECONDITION:
-            for (const auto& i : _callbacks) {
-                i.first(i.second, PRECONDITION);
-            }
-            break;
-
-        case PluginHost::IShell::DESTROYED:
-            for (const auto& i : _callbacks) {
-                i.first(i.second, PRECONDITION);
-            }
-            break;
-
-        default:
-            break;
-        }
-
-        _lock.Unlock();
-    }
-
-    void CreatePlayerInfoInstance()
-    {
-        while (true) {
-
-            _event.Lock();
-            _event.ResetEvent();
-
-            if (_timeToEnd) {
-                return;
-            }
-            if (_toNotifyOnActivation) {
-                _player = reinterpret_cast<playerinfo_type*>(PlayerInfo::Instance("PlayerInfo"));
-            }
-        }
-    }
-
-public:
-    static void CreateInstance(playerinfo_type*& player, bool toInstantiateOnActivation)
-    {
-        if (_instance == nullptr) {
-            _instance = new PlayerInfoStateNotifier(player, toInstantiateOnActivation);
-        }
-    }
-    static void DestroyInstance()
-    {
-        if (_instance != nullptr) {
-            delete _instance;
-            _instance = nullptr;
-        }
-    }
-
-    static PlayerInfoStateNotifier* GetInstance()
-    {
-        return _instance;
-    }
-
-    void RegisterCallback(playerinfo_state_changed_cb callback, void* userdata)
-    {
-        if (callback != NULL) {
-            Callbacks::iterator index(_callbacks.find(callback));
-
-            if (index == _callbacks.end()) {
-                _callbacks.emplace(std::piecewise_construct,
-                    std::forward_as_tuple(callback),
-                    std::forward_as_tuple(userdata));
-            }
-        }
-    }
-
-    void UnregisterCallback(playerinfo_state_changed_cb callback)
-    {
-        Callbacks::iterator index(_callbacks.find(callback));
-
-        if (index != _callbacks.end()) {
-            _callbacks.erase(index);
-        }
-    }
-
-    void ToInstantiateOnActivation(bool toInstantiate)
-    {
-        _toNotifyOnActivation = toInstantiate;
-    }
-};
-PlayerInfoStateNotifier* PlayerInfoStateNotifier::_instance;
 
 // \RECONNECTION
 
@@ -798,23 +642,21 @@ extern "C" {
 void playerinfo_register_state_change(struct playerinfo_type** type, bool to_instantiate)
 {
     if (*type != NULL) {
-        PlayerInfoStateNotifier::CreateInstance(*type, to_instantiate);
+        PlayerInfo::EnableAutomaticReconnection(*type, to_instantiate);
     }
 }
 
 void playerinfo_register_state_change_callback(playerinfo_state_changed_cb callback, void* userdata)
 {
-    PlayerInfoStateNotifier::GetInstance()->RegisterCallback(callback, userdata);
 }
 
 void playerinfo_unregister_state_change_callback(playerinfo_state_changed_cb callback)
 {
-    PlayerInfoStateNotifier::GetInstance()->UnregisterCallback(callback);
 }
 
 void playerinfo_unregister_state_change()
 {
-    PlayerInfoStateNotifier::DestroyInstance();
+    PlayerInfo::DisableAutomaticReconnection();
 }
 
 struct playerinfo_type* playerinfo_instance(const char name[])
