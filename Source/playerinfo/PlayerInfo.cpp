@@ -79,6 +79,10 @@ private:
             ASSERT(_engine != nullptr);
             ASSERT(_comChannel != nullptr);
             _engine->Announcements(_comChannel->Announcement());
+
+            _systemInterface = _comChannel->Open<PluginHost::IShell>(string());
+            _systemInterface->AddRef();
+            ASSERT(_systemInterface != nullptr);
         }
 
         ~PlayerInfoAdministration()
@@ -91,6 +95,8 @@ private:
             }
 
             ASSERT(std::list<PlayerInfo*>::size() == 0);
+            _systemInterface->Release();
+            _comChannel->Close(1000);
         }
 
         PlayerInfo* Instance(const string& name)
@@ -101,13 +107,18 @@ private:
 
             result = Find(name);
             if (result == nullptr) {
+                fprintf(stderr, "not found\n");
 
-                Exchange::IPlayerProperties* interface = _comChannel->Open<Exchange::IPlayerProperties>(name);
+                //Exchange::IPlayerProperties* interface = _comChannel->Open<Exchange::IPlayerProperties>(name);
+                Exchange::IPlayerProperties* interface = _systemInterface->QueryInterface<Exchange::IPlayerProperties>();
 
                 if (interface != nullptr) {
+                    fprintf(stderr, "jestem\n");
                     result = new PlayerInfo(name, interface);
                     std::list<PlayerInfo*>::emplace_back(result);
                     interface->Release();
+                } else {
+                    fprintf(stderr, "interface null\n");
                 }
             }
             _adminLock.Unlock();
@@ -146,7 +157,7 @@ private:
                     std::list<PlayerInfo*>::erase(index);
                 }
                 delete const_cast<PlayerInfo*>(playerInfo);
-                _comChannel->Close(1000);
+                //_comChannel->Close(1000);
                 result = Core::ERROR_DESTRUCTION_SUCCEEDED;
             }
 
@@ -173,6 +184,8 @@ private:
 
             return result;
         }
+
+        PluginHost::IShell* _systemInterface;
 
         Core::CriticalSection _adminLock;
         Core::ProxyType<RPC::InvokeServerType<1, 0, 8>> _engine;
@@ -468,16 +481,10 @@ public:
 
     StateChangeNotifier()
         : _systemInterface(nullptr)
-        , _engine(Core::ProxyType<RPC::InvokeServerType<1, 0, 8>>::Create())
-        , _comChannel(Core::ProxyType<RPC::CommunicatorClient>::Create(Connector(), Core::ProxyType<Core::IIPCServer>(_engine)))
         , _notification(this)
     {
-        ASSERT(_engine != nullptr);
-        ASSERT(_comChannel != nullptr);
-        _engine->Announcements(_comChannel->Announcement());
-
-        _systemInterface = _comChannel->Open<PluginHost::IShell>(string());
         ASSERT(_systemInterface != nullptr);
+
         _notification.Initialize(_systemInterface);
     }
     ~StateChangeNotifier()
@@ -602,9 +609,6 @@ private:
     PluginHost::IShell* _systemInterface;
     Core::Sink<Notification> _notification;
     mutable Core::CriticalSection _adminLock;
-
-    Core::ProxyType<RPC::InvokeServerType<1, 0, 8>> _engine;
-    Core::ProxyType<RPC::CommunicatorClient> _comChannel;
 };
 
 class PlayerInfoStateNotifier : public IObserver {
