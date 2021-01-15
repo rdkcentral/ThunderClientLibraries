@@ -27,8 +27,9 @@ if("${PLUGIN_COMPOSITOR_IMPLEMENTATION}" STREQUAL "Nexus")
     else()
         include(GetExternalCode)
         set(COMPOSITORCLIENT_IMPLEMENTATION_VERSION "master" CACHE STRING "compositorclient implementation version")
+        set(COMPOSITORCLIENT_IMPLEMENTATION_REPOSITORY "https://code.rdkcentral.com/r/soc/broadcom/components/rdkcentral/thunder/compositorclient" CACHE STRING "compositorclient implementation repository")
         GetExternalCode(
-            GIT_REPOSITORY "https://code.rdkcentral.com/r/soc/broadcom/components/rdkcentral/thunder/compositorclient"
+            GIT_REPOSITORY ${COMPOSITORCLIENT_IMPLEMENTATION_REPOSITORY}
             GIT_TAG ${COMPOSITORCLIENT_IMPLEMENTATION_VERSION}
             SOURCE_DIR "Nexus"
         )
