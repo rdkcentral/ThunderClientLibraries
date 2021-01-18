@@ -26,11 +26,11 @@ option(COMPOSITORCLIENT
 option(GSTREAMERCLIENT
         "Include a gstreamer sink abstraction for external applications." OFF)
 option(DISPLAYINFO
-        "Include the displayinfo COMRPC abstraction library." ON)
+        "Include the displayinfo COMRPC abstraction library." OFF)
 option(SECURITYAGENT
         "Include the securityagent library." OFF)
 option(PLAYERINFO
-        "Include the playerinfo COMRPC abstraction library." ON)
+        "Include the playerinfo COMRPC abstraction library." OFF)
 option(PROVISIONPROXY
         "Include the provisionproxy library." OFF)
 option(CDMI
