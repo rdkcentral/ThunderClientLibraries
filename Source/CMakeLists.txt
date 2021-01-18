@@ -38,7 +38,6 @@ option(CDMI
 option(CRYPTOGRAPHY
         "Include the cryptography library." OFF)
 
-
 if(COMPOSITORCLIENT)
     add_subdirectory(compositorclient)
 endif()
@@ -74,5 +73,3 @@ endif()
 if(CRYPTOGRAPHY)
     add_subdirectory(cryptography)
 endif()
-
-
