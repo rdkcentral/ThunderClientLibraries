@@ -53,11 +53,10 @@ void StateChangedCallback(void* userdata, playerinfo_plugin_state_t state)
     }
 }
 
-struct playerinfo_type* player = NULL;
 
 int main(int argc, char* argv[])
 {
-
+    struct playerinfo_type* player = NULL;
     playerinfo_videocodec_t videoCodecs[BUFFER_LENGTH];
     playerinfo_audiocodec_t audioCodecs[BUFFER_LENGTH];
 
