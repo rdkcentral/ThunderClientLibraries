@@ -3,10 +3,8 @@
 #include <stdlib.h>
 #include <tracing/tracing.h>
 
-#include <condition_variable>
 #include <interfaces/IDolby.h>
 #include <interfaces/IPlayerInfo.h>
-#include <mutex>
 #include <playerinfo.h>
 #include <thread>
 
@@ -695,12 +693,6 @@ public:
 
 /* static */ PlayerInfo::PlayerInfoAdministration PlayerInfo::_administration;
 PlayerInfo::Reconnector* PlayerInfo::_notifier;
-
-//RECONNECTION
-//IObserver and IObservable probably should be moved to the ThunderNanoInterfaces
-
-// \RECONNECTION
-
 } //namespace WPEFramework
 
 using namespace WPEFramework;
