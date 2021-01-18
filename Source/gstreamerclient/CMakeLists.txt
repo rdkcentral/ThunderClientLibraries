@@ -33,8 +33,9 @@ if (NOT "${GSTREAMER_CLIENT_IMPLEMENTATION}" STREQUAL "None")
         else()
             include(GetExternalCode)
             set(GSTREAMERCLIENT_IMPLEMENTATION_VERSION "master" CACHE STRING "gstreamerclient implementation version")
+            set(GSTREAMERCLIENT_IMPLEMENTATION_REPOSITORY "https://code.rdkcentral.com/r/soc/broadcom/components/rdkcentral/thunder/gstreamerclient" CACHE STRING "gstreamerclient implementation repository")
             GetExternalCode(
-                GIT_REPOSITORY "https://code.rdkcentral.com/r/soc/broadcom/components/rdkcentral/thunder/gstreamerclient"
+                GIT_REPOSITORY ${GSTREAMERCLIENT_IMPLEMENTATION_REPOSITORY}
                 GIT_TAG ${GSTREAMERCLIENT_IMPLEMENTATION_VERSION}
                 SOURCE_DIR "Nexus"
             )

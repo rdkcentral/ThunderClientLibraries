@@ -73,8 +73,9 @@ if("${CDMI_ADAPTER_IMPLEMENTATION}" STREQUAL "broadcom-svp")
     else()
         include(GetExternalCode)
         set(OCDM_IMPLEMENTATION_VERSION "master" CACHE STRING "ocdmadapter implementation version")
+        set(OCDM_IMPLEMENTATION_REPOSITORY "https://code.rdkcentral.com/r/soc/broadcom/components/rdkcentral/thunder/ocdmadapter" CACHE STRING "ocdmadapter implementation repository")
         GetExternalCode(
-            GIT_REPOSITORY "https://code.rdkcentral.com/r/soc/broadcom/components/rdkcentral/thunder/ocdmadapter"
+            GIT_REPOSITORY ${OCDM_IMPLEMENTATION_REPOSITORY}
             GIT_TAG ${OCDM_IMPLEMENTATION_VERSION}
             SOURCE_DIR "adapter/broadcom-svp"
         )
