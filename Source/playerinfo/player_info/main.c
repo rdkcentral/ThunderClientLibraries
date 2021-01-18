@@ -97,10 +97,10 @@ int main(int argc, char* argv[])
 
         case 'L': {
             bool is_enabled = false;
-            if (playerinfo_is_audio_equivalence_enabled(player, &is_enabled) == 1) {
+            if (playerinfo_is_audio_equivalence_enabled(player, &is_enabled) == 0) {
                 Trace("Loudnes %s enabled", is_enabled ? "is" : "not");
             } else {
-                Trace("Instance or is_enabled param is NULL, or invalid connection");
+                Trace("Instance or is_enabled param is NULL");
             }
 
             break;
@@ -108,8 +108,8 @@ int main(int argc, char* argv[])
 
         case 'R': {
             playerinfo_playback_resolution_t resolution;
-            if (playerinfo_playback_resolution(player, &resolution) == 0) {
-                Trace("Instance or resolution param is null, or invalid connection");
+            if (playerinfo_playback_resolution(player, &resolution) != 0) {
+                Trace("Instance or resolution param is null");
             } else {
                 switch (resolution) {
                 case PLAYERINFO_RESOLUTION_UNKNOWN: {
@@ -268,19 +268,15 @@ int main(int argc, char* argv[])
 
         case 'M': {
             bool is_supported = false;
-            if (playerinfo_dolby_atmos_metadata(player, &is_supported) == 1) {
-                Trace("Dolby Atmos metadata %s supported", is_supported ? "is" : "not");
-            } else {
-                Trace("Instance or is_supported param is NULL, or invalid connection");
-            }
-
+            is_supported = playerinfo_is_dolby_atmos_supported(player);
+            Trace("Dolby Atmos %s supported", is_supported ? "is" : "not");
             break;
         }
 
         case 'B': {
             playerinfo_dolby_sound_mode_t sound_mode;
-            if (playerinfo_dolby_soundmode(player, &sound_mode) == 0) {
-                Trace("Instance or sound_mode param is null, or invalid connection");
+            if (playerinfo_set_dolby_sound_mode(player, &sound_mode) != 0) {
+                Trace("Instance or sound_mode param is null");
             } else {
                 switch (sound_mode) {
                 case PLAYERINFO_DOLBY_SOUND_UNKNOWN:
@@ -306,7 +302,7 @@ int main(int argc, char* argv[])
             break;
         }
         case 'E': {
-            if (playerinfo_enable_atmos_output(player, true) == 1) {
+            if (playerinfo_enable_atmos_output(player, true) == 0) {
                 Trace("Enabled Atmos output");
 
             } else {
@@ -316,7 +312,7 @@ int main(int argc, char* argv[])
         }
 
         case 'D': {
-            if (playerinfo_enable_atmos_output(player, false) == 1) {
+            if (playerinfo_enable_atmos_output(player, false) == 0) {
                 Trace("Disable Atmos output");
 
             } else {
@@ -326,7 +322,7 @@ int main(int argc, char* argv[])
         }
 
         case 'O': {
-            if (playerinfo_set_dolby_mode(player, PLAYERINFO_DOLBY_MODE_DIGITAL_PCM) == 1) {
+            if (playerinfo_set_dolby_mode(player, PLAYERINFO_DOLBY_MODE_DIGITAL_PCM) == 0) {
                 Trace("Setting succeded");
 
             } else {
@@ -337,7 +333,7 @@ int main(int argc, char* argv[])
 
         case 'P': {
             playerinfo_dolby_mode_t mode;
-            if (playerinfo_get_dolby_mode(player, &mode) == 1) {
+            if (playerinfo_get_dolby_mode(player, &mode) == 0) {
                 switch (mode) {
 
                 case PLAYERINFO_DOLBY_MODE_DIGITAL_PCM:
