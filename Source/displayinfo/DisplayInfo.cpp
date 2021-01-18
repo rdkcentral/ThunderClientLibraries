@@ -106,7 +106,7 @@ private:
             }
             ASSERT(std::list<DisplayInfo*>::size() == 0);
             if (_comChannel.IsValid() == true) {
-               _comChannel.Release();
+                _comChannel.Release();
             }
         }
 
@@ -172,7 +172,7 @@ private:
                 result = Core::ERROR_DESTRUCTION_SUCCEEDED;
 
                 if ((_comChannel.IsValid() == true) && (std::list<DisplayInfo*>::size() == 0)) {
-                   _comChannel.Release();
+                    _comChannel.Release();
                 }
             }
 

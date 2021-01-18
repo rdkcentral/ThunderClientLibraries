@@ -88,6 +88,9 @@ private:
             }
 
             ASSERT(std::list<PlayerInfo*>::size() == 0);
+            if (_comChannel.IsValid() == true) {
+                _comChannel.Release();
+            }
         }
 
         PlayerInfo* Instance(const string& name)
@@ -144,6 +147,10 @@ private:
                     std::list<PlayerInfo*>::erase(index);
                 }
                 delete const_cast<PlayerInfo*>(playerInfo);
+
+                if ((_comChannel.IsValid() == true) && (std::list<PlayerInfo*>::size() == 0)) {
+                    _comChannel.Release();
+                }
                 result = Core::ERROR_DESTRUCTION_SUCCEEDED;
             }
 
