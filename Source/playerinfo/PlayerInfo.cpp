@@ -527,7 +527,7 @@ int8_t playerinfo_video_codecs(struct playerinfo_type* instance, playerinfo_vide
     if (instance != NULL && array != NULL) {
         return reinterpret_cast<PlayerInfo*>(instance)->VideoCodecs(array, length);
     }
-    return Core::ERROR_UNAVAILABLE;
+    return 0;
 }
 
 int8_t playerinfo_audio_codecs(struct playerinfo_type* instance, playerinfo_audiocodec_t array[], const uint8_t length)
@@ -535,7 +535,7 @@ int8_t playerinfo_audio_codecs(struct playerinfo_type* instance, playerinfo_audi
     if (instance != NULL && array != NULL) {
         return reinterpret_cast<PlayerInfo*>(instance)->AudioCodecs(array, length);
     }
-    return Core::ERROR_UNAVAILABLE;
+    return 0;
 }
 
 bool playerinfo_is_dolby_atmos_supported(struct playerinfo_type* instance)
