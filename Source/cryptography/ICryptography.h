@@ -24,6 +24,7 @@
 #include <cstdint>
 
 #include <cryptography_vault_ids.h>
+/* @stubgen:include "implementation/cryptography_vault_ids.h" */
 
 
 namespace WPEFramework {
@@ -34,7 +35,8 @@ namespace Cryptography {
         ID_HASH = 0x00001100,
         ID_VAULT,
         ID_CIPHER,
-        ID_DIFFIE_HELLMAN
+        ID_DIFFIE_HELLMAN,
+        ID_CRYPTOGRAPHY
     };
 
     enum aesmode {
@@ -96,7 +98,7 @@ namespace Cryptography {
         virtual ~IDiffieHellman() { }
 
         /* Generate DH private/public keys */
-        virtual uint32_t Generate(const uint8_t generator, const uint16_t modulusSize, const uint8_t modulus[],
+        virtual uint32_t Generate(const uint8_t generator, const uint16_t modulusSize, const uint8_t modulus[]/* @length:modulusSize */ ,
                                   uint32_t& privKeyId /* @out */, uint32_t& pubKeyId /* @out */) = 0;
 
         /* Calculate a DH shared secret */
@@ -145,6 +147,7 @@ namespace Cryptography {
     };
 
     struct ICryptography : virtual public Core::IUnknown {
+        enum { ID = ID_CRYPTOGRAPHY };
 
         static ICryptography* Instance(const std::string& connectionPoint);
 

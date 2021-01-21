@@ -25,12 +25,22 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-as-needed")
 
 option(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY "Include explicitly a software based cryptography library" OFF)
 
+find_package(ProxyStubGenerator REQUIRED)
+
+ProxyStubGenerator(
+    NAMESPACE "WPEFramework::Cryptography" 
+    INPUT "${CMAKE_CURRENT_SOURCE_DIR}" 
+    OUTDIR "${CMAKE_CURRENT_BINARY_DIR}/generated/proxystubs"
+)
+
 add_subdirectory(implementation)
 
 add_library(${TARGET} SHARED
     Module.cpp
     Cryptography.cpp
     NetflixSecurity.cpp
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/proxystubs/ProxyStubs_Cryptography.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/proxystubs/ProxyStubs_NetflixSecurity.cpp"
 )
 
 target_link_libraries(${TARGET}
@@ -138,4 +148,4 @@ if(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY)
     InstallCMakeConfig(
         TARGETS ${TARGET}Software 
     )
-endif(INCLUDE_SOFTWARE_LIB)
+endif(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY)
