@@ -18,6 +18,7 @@
  */
 
 #include "Module.h"
+
 #include <ICryptography.h>
 
 #include "implementation/vault_implementation.h"
@@ -25,10 +26,141 @@
 #include "implementation/cipher_implementation.h"
 #include "implementation/diffiehellman_implementation.h"
 
-
 namespace WPEFramework {
 
 namespace Implementation {
+
+    template <typename INTERFACE>
+    class ConnectorType {
+    private:
+        class Channel : public RPC::CommunicatorClient {
+        public:
+            Channel() = delete;
+            Channel(const Channel&) = delete;
+            Channel& operator= (const Channel&) = delete;
+
+            Channel(const Core::NodeId& remoteNode, const Core::ProxyType<Core::IIPCServer>& handler) 
+                : RPC::CommunicatorClient(remoteNode, handler) {
+            }
+            ~Channel() override = default;
+
+        public:
+            uint32_t Initialize() {
+                return (RPC::CommunicatorClient::Open(Core::infinite));
+            }
+            void Deintialize() {
+                RPC::CommunicatorClient::Close(Core::infinite);
+            }
+        };
+    public:
+        ConnectorType(const ConnectorType<INTERFACE>&) = delete;
+        ConnectorType<INTERFACE>& operator= (const ConnectorType<INTERFACE>&) = delete;
+
+        ConnectorType() {
+        }
+        ~ConnectorType() = default;
+
+        INTERFACE* Instance(const Core::NodeId& nodeId, const string className, const uint32_t version = ~0) {
+            INTERFACE* result = nullptr;
+            if (_engine.IsValid() == false) {
+                _engine = Core::ProxyType<RPC::InvokeServerType<1, 0, 8>>::Create();
+                ASSERT(_engine != nullptr);
+            }
+
+            Core::ProxyType<Channel> channel = _comChannels.Instance(nodeId, Core::ProxyType<WPEFramework::Core::IIPCServer>(_engine));
+
+            if (channel.IsValid() == true) {
+                result = channel->Aquire<INTERFACE>(Core::infinite, className, version);
+            }
+
+            return (result);
+        }
+
+    private:
+        Core::ProxyType<RPC::InvokeServerType<1, 0, 8>> _engine;
+        Core::ProxyMapType<Core::NodeId, Channel> _comChannels;
+    };
+
+    class Administrator {
+    private:
+        class Wrapper : public Cryptography::ICryptography {
+        public:
+            Wrapper() = delete;
+            Wrapper(const Wrapper&) = delete;
+            Wrapper& operator= (const Wrapper&) = delete;
+
+            Wrapper(const string& remoteId)
+                : _nodeId(remoteId.c_str())
+                , _realImplementation(nullptr) {
+
+                ASSERT(_nodeId.IsValid() == true);
+            }
+            ~Wrapper() override {
+                if (_realImplementation != nullptr) {
+                    _realImplementation->Release();
+                }
+            }
+
+        public:
+            // Retrieve a hash calculator
+            Cryptography::IHash* Hash(const Cryptography::hashtype hashType) override {
+                return (_realImplementation->Hash(hashType));
+            }
+            // Retrieve a vault (TEE identified by ID)
+            Cryptography::IVault* Vault(const cryptographyvault id) override {
+                return (_realImplementation->Vault(id));
+            }
+            uint32_t Initialize() {
+
+                if (_nodeId.IsValid() == true) {
+                    _realImplementation = _comLink.Instance(_nodeId, _T("SvalbardsVault"));
+                }
+
+                return (_realImplementation != nullptr ? Core::ERROR_NONE : Core::ERROR_INVALID_DESIGNATOR);
+            }
+            bool IsInitialized() const {
+                return (_realImplementation != nullptr);
+            }
+
+            BEGIN_INTERFACE_MAP(Wrapper)
+                INTERFACE_ENTRY(Cryptography::ICryptography)
+            END_INTERFACE_MAP
+
+        private:
+            const Core::NodeId _nodeId;
+            Cryptography::ICryptography* _realImplementation;
+            static ConnectorType<Cryptography::ICryptography> _comLink;
+        };
+
+    public:
+        Administrator(const Administrator&) = delete;
+        Administrator& operator=(const Administrator&) = delete;
+
+        Administrator() = default;
+        ~Administrator() = default;
+
+        Cryptography::ICryptography* Instance(const string& name)
+        {
+            Cryptography::ICryptography* result = nullptr;
+            Core::ProxyType<Wrapper> entry = _instanceMap.Instance(name);
+
+            if (entry.IsValid()) {
+                result = &(*entry);
+
+                ASSERT(result != nullptr);
+
+                result->AddRef();
+            }
+
+            return (result);
+        }
+
+    private:
+        Core::ProxyMapType<string, Wrapper> _instanceMap;
+    };
+
+    /* static */ ConnectorType<Cryptography::ICryptography> Administrator::Wrapper::_comLink;
+    static Administrator _externalVaults;
 
     class HashImpl : virtual public WPEFramework::Cryptography::IHash {
     public:
@@ -337,6 +469,10 @@ namespace Implementation {
 
     if (connectionPoint.empty() == true) {
         result = Core::Service<Implementation::CryptographyImpl>::Create<Cryptography::ICryptography>();
+    }
+    else {
+        // Seems we received a connection point
+        result = Implementation::_externalVaults.Instance(connectionPoint);
     }
 
     return result;
