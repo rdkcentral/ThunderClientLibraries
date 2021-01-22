@@ -19,19 +19,17 @@
 
 #pragma once
 
-#include <core/core.h>
-#include <string>
-#include <cstdint>
+#include "Module.h"
 
-#include <cryptography_vault_ids.h>
-/* @stubgen:include "implementation/cryptography_vault_ids.h" */
+#include "cryptography_vault_ids.h"
 
+/* @stubgen:include "cryptography_vault_ids.h" */
 
 namespace WPEFramework {
 
 namespace Cryptography {
 
-    enum IDs {
+    enum IDs : uint32_t {
         ID_HASH = 0x00001100,
         ID_VAULT,
         ID_CIPHER,
@@ -39,7 +37,7 @@ namespace Cryptography {
         ID_CRYPTOGRAPHY
     };
 
-    enum aesmode {
+    enum aesmode : uint8_t {
         ECB,
         CBC,
         OFB,
@@ -49,7 +47,7 @@ namespace Cryptography {
         CTR
     };
 
-    enum hashtype {
+    enum hashtype : uint8_t {
         SHA1 = 20,
         SHA224 = 28,
         SHA256 = 32,
@@ -57,11 +55,11 @@ namespace Cryptography {
         SHA512 = 64
     };
 
-    struct IHash : virtual public Core::IUnknown {
+    struct EXTERNAL IHash : virtual public Core::IUnknown {
 
         enum { ID = ID_HASH };
 
-        virtual ~IHash() { }
+        ~IHash() override = default;
 
         /* Ingest data into the hash calculator (multiple calls possible) */
         virtual uint32_t Ingest(const uint32_t length, const uint8_t data[] /* @length:length */) = 0;
@@ -70,11 +68,11 @@ namespace Cryptography {
         virtual uint8_t Calculate(const uint8_t maxLength, uint8_t data[] /* @out @maxlength:maxLength */) = 0;
     };
 
-    struct ICipher : virtual public Core::IUnknown {
+    struct EXTERNAL ICipher : virtual public Core::IUnknown {
 
         enum { ID = ID_CIPHER };
 
-        virtual ~ICipher() { }
+        ~ICipher()  override = default;
 
         // Encryption and decryption, might require more bytes of data to complete succefully (like padding) to indicate the
         // the encryption or decryption failed due to a lack of storage space, a negative length is returned. The abs(length)
@@ -91,11 +89,11 @@ namespace Cryptography {
                                 const uint32_t maxOutputLength, uint8_t output[] /* @out @maxlength:maxOutputLength */) const = 0;
     };
 
-    struct IDiffieHellman : virtual public Core::IUnknown {
+    struct EXTERNAL IDiffieHellman : virtual public Core::IUnknown {
 
         enum { ID = ID_DIFFIE_HELLMAN };
 
-        virtual ~IDiffieHellman() { }
+        ~IDiffieHellman() override = default;
 
         /* Generate DH private/public keys */
         virtual uint32_t Generate(const uint8_t generator, const uint16_t modulusSize, const uint8_t modulus[]/* @length:modulusSize */ ,
@@ -105,9 +103,11 @@ namespace Cryptography {
         virtual uint32_t Derive(const uint32_t privateKey, const uint32_t peerPublicKeyId, uint32_t& secretId /* @out */) = 0;
     };
 
-    struct IVault : virtual public Core::IUnknown {
+    struct EXTERNAL IVault : virtual public Core::IUnknown {
 
         enum { ID = ID_VAULT };
+
+        ~IVault()  override = default;
 
         // Operations manipulating items in the vault
         // ---------------------------------------------------
@@ -146,8 +146,10 @@ namespace Cryptography {
         virtual IDiffieHellman* DiffieHellman() = 0;
     };
 
-    struct ICryptography : virtual public Core::IUnknown {
+    struct EXTERNAL ICryptography : virtual public Core::IUnknown {
         enum { ID = ID_CRYPTOGRAPHY };
+
+        ~ICryptography()  override = default;
 
         static ICryptography* Instance(const std::string& connectionPoint);
 
