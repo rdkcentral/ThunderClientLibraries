@@ -51,6 +51,10 @@ namespace Implementation {
             void Deintialize() {
                 RPC::CommunicatorClient::Close(Core::infinite);
             }
+            
+            INTERFACE* Aquire(const string className, const uint32_t version) {
+                return RPC::CommunicatorClient::Aquire<INTERFACE>(Core::infinite, className, version);
+            }
         };
     public:
         ConnectorType(const ConnectorType<INTERFACE>&) = delete;
@@ -70,7 +74,7 @@ namespace Implementation {
             Core::ProxyType<Channel> channel = _comChannels.Instance(nodeId, Core::ProxyType<WPEFramework::Core::IIPCServer>(_engine));
 
             if (channel.IsValid() == true) {
-                result = channel->Aquire<INTERFACE>(Core::infinite, className, version);
+                result = channel->Aquire(className, version);
             }
 
             return (result);
