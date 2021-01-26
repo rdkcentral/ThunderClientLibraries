@@ -373,21 +373,6 @@ private:
     PlayerInfo(const PlayerInfo&) = delete;
     PlayerInfo& operator=(const PlayerInfo&) = delete;
 
-    void Operational(const bool upAndRunning) override
-    {
-        printf("Operational state of PlayerInfo: %s\n", upAndRunning ? _T("true") : _T("false"));
-    }
-
-    static std::unique_ptr<PlayerInfo> _instance;
-    std::string _callsign;
-    Callbacks _callbacks;
-
-public:
-    //Object management
-    ~PlayerInfo()
-    {
-        BaseClass::Close(Core::infinite);
-    }
     static Core::NodeId Connector()
     {
         const TCHAR* comPath = ::getenv(_T("COMMUNICATOR_PATH"));
@@ -403,10 +388,26 @@ public:
         return Core::NodeId(comPath);
     }
 
+    void Operational(const bool upAndRunning) override
+    {
+        printf("Operational state of PlayerInfo: %s\n", upAndRunning ? _T("true") : _T("false"));
+    }
+
+    static std::unique_ptr<PlayerInfo> _instance;
+    std::string _callsign;
+    Callbacks _callbacks;
+
+public:
+    //Object management
+    ~PlayerInfo()
+    {
+        BaseClass::Close(Core::infinite);
+    }
+
     static PlayerInfo* Instance()
     {
         if (_instance == nullptr) {
-            _instance.reset(new PlayerInfo(1000, Connector(), "Dictionary")); //no make_unique in C++11 :/
+            _instance.reset(new PlayerInfo(Core::infinite, Connector(), "Dictionary")); //no make_unique in C++11 :/
             //TODO should I worry about this???
             //if (!_instance->IsProperlyConstructed()) {
             //    delete _instance;
@@ -625,13 +626,17 @@ public:
     {
         bool isSupported = false;
 
-        const Exchange::Dolby::IOutput* dolby = BaseClass::Interface()->QueryInterface<const Exchange::Dolby::IOutput>();
+        const Exchange::IPlayerProperties* impl = BaseClass::Interface();
+        if (impl != nullptr) {
+            const Exchange::Dolby::IOutput* dolby = impl->QueryInterface<const Exchange::Dolby::IOutput>();
 
-        if (dolby != nullptr) {
-            if (dolby->AtmosMetadata(isSupported) != Core::ERROR_NONE) {
-                isSupported = false;
+            if (dolby != nullptr) {
+                if (dolby->AtmosMetadata(isSupported) != Core::ERROR_NONE) {
+                    isSupported = false;
+                }
+                dolby->Release();
             }
-            dolby->Release();
+            impl->Release();
         }
         return isSupported;
     }
@@ -639,11 +644,16 @@ public:
     uint32_t DolbySoundMode(Exchange::Dolby::IOutput::SoundModes& mode) const
     {
         uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::Dolby::IOutput* dolby = BaseClass::Interface()->QueryInterface<const Exchange::Dolby::IOutput>();
+        const Exchange::IPlayerProperties* impl = BaseClass::Interface();
 
-        if (dolby != nullptr) {
-            errorCode = dolby->SoundMode(mode);
-            dolby->Release();
+        if (impl != nullptr) {
+            const Exchange::Dolby::IOutput* dolby = impl->QueryInterface<const Exchange::Dolby::IOutput>();
+
+            if (dolby != nullptr) {
+                errorCode = dolby->SoundMode(mode);
+                dolby->Release();
+            }
+            impl->Release();
         }
 
         return errorCode;
@@ -651,11 +661,16 @@ public:
     uint32_t EnableAtmosOutput(const bool enabled)
     {
         uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        Exchange::Dolby::IOutput* dolby = BaseClass::Interface()->QueryInterface<Exchange::Dolby::IOutput>();
+        Exchange::IPlayerProperties* impl = BaseClass::Interface();
 
-        if (dolby != nullptr) {
-            errorCode = dolby->EnableAtmosOutput(enabled);
-            dolby->Release();
+        if (impl != nullptr) {
+
+            Exchange::Dolby::IOutput* dolby = impl->QueryInterface<Exchange::Dolby::IOutput>();
+            if (dolby != nullptr) {
+                errorCode = dolby->EnableAtmosOutput(enabled);
+                dolby->Release();
+            }
+            impl->Release();
         }
 
         return errorCode;
@@ -663,11 +678,16 @@ public:
     uint32_t SetDolbyMode(const Exchange::Dolby::IOutput::Type& mode)
     {
         uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        Exchange::Dolby::IOutput* dolby = BaseClass::Interface()->QueryInterface<Exchange::Dolby::IOutput>();
+        Exchange::IPlayerProperties* impl = BaseClass::Interface();
 
-        if (dolby != nullptr) {
-            errorCode = dolby->Mode(mode);
-            dolby->Release();
+        if (impl != nullptr) {
+
+            Exchange::Dolby::IOutput* dolby = impl->QueryInterface<Exchange::Dolby::IOutput>();
+            if (dolby != nullptr) {
+                errorCode = dolby->Mode(mode);
+                dolby->Release();
+            }
+            impl->Release();
         }
 
         return errorCode;
@@ -675,11 +695,16 @@ public:
     uint32_t GetDolbyMode(Exchange::Dolby::IOutput::Type& outMode) const
     {
         uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::Dolby::IOutput* dolby = BaseClass::Interface()->QueryInterface<const Exchange::Dolby::IOutput>();
+        const Exchange::IPlayerProperties* impl = BaseClass::Interface();
 
-        if (dolby != nullptr) {
-            errorCode = dolby->Mode(outMode);
-            dolby->Release();
+        if (impl != nullptr) {
+            const Exchange::Dolby::IOutput* dolby = impl->QueryInterface<const Exchange::Dolby::IOutput>();
+
+            if (dolby != nullptr) {
+                errorCode = dolby->Mode(outMode);
+                dolby->Release();
+            }
+            impl->Release();
         }
         return errorCode;
     }
