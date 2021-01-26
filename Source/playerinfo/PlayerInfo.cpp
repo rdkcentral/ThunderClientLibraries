@@ -433,7 +433,7 @@ public:
         Callbacks::iterator index(_callbacks.begin());
 
         while (index != _callbacks.end()) {
-            index->first(reinterpret_cast<playerinfo_type*>(this), index->second);
+            index->first(index->second);
             index++;
         }
     }

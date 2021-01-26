@@ -81,10 +81,9 @@ typedef enum playerinfo_dolby_sound_mode_type {
 * @brief Will be called if there are changes regarding Dolby Audio Output, you need to query 
 *        yourself what exactly is changed
 *
-* @param session The session the notification applies to.
 * @param userData Pointer passed along when @ref playerinfo_register was issued.
 */
-typedef void (*playerinfo_dolby_audio_updated_cb)(struct playerinfo_type* session, void* userdata);
+typedef void (*playerinfo_dolby_audio_updated_cb)(void* userdata);
 
 /**
  * @brief Get a @ref playerinfo_type instance that matches the PlayerInfo implementation

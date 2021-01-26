@@ -37,7 +37,7 @@ void ResetBuffer(char buffer[])
     memset(buffer, 0, BUFFER_LENGTH);
 }
 
-void OnEvent(struct playerinfo_type* session, void* data)
+void OnEvent(void* data)
 {
     Trace("Event triggered");
 }
