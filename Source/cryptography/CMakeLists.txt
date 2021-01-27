@@ -60,6 +60,7 @@ target_include_directories(${TARGET}
 
 set(PUBLIC_HEADERS
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/ICryptography.h>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Module.h>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/INetflixSecurity.h>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/cryptography.h>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/cryptography_vault_ids.h>
