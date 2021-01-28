@@ -22,22 +22,12 @@ private:
     //CONSTRUCTORS
     PlayerInfo(const uint32_t waitTime, const Core::NodeId& node, const string& callsign)
         : BaseClass()
+        , _playerInterface(nullptr)
+        , _dolbyInterface(nullptr)
         , _callsign(callsign)
         , _dolbyNotification(this)
     {
         BaseClass::Open(waitTime, node, callsign);
-
-        Exchange::IPlayerProperties* impl = BaseClass::Interface();
-
-        if (impl != nullptr) {
-            Exchange::Dolby::IOutput* dolby = impl->QueryInterface<Exchange::Dolby::IOutput>();
-
-            if (dolby != nullptr) {
-                dolby->Register(&_dolbyNotification);
-                dolby->Release();
-            }
-            impl->Release();
-        }
     }
 
     PlayerInfo() = delete;
@@ -70,6 +60,36 @@ private:
 
     void Operational(const bool upAndRunning) override
     {
+        switch (upAndRunning) {
+        case true:
+
+            if (_playerInterface == nullptr) {
+                _playerInterface = BaseClass::Interface();
+
+                if (_playerInterface != nullptr && _dolbyInterface == nullptr) {
+                    _dolbyInterface = _playerInterface->QueryInterface<Exchange::Dolby::IOutput>();
+
+                    if (_dolbyInterface != nullptr) {
+                        _dolbyInterface->Register(&_dolbyNotification);
+                    }
+                }
+            }
+            break;
+
+        case false:
+        default:
+            if (_dolbyInterface != nullptr) {
+                _dolbyInterface->Unregister(&_dolbyNotification);
+                _dolbyInterface->Release();
+                _dolbyInterface = nullptr;
+            }
+            if (_playerInterface != nullptr) {
+                _playerInterface->Release();
+                _playerInterface = nullptr;
+            }
+            break;
+        }
+
         for (auto& index : _operationalStateCallbacks) {
             index.first(upAndRunning, index.second);
         }
@@ -102,7 +122,10 @@ private:
 private:
     //MEMBERS
     static std::unique_ptr<PlayerInfo> _instance; //in case client forgets to relase the instance
+    Exchange::IPlayerProperties* _playerInterface;
+    Exchange::Dolby::IOutput* _dolbyInterface;
     std::string _callsign;
+
     DolbyModeAudioUpdateCallbacks _dolbyCallbacks;
     OperationalStateChangeCallbacks _operationalStateCallbacks;
     Core::Sink<Notification> _dolbyNotification;
@@ -111,18 +134,6 @@ public:
     //OBJECT MANAGEMENT
     ~PlayerInfo()
     {
-        Exchange::IPlayerProperties* impl = BaseClass::Interface();
-
-        if (impl != nullptr) {
-            Exchange::Dolby::IOutput* dolby = impl->QueryInterface<Exchange::Dolby::IOutput>();
-
-            if (dolby != nullptr) {
-                dolby->Unregister(&_dolbyNotification);
-                dolby->Release();
-            }
-            impl->Release();
-        }
-
         BaseClass::Close(Core::infinite);
     }
 
@@ -135,7 +146,7 @@ public:
     }
     void DestroyInstance()
     {
-        _instance.reset();
+        _instance.reset(nullptr);
     }
 
 public:
@@ -186,11 +197,10 @@ public:
     uint32_t IsAudioEquivalenceEnabled(bool& outIsEnabled) const
     {
         uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IPlayerProperties* impl = BaseClass::Interface();
+        const Exchange::IPlayerProperties* constPlayerInterface = _playerInterface;
 
-        if (impl != nullptr) {
-            errorCode = impl->IsAudioEquivalenceEnabled(outIsEnabled);
-            impl->Release();
+        if (constPlayerInterface != nullptr) {
+            errorCode = _playerInterface->IsAudioEquivalenceEnabled(outIsEnabled);
         }
 
         return errorCode;
@@ -199,11 +209,10 @@ public:
     uint32_t PlaybackResolution(Exchange::IPlayerProperties::PlaybackResolution& outResolution) const
     {
         uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IPlayerProperties* impl = BaseClass::Interface();
+        const Exchange::IPlayerProperties* constPlayerInterface = _playerInterface;
 
-        if (impl != nullptr) {
-            errorCode = impl->Resolution(outResolution);
-            impl->Release();
+        if (constPlayerInterface != nullptr) {
+            errorCode = constPlayerInterface->Resolution(outResolution);
         }
 
         return errorCode;
@@ -211,12 +220,12 @@ public:
 
     int8_t VideoCodecs(playerinfo_videocodec_t array[], const uint8_t length) const
     {
-        const Exchange::IPlayerProperties* impl = BaseClass::Interface();
+        const Exchange::IPlayerProperties* constPlayerInterface = _playerInterface;
         Exchange::IPlayerProperties::IVideoCodecIterator* videoCodecs;
         int8_t value = 0;
 
-        if (impl != nullptr) {
-            if (impl->VideoCodecs(videoCodecs) == Core::ERROR_NONE && videoCodecs != nullptr) {
+        if (constPlayerInterface != nullptr) {
+            if (constPlayerInterface->VideoCodecs(videoCodecs) == Core::ERROR_NONE && videoCodecs != nullptr) {
 
                 Exchange::IPlayerProperties::VideoCodec codec;
 
@@ -268,20 +277,19 @@ public:
                     value = -numberOfCodecs;
                 }
             }
-            impl->Release();
         }
 
         return value;
     }
     int8_t AudioCodecs(playerinfo_audiocodec_t array[], const uint8_t length) const
     {
-        const Exchange::IPlayerProperties* impl = BaseClass::Interface();
+        const Exchange::IPlayerProperties* constPlayerInterface = _playerInterface;
         Exchange::IPlayerProperties::IAudioCodecIterator* audioCodecs;
         int8_t value = 0;
 
-        if (impl != nullptr) {
+        if (constPlayerInterface != nullptr) {
 
-            if (impl->AudioCodecs(audioCodecs) == Core::ERROR_NONE && audioCodecs != nullptr) {
+            if (constPlayerInterface->AudioCodecs(audioCodecs) == Core::ERROR_NONE && audioCodecs != nullptr) {
 
                 Exchange::IPlayerProperties::AudioCodec codec;
 
@@ -342,7 +350,6 @@ public:
                     value = -numberOfCodecs;
                 }
             }
-            impl->Release();
         }
         return value;
     }
@@ -351,16 +358,11 @@ public:
     {
         bool isSupported = false;
 
-        const Exchange::IPlayerProperties* impl = BaseClass::Interface();
-        if (impl != nullptr) {
-            const Exchange::Dolby::IOutput* dolby = impl->QueryInterface<const Exchange::Dolby::IOutput>();
-            if (dolby != nullptr) {
-                if (dolby->AtmosMetadata(isSupported) != Core::ERROR_NONE) {
-                    isSupported = false;
-                }
-                dolby->Release();
+        const Exchange::Dolby::IOutput* constDolby = _dolbyInterface;
+        if (constDolby != nullptr) {
+            if (constDolby->AtmosMetadata(isSupported) != Core::ERROR_NONE) {
+                isSupported = false;
             }
-            impl->Release();
         }
 
         return isSupported;
@@ -369,16 +371,11 @@ public:
     uint32_t DolbySoundMode(Exchange::Dolby::IOutput::SoundModes& mode) const
     {
         uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IPlayerProperties* impl = BaseClass::Interface();
 
-        if (impl != nullptr) {
-            const Exchange::Dolby::IOutput* dolby = impl->QueryInterface<const Exchange::Dolby::IOutput>();
+        const Exchange::Dolby::IOutput* constDolby = _dolbyInterface;
 
-            if (dolby != nullptr) {
-                errorCode = dolby->SoundMode(mode);
-                dolby->Release();
-            }
-            impl->Release();
+        if (constDolby != nullptr) {
+            errorCode = constDolby->SoundMode(mode);
         }
 
         return errorCode;
@@ -386,16 +383,9 @@ public:
     uint32_t EnableAtmosOutput(const bool enabled)
     {
         uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        Exchange::IPlayerProperties* impl = BaseClass::Interface();
 
-        if (impl != nullptr) {
-
-            Exchange::Dolby::IOutput* dolby = impl->QueryInterface<Exchange::Dolby::IOutput>();
-            if (dolby != nullptr) {
-                errorCode = dolby->EnableAtmosOutput(enabled);
-                dolby->Release();
-            }
-            impl->Release();
+        if (_dolbyInterface != nullptr) {
+            errorCode = _dolbyInterface->EnableAtmosOutput(enabled);
         }
 
         return errorCode;
@@ -403,16 +393,9 @@ public:
     uint32_t SetDolbyMode(const Exchange::Dolby::IOutput::Type& mode)
     {
         uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        Exchange::IPlayerProperties* impl = BaseClass::Interface();
 
-        if (impl != nullptr) {
-
-            Exchange::Dolby::IOutput* dolby = impl->QueryInterface<Exchange::Dolby::IOutput>();
-            if (dolby != nullptr) {
-                errorCode = dolby->Mode(mode);
-                dolby->Release();
-            }
-            impl->Release();
+        if (_dolbyInterface != nullptr) {
+            errorCode = _dolbyInterface->Mode(mode);
         }
 
         return errorCode;
@@ -420,17 +403,12 @@ public:
     uint32_t GetDolbyMode(Exchange::Dolby::IOutput::Type& outMode) const
     {
         uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IPlayerProperties* impl = BaseClass::Interface();
+        const Exchange::Dolby::IOutput* constDolby = _dolbyInterface;
 
-        if (impl != nullptr) {
-            const Exchange::Dolby::IOutput* dolby = impl->QueryInterface<const Exchange::Dolby::IOutput>();
-
-            if (dolby != nullptr) {
-                errorCode = dolby->Mode(outMode);
-                dolby->Release();
-            }
-            impl->Release();
+        if (constDolby != nullptr) {
+            errorCode = constDolby->Mode(outMode);
         }
+
         return errorCode;
     }
 };
