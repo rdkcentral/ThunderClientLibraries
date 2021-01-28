@@ -1,5 +1,7 @@
 #include <com/com.h>
 #include <core/core.h>
+#include <plugins/Types.h>
+
 #include <stdlib.h>
 #include <tracing/tracing.h>
 
@@ -10,366 +12,34 @@
 #include <interfaces/IDictionary.h>
 
 namespace WPEFramework {
-namespace RPC {
-    template <typename INTERFACE>
-    class InterfaceType {
-    private:
-        using Engine = InvokeServerType<2, 0, 8>;
-
-        class Channel : public CommunicatorClient {
-        public:
-            Channel() = delete;
-            Channel(const Channel&) = delete;
-            Channel& operator=(const Channel&) = delete;
-
-            Channel(const Core::NodeId& remoteNode, const Core::ProxyType<Engine>& handler)
-                : CommunicatorClient(remoteNode, Core::ProxyType<Core::IIPCServer>(handler))
-            {
-                handler->Announcements(CommunicatorClient::Announcement());
-            }
-            ~Channel() override = default;
-
-        public:
-            uint32_t Initialize()
-            {
-                return (CommunicatorClient::Open(Core::infinite));
-            }
-            void Deintialize()
-            {
-                CommunicatorClient::Close(Core::infinite);
-            }
-            INTERFACE* Aquire(const string className, const uint32_t version)
-            {
-                return RPC::CommunicatorClient::Aquire<INTERFACE>(Core::infinite, className, version);
-            }
-        };
-
-        friend class Core::SingletonType<InterfaceType<INTERFACE>>;
-        InterfaceType()
-            : _engine(Core::ProxyType<Engine>::Create())
-        {
-        }
-
-    public:
-        InterfaceType(const InterfaceType<INTERFACE>&) = delete;
-        InterfaceType<INTERFACE>& operator=(const InterfaceType<INTERFACE>&) = delete;
-
-        static InterfaceType<INTERFACE>& Instance()
-        {
-            static InterfaceType<INTERFACE>& singleton(Core::SingletonType<InterfaceType<INTERFACE>>::Instance());
-            return (singleton);
-        }
-        ~InterfaceType() = default;
-
-    public:
-        INTERFACE* Aquire(const uint32_t waitTime, const Core::NodeId& nodeId, const string className, const uint32_t version = ~0)
-        {
-            INTERFACE* result = nullptr;
-
-            ASSERT(_engine.IsValid() == true);
-
-            Core::ProxyType<Channel> channel = _comChannels.Instance(nodeId, _engine);
-
-            if (channel.IsValid() == true) {
-                result = channel->Aquire(className, version);
-            }
-
-            return (result);
-        }
-        inline void Submit(const Core::ProxyType<Core::IDispatch>& job)
-        {
-            // The engine has to be running :-)
-            ASSERT(_engine.IsValid() == true);
-
-            _engine->Submit(job, Core::infinite);
-        }
-
-    private:
-        Core::ProxyType<Engine> _engine;
-        Core::ProxyMapType<Core::NodeId, Channel> _comChannels;
-    };
-
-    template <typename HANDLER>
-    class PluginMonitorType {
-    private:
-        class Sink : public PluginHost::IPlugin::INotification {
-        public:
-            Sink() = delete;
-            Sink(const Sink&) = delete;
-            Sink& operator=(const Sink&) = delete;
-
-            Sink(PluginMonitorType<HANDLER>& parent)
-                : _parent(parent)
-            {
-            }
-            ~Sink() override = default;
-
-        public:
-            void StateChange(PluginHost::IShell* plugin, const string& name) override
-            {
-                _parent.StateChange(plugin, name);
-            }
-            void Dispatch()
-            {
-                _parent.Dispatch();
-            }
-
-            BEGIN_INTERFACE_MAP(Sink)
-            INTERFACE_ENTRY(PluginHost::IPlugin::INotification)
-            END_INTERFACE_MAP
-
-        private:
-            PluginMonitorType<HANDLER>& _parent;
-        };
-        class Job {
-        public:
-            Job() = delete;
-            Job(const Job&) = delete;
-            Job& operator=(const Job&) = delete;
-
-            Job(PluginMonitorType<HANDLER>& parent)
-                : _parent(parent)
-            {
-            }
-            ~Job() = default;
-
-        public:
-            void Dispatch()
-            {
-                _parent.Dispatch();
-            }
-
-        private:
-            PluginMonitorType<HANDLER>& _parent;
-        };
-
-    public:
-        PluginMonitorType() = delete;
-        PluginMonitorType(const PluginMonitorType<HANDLER>&) = delete;
-        PluginMonitorType<HANDLER>& operator=(const PluginMonitorType<HANDLER>&) = delete;
-
-        template <typename... Args>
-        PluginMonitorType(Args&&... args)
-            : _adminLock()
-            , _reporter(std::forward<Args>(args)...)
-            , _callsign()
-            , _node()
-            , _sink(*this)
-            , _job(*this)
-            , _controller(nullptr)
-            , _reportedActive(false)
-            , _administrator(InterfaceType<PluginHost::IShell>::Instance())
-        {
-        }
-        ~PluginMonitorType() = default;
-
-    public:
-        uint32_t Open(const uint32_t waitTime, const Core::NodeId& node, const string& callsign)
-        {
-
-            _adminLock.Lock();
-
-            ASSERT(_controller == nullptr);
-
-            if (_controller != nullptr) {
-                _adminLock.Unlock();
-            } else {
-                _controller = _administrator.Aquire(waitTime, node, _T(""), ~0);
-
-                if (_controller == nullptr) {
-                    _adminLock.Unlock();
-                } else {
-                    _node = node;
-                    _callsign = callsign;
-
-                    _adminLock.Unlock();
-
-                    _controller->Register(&_sink);
-                }
-            }
-
-            return (_controller != nullptr ? Core::ERROR_NONE : Core::ERROR_UNAVAILABLE);
-        }
-        uint32_t Close(const uint32_t waitTime)
-        {
-            _adminLock.Lock();
-            if (_controller != nullptr) {
-                _controller->Unregister(&_sink);
-                _controller->Release();
-                _controller = nullptr;
-            }
-            _adminLock.Unlock();
-            return (Core::ERROR_NONE);
-        }
-
-    private:
-        void Dispatch()
-        {
-
-            _adminLock.Lock();
-            PluginHost::IShell* evaluate = _designated;
-            _designated = nullptr;
-            _adminLock.Unlock();
-
-            if (evaluate != nullptr) {
-
-                PluginHost::IShell::state current = evaluate->State();
-
-                if (current == PluginHost::IShell::ACTIVATED) {
-                    _reporter.Activated(evaluate);
-                    _reportedActive = true;
-                } else if (current == PluginHost::IShell::DEACTIVATION) {
-                    if (_reportedActive == true) {
-                        _reporter.Deactivated(evaluate);
-                    }
-                }
-                evaluate->Release();
-            }
-        }
-        void StateChange(PluginHost::IShell* plugin, const string& callsign)
-        {
-            if (callsign == _callsign) {
-                _adminLock.Lock();
-
-                if (_designated == nullptr) {
-                    _designated = plugin;
-                    _designated->AddRef();
-                    Core::ProxyType<Core::IDispatch> job(_job.Aquire());
-                    if (job.IsValid() == true) {
-                        _administrator.Submit(job);
-                    }
-                }
-
-                _adminLock.Unlock();
-            }
-        }
-
-    private:
-        Core::CriticalSection _adminLock;
-        HANDLER _reporter;
-        string _callsign;
-        Core::NodeId _node;
-        Core::Sink<Sink> _sink;
-        Core::ThreadPool::JobType<Job> _job;
-        PluginHost::IShell* _designated;
-        PluginHost::IShell* _controller;
-        bool _reportedActive;
-        InterfaceType<PluginHost::IShell>& _administrator;
-    };
-
-    template <typename INTERFACE>
-    class SmartInterfaceType {
-    public:
-#ifdef __WINDOWS__
-#pragma warning(disable : 4355)
-#endif
-        SmartInterfaceType()
-            : _adminLock()
-            , _monitor(*this)
-            , _smartType(nullptr)
-        {
-        }
-#ifdef __WINDOWS__
-#pragma warning(default : 4355)
-#endif
-
-        virtual ~SmartInterfaceType()
-        {
-            Close(Core::infinite);
-        }
-
-    public:
-        inline bool IsOperational() const
-        {
-            return (_smartType != nullptr);
-        }
-        uint32_t Open(const uint32_t waitTime, const Core::NodeId& node, const string& callsign)
-        {
-            return (_monitor.Open(waitTime, node, callsign));
-        }
-        uint32_t Close(const uint32_t waitTime)
-        {
-            Deactivated(nullptr);
-            return (_monitor.Close(waitTime));
-        }
-
-        // IMPORTANT NOTE:
-        // If you aquire the interface here, take action on the interface and release it. Do not maintain/stash it
-        // since the interface might require to be dropped in the mean time.
-        // So usage on the interface should be deterministic and short !!!
-        INTERFACE* Interface()
-        {
-            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
-            INTERFACE* result = _smartType;
-
-            if (result != nullptr) {
-                result->AddRef();
-            }
-
-            return (result);
-        }
-        const INTERFACE* Interface() const
-        {
-            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
-            const INTERFACE* result = _smartType;
-
-            if (result != nullptr) {
-                result->AddRef();
-            }
-
-            return (result);
-        }
-
-        // Allow a derived class to take action on a new interface, or almost dissapeared interface..
-        virtual void Operational(const bool upAndRunning)
-        {
-        }
-
-    private:
-        friend class PluginMonitorType<SmartInterfaceType<INTERFACE>&>;
-        void Activated(PluginHost::IShell* plugin)
-        {
-            ASSERT(plugin != nullptr);
-            _adminLock.Lock();
-            DropInterface();
-            _smartType = plugin->QueryInterface<INTERFACE>();
-            _adminLock.Unlock();
-            Operational(true);
-        }
-        void Deactivated(PluginHost::IShell* /* plugin */)
-
-        {
-            Operational(false);
-            _adminLock.Lock();
-            DropInterface();
-            _adminLock.Unlock();
-        }
-        void DropInterface()
-        {
-            if (_smartType != nullptr) {
-                _smartType->Release();
-                _smartType = nullptr;
-            }
-        }
-
-    private:
-        mutable Core::CriticalSection _adminLock;
-        PluginMonitorType<SmartInterfaceType<INTERFACE>&> _monitor;
-        INTERFACE* _smartType;
-    };
-}
 
 class PlayerInfo : protected RPC::SmartInterfaceType<Exchange::IPlayerProperties> {
 private:
     using BaseClass = RPC::SmartInterfaceType<Exchange::IPlayerProperties>;
-    using Callbacks = std::map<playerinfo_dolby_audio_updated_cb, void*>;
+    using DolbyModeAudioUpdateCallbacks = std::map<playerinfo_dolby_audio_updated_cb, void*>;
 
+    //CONSTRUCTORS
     PlayerInfo(const uint32_t waitTime, const Core::NodeId& node, const string& callsign)
         : BaseClass()
         , _callsign(callsign)
+        , _dolbyNotification(this)
     {
         BaseClass::Open(waitTime, node, callsign);
+
+        Exchange::IPlayerProperties* impl = BaseClass::Interface();
+
+        if (impl != nullptr) {
+            Exchange::Dolby::IOutput* dolby = impl->QueryInterface<Exchange::Dolby::IOutput>();
+
+            if (dolby != nullptr) {
+                dolby->Register(&_dolbyNotification);
+                dolby->Release();
+            }
+            impl->Release();
+        }
     }
+
+    PlayerInfo() = delete;
     PlayerInfo(const PlayerInfo&) = delete;
     PlayerInfo& operator=(const PlayerInfo&) = delete;
 
@@ -388,31 +58,78 @@ private:
         return Core::NodeId(comPath);
     }
 
+private:
+    //NOTIFICATIONS
+    void DolbySoundModeUpdated(const Exchange::Dolby::IOutput::SoundModes mode, const bool enabled)
+    {
+        DolbyModeAudioUpdateCallbacks::iterator index(_callbacks.begin());
+
+        while (index != _callbacks.end()) {
+            index->first(index->second);
+            index++;
+        }
+    }
+
     void Operational(const bool upAndRunning) override
     {
+        //todo callbacks to client
         printf("Operational state of PlayerInfo: %s\n", upAndRunning ? _T("true") : _T("false"));
     }
 
-    static std::unique_ptr<PlayerInfo> _instance;
+    class Notification : public Exchange::Dolby::IOutput::INotification {
+    public:
+        Notification() = delete;
+        Notification(const Notification&) = delete;
+        Notification& operator=(const Notification&) = delete;
+
+        explicit Notification(PlayerInfo* parent)
+            : _parent(*parent)
+        {
+        }
+
+        void AudioModeChanged(const Exchange::Dolby::IOutput::SoundModes mode, const bool enabled) override
+        {
+            _parent.DolbySoundModeUpdated(mode, enabled);
+        }
+
+        BEGIN_INTERFACE_MAP(Notification)
+        INTERFACE_ENTRY(Exchange::Dolby::IOutput::INotification)
+        END_INTERFACE_MAP
+
+    private:
+        PlayerInfo& _parent;
+    };
+
+private:
+    //MEMBERS
+    static std::unique_ptr<PlayerInfo> _instance; //in case client forgets to relase the instance
     std::string _callsign;
-    Callbacks _callbacks;
+    DolbyModeAudioUpdateCallbacks _callbacks;
+    Core::Sink<Notification> _dolbyNotification;
 
 public:
-    //Object management
+    //OBJECT MANAGEMENT
     ~PlayerInfo()
     {
+        Exchange::IPlayerProperties* impl = BaseClass::Interface();
+
+        if (impl != nullptr) {
+            Exchange::Dolby::IOutput* dolby = impl->QueryInterface<Exchange::Dolby::IOutput>();
+
+            if (dolby != nullptr) {
+                dolby->Unregister(&_dolbyNotification);
+                dolby->Release();
+            }
+            impl->Release();
+        }
+
         BaseClass::Close(Core::infinite);
     }
 
     static PlayerInfo* Instance()
     {
         if (_instance == nullptr) {
-            _instance.reset(new PlayerInfo(Core::infinite, Connector(), "Dictionary")); //no make_unique in C++11 :/
-            //TODO should I worry about this???
-            //if (!_instance->IsProperlyConstructed()) {
-            //    delete _instance;
-            //    _instance = nullptr;
-            // }
+            _instance.reset(new PlayerInfo(3000, Connector(), "PlayerInfo")); //no make_unique in C++11 :/
         }
         return _instance.get();
     }
@@ -422,25 +139,15 @@ public:
     }
 
 public:
-    //Methods goes here
+    //METHODS FROM INTERFACE
     const string& Name() const
     {
         return _callsign;
     }
 
-    void Updated(const Exchange::Dolby::IOutput::SoundModes mode, const bool enabled)
+    void RegisterDolbyAudioModeChangedCallback(playerinfo_dolby_audio_updated_cb callback, void* userdata)
     {
-        Callbacks::iterator index(_callbacks.begin());
-
-        while (index != _callbacks.end()) {
-            index->first(index->second);
-            index++;
-        }
-    }
-
-    void Register(playerinfo_dolby_audio_updated_cb callback, void* userdata)
-    {
-        Callbacks::iterator index(_callbacks.find(callback));
+        DolbyModeAudioUpdateCallbacks::iterator index(_callbacks.find(callback));
 
         if (index == _callbacks.end()) {
             _callbacks.emplace(std::piecewise_construct,
@@ -449,9 +156,9 @@ public:
         }
     }
 
-    void Unregister(playerinfo_dolby_audio_updated_cb callback)
+    void UnregisterDolbyAudioModeChangedCallback(playerinfo_dolby_audio_updated_cb callback)
     {
-        Callbacks::iterator index(_callbacks.find(callback));
+        DolbyModeAudioUpdateCallbacks::iterator index(_callbacks.find(callback));
 
         if (index != _callbacks.end()) {
             _callbacks.erase(index);
@@ -629,7 +336,6 @@ public:
         const Exchange::IPlayerProperties* impl = BaseClass::Interface();
         if (impl != nullptr) {
             const Exchange::Dolby::IOutput* dolby = impl->QueryInterface<const Exchange::Dolby::IOutput>();
-
             if (dolby != nullptr) {
                 if (dolby->AtmosMetadata(isSupported) != Core::ERROR_NONE) {
                     isSupported = false;
@@ -638,6 +344,7 @@ public:
             }
             impl->Release();
         }
+
         return isSupported;
     }
 
@@ -732,17 +439,17 @@ void playerinfo_release(struct playerinfo_type* instance)
     }
 }
 
-void playerinfo_register(struct playerinfo_type* instance, playerinfo_dolby_audio_updated_cb callback, void* userdata)
+void playerinfo_register_dolby_sound_mode_updated_callback(struct playerinfo_type* instance, playerinfo_dolby_audio_updated_cb callback, void* userdata)
 {
     if (instance != NULL) {
-        reinterpret_cast<PlayerInfo*>(instance)->Register(callback, userdata);
+        reinterpret_cast<PlayerInfo*>(instance)->RegisterDolbyAudioModeChangedCallback(callback, userdata);
     }
 }
 
-void playerinfo_unregister(struct playerinfo_type* instance, playerinfo_dolby_audio_updated_cb callback)
+void playerinfo_unregister_dolby_sound_mode_updated_callback(struct playerinfo_type* instance, playerinfo_dolby_audio_updated_cb callback)
 {
     if (instance != NULL) {
-        reinterpret_cast<PlayerInfo*>(instance)->Unregister(callback);
+        reinterpret_cast<PlayerInfo*>(instance)->UnregisterDolbyAudioModeChangedCallback(callback);
     }
 }
 

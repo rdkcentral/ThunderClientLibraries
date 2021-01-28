@@ -100,7 +100,7 @@ EXTERNAL struct playerinfo_type* playerinfo_instance(const char name[]);
  * @param callback Function to be called on update
  * @param userdata Data passed to callback funcion
  */
-EXTERNAL void playerinfo_register(struct playerinfo_type* instance, playerinfo_dolby_audio_updated_cb callback, void* userdata);
+EXTERNAL void playerinfo_register_dolby_sound_mode_updated_callback(struct playerinfo_type* instance, playerinfo_dolby_audio_updated_cb callback, void* userdata);
 
 /**
  * @brief Unregister from the updates of the Dolby Audio Mode changes
@@ -109,7 +109,7 @@ EXTERNAL void playerinfo_register(struct playerinfo_type* instance, playerinfo_d
  * @param callback Callback function unregister
  * @return EXTERNAL 
  */
-EXTERNAL void playerinfo_unregister(struct playerinfo_type* instance, playerinfo_dolby_audio_updated_cb callback);
+EXTERNAL void playerinfo_unregister_dolby_sound_mode_updated_callback(struct playerinfo_type* instance, playerinfo_dolby_audio_updated_cb callback);
 
 /**
  * @brief Release the @ref instance
