@@ -78,6 +78,18 @@ typedef enum playerinfo_dolby_sound_mode_type {
 } playerinfo_dolby_sound_mode_t;
 
 /**
+* @brief Will be called if there are changes regarding operational state of the
+*        instance - if it is not operational that means any function calls using it 
+*        will not succeed (will return Core::ERROR_UNAVAILABLE). Not operational state 
+*        can occur if the plugin inside WPEFramework has been deactivated.
+*
+*
+* @param userData Pointer passed along when @ref playerinfo_register was issued.
+* @param is_operational If instance is operational or not
+*/
+typedef void (*playerinfo_operational_state_change_cb)(bool is_operational, void* userdata);
+
+/**
 * @brief Will be called if there are changes regarding Dolby Audio Output, you need to query 
 *        yourself what exactly is changed
 *
@@ -93,6 +105,31 @@ typedef void (*playerinfo_dolby_audio_updated_cb)(void* userdata);
  */
 EXTERNAL struct playerinfo_type* playerinfo_instance(const char name[]);
 
+/**
+ * @brief Release the @ref instance
+ * 
+ * @param instance  Instance of @ref playerinfo_type
+ */
+EXTERNAL void playerinfo_release(struct playerinfo_type* instance);
+
+/**
+ * @brief Register for the operational state change notification of the instance
+ * 
+ * @param instance Instance of playerinfo_type
+ * @param callback Function to be called on update
+ * @param userdata Data passed to callback function
+ */
+EXTERNAL void playerinfo_register_operational_state_change_callback(struct playerinfo_type* instance,
+                                                                    playerinfo_operational_state_change_cb callback,
+                                                                    void* userdata);
+/**
+ * @brief Unregister from the operational state change notification of the instance
+ * 
+ * @param instance Instance of playerinfo_type
+ * @param callback Function to be unregistered from callbacks
+ */
+EXTERNAL void playerinfo_unregister_operational_state_change_callback(struct playerinfo_type* instance,
+                                                                      playerinfo_operational_state_change_cb callback);
 /**
  * @brief Register for the updates of the Dolby Audio Mode changes
  * 
@@ -110,13 +147,6 @@ EXTERNAL void playerinfo_register_dolby_sound_mode_updated_callback(struct playe
  * @return EXTERNAL 
  */
 EXTERNAL void playerinfo_unregister_dolby_sound_mode_updated_callback(struct playerinfo_type* instance, playerinfo_dolby_audio_updated_cb callback);
-
-/**
- * @brief Release the @ref instance
- * 
- * @param instance  Instance of @ref playerinfo_type
- */
-EXTERNAL void playerinfo_release(struct playerinfo_type* instance);
 
 /**
  * @brief Get current video playback resolution
