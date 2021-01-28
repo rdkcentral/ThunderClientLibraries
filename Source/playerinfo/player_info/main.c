@@ -12,7 +12,7 @@
 
 #define BUFFER_LENGTH 15
 
-void ShowMenu()
+void show_menu()
 {
     printf("Enter\n"
            "\tI : Get instance.\n"
@@ -32,14 +32,14 @@ void ShowMenu()
            "\tQ : Quit\n");
 }
 
-void ResetBuffer(char buffer[])
+void on_dolby_event(void* data)
 {
-    memset(buffer, 0, BUFFER_LENGTH);
+    Trace("Dolby event triggered");
 }
 
-void OnEvent(void* data)
+void on_operational_state_change(bool is_operational, void* data)
 {
-    Trace("Event triggered");
+    Trace("Operational state of the instance %s operational", is_operational ? "is" : "not");
 }
 
 int main(int argc, char* argv[])
@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
     playerinfo_videocodec_t videoCodecs[BUFFER_LENGTH];
     playerinfo_audiocodec_t audioCodecs[BUFFER_LENGTH];
 
-    ShowMenu();
+    show_menu();
 
     int character;
     do {
@@ -63,18 +63,20 @@ int main(int argc, char* argv[])
                 character = 'Q';
             } else {
                 Trace("Created instance");
+                playerinfo_register_operational_state_change_callback(player, on_operational_state_change, NULL);
+                Trace("Registered for operational state changes.");
             }
 
             break;
         }
         case 'S': {
-            playerinfo_register_dolby_sound_mode_updated_callback(player, OnEvent, NULL);
+            playerinfo_register_dolby_sound_mode_updated_callback(player, on_dolby_event, NULL);
             Trace("Registered for an dolby sound mode update.");
             break;
         }
 
         case 'U': {
-            playerinfo_unregister_dolby_sound_mode_updated_callback(player, OnEvent);
+            playerinfo_unregister_dolby_sound_mode_updated_callback(player, on_dolby_event);
             Trace("Registered for an dolby sound mode update.");
             break;
         }
@@ -345,7 +347,7 @@ int main(int argc, char* argv[])
         }
 
         case '?': {
-            ShowMenu();
+            show_menu();
             break;
         }
 
@@ -354,9 +356,11 @@ int main(int argc, char* argv[])
         }
     } while (character != 'Q');
 
+    playerinfo_unregister_operational_state_change_callback(player, on_operational_state_change);
+    Trace("Unregistered operational state changed callback.");
     playerinfo_release(player);
 
-    Trace("Done");
+    Trace("Released instance.");
 
     return 0;
 }
