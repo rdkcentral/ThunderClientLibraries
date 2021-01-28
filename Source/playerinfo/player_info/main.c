@@ -68,14 +68,14 @@ int main(int argc, char* argv[])
             break;
         }
         case 'S': {
-            playerinfo_register(player, OnEvent, NULL);
-            Trace("Registered for an event");
+            playerinfo_register_dolby_sound_mode_updated_callback(player, OnEvent, NULL);
+            Trace("Registered for an dolby sound mode update.");
             break;
         }
 
         case 'U': {
-            playerinfo_unregister(player, OnEvent);
-            Trace("Unregistered from an event");
+            playerinfo_unregister_dolby_sound_mode_updated_callback(player, OnEvent);
+            Trace("Registered for an dolby sound mode update.");
             break;
         }
 
