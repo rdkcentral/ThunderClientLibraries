@@ -17,6 +17,7 @@ class PlayerInfo : protected RPC::SmartInterfaceType<Exchange::IPlayerProperties
 private:
     using BaseClass = RPC::SmartInterfaceType<Exchange::IPlayerProperties>;
     using DolbyModeAudioUpdateCallbacks = std::map<playerinfo_dolby_audio_updated_cb, void*>;
+    using OperationalStateChangeCallbacks = std::map<playerinfo_operational_state_change_cb, void*>;
 
     //CONSTRUCTORS
     PlayerInfo(const uint32_t waitTime, const Core::NodeId& node, const string& callsign)
@@ -62,18 +63,16 @@ private:
     //NOTIFICATIONS
     void DolbySoundModeUpdated(const Exchange::Dolby::IOutput::SoundModes mode, const bool enabled)
     {
-        DolbyModeAudioUpdateCallbacks::iterator index(_callbacks.begin());
-
-        while (index != _callbacks.end()) {
-            index->first(index->second);
-            index++;
+        for (auto& index : _dolbyCallbacks) {
+            index.first(index.second);
         }
     }
 
     void Operational(const bool upAndRunning) override
     {
-        //todo callbacks to client
-        printf("Operational state of PlayerInfo: %s\n", upAndRunning ? _T("true") : _T("false"));
+        for (auto& index : _operationalStateCallbacks) {
+            index.first(upAndRunning, index.second);
+        }
     }
 
     class Notification : public Exchange::Dolby::IOutput::INotification {
@@ -104,7 +103,8 @@ private:
     //MEMBERS
     static std::unique_ptr<PlayerInfo> _instance; //in case client forgets to relase the instance
     std::string _callsign;
-    DolbyModeAudioUpdateCallbacks _callbacks;
+    DolbyModeAudioUpdateCallbacks _dolbyCallbacks;
+    OperationalStateChangeCallbacks _operationalStateCallbacks;
     Core::Sink<Notification> _dolbyNotification;
 
 public:
@@ -144,13 +144,31 @@ public:
     {
         return _callsign;
     }
+    void RegisterOperationalStateChangedCallback(playerinfo_operational_state_change_cb callback, void* userdata)
+    {
+        OperationalStateChangeCallbacks::iterator index(_operationalStateCallbacks.find(callback));
+
+        if (index == _operationalStateCallbacks.end()) {
+            _operationalStateCallbacks.emplace(std::piecewise_construct,
+                std::forward_as_tuple(callback),
+                std::forward_as_tuple(userdata));
+        }
+    }
+    void UnregisterOperationalStateChangedCallback(playerinfo_operational_state_change_cb callback)
+    {
+        OperationalStateChangeCallbacks::iterator index(_operationalStateCallbacks.find(callback));
+
+        if (index != _operationalStateCallbacks.end()) {
+            _operationalStateCallbacks.erase(index);
+        }
+    }
 
     void RegisterDolbyAudioModeChangedCallback(playerinfo_dolby_audio_updated_cb callback, void* userdata)
     {
-        DolbyModeAudioUpdateCallbacks::iterator index(_callbacks.find(callback));
+        DolbyModeAudioUpdateCallbacks::iterator index(_dolbyCallbacks.find(callback));
 
-        if (index == _callbacks.end()) {
-            _callbacks.emplace(std::piecewise_construct,
+        if (index == _dolbyCallbacks.end()) {
+            _dolbyCallbacks.emplace(std::piecewise_construct,
                 std::forward_as_tuple(callback),
                 std::forward_as_tuple(userdata));
         }
@@ -158,10 +176,10 @@ public:
 
     void UnregisterDolbyAudioModeChangedCallback(playerinfo_dolby_audio_updated_cb callback)
     {
-        DolbyModeAudioUpdateCallbacks::iterator index(_callbacks.find(callback));
+        DolbyModeAudioUpdateCallbacks::iterator index(_dolbyCallbacks.find(callback));
 
-        if (index != _callbacks.end()) {
-            _callbacks.erase(index);
+        if (index != _dolbyCallbacks.end()) {
+            _dolbyCallbacks.erase(index);
         }
     }
 
@@ -436,6 +454,23 @@ void playerinfo_release(struct playerinfo_type* instance)
 {
     if (instance != NULL) {
         reinterpret_cast<PlayerInfo*>(instance)->DestroyInstance();
+    }
+}
+
+void playerinfo_register_operational_state_change_callback(struct playerinfo_type* instance,
+    playerinfo_operational_state_change_cb callback,
+    void* userdata)
+{
+    if (instance != NULL) {
+        reinterpret_cast<PlayerInfo*>(instance)->RegisterOperationalStateChangedCallback(callback, userdata);
+    }
+}
+
+void playerinfo_unregister_operational_state_change_callback(struct playerinfo_type* instance,
+    playerinfo_operational_state_change_cb callback)
+{
+    if (instance != NULL) {
+        reinterpret_cast<PlayerInfo*>(instance)->UnregisterOperationalStateChangedCallback(callback);
     }
 }
 
