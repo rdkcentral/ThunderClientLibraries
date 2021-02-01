@@ -139,7 +139,7 @@ private:
 
 private:
     //MEMBERS
-    static std::unique_ptr<DisplayInfo> _instance; //in case client forgets to relase the instance
+    static DisplayInfo* _instance;
 
     Exchange::IConnectionProperties* _displayConnection;
     Exchange::IHDRProperties* _hdrProperties;
@@ -160,13 +160,13 @@ public:
     static DisplayInfo* Instance()
     {
         if (_instance == nullptr) {
-            _instance.reset(new DisplayInfo(3000, Connector(), "DisplayInfo")); //no make_unique in C++11 :/
+            _instance = new DisplayInfo(3000, Connector(), "DisplayInfo");
         }
-        return _instance.get();
+        return _instance;
     }
     void DestroyInstance()
     {
-        _instance.reset(nullptr);
+        delete _instance;
     }
 
 public:
@@ -368,7 +368,7 @@ public:
     }
 };
 
-std::unique_ptr<DisplayInfo> DisplayInfo::_instance = nullptr;
+DisplayInfo* DisplayInfo::_instance = nullptr;
 
 } // namespace WPEFramework
 
