@@ -64,6 +64,18 @@ typedef enum displayinfo_error_type {
 */
 
 /**
+* @brief Will be called if there are changes regarding operational state of the
+*        instance - if it is not operational that means any function calls using it 
+*        will not succeed (will return Core::ERROR_UNAVAILABLE). Not operational state 
+*        can occur if the plugin inside WPEFramework has been deactivated.
+*
+*
+* @param userData Pointer passed along when @ref displayinfo_register was issued.
+* @param is_operational If instance is operational or not
+*/
+typedef void (*displayinfo_operational_state_change_cb)(bool is_operational, void* userdata);
+
+/**
 * \brief Will be called if there are changes regaring the display output, you need to query 
 *        yourself what exacally is changed
 *
@@ -87,6 +99,25 @@ EXTERNAL struct displayinfo_type* displayinfo_instance();
  * 
  **/
 EXTERNAL void displayinfo_release(struct displayinfo_type* instance);
+
+/**
+ * @brief Register for the operational state change notification of the instance
+ * 
+ * @param instance Instance of displayinfo_type
+ * @param callback Function to be called on update
+ * @param userdata Data passed to callback function
+ */
+EXTERNAL void displayinfo_register_operational_state_change_callback(struct displayinfo_type* instance,
+    displayinfo_operational_state_change_cb callback,
+    void* userdata);
+/**
+ * @brief Unregister from the operational state change notification of the instance
+ * 
+ * @param instance Instance of displayinfo_type
+ * @param callback Function to be unregistered from callbacks
+ */
+EXTERNAL void displayinfo_unregister_operational_state_change_callback(struct displayinfo_type* instance,
+    displayinfo_operational_state_change_cb callback);
 
 /**
  * \brief Register for updates of the display output.

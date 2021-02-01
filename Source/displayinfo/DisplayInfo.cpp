@@ -31,6 +31,7 @@ class DisplayInfo : protected RPC::SmartInterfaceType<Exchange::IConnectionPrope
 private:
     using BaseClass = RPC::SmartInterfaceType<Exchange::IConnectionProperties>;
     using DisplayOutputUpdatedCallbacks = std::map<displayinfo_display_output_change_cb, void*>;
+    using OperationalStateChangeCallbacks = std::map<displayinfo_operational_state_change_cb, void*>;
 
     //CONSTRUCTORS
     DisplayInfo(const uint32_t waitTime, const Core::NodeId& node, const string& callsign)
@@ -130,6 +131,10 @@ private:
                 _displayConnection = nullptr;
             }
         }
+
+        for (auto& index : _operationalStateCallbacks) {
+            index.first(upAndRunning, index.second);
+        }
     }
 
 private:
@@ -142,6 +147,7 @@ private:
     std::string _callsign;
 
     DisplayOutputUpdatedCallbacks _displayChangeCallbacks;
+    OperationalStateChangeCallbacks _operationalStateCallbacks;
     Core::Sink<Notification> _displayUpdatedNotification;
 
 public:
@@ -169,6 +175,27 @@ public:
     {
         return _callsign;
     }
+
+    void RegisterOperationalStateChangedCallback(displayinfo_operational_state_change_cb callback, void* userdata)
+    {
+        OperationalStateChangeCallbacks::iterator index(_operationalStateCallbacks.find(callback));
+
+        if (index == _operationalStateCallbacks.end()) {
+            _operationalStateCallbacks.emplace(std::piecewise_construct,
+                std::forward_as_tuple(callback),
+                std::forward_as_tuple(userdata));
+        }
+    }
+
+    void UnregisterOperationalStateChangedCallback(displayinfo_operational_state_change_cb callback)
+    {
+        OperationalStateChangeCallbacks::iterator index(_operationalStateCallbacks.find(callback));
+
+        if (index != _operationalStateCallbacks.end()) {
+            _operationalStateCallbacks.erase(index);
+        }
+    }
+
     void RegisterDisplayOutputChangeCallback(displayinfo_display_output_change_cb callback, void* userdata)
     {
         DisplayOutputUpdatedCallbacks::iterator index(_displayChangeCallbacks.find(callback));
@@ -347,6 +374,17 @@ struct displayinfo_type* displayinfo_instance()
 void displayinfo_release(struct displayinfo_type* displayinfo)
 {
     reinterpret_cast<DisplayInfo*>(displayinfo)->DestroyInstance();
+}
+
+void displayinfo_register_operational_state_change_callback(struct displayinfo_type* instance,
+    displayinfo_operational_state_change_cb callback,
+    void* userdata)
+{
+}
+
+void displayinfo_unregister_operational_state_change_callback(struct displayinfo_type* instance,
+    displayinfo_operational_state_change_cb callback)
+{
 }
 
 void displayinfo_register_display_output_change_callback(struct displayinfo_type* instance, displayinfo_display_output_change_cb callback, void* userdata)

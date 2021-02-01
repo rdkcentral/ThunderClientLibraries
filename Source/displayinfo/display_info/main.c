@@ -32,6 +32,11 @@ void displayinfo_display_updated(void* data)
     Trace("Display updated callback!\n");
 }
 
+void on_operational_state_change(bool is_operational, void* data)
+{
+    Trace("Operational state of the instance %s operational", is_operational ? "is" : "not");
+}
+
 void ShowMenu()
 {
     printf("Enter\n"
@@ -71,6 +76,8 @@ int main(int argc, char* argv[])
                 Trace("Created instance");
                 displayinfo_register_display_output_change_callback(display, displayinfo_display_updated, NULL);
                 Trace("Registered for display upadate events");
+                displayinfo_register_operational_state_change_callback(display, on_operational_state_change, NULL);
+                Trace("Registered for operational state changes of the instance");
             }
 
             break;
@@ -190,7 +197,7 @@ int main(int argc, char* argv[])
             break;
         }
         case 'E': {
-            //just for testing purposed
+            //just for testing purposes
 
             uint8_t buffer[1000];
             uint16_t length = 1000;
@@ -231,6 +238,7 @@ int main(int argc, char* argv[])
         }
     } while (character != 'Q');
 
+    displayinfo_unregister_operational_state_change_callback(display, on_operational_state_change);
     displayinfo_unregister_display_output_change_callback(display, displayinfo_display_updated);
     displayinfo_release(display);
 
