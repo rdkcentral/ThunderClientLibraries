@@ -31,7 +31,7 @@
 #pragma comment(lib, "displayinfo.lib")
 #endif
 #else
-#define EXTERNAL __attribute__ ((visibility ("default")))
+#define EXTERNAL __attribute__((visibility("default")))
 #endif
 
 #ifdef __cplusplus
@@ -55,11 +55,13 @@ typedef enum displayinfo_hdcp_protection_type {
     DISPLAYINFO_HDCP_UNKNOWN
 } displayinfo_hdcp_protection_t;
 
+/* Where is this needed?
 typedef enum displayinfo_error_type {
     DISPLAYINFO_ERROR_NONE = 0,
     DISPLAYINFO_ERROR_UNKNOWN = 1,
     DISPLAYINFO_ERROR_INVALID_INSTANCE = 2,
 } displayinfo_error_t;
+*/
 
 /**
 * \brief Will be called if there are changes regaring the display output, you need to query 
@@ -70,17 +72,6 @@ typedef enum displayinfo_error_type {
 */
 typedef void (*displayinfo_updated_cb)(struct displayinfo_type* session, void* userdata);
 
-/**
- * \brief Get a implementation instance name to use for displayinfo_instance based on index\
- *        If \ref length is 0  and \ref buffer is NULL, only a check is assumed.
- * 
- * \param index The index of a DisplayInfo implementation
- * \param length Length \ref buffer, can be 0 for a check only
- * \param buffer Pointer to a buffer, can be NULL if \ref length is 0 for a check only
- * 
- * \return true if a instance was found for the index, false otherwise.
- **/
-EXTERNAL bool displayinfo_enumerate(const uint8_t index, const uint8_t length, char* buffer);
 
 /**
  * \brief Get a \ref displayinfo_type instance that matches the a DisplayInfo implementation.
@@ -89,7 +80,7 @@ EXTERNAL bool displayinfo_enumerate(const uint8_t index, const uint8_t length, c
  * 
  * \return \ref displayinfo_type instance, NULL on error.
  **/
-EXTERNAL struct displayinfo_type* displayinfo_instance(const char displayName[]);
+EXTERNAL struct displayinfo_type* displayinfo_instance();
 
 /**
  * \brief Release the \ref displayinfo_type instance.
@@ -107,7 +98,7 @@ EXTERNAL void displayinfo_release(struct displayinfo_type* instance);
  * \param userdata The user data to be passed back to the \ref displayinfo_updated_cb callback.
  * 
  **/
-EXTERNAL void displayinfo_register(struct displayinfo_type* instance, displayinfo_updated_cb callback, void* userdata);
+//EXTERNAL void displayinfo_register(struct displayinfo_type* instance, displayinfo_updated_cb callback, void* userdata);
 
 /**
  * \brief Unregister for updates of the display output.
@@ -116,7 +107,7 @@ EXTERNAL void displayinfo_register(struct displayinfo_type* instance, displayinf
  * \param callback Callback that was used to \ref displayinfo_registet
  * 
  **/
-EXTERNAL void displayinfo_unregister(struct displayinfo_type* instance, displayinfo_updated_cb callback);
+//EXTERNAL void displayinfo_unregister(struct displayinfo_type* instance, displayinfo_updated_cb callback);
 
 /**
  * \brief Returns name of display output.
@@ -135,7 +126,7 @@ EXTERNAL void displayinfo_name(struct displayinfo_type* instance, char buffer[],
  * 
  * \return true if audio passthrough is enabled, false otherwise.
  **/
-EXTERNAL bool displayinfo_is_audio_passthrough(struct displayinfo_type* instance);
+EXTERNAL uint32_t displayinfo_is_audio_passthrough(struct displayinfo_type* instance, bool* is_passthrough);
 
 /**
  * \brief Checks if a display is connected to the display output.
@@ -145,7 +136,7 @@ EXTERNAL bool displayinfo_is_audio_passthrough(struct displayinfo_type* instance
  * \return true a dispplay is connected, false otherwise.
  * 
  **/
-EXTERNAL bool displayinfo_connected(struct displayinfo_type* instance);
+EXTERNAL uint32_t displayinfo_connected(struct displayinfo_type* instance, bool* is_connected);
 
 /**
  * \brief Get the heigth of the connected display  
@@ -155,7 +146,7 @@ EXTERNAL bool displayinfo_connected(struct displayinfo_type* instance);
  * \return The current heigth in pixels, 0 on error or invalid connection
  * 
  **/
-EXTERNAL uint32_t displayinfo_width(struct displayinfo_type* instance);
+EXTERNAL uint32_t displayinfo_width(struct displayinfo_type* instance, uint32_t* width);
 
 /**
  * \brief Get the width of the connected display  
@@ -165,7 +156,7 @@ EXTERNAL uint32_t displayinfo_width(struct displayinfo_type* instance);
  * \return The current width in pixels, 0 on error or invalid connection
  *
  **/
-EXTERNAL uint32_t displayinfo_height(struct displayinfo_type* instance);
+EXTERNAL uint32_t displayinfo_height(struct displayinfo_type* instance, uint32_t* height);
 
 /**
  * \brief Get the vertical refresh rate ("v-sync")  
@@ -175,7 +166,7 @@ EXTERNAL uint32_t displayinfo_height(struct displayinfo_type* instance);
  * \return The vertical refresh rate
  *
  **/
-EXTERNAL uint32_t displayinfo_vertical_frequency(struct displayinfo_type* instance);
+EXTERNAL uint32_t displayinfo_vertical_frequency(struct displayinfo_type* instance, uint32_t* vertical_freq);
 
 /**
  * \brief Get the current HDR system of the connected display  
@@ -185,7 +176,7 @@ EXTERNAL uint32_t displayinfo_vertical_frequency(struct displayinfo_type* instan
  * \return The current enabled HDR system, DISPLAYINFO_HDR_UNKNOWN on error or invalid connection
  * 
  **/
-EXTERNAL displayinfo_hdr_t displayinfo_hdr(struct displayinfo_type* instance);
+EXTERNAL uint32_t displayinfo_hdr(struct displayinfo_type* instance, displayinfo_hdr_t* hdr);
 
 /**
  * \brief Get the current HDCP protection level of the connected display  
@@ -195,7 +186,7 @@ EXTERNAL displayinfo_hdr_t displayinfo_hdr(struct displayinfo_type* instance);
  * \return The current enabled HDCP level, DISPLAYINFO_HDCP_UNKNOWN on error or invalid connection
  * 
  **/
-EXTERNAL displayinfo_hdcp_protection_t displayinfo_hdcp_protection(struct displayinfo_type* instance);
+EXTERNAL uint32_t displayinfo_hdcp_protection(struct displayinfo_type* instance, displayinfo_hdcp_protection_t* hdcp);
 
 /**
  * \brief Get the total available GPU RAM space in bytes.
@@ -203,7 +194,7 @@ EXTERNAL displayinfo_hdcp_protection_t displayinfo_hdcp_protection(struct displa
  * \param instance Instance of \ref displayinfo_type.
  * \return The total amount of GPU RAM available on the device.
  */
-EXTERNAL uint64_t displayinfo_total_gpu_ram(struct displayinfo_type* instance);
+EXTERNAL uint32_t displayinfo_total_gpu_ram(struct displayinfo_type* instance, uint64_t* total_ram);
 
 /**
  * \brief Get the currently available GPU RAM in bytes.
@@ -211,7 +202,7 @@ EXTERNAL uint64_t displayinfo_total_gpu_ram(struct displayinfo_type* instance);
  * \param instance Instance of \ref displayinfo_type.
  * \return The current amount of available GPU RAM memory.
  */
-EXTERNAL uint64_t displayinfo_free_gpu_ram(struct displayinfo_type* instance);
+EXTERNAL uint32_t displayinfo_free_gpu_ram(struct displayinfo_type* instance, uint64_t* free_ram);
 
 /**
  * \brief Returns EDID data of a connected display.
@@ -231,7 +222,7 @@ EXTERNAL uint32_t displayinfo_edid(struct displayinfo_type* instance, uint8_t bu
  * \return The current heigth in centimeters, 0 on error or invalid connection
  *
  **/
-EXTERNAL uint8_t displayinfo_width_in_centimeters(struct displayinfo_type* instance);
+EXTERNAL uint32_t displayinfo_width_in_centimeters(struct displayinfo_type* instance, uint8_t* width);
 
 /**
  * \brief Get the width of the connected display in centimeters
@@ -241,7 +232,7 @@ EXTERNAL uint8_t displayinfo_width_in_centimeters(struct displayinfo_type* insta
  * \return The current width in centimeters, 0 on error or invalid connection
  *
  **/
-EXTERNAL uint8_t displayinfo_height_in_centimeters(struct displayinfo_type* instance);
+EXTERNAL uint32_t displayinfo_height_in_centimeters(struct displayinfo_type* instance, uint8_t* height);
 
 /**
  * \brief Checks if Dolby ATMOS is enabled.
