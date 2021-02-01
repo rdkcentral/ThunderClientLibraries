@@ -176,27 +176,32 @@ public:
         return _callsign;
     }
 
-    void RegisterOperationalStateChangedCallback(displayinfo_operational_state_change_cb callback, void* userdata)
+    uint32_t RegisterOperationalStateChangedCallback(displayinfo_operational_state_change_cb callback, void* userdata)
     {
+
         OperationalStateChangeCallbacks::iterator index(_operationalStateCallbacks.find(callback));
 
         if (index == _operationalStateCallbacks.end()) {
             _operationalStateCallbacks.emplace(std::piecewise_construct,
                 std::forward_as_tuple(callback),
                 std::forward_as_tuple(userdata));
+            return Core::ERROR_NONE;
         }
+        return Core::ERROR_GENERAL;
     }
 
-    void UnregisterOperationalStateChangedCallback(displayinfo_operational_state_change_cb callback)
+    uint32_t UnregisterOperationalStateChangedCallback(displayinfo_operational_state_change_cb callback)
     {
         OperationalStateChangeCallbacks::iterator index(_operationalStateCallbacks.find(callback));
 
         if (index != _operationalStateCallbacks.end()) {
             _operationalStateCallbacks.erase(index);
+            return Core::ERROR_NONE;
         }
+        return Core::ERROR_NOT_EXIST;
     }
 
-    void RegisterDisplayOutputChangeCallback(displayinfo_display_output_change_cb callback, void* userdata)
+    uint32_t RegisterDisplayOutputChangeCallback(displayinfo_display_output_change_cb callback, void* userdata)
     {
         DisplayOutputUpdatedCallbacks::iterator index(_displayChangeCallbacks.find(callback));
 
@@ -204,16 +209,20 @@ public:
             _displayChangeCallbacks.emplace(std::piecewise_construct,
                 std::forward_as_tuple(callback),
                 std::forward_as_tuple(userdata));
+            return Core::ERROR_NONE;
         }
+        return Core::ERROR_GENERAL;
     }
 
-    void UnregisterDolbyAudioModeChangedCallback(displayinfo_display_output_change_cb callback)
+    uint32_t UnregisterDolbyAudioModeChangedCallback(displayinfo_display_output_change_cb callback)
     {
         DisplayOutputUpdatedCallbacks::iterator index(_displayChangeCallbacks.find(callback));
 
         if (index != _displayChangeCallbacks.end()) {
             _displayChangeCallbacks.erase(index);
+            return Core::ERROR_NONE;
         }
+        return Core::ERROR_NOT_EXIST;
     }
 
     uint32_t IsAudioPassthrough(bool& outIsEnabled) const
@@ -376,29 +385,46 @@ void displayinfo_release(struct displayinfo_type* displayinfo)
     reinterpret_cast<DisplayInfo*>(displayinfo)->DestroyInstance();
 }
 
-void displayinfo_register_operational_state_change_callback(struct displayinfo_type* instance,
+uint32_t displayinfo_register_operational_state_change_callback(struct displayinfo_type* instance,
     displayinfo_operational_state_change_cb callback,
     void* userdata)
 {
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+    if (instance != NULL) {
+        errorCode = reinterpret_cast<DisplayInfo*>(instance)->RegisterOperationalStateChangedCallback(callback, userdata);
+    }
+    return errorCode;
 }
 
-void displayinfo_unregister_operational_state_change_callback(struct displayinfo_type* instance,
+uint32_t displayinfo_unregister_operational_state_change_callback(struct displayinfo_type* instance,
     displayinfo_operational_state_change_cb callback)
 {
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+    if (instance != NULL) {
+        errorCode = reinterpret_cast<DisplayInfo*>(instance)->UnregisterOperationalStateChangedCallback(callback);
+    }
+    return errorCode;
 }
 
-void displayinfo_register_display_output_change_callback(struct displayinfo_type* instance, displayinfo_display_output_change_cb callback, void* userdata)
+uint32_t displayinfo_register_display_output_change_callback(struct displayinfo_type* instance, displayinfo_display_output_change_cb callback, void* userdata)
 {
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+
     if (instance != NULL) {
-        reinterpret_cast<DisplayInfo*>(instance)->RegisterDisplayOutputChangeCallback(callback, userdata);
+        errorCode = reinterpret_cast<DisplayInfo*>(instance)->RegisterDisplayOutputChangeCallback(callback, userdata);
     }
+    return errorCode;
 }
 
-void displayinfo_unregister_display_output_change_callback(struct displayinfo_type* instance, displayinfo_display_output_change_cb callback)
+uint32_t displayinfo_unregister_display_output_change_callback(struct displayinfo_type* instance, displayinfo_display_output_change_cb callback)
 {
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+
     if (instance != NULL) {
-        reinterpret_cast<DisplayInfo*>(instance)->UnregisterDolbyAudioModeChangedCallback(callback);
+        errorCode = reinterpret_cast<DisplayInfo*>(instance)->UnregisterDolbyAudioModeChangedCallback(callback);
     }
+
+    return errorCode;
 }
 
 void displayinfo_name(struct displayinfo_type* instance, char buffer[], const uint8_t length)

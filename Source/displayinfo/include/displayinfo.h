@@ -104,8 +104,11 @@ EXTERNAL void displayinfo_release(struct displayinfo_type* instance);
  * @param instance Instance of displayinfo_type
  * @param callback Function to be called on update
  * @param userdata Data passed to callback function
+ * @return ERROR_NONE on succes, 
+ *         ERROR_GENERAL if callback already registered 
+ *         ERROR_UNAVAILABLE if: instance or is NULL
  */
-EXTERNAL void displayinfo_register_operational_state_change_callback(struct displayinfo_type* instance,
+EXTERNAL uint32_t displayinfo_register_operational_state_change_callback(struct displayinfo_type* instance,
     displayinfo_operational_state_change_cb callback,
     void* userdata);
 /**
@@ -113,8 +116,11 @@ EXTERNAL void displayinfo_register_operational_state_change_callback(struct disp
  * 
  * @param instance Instance of displayinfo_type
  * @param callback Function to be unregistered from callbacks
+ * @return ERROR_NONE on succes, 
+ *         ERROR_NOT_EXIST if callback not registered
+ *         ERROR_UNAVAILABLE if: instance or is NULL
  */
-EXTERNAL void displayinfo_unregister_operational_state_change_callback(struct displayinfo_type* instance,
+EXTERNAL uint32_t displayinfo_unregister_operational_state_change_callback(struct displayinfo_type* instance,
     displayinfo_operational_state_change_cb callback);
 
 /**
@@ -123,18 +129,22 @@ EXTERNAL void displayinfo_unregister_operational_state_change_callback(struct di
  * @param instance Instance of @ref displayinfo_type.
  * @param callback Callback that needs to be called if a chaged is deteced.
  * @param userdata The user data to be passed back to the @ref displayinfo_updated_cb callback.
- * 
+ * @return ERROR_NONE on succes, 
+ *         ERROR_GENERAL if callback already registered 
+ *         ERROR_UNAVAILABLE if: instance or is NULL
  **/
-EXTERNAL void displayinfo_register_display_output_change_callback(struct displayinfo_type* instance, displayinfo_display_output_change_cb callback, void* userdata);
+EXTERNAL uint32_t displayinfo_register_display_output_change_callback(struct displayinfo_type* instance, displayinfo_display_output_change_cb callback, void* userdata);
 
 /**
  * @brief Unregister for updates of the display output.
  * 
  * @param instance Instance of @ref displayinfo_type.
  * @param callback Callback that was used to @ref displayinfo_registet
- * 
+ * @return ERROR_NONE on succes, 
+ *         ERROR_NOT_EXIST if callback not registered
+ *         ERROR_UNAVAILABLE if: instance or is NULL
  **/
-EXTERNAL void displayinfo_unregister_display_output_change_callback(struct displayinfo_type* instance, displayinfo_display_output_change_cb callback);
+EXTERNAL uint32_t displayinfo_unregister_display_output_change_callback(struct displayinfo_type* instance, displayinfo_display_output_change_cb callback);
 
 /**
  * @brief Returns name of display output.
