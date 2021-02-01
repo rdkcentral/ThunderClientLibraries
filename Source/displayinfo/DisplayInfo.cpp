@@ -33,6 +33,9 @@ private:
     //CONSTRUCTORS
     DisplayInfo(const uint32_t waitTime, const Core::NodeId& node, const string& callsign)
         : BaseClass()
+        , _displayConnection(nullptr)
+        , _hdrProperties(nullptr)
+        , _graphicsProperties(nullptr)
         , _callsign(callsign)
     {
         BaseClass::Open(waitTime, node, callsign);
@@ -58,8 +61,54 @@ private:
     }
 
 private:
+    //NOTIFICATIONS
+    void Operational(const bool upAndRunning) override
+    {
+
+        switch (upAndRunning) {
+        case true:
+
+            if (_displayConnection == nullptr) {
+                _displayConnection = BaseClass::Interface();
+                if (_displayConnection != nullptr) {
+                }
+
+                if (_displayConnection != nullptr && _hdrProperties == nullptr) {
+                    _hdrProperties = _displayConnection->QueryInterface<Exchange::IHDRProperties>();
+                    _hdrProperties->AddRef(); //???
+                }
+                if (_displayConnection != nullptr && _graphicsProperties == nullptr) {
+                    _graphicsProperties = _displayConnection->QueryInterface<Exchange::IGraphicsProperties>();
+                    _graphicsProperties->AddRef(); //???
+                }
+            }
+            break;
+
+        case false:
+        default:
+            if (_graphicsProperties != nullptr) {
+                _graphicsProperties->Release();
+                _graphicsProperties = nullptr;
+            }
+            if (_hdrProperties != nullptr) {
+                _hdrProperties->Release();
+                _hdrProperties = nullptr;
+            }
+            if (_displayConnection != nullptr) {
+                _displayConnection->Release();
+                _displayConnection = nullptr;
+            }
+            break;
+        }
+    }
+
+private:
     //MEMBERS
     static std::unique_ptr<DisplayInfo> _instance; //in case client forgets to relase the instance
+
+    Exchange::IConnectionProperties* _displayConnection;
+    Exchange::IHDRProperties* _hdrProperties;
+    Exchange::IGraphicsProperties* _graphicsProperties;
     std::string _callsign;
 
 public:
@@ -90,11 +139,10 @@ public:
     uint32_t IsAudioPassthrough(bool& outIsEnabled) const
     {
         uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IConnectionProperties* impl = BaseClass::Interface();
+        const Exchange::IConnectionProperties* impl = _displayConnection;
 
         if (impl != nullptr) {
             errorCode = impl->IsAudioPassthrough(outIsEnabled);
-            impl->Release();
         }
 
         return errorCode;
@@ -102,11 +150,10 @@ public:
     uint32_t Connected(bool& outIsConnected) const
     {
         uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IConnectionProperties* impl = BaseClass::Interface();
+        const Exchange::IConnectionProperties* impl = _displayConnection;
 
         if (impl != nullptr) {
             errorCode = impl->Connected(outIsConnected);
-            impl->Release();
         }
 
         return errorCode;
@@ -115,11 +162,10 @@ public:
     {
 
         uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IConnectionProperties* impl = BaseClass::Interface();
+        const Exchange::IConnectionProperties* impl = _displayConnection;
 
         if (impl != nullptr) {
             errorCode = impl->Width(outWidth);
-            impl->Release();
         }
 
         return errorCode;
@@ -128,11 +174,10 @@ public:
     uint32_t Height(uint32_t& outHeight) const
     {
         uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IConnectionProperties* impl = BaseClass::Interface();
+        const Exchange::IConnectionProperties* impl = _displayConnection;
 
         if (impl != nullptr) {
             errorCode = impl->Height(outHeight);
-            impl->Release();
         }
 
         return errorCode;
@@ -141,11 +186,10 @@ public:
     uint32_t WidthInCentimeters(uint8_t& outWidthInCentimeters) const
     {
         uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IConnectionProperties* impl = BaseClass::Interface();
+        const Exchange::IConnectionProperties* impl = _displayConnection;
 
         if (impl != nullptr) {
             errorCode = impl->WidthInCentimeters(outWidthInCentimeters);
-            impl->Release();
         }
 
         return errorCode;
@@ -154,11 +198,10 @@ public:
     uint32_t HeightInCentimeters(uint8_t& outHeightInCentimeters) const
     {
         uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IConnectionProperties* impl = BaseClass::Interface();
+        const Exchange::IConnectionProperties* impl = _displayConnection;
 
         if (impl != nullptr) {
             errorCode = impl->HeightInCentimeters(outHeightInCentimeters);
-            impl->Release();
         }
 
         return errorCode;
@@ -167,11 +210,10 @@ public:
     uint32_t VerticalFreq(uint32_t& outVerticalFreq) const
     {
         uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IConnectionProperties* impl = BaseClass::Interface();
+        const Exchange::IConnectionProperties* impl = _displayConnection;
 
         if (impl != nullptr) {
             errorCode = impl->VerticalFreq(outVerticalFreq);
-            impl->Release();
         }
 
         return errorCode;
@@ -180,11 +222,9 @@ public:
     uint32_t EDID(uint16_t& len, uint8_t outData[])
     {
         uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        Exchange::IConnectionProperties* impl = BaseClass::Interface();
 
-        if (impl != nullptr) {
-            errorCode = impl->EDID(len, outData);
-            impl->Release();
+        if (_displayConnection != nullptr) {
+            errorCode = _displayConnection->EDID(len, outData);
         }
 
         return errorCode;
@@ -193,17 +233,11 @@ public:
     uint32_t HDR(Exchange::IHDRProperties::HDRType& outHdrType) const
     {
         uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IConnectionProperties* impl = BaseClass::Interface();
 
-        if (impl != nullptr) {
-            const Exchange::IHDRProperties* hdr = impl->QueryInterface<const Exchange::IHDRProperties>();
+        const Exchange::IHDRProperties* hdr = _hdrProperties;
 
-            if (hdr != nullptr) {
-                errorCode = hdr->HDRSetting(outHdrType);
-                hdr->Release();
-            }
-
-            impl->Release();
+        if (hdr != nullptr) {
+            errorCode = hdr->HDRSetting(outHdrType);
         }
 
         return errorCode;
@@ -212,13 +246,10 @@ public:
     uint32_t HDCPProtection(Exchange::IConnectionProperties::HDCPProtectionType& outType) const
     {
         uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IConnectionProperties* impl = BaseClass::Interface();
+        const Exchange::IConnectionProperties* impl = _displayConnection;
 
         if (impl != nullptr) {
-
             errorCode = impl->HDCPProtection(outType);
-
-            impl->Release();
         }
 
         return errorCode;
@@ -226,17 +257,10 @@ public:
     uint32_t TotalGpuRam(uint64_t& outTotalRam) const
     {
         uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IConnectionProperties* impl = BaseClass::Interface();
+        const Exchange::IGraphicsProperties* graphicsProperties = _graphicsProperties;
 
-        if (impl != nullptr) {
-            const Exchange::IGraphicsProperties* graphicsProperties = impl->QueryInterface<const Exchange::IGraphicsProperties>();
-
-            if (graphicsProperties != nullptr) {
-                errorCode = graphicsProperties->TotalGpuRam(outTotalRam);
-                graphicsProperties->Release();
-            }
-
-            impl->Release();
+        if (graphicsProperties != nullptr) {
+            errorCode = graphicsProperties->TotalGpuRam(outTotalRam);
         }
 
         return errorCode;
@@ -245,17 +269,10 @@ public:
     uint32_t FreeGpuRam(uint64_t& outFreeRam) const
     {
         uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IConnectionProperties* impl = BaseClass::Interface();
+        const Exchange::IGraphicsProperties* graphicsProperties = _graphicsProperties;
 
-        if (impl != nullptr) {
-            const Exchange::IGraphicsProperties* graphicsProperties = impl->QueryInterface<const Exchange::IGraphicsProperties>();
-
-            if (graphicsProperties != nullptr) {
-                errorCode = graphicsProperties->FreeGpuRam(outFreeRam);
-                graphicsProperties->Release();
-            }
-
-            impl->Release();
+        if (graphicsProperties != nullptr) {
+            errorCode = graphicsProperties->FreeGpuRam(outFreeRam);
         }
 
         return errorCode;
@@ -269,12 +286,12 @@ using namespace WPEFramework;
 extern "C" {
 struct displayinfo_type* displayinfo_instance(const char displayName[] = "DisplayInfo")
 {
-    return reinterpret_cast<displayinfo_type*>(DisplayInfo::Instance());
+    //return reinterpret_cast<displayinfo_type*>(DisplayInfo::Instance());
 }
 
 void displayinfo_release(struct displayinfo_type* displayinfo)
 {
-    reinterpret_cast<DisplayInfo*>(displayinfo)->DestroyInstance();
+    //reinterpret_cast<DisplayInfo*>(displayinfo)->DestroyInstance();
 }
 
 void displayinfo_register(struct displayinfo_type* displayinfo, displayinfo_updated_cb callback, void* userdata)
@@ -289,37 +306,38 @@ void displayinfo_unregister(struct displayinfo_type* displayinfo, displayinfo_up
 
 void displayinfo_name(struct displayinfo_type* displayinfo, char buffer[], const uint8_t length)
 {
-    string name = reinterpret_cast<DisplayInfo*>(displayinfo)->Name();
-    strncpy(buffer, name.c_str(), length);
+    //string name = reinterpret_cast<DisplayInfo*>(displayinfo)->Name();
+    //strncpy(buffer, name.c_str(), length);
 }
 
 bool displayinfo_is_audio_passthrough(struct displayinfo_type* displayinfo)
 {
-    return reinterpret_cast<DisplayInfo*>(displayinfo)->IsAudioPassthrough();
+    //return reinterpret_cast<DisplayInfo*>(displayinfo)->IsAudioPassthrough();
 }
 
 bool displayinfo_connected(struct displayinfo_type* displayinfo)
 {
-    return reinterpret_cast<DisplayInfo*>(displayinfo)->Connected();
+    //return reinterpret_cast<DisplayInfo*>(displayinfo)->Connected();
 }
 
 uint32_t displayinfo_width(struct displayinfo_type* displayinfo)
 {
-    return reinterpret_cast<DisplayInfo*>(displayinfo)->Width();
+    //return reinterpret_cast<DisplayInfo*>(displayinfo)->Width();
 }
 
 uint32_t displayinfo_height(struct displayinfo_type* displayinfo)
 {
-    return reinterpret_cast<DisplayInfo*>(displayinfo)->Height();
+    //return reinterpret_cast<DisplayInfo*>(displayinfo)->Height();
 }
 
 uint32_t displayinfo_vertical_frequency(struct displayinfo_type* displayinfo)
 {
-    return reinterpret_cast<DisplayInfo*>(displayinfo)->VerticalFreq();
+    //return reinterpret_cast<DisplayInfo*>(displayinfo)->VerticalFreq();
 }
 
 displayinfo_hdr_t displayinfo_hdr(struct displayinfo_type* displayinfo)
 {
+    /*
     displayinfo_hdr_t result = DISPLAYINFO_HDR_UNKNOWN;
 
     switch (reinterpret_cast<DisplayInfo*>(displayinfo)->HDR()) {
@@ -344,11 +362,12 @@ displayinfo_hdr_t displayinfo_hdr(struct displayinfo_type* displayinfo)
     }
 
     return result;
+    */
 }
 
 displayinfo_hdcp_protection_t displayinfo_hdcp_protection(struct displayinfo_type* displayinfo)
 {
-
+    /*
     displayinfo_hdcp_protection_t type = DISPLAYINFO_HDCP_UNKNOWN;
 
     switch (reinterpret_cast<DisplayInfo*>(displayinfo)->HDCPProtection()) {
@@ -367,31 +386,32 @@ displayinfo_hdcp_protection_t displayinfo_hdcp_protection(struct displayinfo_typ
     }
 
     return type;
+    */
 }
 
 uint64_t displayinfo_total_gpu_ram(struct displayinfo_type* instance)
 {
-    return reinterpret_cast<DisplayInfo*>(instance)->TotalGpuRam();
+    //  return reinterpret_cast<DisplayInfo*>(instance)->TotalGpuRam();
 }
 
 uint64_t displayinfo_free_gpu_ram(struct displayinfo_type* instance)
 {
-    return reinterpret_cast<DisplayInfo*>(instance)->FreeGpuRam();
+    //return reinterpret_cast<DisplayInfo*>(instance)->FreeGpuRam();
 }
 
 uint32_t displayinfo_edid(struct displayinfo_type* displayinfo, uint8_t buffer[], uint16_t* length)
 {
-    return reinterpret_cast<DisplayInfo*>(displayinfo)->EDID(*length, buffer);
+    //return reinterpret_cast<DisplayInfo*>(displayinfo)->EDID(*length, buffer);
 }
 
 uint8_t displayinfo_width_in_centimeters(struct displayinfo_type* displayinfo)
 {
-    return reinterpret_cast<DisplayInfo*>(displayinfo)->WidthInCentimeters();
+    //return reinterpret_cast<DisplayInfo*>(displayinfo)->WidthInCentimeters();
 }
 
 uint8_t displayinfo_height_in_centimeters(struct displayinfo_type* displayinfo)
 {
-    return reinterpret_cast<DisplayInfo*>(displayinfo)->HeightInCentimeters();
+    //return reinterpret_cast<DisplayInfo*>(displayinfo)->HeightInCentimeters();
 }
 
 bool displayinfo_is_atmos_supported(struct displayinfo_type* displayinfo)
