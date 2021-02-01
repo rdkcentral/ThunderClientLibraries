@@ -76,26 +76,24 @@ typedef enum displayinfo_error_type {
 typedef void (*displayinfo_operational_state_change_cb)(bool is_operational, void* userdata);
 
 /**
-* \brief Will be called if there are changes regaring the display output, you need to query 
+* @brief Will be called if there are changes regaring the display output, you need to query 
 *        yourself what exacally is changed
 *
-* \param userData Pointer passed along when \ref displayinfo_register was issued.
+* @param userData Pointer passed along when \ref displayinfo_register was issued.
 */
 typedef void (*displayinfo_display_output_change_cb)(void* userdata);
 
 /**
- * \brief Get a \ref displayinfo_type instance that matches the a DisplayInfo implementation.
- *
- * \param displayName Name a the implementation that holds the.
+ * @brief Get a @ref displayinfo_type instance that matches the a DisplayInfo implementation.
  * 
- * \return \ref displayinfo_type instance, NULL on error.
+ * @return @ref displayinfo_type instance, NULL on error.
  **/
 EXTERNAL struct displayinfo_type* displayinfo_instance();
 
 /**
- * \brief Release the \ref displayinfo_type instance.
+ * @brief Release the @ref displayinfo_type instance.
  * 
- * \param instance Instance of \ref displayinfo_type.
+ * @param instance Instance of ref displayinfo_type.
  * 
  **/
 EXTERNAL void displayinfo_release(struct displayinfo_type* instance);
@@ -120,156 +118,165 @@ EXTERNAL void displayinfo_unregister_operational_state_change_callback(struct di
     displayinfo_operational_state_change_cb callback);
 
 /**
- * \brief Register for updates of the display output.
+ * @brief Register for updates of the display output.
  * 
- * \param instance Instance of \ref displayinfo_type.
- * \param callback Callback that needs to be called if a chaged is deteced.
- * \param userdata The user data to be passed back to the \ref displayinfo_updated_cb callback.
+ * @param instance Instance of @ref displayinfo_type.
+ * @param callback Callback that needs to be called if a chaged is deteced.
+ * @param userdata The user data to be passed back to the @ref displayinfo_updated_cb callback.
  * 
  **/
 EXTERNAL void displayinfo_register_display_output_change_callback(struct displayinfo_type* instance, displayinfo_display_output_change_cb callback, void* userdata);
 
 /**
- * \brief Unregister for updates of the display output.
+ * @brief Unregister for updates of the display output.
  * 
- * \param instance Instance of \ref displayinfo_type.
- * \param callback Callback that was used to \ref displayinfo_registet
+ * @param instance Instance of @ref displayinfo_type.
+ * @param callback Callback that was used to @ref displayinfo_registet
  * 
  **/
 EXTERNAL void displayinfo_unregister_display_output_change_callback(struct displayinfo_type* instance, displayinfo_display_output_change_cb callback);
 
 /**
- * \brief Returns name of display output.
+ * @brief Returns name of display output.
  *
- * \param instance Instance of \ref displayinfo_type.
- * \param buffer Buffer that will contain instance name.
- * \param length Size of \ref buffer.
+ * @param instance Instance of @ref displayinfo_type.
+ * @param buffer Buffer that will contain instance name.
+ * @param length Size of @ref buffer.
  *
  **/
 EXTERNAL void displayinfo_name(struct displayinfo_type* instance, char buffer[], const uint8_t length);
 
 /**
- * \brief Checks if a audio passthrough is enabled.
+ * @brief Checks if a audio passthrough is enabled.
  * 
- * \param instance Instance of \ref displayinfo_type.
- * 
- * \return true if audio passthrough is enabled, false otherwise.
- **/
+ * @param instance instance of @ref displayinfo_type
+ * @param is_passthrough true if audio passthrough is enabled, false otherwise
+ * @return ERROR_NONE on succes,
+ *         ERROR_UNAVAILABLE if instance or is_enabled param is NULL or invalid connection
+ */
 EXTERNAL uint32_t displayinfo_is_audio_passthrough(struct displayinfo_type* instance, bool* is_passthrough);
 
 /**
- * \brief Checks if a display is connected to the display output.
+ * @brief Checks if a display is connected to the display output.
  * 
- * \param instance Instance of \ref displayinfo_type.
- * 
- * \return true a dispplay is connected, false otherwise.
- * 
- **/
+ * @param instance Instance of @ref displayinfo_type
+ * @param is_connected  true a dispplay is connected, false otherwise.
+ * @return ERROR_NONE on succes,
+ *         ERROR_UNAVAILABLE if instance or is_enabled param is NULL or invalid connection
+ */
 EXTERNAL uint32_t displayinfo_connected(struct displayinfo_type* instance, bool* is_connected);
 
 /**
- * \brief Get the heigth of the connected display  
+ * @brief Get the width of the connected display  
  * 
- * \param instance Instance of \ref displayinfo_type.
- * 
- * \return The current heigth in pixels, 0 on error or invalid connection
- * 
- **/
+ * @param instance Instance of @ref displayinfo_type
+ * @param width The current width in pixels
+ * @return ERROR_NONE on succes,
+ *         ERROR_UNAVAILABLE if instance or is_enabled param is NULL or invalid connection
+ */
 EXTERNAL uint32_t displayinfo_width(struct displayinfo_type* instance, uint32_t* width);
 
 /**
- * \brief Get the width of the connected display  
+ * @brief Get the height of the connected display  
  * 
- * \param instance Instance of \ref displayinfo_type.
- * 
- * \return The current width in pixels, 0 on error or invalid connection
- *
- **/
+ * @param instance Instance of @ref displayinfo_type
+ * @param width The current height in pixels
+ * @return ERROR_NONE on succes,
+ *         ERROR_UNAVAILABLE if instance or is_enabled param is NULL or invalid connection
+ */
 EXTERNAL uint32_t displayinfo_height(struct displayinfo_type* instance, uint32_t* height);
 
 /**
- * \brief Get the vertical refresh rate ("v-sync")  
+ * @brief Get the vertical refresh rate ("v-sync")  
  * 
- * \param instance Instance of \ref displayinfo_type.
- * 
- * \return The vertical refresh rate
- *
- **/
+ * @param instance Instance of @ref displayinfo_type
+ * @param vertical_freq The vertical refresh rate
+ * @return ERROR_NONE on succes,
+ *         ERROR_UNAVAILABLE if instance or is_enabled param is NULL or invalid connection
+ */
 EXTERNAL uint32_t displayinfo_vertical_frequency(struct displayinfo_type* instance, uint32_t* vertical_freq);
 
 /**
- * \brief Get the current HDR system of the connected display  
+ * @brief Get the current HDR system of the connected display  
  * 
- * \param instance Instance of \ref displayinfo_type.
- * 
- * \return The current enabled HDR system, DISPLAYINFO_HDR_UNKNOWN on error or invalid connection
- * 
- **/
+ * @param instance Instance of @ref displayinfo_type
+ * @param hdr The current enabled HDR system, DISPLAYINFO_HDR_UNKNOWN might occur if ThunderInterfaces contains new 
+ *            entry not defined in this client library
+ * @return ERROR_NONE on succes, 
+ *         ERROR_UNKNOWN_KEY if: ThunderInterfaces contains new hdr type not defined in this library 
+ *         ERROR_UNAVAILABLE if: instance or hdr param is NULL or invalid connection
+ */
 EXTERNAL uint32_t displayinfo_hdr(struct displayinfo_type* instance, displayinfo_hdr_t* hdr);
 
 /**
- * \brief Get the current HDCP protection level of the connected display  
+ * @brief Get the current HDCP protection level of the connected display  
  * 
- * \param instance Instance of \ref displayinfo_type.
- * 
- * \return The current enabled HDCP level, DISPLAYINFO_HDCP_UNKNOWN on error or invalid connection
- * 
- **/
+ * @param instance Instance of @ref displayinfo_type
+ * @param hdcp The current enabled HDCP level, DISPLAYINFO_HDCP_UNKNOWN might occur if Thunder interfaces contains new
+ *              entry not defined in client library
+ * @return ERROR_NONE on succes, 
+ *         ERROR_UNKNOWN_KEY if: ThunderInterfaces contains new hdcp protection type not defined in this library 
+ *         ERROR_UNAVAILABLE if: instance or hdr param is NULL or invalid connection
+ */
 EXTERNAL uint32_t displayinfo_hdcp_protection(struct displayinfo_type* instance, displayinfo_hdcp_protection_t* hdcp);
 
 /**
- * \brief Get the total available GPU RAM space in bytes.
+ * @brief Get the total available GPU RAM space in bytes.
  * 
- * \param instance Instance of \ref displayinfo_type.
- * \return The total amount of GPU RAM available on the device.
+ * @param instance Instance of @ref displayinfo_type
+ * @param total_ram The total amount of GPU RAM available on the device.
+ * @return ERROR_NONE on succes,
+ *         ERROR_UNAVAILABLE if instance or total_ram param is NULL or invalid connection  
  */
 EXTERNAL uint32_t displayinfo_total_gpu_ram(struct displayinfo_type* instance, uint64_t* total_ram);
 
 /**
- * \brief Get the currently available GPU RAM in bytes.
+ * @brief Get the free available GPU RAM space in bytes.
  * 
- * \param instance Instance of \ref displayinfo_type.
- * \return The current amount of available GPU RAM memory.
+ * @param instance Instance of @ref displayinfo_type
+ * @param free_ram The total amount of GPU RAM available on the device.
+ * @return ERROR_NONE on succes,
+ *         ERROR_UNAVAILABLE if instance or free_ram param is NULL or invalid connection
  */
 EXTERNAL uint32_t displayinfo_free_gpu_ram(struct displayinfo_type* instance, uint64_t* free_ram);
 
 /**
- * \brief Returns EDID data of a connected display.
- *
- * \param instance Instance of \ref displayinfo_type.
- * \param buffer Buffer that will contain the data.
- * \param length Size of \ref buffer. On success it'll be set to the length of the actuall data in \ref buffer.
- *
- **/
+ * @brief Returns EDID data of a connected display.
+ * 
+ * @param instance Instance of @ref displayinfo_type
+ * @param buffer Buffer that will contain the data.
+ * @param length Size of @ref buffer. On success it'll be set to the length of the actuall data in @ref buffer.
+ * @return  ERROR_NONE on succes,
+ *         ERROR_UNAVAILABLE if instance or free_ram param is NULL or invalid connection
+ */
 EXTERNAL uint32_t displayinfo_edid(struct displayinfo_type* instance, uint8_t buffer[], uint16_t* length);
 
 /**
- * \brief Get the heigth of the connected display in centimaters
- *
- * \param instance Instance of \ref displayinfo_type.
- *
- * \return The current heigth in centimeters, 0 on error or invalid connection
- *
- **/
+ * @brief Get the width of the connected display in centimaters
+ * 
+ * @param instance Instance of @ref displayinfo_type
+ * @param width The current width in centimeters
+ * @return ERROR_NONE on succes,
+ *         ERROR_UNAVAILABLE if instance or width param is NULL or invalid connection 
+ */
 EXTERNAL uint32_t displayinfo_width_in_centimeters(struct displayinfo_type* instance, uint8_t* width);
 
 /**
- * \brief Get the width of the connected display in centimeters
- *
- * \param instance Instance of \ref displayinfo_type.
- *
- * \return The current width in centimeters, 0 on error or invalid connection
- *
- **/
+ * @brief Get the heigth of the connected display in centimaters
+ * 
+ * @param instance Instance of @ref displayinfo_type
+ * @param height The current height in centimeters
+ * @return ERROR_NONE on succes,
+ *         ERROR_UNAVAILABLE if instance or height param is NULL or invalid connection 
+ */
 EXTERNAL uint32_t displayinfo_height_in_centimeters(struct displayinfo_type* instance, uint8_t* height);
 
 /**
- * \brief Checks if Dolby ATMOS is enabled.
- *
- * \param instance Instance of \ref displayinfo_type.
- *
- * \return true if Dolby ATMOS is enabled, false otherwise.
- **/
+ * @brief Checks if Dolby ATMOS is enabled.
+ * 
+ * @param instance Instance of @ref displayinfo_type.
+ * @return true if Dolby ATMOS is enabled, false otherwise.
+ */
 EXTERNAL bool displayinfo_is_atmos_supported(struct displayinfo_type* instance);
 
 #ifdef __cplusplus
