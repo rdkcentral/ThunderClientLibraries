@@ -74,10 +74,12 @@ int main(int argc, char* argv[])
                 character = 'Q';
             } else {
                 Trace("Created instance");
-                displayinfo_register_display_output_change_callback(display, displayinfo_display_updated, NULL);
-                Trace("Registered for display upadate events");
-                displayinfo_register_operational_state_change_callback(display, on_operational_state_change, NULL);
-                Trace("Registered for operational state changes of the instance");
+                if (displayinfo_register_display_output_change_callback(display, displayinfo_display_updated, NULL) == 0) {
+                    Trace("Registered for display upadate events");
+                }
+                if (displayinfo_register_operational_state_change_callback(display, on_operational_state_change, NULL) == 0) {
+                    Trace("Registered for operational state changes of the instance");
+                }
             }
 
             break;
