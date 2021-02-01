@@ -126,7 +126,7 @@ private:
                 _hdrProperties = nullptr;
             }
             if (_displayConnection != nullptr) {
-                _displayConnection->Register(&_displayUpdatedNotification);
+                _displayConnection->Unregister(&_displayUpdatedNotification);
                 _displayConnection->Release();
                 _displayConnection = nullptr;
             }
@@ -380,9 +380,11 @@ struct displayinfo_type* displayinfo_instance()
     return reinterpret_cast<displayinfo_type*>(DisplayInfo::Instance());
 }
 
-void displayinfo_release(struct displayinfo_type* displayinfo)
+void displayinfo_release(struct displayinfo_type* instance)
 {
-    reinterpret_cast<DisplayInfo*>(displayinfo)->DestroyInstance();
+    if (instance != NULL) {
+        reinterpret_cast<DisplayInfo*>(instance)->DestroyInstance();
+    }
 }
 
 uint32_t displayinfo_register_operational_state_change_callback(struct displayinfo_type* instance,
@@ -532,6 +534,7 @@ uint32_t displayinfo_hdcp_protection(struct displayinfo_type* instance, displayi
     if (instance != NULL && hdcp != NULL) {
         Exchange::IConnectionProperties::HDCPProtectionType value = Exchange::IConnectionProperties::HDCPProtectionType::HDCP_AUTO;
         *hdcp = DISPLAYINFO_HDCP_UNKNOWN;
+
         if (reinterpret_cast<DisplayInfo*>(instance)->HDCPProtection(value) == Core::ERROR_NONE) {
             switch (value) {
             case Exchange::IConnectionProperties::HDCP_Unencrypted:
@@ -550,8 +553,8 @@ uint32_t displayinfo_hdcp_protection(struct displayinfo_type* instance, displayi
                 return Core::ERROR_UNKNOWN_KEY;
                 break;
             }
+            return Core::ERROR_NONE;
         }
-        return Core::ERROR_NONE;
     }
     return Core::ERROR_UNAVAILABLE;
 }
