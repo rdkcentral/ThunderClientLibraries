@@ -30,6 +30,8 @@ namespace WPEFramework {
 class DisplayInfo : protected RPC::SmartInterfaceType<Exchange::IConnectionProperties> {
 private:
     using BaseClass = RPC::SmartInterfaceType<Exchange::IConnectionProperties>;
+    using DisplayOutputUpdatedCallbacks = std::map<displayinfo_display_output_change_cb, void*>;
+
     //CONSTRUCTORS
     DisplayInfo(const uint32_t waitTime, const Core::NodeId& node, const string& callsign)
         : BaseClass()
@@ -37,6 +39,7 @@ private:
         , _hdrProperties(nullptr)
         , _graphicsProperties(nullptr)
         , _callsign(callsign)
+        , _displayUpdatedNotification(this)
     {
         BaseClass::Open(waitTime, node, callsign);
     }
@@ -61,31 +64,58 @@ private:
     }
 
 private:
+    void DisplayOutputUpdated(const Exchange::IConnectionProperties::INotification::Source event)
+    {
+        for (auto& index : _displayChangeCallbacks) {
+            index.first(index.second);
+        }
+    }
+
     //NOTIFICATIONS
+    class Notification : public Exchange::IConnectionProperties::INotification {
+    public:
+        Notification() = delete;
+        Notification(const Notification&) = delete;
+        Notification& operator=(const Notification&) = delete;
+
+        Notification(DisplayInfo* parent)
+            : _parent(*parent)
+        {
+        }
+
+        void Updated(const Exchange::IConnectionProperties::INotification::Source event) override
+        {
+            _parent.DisplayOutputUpdated(event);
+        }
+
+        BEGIN_INTERFACE_MAP(Notification)
+        INTERFACE_ENTRY(Exchange::IConnectionProperties::INotification)
+        END_INTERFACE_MAP
+
+    private:
+        DisplayInfo& _parent;
+    };
+
     void Operational(const bool upAndRunning) override
     {
 
-        switch (upAndRunning) {
-        case true:
-
+        if (upAndRunning) {
             if (_displayConnection == nullptr) {
                 _displayConnection = BaseClass::Interface();
                 if (_displayConnection != nullptr) {
+                    _displayConnection->Register(&_displayUpdatedNotification);
                 }
 
                 if (_displayConnection != nullptr && _hdrProperties == nullptr) {
                     _hdrProperties = _displayConnection->QueryInterface<Exchange::IHDRProperties>();
-                    _hdrProperties->AddRef(); //???
+                    _hdrProperties->AddRef();
                 }
                 if (_displayConnection != nullptr && _graphicsProperties == nullptr) {
                     _graphicsProperties = _displayConnection->QueryInterface<Exchange::IGraphicsProperties>();
-                    _graphicsProperties->AddRef(); //???
+                    _graphicsProperties->AddRef();
                 }
             }
-            break;
-
-        case false:
-        default:
+        } else {
             if (_graphicsProperties != nullptr) {
                 _graphicsProperties->Release();
                 _graphicsProperties = nullptr;
@@ -95,10 +125,10 @@ private:
                 _hdrProperties = nullptr;
             }
             if (_displayConnection != nullptr) {
+                _displayConnection->Register(&_displayUpdatedNotification);
                 _displayConnection->Release();
                 _displayConnection = nullptr;
             }
-            break;
         }
     }
 
@@ -110,6 +140,9 @@ private:
     Exchange::IHDRProperties* _hdrProperties;
     Exchange::IGraphicsProperties* _graphicsProperties;
     std::string _callsign;
+
+    DisplayOutputUpdatedCallbacks _displayChangeCallbacks;
+    Core::Sink<Notification> _displayUpdatedNotification;
 
 public:
     //OBJECT MANAGEMENT
@@ -136,6 +169,26 @@ public:
     {
         return _callsign;
     }
+    void RegisterDisplayOutputChangeCallback(displayinfo_display_output_change_cb callback, void* userdata)
+    {
+        DisplayOutputUpdatedCallbacks::iterator index(_displayChangeCallbacks.find(callback));
+
+        if (index == _displayChangeCallbacks.end()) {
+            _displayChangeCallbacks.emplace(std::piecewise_construct,
+                std::forward_as_tuple(callback),
+                std::forward_as_tuple(userdata));
+        }
+    }
+
+    void UnregisterDolbyAudioModeChangedCallback(displayinfo_display_output_change_cb callback)
+    {
+        DisplayOutputUpdatedCallbacks::iterator index(_displayChangeCallbacks.find(callback));
+
+        if (index != _displayChangeCallbacks.end()) {
+            _displayChangeCallbacks.erase(index);
+        }
+    }
+
     uint32_t IsAudioPassthrough(bool& outIsEnabled) const
     {
         uint32_t errorCode = Core::ERROR_UNAVAILABLE;
@@ -296,14 +349,18 @@ void displayinfo_release(struct displayinfo_type* displayinfo)
     reinterpret_cast<DisplayInfo*>(displayinfo)->DestroyInstance();
 }
 
-void displayinfo_register(struct displayinfo_type* instance, displayinfo_updated_cb callback, void* userdata)
+void displayinfo_register_display_output_change_callback(struct displayinfo_type* instance, displayinfo_display_output_change_cb callback, void* userdata)
 {
-    // TODO reinterpret_cast<DisplayInfo*>(displayinfo)->Register(callback, userdata);
+    if (instance != NULL) {
+        reinterpret_cast<DisplayInfo*>(instance)->RegisterDisplayOutputChangeCallback(callback, userdata);
+    }
 }
 
-void displayinfo_unregister(struct displayinfo_type* instance, displayinfo_updated_cb callback)
+void displayinfo_unregister_display_output_change_callback(struct displayinfo_type* instance, displayinfo_display_output_change_cb callback)
 {
-    // TODO reinterpret_cast<DisplayInfo*>(displayinfo)->Unregister(callback);
+    if (instance != NULL) {
+        reinterpret_cast<DisplayInfo*>(instance)->UnregisterDolbyAudioModeChangedCallback(callback);
+    }
 }
 
 void displayinfo_name(struct displayinfo_type* instance, char buffer[], const uint8_t length)

@@ -67,11 +67,9 @@ typedef enum displayinfo_error_type {
 * \brief Will be called if there are changes regaring the display output, you need to query 
 *        yourself what exacally is changed
 *
-* \param session The session the notification applies to.
 * \param userData Pointer passed along when \ref displayinfo_register was issued.
 */
-typedef void (*displayinfo_updated_cb)(struct displayinfo_type* session, void* userdata);
-
+typedef void (*displayinfo_display_output_change_cb)(void* userdata);
 
 /**
  * \brief Get a \ref displayinfo_type instance that matches the a DisplayInfo implementation.
@@ -98,7 +96,7 @@ EXTERNAL void displayinfo_release(struct displayinfo_type* instance);
  * \param userdata The user data to be passed back to the \ref displayinfo_updated_cb callback.
  * 
  **/
-//EXTERNAL void displayinfo_register(struct displayinfo_type* instance, displayinfo_updated_cb callback, void* userdata);
+EXTERNAL void displayinfo_register_display_output_change_callback(struct displayinfo_type* instance, displayinfo_display_output_change_cb callback, void* userdata);
 
 /**
  * \brief Unregister for updates of the display output.
@@ -107,7 +105,7 @@ EXTERNAL void displayinfo_release(struct displayinfo_type* instance);
  * \param callback Callback that was used to \ref displayinfo_registet
  * 
  **/
-//EXTERNAL void displayinfo_unregister(struct displayinfo_type* instance, displayinfo_updated_cb callback);
+EXTERNAL void displayinfo_unregister_display_output_change_callback(struct displayinfo_type* instance, displayinfo_display_output_change_cb callback);
 
 /**
  * \brief Returns name of display output.

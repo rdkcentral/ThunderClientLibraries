@@ -27,12 +27,9 @@
         fflush(stdout);                                 \
     } while (0)
 
-static uint32_t updatedCount = 0;
-
-static void displayinfo_updated(struct displayinfo_type* session, void* data)
+void displayinfo_display_updated(void* data)
 {
-    updatedCount++;
-    fprintf(stdout, "## %d display updated event%s received.\n", updatedCount, (updatedCount == 1) ? "" : "s");
+    Trace("Display updated callback!\n");
 }
 
 void ShowMenu()
@@ -49,8 +46,6 @@ void ShowMenu()
            "\tT : Get total gpu ram\n"
            "\tF : Get free gpu ram\n"
            "\tX : Get display dimensions in centimeters \n"
-           // "\tR : Enable display info events\n"
-           //"\tU : Disable display info events\n"
            "\t? : Help\n"
            "\tQ : Quit\n");
 }
@@ -74,6 +69,8 @@ int main(int argc, char* argv[])
                 character = 'Q';
             } else {
                 Trace("Created instance");
+                displayinfo_register_display_output_change_callback(display, displayinfo_display_updated, NULL);
+                Trace("Registered for display upadate events");
             }
 
             break;
@@ -234,6 +231,7 @@ int main(int argc, char* argv[])
         }
     } while (character != 'Q');
 
+    displayinfo_unregister_display_output_change_callback(display, displayinfo_display_updated);
     displayinfo_release(display);
 
     Trace("Done");
