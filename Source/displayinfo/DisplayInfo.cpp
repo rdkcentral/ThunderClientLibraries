@@ -109,11 +109,9 @@ private:
 
                 if (_displayConnection != nullptr && _hdrProperties == nullptr) {
                     _hdrProperties = _displayConnection->QueryInterface<Exchange::IHDRProperties>();
-                    _hdrProperties->AddRef();
                 }
                 if (_displayConnection != nullptr && _graphicsProperties == nullptr) {
                     _graphicsProperties = _displayConnection->QueryInterface<Exchange::IGraphicsProperties>();
-                    _graphicsProperties->AddRef();
                 }
             }
         } else {
