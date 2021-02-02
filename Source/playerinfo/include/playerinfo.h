@@ -100,10 +100,9 @@ typedef void (*playerinfo_dolby_audio_updated_cb)(void* userdata);
 /**
  * @brief Get a @ref playerinfo_type instance that matches the PlayerInfo implementation
  * 
- * @param name Name of the implementation
  * @return EXTERNAL struct* @ref instance, NULL if error.
  */
-EXTERNAL struct playerinfo_type* playerinfo_instance(const char name[]);
+EXTERNAL struct playerinfo_type* playerinfo_instance();
 
 /**
  * @brief Release the @ref instance
@@ -147,6 +146,15 @@ EXTERNAL void playerinfo_register_dolby_sound_mode_updated_callback(struct playe
  * @return EXTERNAL 
  */
 EXTERNAL void playerinfo_unregister_dolby_sound_mode_updated_callback(struct playerinfo_type* instance, playerinfo_dolby_audio_updated_cb callback);
+
+/**
+ * @brief Get the instance name (callsign)
+ * 
+ * @param instance Instance of @ref playerinfo_type
+ * @param buffer Buffer that will contain instance name.
+ * @param length Size of @ref buffer.
+ */
+EXTERNAL void playerinfo_name(struct playerinfo_type* instance, char buffer[], const uint8_t length);
 
 /**
  * @brief Get current video playback resolution

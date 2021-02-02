@@ -56,7 +56,7 @@ int main(int argc, char* argv[])
 
         switch (character) {
         case 'I': {
-            player = playerinfo_instance("PlayerInfo");
+            player = playerinfo_instance();
 
             if (player == NULL) {
                 Trace("Exiting: getting interface failed.");

@@ -422,12 +422,9 @@ PlayerInfo* PlayerInfo::_instance = nullptr;
 using namespace WPEFramework;
 extern "C" {
 
-struct playerinfo_type* playerinfo_instance(const char name[])
+struct playerinfo_type* playerinfo_instance()
 {
-    if (name != NULL) {
-        return reinterpret_cast<playerinfo_type*>(PlayerInfo::Instance());
-    }
-    return NULL;
+    return reinterpret_cast<playerinfo_type*>(PlayerInfo::Instance());
 }
 
 void playerinfo_release(struct playerinfo_type* instance)
@@ -466,6 +463,12 @@ void playerinfo_unregister_dolby_sound_mode_updated_callback(struct playerinfo_t
     if (instance != NULL) {
         reinterpret_cast<PlayerInfo*>(instance)->UnregisterDolbyAudioModeChangedCallback(callback);
     }
+}
+
+void playerinfo_name(struct playerinfo_type* instance, char buffer[], const uint8_t length)
+{
+    string name = reinterpret_cast<PlayerInfo*>(instance)->Name();
+    strncpy(buffer, name.c_str(), length);
 }
 
 uint32_t playerinfo_playback_resolution(struct playerinfo_type* instance, playerinfo_playback_resolution_t* resolution)
