@@ -63,21 +63,24 @@ int main(int argc, char* argv[])
                 character = 'Q';
             } else {
                 Trace("Created instance");
-                playerinfo_register_operational_state_change_callback(player, on_operational_state_change, NULL);
-                Trace("Registered for operational state changes.");
+                if (playerinfo_register_operational_state_change_callback(player, on_operational_state_change, NULL) == 0) {
+                    Trace("Registered for operational state changes.");
+                }
             }
 
             break;
         }
         case 'S': {
-            playerinfo_register_dolby_sound_mode_updated_callback(player, on_dolby_event, NULL);
-            Trace("Registered for an dolby sound mode update.");
+            if (playerinfo_register_dolby_sound_mode_updated_callback(player, on_dolby_event, NULL) == 0) {
+                Trace("Registered for an dolby sound mode update.");
+            }
             break;
         }
 
         case 'U': {
-            playerinfo_unregister_dolby_sound_mode_updated_callback(player, on_dolby_event);
-            Trace("Registered for an dolby sound mode update.");
+            if (playerinfo_unregister_dolby_sound_mode_updated_callback(player, on_dolby_event) == 0) {
+                Trace("Unregistered from an dolby sound mode update.");
+            }
             break;
         }
 
