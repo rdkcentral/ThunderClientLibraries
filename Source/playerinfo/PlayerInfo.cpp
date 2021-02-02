@@ -287,6 +287,7 @@ public:
                 } else {
                     value = -numberOfCodecs;
                 }
+                videoCodecs->Release();
             }
         }
 
@@ -360,6 +361,7 @@ public:
                 } else {
                     value = -numberOfCodecs;
                 }
+                audioCodecs->Release();
             }
         }
         return value;
@@ -477,9 +479,8 @@ uint32_t playerinfo_register_dolby_sound_mode_updated_callback(struct playerinfo
 }
 
 uint32_t playerinfo_unregister_dolby_sound_mode_updated_callback(struct playerinfo_type* instance, playerinfo_dolby_audio_updated_cb callback)
-
-    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
 {
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
     if (instance != NULL) {
         errorCode = reinterpret_cast<PlayerInfo*>(instance)->UnregisterDolbyAudioModeChangedCallback(callback);
     }
