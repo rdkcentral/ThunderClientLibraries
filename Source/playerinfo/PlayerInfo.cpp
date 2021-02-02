@@ -60,9 +60,7 @@ private:
 
     void Operational(const bool upAndRunning) override
     {
-        switch (upAndRunning) {
-        case true:
-
+        if (upAndRunning) {
             if (_playerInterface == nullptr) {
                 _playerInterface = BaseClass::Interface();
 
@@ -75,10 +73,7 @@ private:
                     }
                 }
             }
-            break;
-
-        case false:
-        default:
+        } else {
             if (_dolbyInterface != nullptr) {
                 _dolbyInterface->Unregister(&_dolbyNotification);
                 _dolbyInterface->Release();
@@ -88,7 +83,6 @@ private:
                 _playerInterface->Release();
                 _playerInterface = nullptr;
             }
-            break;
         }
 
         for (auto& index : _operationalStateCallbacks) {
