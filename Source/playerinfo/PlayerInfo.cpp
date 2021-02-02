@@ -70,6 +70,7 @@ private:
                     _dolbyInterface = _playerInterface->QueryInterface<Exchange::Dolby::IOutput>();
 
                     if (_dolbyInterface != nullptr) {
+                        _dolbyInterface->AddRef();
                         _dolbyInterface->Register(&_dolbyNotification);
                     }
                 }
