@@ -157,7 +157,7 @@ public:
     {
         return _callsign;
     }
-    void RegisterOperationalStateChangedCallback(playerinfo_operational_state_change_cb callback, void* userdata)
+    uint32_t RegisterOperationalStateChangedCallback(playerinfo_operational_state_change_cb callback, void* userdata)
     {
         OperationalStateChangeCallbacks::iterator index(_operationalStateCallbacks.find(callback));
 
@@ -165,18 +165,23 @@ public:
             _operationalStateCallbacks.emplace(std::piecewise_construct,
                 std::forward_as_tuple(callback),
                 std::forward_as_tuple(userdata));
+            return Core::ERROR_NONE;
         }
+        return Core::ERROR_GENERAL;
     }
-    void UnregisterOperationalStateChangedCallback(playerinfo_operational_state_change_cb callback)
+
+    uint32_t UnregisterOperationalStateChangedCallback(playerinfo_operational_state_change_cb callback)
     {
         OperationalStateChangeCallbacks::iterator index(_operationalStateCallbacks.find(callback));
 
         if (index != _operationalStateCallbacks.end()) {
             _operationalStateCallbacks.erase(index);
+            return Core::ERROR_NONE;
         }
+        return Core::ERROR_NOT_EXIST;
     }
 
-    void RegisterDolbyAudioModeChangedCallback(playerinfo_dolby_audio_updated_cb callback, void* userdata)
+    uint32_t RegisterDolbyAudioModeChangedCallback(playerinfo_dolby_audio_updated_cb callback, void* userdata)
     {
         DolbyModeAudioUpdateCallbacks::iterator index(_dolbyCallbacks.find(callback));
 
@@ -184,16 +189,20 @@ public:
             _dolbyCallbacks.emplace(std::piecewise_construct,
                 std::forward_as_tuple(callback),
                 std::forward_as_tuple(userdata));
+            return Core::ERROR_NONE;
         }
+        return Core::ERROR_GENERAL;
     }
 
-    void UnregisterDolbyAudioModeChangedCallback(playerinfo_dolby_audio_updated_cb callback)
+    uint32_t UnregisterDolbyAudioModeChangedCallback(playerinfo_dolby_audio_updated_cb callback)
     {
         DolbyModeAudioUpdateCallbacks::iterator index(_dolbyCallbacks.find(callback));
 
         if (index != _dolbyCallbacks.end()) {
             _dolbyCallbacks.erase(index);
+            return Core::ERROR_NONE;
         }
+        return Core::ERROR_NOT_EXIST;
     }
 
     uint32_t IsAudioEquivalenceEnabled(bool& outIsEnabled) const
@@ -434,35 +443,47 @@ void playerinfo_release(struct playerinfo_type* instance)
     }
 }
 
-void playerinfo_register_operational_state_change_callback(struct playerinfo_type* instance,
+uint32_t playerinfo_register_operational_state_change_callback(struct playerinfo_type* instance,
     playerinfo_operational_state_change_cb callback,
     void* userdata)
 {
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+
     if (instance != NULL) {
-        reinterpret_cast<PlayerInfo*>(instance)->RegisterOperationalStateChangedCallback(callback, userdata);
+        errorCode = reinterpret_cast<PlayerInfo*>(instance)->RegisterOperationalStateChangedCallback(callback, userdata);
     }
+    return errorCode;
 }
 
-void playerinfo_unregister_operational_state_change_callback(struct playerinfo_type* instance,
+uint32_t playerinfo_unregister_operational_state_change_callback(struct playerinfo_type* instance,
     playerinfo_operational_state_change_cb callback)
 {
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+
     if (instance != NULL) {
-        reinterpret_cast<PlayerInfo*>(instance)->UnregisterOperationalStateChangedCallback(callback);
+        errorCode = reinterpret_cast<PlayerInfo*>(instance)->UnregisterOperationalStateChangedCallback(callback);
     }
+    return errorCode;
 }
 
-void playerinfo_register_dolby_sound_mode_updated_callback(struct playerinfo_type* instance, playerinfo_dolby_audio_updated_cb callback, void* userdata)
+uint32_t playerinfo_register_dolby_sound_mode_updated_callback(struct playerinfo_type* instance, playerinfo_dolby_audio_updated_cb callback, void* userdata)
 {
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+
     if (instance != NULL) {
-        reinterpret_cast<PlayerInfo*>(instance)->RegisterDolbyAudioModeChangedCallback(callback, userdata);
+        errorCode = reinterpret_cast<PlayerInfo*>(instance)->RegisterDolbyAudioModeChangedCallback(callback, userdata);
     }
+    return errorCode;
 }
 
-void playerinfo_unregister_dolby_sound_mode_updated_callback(struct playerinfo_type* instance, playerinfo_dolby_audio_updated_cb callback)
+uint32_t playerinfo_unregister_dolby_sound_mode_updated_callback(struct playerinfo_type* instance, playerinfo_dolby_audio_updated_cb callback)
+
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
 {
     if (instance != NULL) {
-        reinterpret_cast<PlayerInfo*>(instance)->UnregisterDolbyAudioModeChangedCallback(callback);
+        errorCode = reinterpret_cast<PlayerInfo*>(instance)->UnregisterDolbyAudioModeChangedCallback(callback);
     }
+    return errorCode;
 }
 
 void playerinfo_name(struct playerinfo_type* instance, char buffer[], const uint8_t length)
