@@ -121,7 +121,7 @@ private:
 
 private:
     //MEMBERS
-    static std::unique_ptr<PlayerInfo> _instance; //in case client forgets to relase the instance
+    static PlayerInfo* _instance;
     Exchange::IPlayerProperties* _playerInterface;
     Exchange::Dolby::IOutput* _dolbyInterface;
     std::string _callsign;
@@ -140,13 +140,14 @@ public:
     static PlayerInfo* Instance()
     {
         if (_instance == nullptr) {
-            _instance.reset(new PlayerInfo(3000, Connector(), "PlayerInfo")); //no make_unique in C++11 :/
+            _instance = new PlayerInfo(3000, Connector(), "PlayerInfo");
         }
-        return _instance.get();
+        return _instance;
     }
     void DestroyInstance()
     {
-        _instance.reset(nullptr);
+        delete _instance;
+        _instance = nullptr;
     }
 
 public:
@@ -413,7 +414,7 @@ public:
     }
 };
 
-std::unique_ptr<PlayerInfo> PlayerInfo::_instance;
+PlayerInfo* PlayerInfo::_instance = nullptr;
 
 } //namespace WPEFramework
 
