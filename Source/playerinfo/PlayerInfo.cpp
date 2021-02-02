@@ -472,6 +472,7 @@ uint32_t playerinfo_playback_resolution(struct playerinfo_type* instance, player
 
     if (instance != NULL && resolution != NULL) {
         Exchange::IPlayerProperties::PlaybackResolution value = Exchange::IPlayerProperties::PlaybackResolution::RESOLUTION_UNKNOWN;
+        *resolution = PLAYERINFO_RESOLUTION_UNKNOWN;
 
         if (reinterpret_cast<PlayerInfo*>(instance)->PlaybackResolution(value) == Core::ERROR_NONE) {
             switch (value) {
@@ -615,8 +616,9 @@ uint32_t playerinfo_set_dolby_mode(struct playerinfo_type* instance, const playe
 uint32_t playerinfo_get_dolby_mode(struct playerinfo_type* instance, playerinfo_dolby_mode_t* mode)
 {
     if (instance != NULL && mode != NULL) {
-
         Exchange::Dolby::IOutput::Type value = Exchange::Dolby::IOutput::Type::AUTO;
+        *mode = PLAYERINFO_DOLBY_MODE_AUTO;
+
         if (reinterpret_cast<PlayerInfo*>(instance)->GetDolbyMode(value) == Core::ERROR_NONE) {
             switch (value) {
             case Exchange::Dolby::IOutput::Type::AUTO:
