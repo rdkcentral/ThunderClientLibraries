@@ -197,6 +197,19 @@ struct OpenCDMSession* opencdm_get_system_session(struct OpenCDMSystem* system, 
     return (result);
 }
 
+/**
+ * \brief Gets support server certificate.
+ *
+ * Some DRMs (e.g. WideVine) use a system-wide server certificate. This method
+ * gets if system has support for that certificate.
+ * \param system Instance of \ref OpenCDMAccessor.
+ * \return Non-zero on success, zero on error.
+ */
+EXTERNAL OpenCDMBool opencdm_system_supports_server_certificate(
+    struct OpenCDMSystem* system)
+{
+  return OPENCDM_BOOL_FALSE;
+}
 
 /**
  * \brief Sets server certificate.
