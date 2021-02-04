@@ -21,150 +21,128 @@
 
 #include <ICryptography.h>
 
-#include "implementation/vault_implementation.h"
-#include "implementation/hash_implementation.h"
 #include "implementation/cipher_implementation.h"
 #include "implementation/diffiehellman_implementation.h"
+#include "implementation/hash_implementation.h"
+#include "implementation/vault_implementation.h"
+
+#include <com/com.h>
+#include <plugins/Types.h>
 
 namespace WPEFramework {
 
 namespace Implementation {
-
-    template <typename INTERFACE>
-    class ConnectorType {
-    private:
-        class Channel : public RPC::CommunicatorClient {
-        public:
-            Channel() = delete;
-            Channel(const Channel&) = delete;
-            Channel& operator= (const Channel&) = delete;
-
-            Channel(const Core::NodeId& remoteNode, const Core::ProxyType<Core::IIPCServer>& handler) 
-                : RPC::CommunicatorClient(remoteNode, handler) {
-            }
-            ~Channel() override = default;
-
-        public:
-            uint32_t Initialize() {
-                return (RPC::CommunicatorClient::Open(Core::infinite));
-            }
-            void Deintialize() {
-                RPC::CommunicatorClient::Close(Core::infinite);
-            }
-            
-            INTERFACE* Aquire(const string className, const uint32_t version) {
-                return RPC::CommunicatorClient::Aquire<INTERFACE>(Core::infinite, className, version);
-            }
-        };
+    template <typename INTERFACE, Core::ProxyType<RPC::IIPCServer> ENGINE() = WPEFramework::RPC::DefaultInvokeServer>
+    class SmartInterfaceType {
     public:
-        ConnectorType(const ConnectorType<INTERFACE>&) = delete;
-        ConnectorType<INTERFACE>& operator= (const ConnectorType<INTERFACE>&) = delete;
-
-        ConnectorType() {
-        }
-        ~ConnectorType() = default;
-
-        INTERFACE* Instance(const Core::NodeId& nodeId, const string className, const uint32_t version = ~0) {
-            INTERFACE* result = nullptr;
-            if (_engine.IsValid() == false) {
-                _engine = Core::ProxyType<RPC::InvokeServerType<1, 0, 8>>::Create();
-                ASSERT(_engine != nullptr);
-            }
-
-            Core::ProxyType<Channel> channel = _comChannels.Instance(nodeId, Core::ProxyType<WPEFramework::Core::IIPCServer>(_engine));
-
-            if (channel.IsValid() == true) {
-                result = channel->Aquire(className, version);
-            }
-
-            return (result);
-        }
-
-    private:
-        Core::ProxyType<RPC::InvokeServerType<1, 0, 8>> _engine;
-        Core::ProxyMapType<Core::NodeId, Channel> _comChannels;
-    };
-
-    class Administrator {
-    private:
-        class Wrapper : public Cryptography::ICryptography {
-        public:
-            Wrapper() = delete;
-            Wrapper(const Wrapper&) = delete;
-            Wrapper& operator= (const Wrapper&) = delete;
-
-            Wrapper(const string& remoteId)
-                : _nodeId(remoteId.c_str())
-                , _realImplementation(nullptr) {
-
-                ASSERT(_nodeId.IsValid() == true);
-            }
-            ~Wrapper() override {
-                if (_realImplementation != nullptr) {
-                    _realImplementation->Release();
-                }
-            }
-
-        public:
-            // Retrieve a hash calculator
-            Cryptography::IHash* Hash(const Cryptography::hashtype hashType) override {
-                return (_realImplementation->Hash(hashType));
-            }
-            // Retrieve a vault (TEE identified by ID)
-            Cryptography::IVault* Vault(const cryptographyvault id) override {
-                return (_realImplementation->Vault(id));
-            }
-            uint32_t Initialize() {
-
-                if (_nodeId.IsValid() == true) {
-                    _realImplementation = _comLink.Instance(_nodeId, _T("SvalbardsVault"));
-                }
-
-                return (_realImplementation != nullptr ? Core::ERROR_NONE : Core::ERROR_INVALID_DESIGNATOR);
-            }
-            bool IsInitialized() const {
-                return (_realImplementation != nullptr);
-            }
-
-            BEGIN_INTERFACE_MAP(Wrapper)
-                INTERFACE_ENTRY(Cryptography::ICryptography)
-            END_INTERFACE_MAP
-
-        private:
-            const Core::NodeId _nodeId;
-            Cryptography::ICryptography* _realImplementation;
-            static ConnectorType<Cryptography::ICryptography> _comLink;
-        };
-
-    public:
-        Administrator(const Administrator&) = delete;
-        Administrator& operator=(const Administrator&) = delete;
-
-        Administrator() = default;
-        ~Administrator() = default;
-
-        Cryptography::ICryptography* Instance(const string& name)
+#ifdef __WINDOWS__
+#pragma warning(disable : 4355)
+#endif
+        SmartInterfaceType()
+            : _adminLock()
+            , _monitor(*this)
+            , _smartType(nullptr)
         {
-            Cryptography::ICryptography* result = nullptr;
-            Core::ProxyType<Wrapper> entry = _instanceMap.Instance(name);
+        }
+#ifdef __WINDOWS__
+#pragma warning(default : 4355)
+#endif
 
-            if (entry.IsValid()) {
-                result = &(*entry);
+        virtual ~SmartInterfaceType()
+        {
+            Close(Core::infinite);
+        }
 
-                ASSERT(result != nullptr);
+    public:
+        inline bool IsOperational() const
+        {
+            return (_smartType != nullptr);
+        }
+        uint32_t Open(const uint32_t waitTime, const Core::NodeId& node, const string& callsign)
+        {
+            return (_monitor.Open(waitTime, node, callsign));
+        }
+        uint32_t Close(const uint32_t waitTime)
+        {
+            return (_monitor.Close(waitTime));
+        }
 
+        // IMPORTANT NOTE:
+        // If you aquire the interface here, take action on the interface and release it. Do not maintain/stash it
+        // since the interface might require to be dropped in the mean time.
+        // So usage on the interface should be deterministic and short !!!
+        INTERFACE* Interface(const string& connector) const
+        {
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+            INTERFACE* result = _smartType;
+
+            if (result != nullptr) {
                 result->AddRef();
             }
 
             return (result);
         }
 
+        // Allow a derived class to take action on a new interface, or almost dissapeared interface..
+        virtual void Operational(const bool upAndRunning)
+        {
+        }
+
     private:
-        Core::ProxyMapType<string, Wrapper> _instanceMap;
+        friend class WPEFramework::RPC::PluginMonitorType<SmartInterfaceType<INTERFACE, ENGINE>&, ENGINE>;
+        void Activated(PluginHost::IShell* plugin)
+        {
+            ASSERT(plugin != nullptr);
+            _adminLock.Lock();
+            DropInterface();
+            _monitor.Aquire(Core::infinite, "/tmp/svalbard", "IMPLENTATION", ~0, _smartType);
+            _adminLock.Unlock();
+            Operational(true);
+        }
+        void Deactivated(PluginHost::IShell* /* plugin */)
+        {
+            Operational(false);
+            _adminLock.Lock();
+            DropInterface();
+            _adminLock.Unlock();
+        }
+        void DropInterface()
+        {
+            if (_smartType != nullptr) {
+                _smartType->Release();
+                _smartType = nullptr;
+            }
+        }
+
+    private:
+        mutable Core::CriticalSection _adminLock;
+        WPEFramework::RPC::PluginMonitorType<SmartInterfaceType<INTERFACE, ENGINE>&, ENGINE> _monitor;
+        INTERFACE* _smartType;
     };
 
-    /* static */ ConnectorType<Cryptography::ICryptography> Administrator::Wrapper::_comLink;
-    static Administrator _externalVaults;
+    class RemoteCryptography : public SmartInterfaceType<Cryptography::ICryptography> {
+    private:
+        using BaseClass = SmartInterfaceType<Cryptography::ICryptography>;
+
+    public:
+        RemoteCryptography(const uint32_t waitTime, const Core::NodeId& node, const string& callsign)
+            : BaseClass()
+        {
+            BaseClass::Open(waitTime, node, callsign);
+        }
+        ~RemoteCryptography()
+        {
+            BaseClass::Close(Core::infinite);
+        }
+
+    private:
+        void Operational(const bool upAndRunning)
+        {
+            printf("Operational state of RemoteCryptography: %s\n", upAndRunning ? _T("true") : _T("false"));
+        }
+    };
+
+    static RemoteCryptography _externalVaults(3000, "/tmp/communicator", "Svalbard");
 
     class HashImpl : virtual public WPEFramework::Cryptography::IHash {
     public:
@@ -304,15 +282,15 @@ namespace Implementation {
 
         public:
             int32_t Encrypt(const uint8_t ivLength, const uint8_t iv[],
-                            const uint32_t inputLength, const uint8_t input[],
-                            const uint32_t maxOutputLength, uint8_t output[]) const override
+                const uint32_t inputLength, const uint8_t input[],
+                const uint32_t maxOutputLength, uint8_t output[]) const override
             {
                 return (cipher_encrypt(_implementation, ivLength, iv, inputLength, input, maxOutputLength, output));
             }
 
             int32_t Decrypt(const uint8_t ivLength, const uint8_t iv[],
-                            const uint32_t inputLength, const uint8_t input[],
-                            const uint32_t maxOutputLength, uint8_t output[]) const override
+                const uint32_t inputLength, const uint8_t input[],
+                const uint32_t maxOutputLength, uint8_t output[]) const override
             {
                 return (cipher_decrypt(_implementation, ivLength, iv, inputLength, input, maxOutputLength, output));
             }
@@ -347,7 +325,7 @@ namespace Implementation {
 
         public:
             uint32_t Generate(const uint8_t generator, const uint16_t modulusSize, const uint8_t modulus[],
-                            uint32_t& privKeyId, uint32_t& pubKeyId) override
+                uint32_t& privKeyId, uint32_t& pubKeyId) override
             {
                 return (diffiehellman_generate(_vault->Implementation(), generator, modulusSize, modulus, &privKeyId, &pubKeyId));
             }
@@ -367,7 +345,7 @@ namespace Implementation {
         }; // class DiffieHellmanImpl
 
         WPEFramework::Cryptography::IHash* HMAC(const WPEFramework::Cryptography::hashtype hashType,
-                                                const uint32_t secretId) override
+            const uint32_t secretId) override
         {
             WPEFramework::Cryptography::IHash* hmac(nullptr);
 
@@ -386,7 +364,7 @@ namespace Implementation {
         }
 
         WPEFramework::Cryptography::ICipher* AES(const WPEFramework::Cryptography::aesmode aesMode,
-                                                 const uint32_t keyId) override
+            const uint32_t keyId) override
         {
             WPEFramework::Cryptography::ICipher* cipher(nullptr);
 
@@ -466,20 +444,18 @@ namespace Implementation {
 
 } // namespace Implementation
 
-
 /* static */ Cryptography::ICryptography* Cryptography::ICryptography::Instance(const std::string& connectionPoint)
 {
     Cryptography::ICryptography* result(nullptr);
 
     if (connectionPoint.empty() == true) {
         result = Core::Service<Implementation::CryptographyImpl>::Create<Cryptography::ICryptography>();
-    }
-    else {
+    } else {
         // Seems we received a connection point
-        result = Implementation::_externalVaults.Instance(connectionPoint);
+        result = Implementation::_externalVaults.Interface(connectionPoint);
     }
 
     return result;
 }
 
-}
+} // namespace WPEFramework

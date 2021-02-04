@@ -26,6 +26,7 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-as-needed")
 option(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY "Include explicitly a software based cryptography library" OFF)
 
 find_package(ProxyStubGenerator REQUIRED)
+find_package(${NAMESPACE}Plugins REQUIRED)
 
 ProxyStubGenerator(
     NAMESPACE "WPEFramework::Cryptography" 
@@ -47,6 +48,7 @@ target_link_libraries(${TARGET}
     PUBLIC
         ${NAMESPACE}Core::${NAMESPACE}Core
         ${NAMESPACE}Tracing::${NAMESPACE}Tracing
+        ${NAMESPACE}Plugins::${NAMESPACE}Plugins
     PRIVATE
         -Wl,--whole-archive implementation -Wl,--no-whole-archive
 )
@@ -150,3 +152,5 @@ if(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY)
         TARGETS ${TARGET}Software 
     )
 endif(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY)
+
+add_subdirectory(Tests)
