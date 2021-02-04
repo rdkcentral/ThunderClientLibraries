@@ -276,7 +276,7 @@ public:
                 }
                 if (numberOfCodecs < length) {
                     value = numberOfCodecs;
-                    ::memcpy(array, newArray, numberOfCodecs * sizeof(playerinfo_videocodec_t)); //TODO change this later
+                    std::copy(newArray, newArray + numberOfCodecs, array);
                 } else {
                     value = -numberOfCodecs;
                 }
@@ -350,7 +350,7 @@ public:
                 }
                 if (numberOfCodecs < length) {
                     value = numberOfCodecs;
-                    ::memcpy(array, newArray, numberOfCodecs * sizeof(playerinfo_audiocodec_t));
+                    std::copy(newArray, newArray + numberOfCodecs, array);
                 } else {
                     value = -numberOfCodecs;
                 }
