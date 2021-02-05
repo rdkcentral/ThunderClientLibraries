@@ -213,7 +213,7 @@ private:
                 }
 
             private:
-                void StateChange(PluginHost::IShell* plugin) override
+                void StateChange(PluginHost::IShell* plugin, const string&) override
                 {
                     plugin->AddRef();
                     _instances.push_back(plugin);
