@@ -67,9 +67,9 @@ install(
         LIBRARY DESTINATION lib COMPONENT libs      # shared lib
         RUNTIME DESTINATION bin COMPONENT libs      # binaries
         FRAMEWORK DESTINATION bin COMPONENT libs    # for mac
-        PUBLIC_HEADER DESTINATION include/provision COMPONENT devel   # headers for mac (note the different component -> different package)
-        INCLUDES DESTINATION include/provision      # headers
-)
+        PUBLIC_HEADER DESTINATION include/provisionproxy COMPONENT devel   # headers for mac (note the different component -> different package)
+        INCLUDES DESTINATION include/provisionproxy      # headers
+ )
 
 InstallCMakeConfig(
         TARGETS ${TARGET})
