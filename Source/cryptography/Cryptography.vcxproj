@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cryptography.h" />
+    <ClInclude Include="cryptography_vault_ids.h" />
     <ClInclude Include="ICryptography.h" />
     <ClInclude Include="implementation\cipher_implementation.h" />
     <ClInclude Include="implementation\diffiehellman_implementation.h" />
@@ -39,6 +40,8 @@
     <ClCompile Include="implementation\OpenSSL\Hash.cpp" />
     <ClCompile Include="implementation\OpenSSL\Vault.cpp" />
     <ClCompile Include="NetflixSecurity.cpp" />
+    <ClCompile Include="ProxyStubs_Cryptography.cpp" />
+    <ClCompile Include="ProxyStubs_NetflixSecurity.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -98,28 +101,24 @@
     <OutDir>$(SolutionDir)..\artifacts\$(Configuration)\</OutDir>
     <IntDir>$(OutDir)WebBridge\$(TargetName)\</IntDir>
     <TargetName>$(ProjectName)</TargetName>
-    <PreBuildEventUseInBuild>true</PreBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)..\artifacts\$(Configuration)\</OutDir>
     <IntDir>$(OutDir)WebBridge\$(TargetName)\</IntDir>
     <TargetName>$(ProjectName)</TargetName>
-    <PreBuildEventUseInBuild>true</PreBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)..\artifacts\$(Configuration)\</OutDir>
     <IntDir>$(OutDir)WebBridge\$(TargetName)\</IntDir>
     <TargetName>$(ProjectName)</TargetName>
-    <PreBuildEventUseInBuild>true</PreBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)..\artifacts\$(Configuration)\</OutDir>
     <IntDir>$(OutDir)WebBridge\$(TargetName)\</IntDir>
     <TargetName>$(ProjectName)</TargetName>
-    <PreBuildEventUseInBuild>true</PreBuildEventUseInBuild>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -143,7 +142,7 @@
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
     </Lib>
     <PreBuildEvent>
-      <Command>python "$(ToolPath)\ProxyStubGenerator\StubGenerator.py" --namespace "WPEFramework::Cryptography" -I "$(ProjectDir)" "$(ProjectDir)ICryptography.h" "$(ProjectDir)INetflixSecurity.h"</Command>
+      <Command>python "$(ToolPath)\ProxyStubGenerator\StubGenerator.py" -I $(FrameworkPath) -I . "$(ProjectDir)."</Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>ProxyStub Generation</Message>
@@ -171,7 +170,7 @@
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
     </Lib>
     <PreBuildEvent>
-      <Command>python "$(ToolPath)\ProxyStubGenerator\StubGenerator.py" --namespace "WPEFramework::Cryptography" -I "$(ProjectDir)" "$(ProjectDir)ICryptography.h" "$(ProjectDir)INetflixSecurity.h"</Command>
+      <Command>python "$(ToolPath)\ProxyStubGenerator\StubGenerator.py" -I $(FrameworkPath) -I . "$(ProjectDir)."</Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>ProxyStub Generation</Message>
@@ -203,7 +202,7 @@
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
     </Lib>
     <PreBuildEvent>
-      <Command>python "$(ToolPath)\ProxyStubGenerator\StubGenerator.py" --namespace "WPEFramework::Cryptography" -I "$(ProjectDir)" "$(ProjectDir)ICryptography.h" "$(ProjectDir)INetflixSecurity.h"</Command>
+      <Command>python "$(ToolPath)\ProxyStubGenerator\StubGenerator.py" -I $(FrameworkPath) -I . "$(ProjectDir)."</Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>ProxyStub Generation</Message>
@@ -235,7 +234,7 @@
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
     </Lib>
     <PreBuildEvent>
-      <Command>python "$(ToolPath)\ProxyStubGenerator\StubGenerator.py" --namespace "WPEFramework::Cryptography" -I "$(ProjectDir)" "$(ProjectDir)ICryptography.h" "$(ProjectDir)INetflixSecurity.h"</Command>
+      <Command>python "$(ToolPath)\ProxyStubGenerator\StubGenerator.py" -I $(FrameworkPath) -I . "$(ProjectDir)."</Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>ProxyStub Generation</Message>
