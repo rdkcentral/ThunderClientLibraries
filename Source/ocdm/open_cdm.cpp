@@ -129,7 +129,7 @@ OpenCDMError opencdm_is_type_supported(const char keySystem[],
     OpenCDMAccessor * accessor = OpenCDMAccessor::Instance();
     OpenCDMError result(OpenCDMError::ERROR_KEYSYSTEM_NOT_SUPPORTED);
 
-    if ((accessor != nullptr) && (accessor->IsTypeSupported(std::string(keySystem), std::string(mimeType)) == 0)) {
+    if ((accessor != nullptr) && (accessor->IsTypeSupported(std::string(keySystem), std::string(mimeType)) == true)) {
         result = OpenCDMError::ERROR_NONE;
     }
     return (result);
