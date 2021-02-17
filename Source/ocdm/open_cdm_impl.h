@@ -58,20 +58,25 @@ private:
 protected:
     OpenCDMAccessor(const TCHAR domainName[])
         : _refCount(1)
+        , _domain(domainName)
         , _engine(Core::ProxyType<RPC::InvokeServerType<1, 0, 4>>::Create())
-        , _client(Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(domainName), Core::ProxyType<Core::IIPCServer>(_engine)))
+        , _client()
         , _remote(nullptr)
         , _adminLock()
         , _signal(false, true)
         , _interested(0)
         , _sessionKeys()
     {
-        printf("Trying to open an OCDM connection @ %s\n", domainName);
+        TRACE_L1("Trying to open an OCDM connection @ %s\n", domainName);
     }
 
     void Reconnect() const
     {
-        if (_client->IsOpen() == false) {
+        if (_client.IsValid() == false) {
+            _client = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(_domain.c_str()), Core::ProxyType<Core::IIPCServer>(_engine));
+        }
+
+        if ((_client.IsValid() == true) && (_client->IsOpen() == false)) {
             if (_remote != nullptr) {
                 _remote->Release();
             }
@@ -301,6 +306,7 @@ public:
 
 private:
     mutable uint32_t _refCount;
+    string _domain;
     Core::ProxyType<RPC::InvokeServerType<1, 0, 4> > _engine;
     mutable Core::ProxyType<RPC::CommunicatorClient> _client;
     mutable OCDM::IAccessorOCDM* _remote;
