@@ -110,12 +110,11 @@ namespace Implementation {
 
     public:
         uint16_t Size(const uint32_t id, bool allowSealed = false) const;
-        uint32_t Import(const uint16_t size, const uint8_t blob[], bool exportable = false);
+        uint32_t Import(const uint16_t size, const uint8_t blob[],const bool blobIsName, bool exportable = false);
         uint16_t Export(const uint32_t id, const uint16_t size, uint8_t blob[], bool allowSealed = false) const;
         uint32_t Put(const uint16_t size, const uint8_t blob[]);
         uint16_t Get(const uint32_t id, const uint16_t size, uint8_t blob[]) const;
         bool Delete(const uint32_t id);
-        uint32_t ImportNamedKey(const  string keyFileName, bool  exportable);
         uint32_t CreateNamedKey(const string keyFile,bool exportable ,const key_type keyType);
 
     private:

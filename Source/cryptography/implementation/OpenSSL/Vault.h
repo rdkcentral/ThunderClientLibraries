@@ -21,6 +21,7 @@
 #include <map>
 #include <climits>
 
+
 namespace Implementation {
 
 class Vault {
@@ -70,6 +71,7 @@ public:
     uint32_t Put(const uint16_t size, const uint8_t blob[]);
     uint16_t Get(const uint32_t id, const uint16_t size, uint8_t blob[]) const;
     bool Delete(const uint32_t id);
+    uint32_t CreateKey(bool exportable,const key_type keyType);
 
 private:
     uint16_t Cipher(bool encrypt, const uint16_t inSize, const uint8_t input[], const uint16_t maxOutSize, uint8_t output[]) const;

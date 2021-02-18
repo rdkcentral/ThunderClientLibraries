@@ -124,7 +124,7 @@ namespace Cryptography {
 
         // Import unencrypted data blob into the vault (returns blob ID)
         // Note: User IDs are always greater than 0x80000000, values below 0x80000000 are reserved for implementation-specific internal data blobs.
-        virtual uint32_t Import(const uint16_t length, const uint8_t blob[] /* @length:length */) = 0;
+        virtual uint32_t Import(const uint16_t length, const uint8_t blob[] /* @length:length */, const bool blobIsName =false) = 0;
 
         // Export unencrypted data blob out of the vault (returns blob ID), only public blobs are exportable
         virtual uint16_t Export(const uint32_t id, const uint16_t maxLength, uint8_t blob[] /* @out @maxlength:maxLength */) const = 0;
@@ -138,12 +138,8 @@ namespace Cryptography {
         // Delete a data blob from the vault
         virtual bool Delete(const uint32_t id) = 0;
 
-        // Import a NamedKey to  the vault
-        virtual uint32_t ImportNamedKey(const string keyFile ) = 0;
-
-        // Create a new random  named key when needed by any application
-        virtual uint32_t CreateNamedKey(const string keyFile ,bool exportable ,const keytype keyType) = 0;
-
+        //Create a new key of required type
+        virtual uint32_t CreateNamedKey(bool exportable ,const keytype keyType, const string keyFile="") = 0;
 
         // Crypto operations using the vault for key storage
         // -----------------------------------------------------

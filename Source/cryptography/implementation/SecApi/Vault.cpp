@@ -22,6 +22,7 @@
 #include <cryptalgo/cryptalgo.h>
 #include "Vault.h"
 
+
 namespace Implementation {
 
     cryptographyvault  vaultId;
@@ -38,6 +39,7 @@ namespace Implementation {
             _secProcHandle = NULL;
         }
         _lastHandle = 0x80000000;
+            
     }
 
     Vault::Vault(const char* storagePath)
@@ -124,127 +126,119 @@ namespace Implementation {
      * @return id across which the hmac/AES object ids are stored.
      *
      *********************************************************************/
-    uint32_t Vault::Import(const uint16_t size, const uint8_t blob[], bool exportable)
+    uint32_t Vault::Import(const uint16_t size, const uint8_t blob[],const bool blobIsName, bool exportable)
     {
         uint32_t id = 0;
-        if (size > 0) {
-            _lock.Lock();
-            id = (_lastHandle + 1);
-            if (id != 0) {
-                struct IdStore ids;
-                SEC_BYTE* data = (SEC_BYTE*)blob;
-                Sec_Result sec_res_hmac = SEC_RESULT_FAILURE;
-                Sec_Result sec_res_aes = SEC_RESULT_FAILURE;
+ 
+        _lock.Lock();
+        if (!blobIsName ) {
+            if (size > 0) {
+                id = (_lastHandle + 1);
+                if (id != 0) {
+                    struct IdStore ids;
+                    SEC_BYTE* data = (SEC_BYTE*)blob;
+                    Sec_Result sec_res_hmac = SEC_RESULT_FAILURE;
+                    Sec_Result sec_res_aes = SEC_RESULT_FAILURE;
 
-                if (KEYLEN_AES_HMAC_128 == size) { /* 16 byte aes or an hmac key */
-                    ids.idAes = SecKey_ObtainFreeObjectId(_secProcHandle, SEC_OBJECTID_USER_BASE, SEC_OBJECTID_USER_TOP);
-                    if (ids.idAes != 0) {
-                        sec_res_aes = SecKey_Provision(_secProcHandle, ids.idAes, SEC_STORAGELOC_RAM, SEC_KEYCONTAINER_RAW_AES_128, data, size);
-                    }
-                    ids.idHmac = SecKey_ObtainFreeObjectId(_secProcHandle, SEC_OBJECTID_USER_BASE, SEC_OBJECTID_USER_TOP);
-                    if (ids.idHmac != 0) {
-                        sec_res_hmac = SecKey_Provision(_secProcHandle, ids.idHmac, SEC_STORAGELOC_RAM, SEC_KEYCONTAINER_RAW_HMAC_128, data, size);
-                    }
-                }
+                    if (KEYLEN_AES_HMAC_128 == size) { /* 16 byte aes or an hmac key */
+                        ids.idAes = SecKey_ObtainFreeObjectId(_secProcHandle, SEC_OBJECTID_USER_BASE, SEC_OBJECTID_USER_TOP);
+                        if (ids.idAes != 0) {
+                            sec_res_aes = SecKey_Provision(_secProcHandle, ids.idAes, SEC_STORAGELOC_RAM, SEC_KEYCONTAINER_RAW_AES_128, data, size);
+                        }
+                        ids.idHmac = SecKey_ObtainFreeObjectId(_secProcHandle, SEC_OBJECTID_USER_BASE, SEC_OBJECTID_USER_TOP);
+                        if (ids.idHmac != 0) {
+                            sec_res_hmac = SecKey_Provision(_secProcHandle, ids.idHmac, SEC_STORAGELOC_RAM, SEC_KEYCONTAINER_RAW_HMAC_128, data, size);
+                        }
+                   }
 
-                else if (KEYLEN_AES_HMAC_256 == size) { /* 32 byte aes or an hmac key */
-                    ids.idAes = SecKey_ObtainFreeObjectId(_secProcHandle, SEC_OBJECTID_USER_BASE, SEC_OBJECTID_USER_TOP);
-                    if (ids.idAes != 0) {
-                        sec_res_aes = SecKey_Provision(_secProcHandle, ids.idAes, SEC_STORAGELOC_RAM, SEC_KEYCONTAINER_RAW_AES_256, data, size);
-                    }
-                    ids.idHmac = SecKey_ObtainFreeObjectId(_secProcHandle, SEC_OBJECTID_USER_BASE, SEC_OBJECTID_USER_TOP);
-                    if (ids.idHmac != 0) {
-                        sec_res_hmac = SecKey_Provision(_secProcHandle, ids.idHmac, SEC_STORAGELOC_RAM, SEC_KEYCONTAINER_RAW_HMAC_256, data, size);
-                    }
-                }
+                   else if (KEYLEN_AES_HMAC_256 == size) { /* 32 byte aes or an hmac key */
+                        ids.idAes = SecKey_ObtainFreeObjectId(_secProcHandle, SEC_OBJECTID_USER_BASE, SEC_OBJECTID_USER_TOP);
+                        if (ids.idAes != 0) {
+                            sec_res_aes = SecKey_Provision(_secProcHandle, ids.idAes, SEC_STORAGELOC_RAM, SEC_KEYCONTAINER_RAW_AES_256, data, size);
+                        }
+                        ids.idHmac = SecKey_ObtainFreeObjectId(_secProcHandle, SEC_OBJECTID_USER_BASE, SEC_OBJECTID_USER_TOP);
+                        if (ids.idHmac != 0) {
+                            sec_res_hmac = SecKey_Provision(_secProcHandle, ids.idHmac, SEC_STORAGELOC_RAM, SEC_KEYCONTAINER_RAW_HMAC_256, data, size);
+                        }
+                   }
 
-                else if (KEYLEN_HMAC_160  == size) {
-                    sec_res_aes = SEC_RESULT_SUCCESS; /* 20 byte hmac key ,no such aes key*/
-                    ids.idAes = 0;
-                    ids.idHmac = SecKey_ObtainFreeObjectId(_secProcHandle, SEC_OBJECTID_USER_BASE, SEC_OBJECTID_USER_TOP);
-                    if (ids.idHmac != 0) {
-                        sec_res_hmac = SecKey_Provision(_secProcHandle, ids.idHmac, SEC_STORAGELOC_RAM, SEC_KEYCONTAINER_RAW_HMAC_160, data, size);
-                    }
-                }
+                   else if (KEYLEN_HMAC_160  == size) {
+                       sec_res_aes = SEC_RESULT_SUCCESS; /* 20 byte hmac key ,no such aes key*/
+                       ids.idAes = 0;
+                       ids.idHmac = SecKey_ObtainFreeObjectId(_secProcHandle, SEC_OBJECTID_USER_BASE, SEC_OBJECTID_USER_TOP);
+                       if (ids.idHmac != 0) {
+                           sec_res_hmac = SecKey_Provision(_secProcHandle, ids.idHmac, SEC_STORAGELOC_RAM, SEC_KEYCONTAINER_RAW_HMAC_160, data, size);
+                       }
+                   }
 
-                if ((sec_res_aes == SEC_RESULT_SUCCESS) && (sec_res_hmac == SEC_RESULT_SUCCESS)) {
-                    TRACE_L2(_T("SEC : key is provisioned \n"));
+                   if ((sec_res_aes == SEC_RESULT_SUCCESS) && (sec_res_hmac == SEC_RESULT_SUCCESS)) {
+                       TRACE_L2(_T("SEC : key is provisioned \n"));
+
+                       _items.emplace(std::piecewise_construct, std::forward_as_tuple(id),
+                       std::forward_as_tuple(exportable, ids, size));
+
+                       _lastHandle = id;
+                       TRACE_L2(_T("SEC : Added a %s data blob \n"), (exportable ? "clear" : "sealed"));
+                   }
+                   else if((sec_res_aes != SEC_RESULT_SUCCESS) || (sec_res_hmac != SEC_RESULT_SUCCESS))  {
+                       if (sec_res_hmac == SEC_RESULT_SUCCESS) {
+                           SecKey_Delete(_secProcHandle, ids.idHmac);
+                       }
+                       if ((sec_res_aes == SEC_RESULT_SUCCESS) && (ids.idAes != 0)) {
+                           SecKey_Delete(_secProcHandle, ids.idAes);
+                       }
+                       TRACE_L1(_T("SEC :cannot provision key, result for key provision Aes:%d and Hmac:%d "),sec_res_aes,sec_res_hmac);
+                   }
+               }
+               else {
+                   TRACE_L1(_T("SEC : id assigned is zero \n"));
+               }
+           }
+           TRACE_L2(_T("SEC : import ends the id assigned is 0x%08x \n"), id);
+        }
+
+        else {
+            SEC_OBJECTID idcheck = 0x0;
+            struct IdStore ids;
+        
+            string fileStr= (char*)blob;
+            string fileName = fileStr.substr(0,SEC_ID_SIZE);
+            uint64_t secId  = stoull(fileName,0,16);
+            if (secId != 0 ) {
+                idcheck = secId;
+                TRACE_L2(_T("SEC: the obj id from file name is %llx \n"),idcheck);
+                Sec_KeyHandle* sec_key_check;
+                Sec_Result sec_res = SecKey_GetInstance(_secProcHandle,idcheck, &sec_key_check);
+                if( sec_res == SEC_RESULT_SUCCESS ) {
+                    id = (_lastHandle + 1);
+                    ids.idAes = idcheck;
+                    ids.idHmac = idcheck;
 
                     _items.emplace(std::piecewise_construct, std::forward_as_tuple(id),
-                        std::forward_as_tuple(exportable, ids, size));
-
-                    _lastHandle = id;
-                    TRACE_L2(_T("SEC : Added a %s data blob \n"), (exportable ? "clear" : "sealed"));
-                }
-                else if((sec_res_aes != SEC_RESULT_SUCCESS) || (sec_res_hmac != SEC_RESULT_SUCCESS))  {
-                    if (sec_res_hmac == SEC_RESULT_SUCCESS) {
-                        SecKey_Delete(_secProcHandle, ids.idHmac);
-                    }
-                    if ((sec_res_aes == SEC_RESULT_SUCCESS) && (ids.idAes != 0)) {
-                        SecKey_Delete(_secProcHandle, ids.idAes);
-                    }
-                    TRACE_L1(_T("SEC :cannot provision key, result for key provision Aes:%d and Hmac:%d "),sec_res_aes,sec_res_hmac);
-                }
-            }
-            else {
-                TRACE_L1(_T("SEC : id assigned is zero \n"));
-            }
-            _lock.Unlock();
-        }
-        TRACE_L2(_T("SEC : import ends the id assigned is 0x%08x \n"), id);
-        return (id);
-    }
-
-
-    /*********************************************************************
-     * @function ImportNamedKey
-     *
-     * @brief   Store a named key(ex.key from fkps)
-     *
-     * @param[in] keyFileName - Name of the key's file
-     * @param[in] exportable - key  exportable( usually false)
-     *
-     * @return id across which the hmac/AES object ids are stored.
-     *
-     *********************************************************************/
-    uint32_t Vault::ImportNamedKey(const string keyFileName, bool  exportable)
-    {
-        SEC_OBJECTID idcheck = 0x0;
-        struct IdStore ids;
-        uint32_t id = 0;
-        
-        string fileName = keyFileName.substr(0,SEC_ID_SIZE);
-        uint64_t secId  = stoull(fileName,0,16);
-        if (secId != 0 ) {
-            idcheck = secId;
-            TRACE_L2(_T("SEC: the obj id from file name is %llx \n"),idcheck);
-            Sec_KeyHandle* sec_key_check;
-            Sec_Result sec_res = SecKey_GetInstance(_secProcHandle,idcheck, &sec_key_check);
-            if( sec_res == SEC_RESULT_SUCCESS ) {
-                id = (_lastHandle + 1);
-                ids.idAes = idcheck;
-                ids.idHmac = idcheck;
-
-                _items.emplace(std::piecewise_construct, std::forward_as_tuple(id),
                                std::forward_as_tuple(exportable, ids,SEC_ID_SIZE));
 
-                TRACE_L2(_T("SEC: key placed at %x vault id ,sec obj id %llx \n"),id,idcheck);
-                _lastHandle = id;
-                SecKey_Release(sec_key_check);
+                    TRACE_L2(_T("SEC: key placed at %x vault id ,sec obj id %llx \n"),id,idcheck);
+                    _lastHandle = id;
+                    SecKey_Release(sec_key_check);
+                }
+                else {
+                    TRACE_L1(_T("SEC:key instance  not created for %llx , retVal =  %d\n"),idcheck,sec_res);
+                }
             }
             else {
-                TRACE_L1(_T("SEC:key instance  not created for %llx , retVal =  %d\n"),idcheck,sec_res);
+                TRACE_L1(_T("SEC:cannot retrieve valid sec object id from filename \n"));
             }
-        }
-        else {
-            TRACE_L1(_T("SEC:cannot retrieve valid sec object id from filename \n"));
-        }
+
+         }
          
+        _lock.Unlock();
+   
         return(id);
-    }
 
+    }    
 
-    /*********************************************************************
+    
+     /*********************************************************************
      * @function CreateNamedKey
      *
      * @brief   Create a new AES/HMAC named key
@@ -317,7 +311,7 @@ namespace Implementation {
    
     }
 
-
+ 
     /*********************************************************************
      * @function Export
      *
@@ -548,7 +542,7 @@ extern "C" {
         }
     }
 
-    uint32_t vault_import(VaultImplementation* vault, const uint16_t length, const uint8_t data[])
+    uint32_t vault_import(VaultImplementation* vault, const uint16_t length, const uint8_t data[],const bool dataIsPath)
     {
         ASSERT(vault != nullptr);
         if (Implementation::vaultId == CRYPTOGRAPHY_VAULT_NETFLIX) {
@@ -559,7 +553,7 @@ extern "C" {
         else {
             TRACE_L2(_T("SEC:vault_import generic\n"));
             Implementation::Vault* vaultImpl = reinterpret_cast<Implementation::Vault*>(vault);
-            return (vaultImpl->Import(length, data, true /* imported in clear is always exportable */));
+            return (vaultImpl->Import(length, data,dataIsPath, true /* imported in clear is always exportable */));
         }
     }
 
@@ -627,22 +621,7 @@ extern "C" {
         }
     }
 
-    uint32_t vault_import_namedkey(VaultImplementation* vault, const char namedKeyFile[])
-    {
-        ASSERT(vault != nullptr);
-        if (Implementation::vaultId == CRYPTOGRAPHY_VAULT_NETFLIX) {
-            //NOT IMPLEMENTED FOR SEC_NETFLIX
-            return 0;
-        }
-        else {
-            TRACE_L2(_T("SEC:vault_import_namedkey generic\n"));
-            Implementation::Vault* vaultImpl = reinterpret_cast<Implementation::Vault*>(vault);
-            string namedkeyFileStr(namedKeyFile);
-            return (vaultImpl->ImportNamedKey(namedkeyFileStr,false /* imported named keys not  exportable */));
-        }
-    }
-
-    uint32_t vault_create_namedkey(struct VaultImplementation* vault, const char namedKeyFile[],bool exportable ,const key_type keyType)
+    uint32_t vault_create_namedkey(struct VaultImplementation* vault,bool exportable ,const key_type keyType,const char namedKeyFile[])
     {
         ASSERT(vault != nullptr);
         if (Implementation::vaultId == CRYPTOGRAPHY_VAULT_NETFLIX) {
@@ -656,5 +635,7 @@ extern "C" {
             return (vaultImpl->CreateNamedKey(namedkeyFileStr,exportable,keyType));
         }
     }
+
+
 
 } // extern "C"

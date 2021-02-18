@@ -330,6 +330,30 @@ bool Vault::Delete(const uint32_t id)
     return (result);
 }
 
+uint32_t Vault::CreateKey(bool exportable,const key_type keyType)
+{
+    uint16_t keySize = 0;
+
+    _lock.Lock();
+    if((keyType==key_type::AES128)||(keyType==key_type::HMAC128)) {
+        keySize = 16;
+    } else if((keyType==key_type::AES256)||(keyType==key_type::HMAC256)) {
+        keySize = 32;
+    } else if (keyType==key_type::HMAC160) {
+        keySize = 20;
+    } else {
+         TRACE_L1("Invalid key size \n");
+         return keySize;
+    }
+
+    uint8_t key[keySize];
+    RAND_bytes(key,keySize);
+    _lock.Unlock();
+
+    return(Import(keySize,key,true)); //Imported into vault as a raw blob
+
+}
+
 } // namespace Implementation
 
 
@@ -363,10 +387,11 @@ uint16_t vault_size(const VaultImplementation* vault, const uint32_t id)
     return (vaultImpl->Size(id));
 }
 
-uint32_t vault_import(VaultImplementation* vault, const uint16_t length, const uint8_t data[])
+uint32_t vault_import(VaultImplementation* vault, const uint16_t length, const uint8_t data[],const bool blobIsName)
 {
     ASSERT(vault != nullptr);
     Implementation::Vault *vaultImpl = reinterpret_cast<Implementation::Vault*>(vault);
+    ASSERT(blobIsName == false); //OpenSSLdoes not handle named key files importing
     return (vaultImpl->Import(length, data, true /* imported in clear is always exportable */));
 }
 
@@ -398,18 +423,13 @@ bool vault_delete(VaultImplementation* vault, const uint32_t id)
     return (vaultImpl->Delete(id));
 }
 
-uint32_t vault_import_namedkey(struct VaultImplementation* vault, const char namedKeyFile[])
+uint32_t vault_create_namedkey(struct VaultImplementation* vault,bool exportable ,const key_type keyType, const char namedKeyFile[])
 {
-    //NOT IMPLEMENTED FOR OPENSSL
-    return 0;
-
+    ASSERT(vault != nullptr);
+    Implementation::Vault *vaultImpl = reinterpret_cast<Implementation::Vault*>(vault);
+    return (vaultImpl->CreateKey(exportable,keyType)); //namedKeyFile not applicable for OpenSSL
 }
 
-uint32_t vault_create_namedkey(struct VaultImplementation* vault, const char namedKeyFile[],bool exportable ,const key_type keyType)
-{
-    //NOT IMPLEMENTED FOR OPENSSL
-    return 0;
-}
 
 // Netflix Security
 

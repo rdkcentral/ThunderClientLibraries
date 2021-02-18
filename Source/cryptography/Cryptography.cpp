@@ -87,9 +87,9 @@ namespace Implementation {
             return (vault_size(_implementation, id));
         }
 
-        uint32_t Import(const uint16_t length, const uint8_t blob[]) override
+        uint32_t Import(const uint16_t length, const uint8_t blob[], const bool blobIsName ) override
         {
-            return (vault_import(_implementation, length, blob));
+            return (vault_import(_implementation, length, blob,blobIsName));
         }
 
         uint16_t Export(const uint32_t id, const uint16_t maxLength, uint8_t blob[]) const override
@@ -111,15 +111,10 @@ namespace Implementation {
         {
             return (vault_delete(_implementation, id));
         }
-
-        uint32_t ImportNamedKey(const string keyFile) override
-        {
-            return(vault_import_namedkey(_implementation,keyFile.c_str()));
-        }
     
-        uint32_t CreateNamedKey(const string keyFile,bool exportable ,const WPEFramework::Cryptography::keytype keyType) override
+        uint32_t CreateNamedKey(bool exportable ,const WPEFramework::Cryptography::keytype keyType,const string keyFile) override
         {
-            return(vault_create_namedkey(_implementation,keyFile.c_str(),exportable,static_cast<key_type>(keyType)));
+            return(vault_create_namedkey(_implementation,exportable,static_cast<key_type>(keyType),keyFile.c_str()));
         }
 
         VaultImplementation* Implementation()
