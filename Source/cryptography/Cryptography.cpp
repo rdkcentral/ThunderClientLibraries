@@ -30,119 +30,465 @@
 #include <plugins/Types.h>
 
 namespace WPEFramework {
-
 namespace Implementation {
-    template <typename INTERFACE, Core::ProxyType<RPC::IIPCServer> ENGINE() = WPEFramework::RPC::DefaultInvokeServer>
-    class SmartInterfaceType {
-    public:
-#ifdef __WINDOWS__
-#pragma warning(disable : 4355)
-#endif
-        SmartInterfaceType()
-            : _adminLock()
-            , _monitor(*this)
-            , _smartType(nullptr)
-        {
-        }
-#ifdef __WINDOWS__
-#pragma warning(default : 4355)
-#endif
+    static constexpr uint16_t TimeOut = 3000;
+    static constexpr const TCHAR* PluginConnector = "/tmp/communicator";
+    static constexpr const TCHAR* Callsign = "Svalbard";
+    static constexpr const TCHAR* CryptographyConnector = "/tmp/svalbard";
 
-        virtual ~SmartInterfaceType()
-        {
-            Close(Core::infinite);
-        }
+    struct IRPCLink {
+        virtual ~IRPCLink() = default;
+        virtual void Clear() = 0;
+    };
+
+    class CryptographyLink : public RPC::SmartInterfaceType<PluginHost::IPlugin> {
+    private:
+        using BaseClass = RPC::SmartInterfaceType<PluginHost::IPlugin>;
 
     public:
-        inline bool IsOperational() const
+        CryptographyLink(const uint32_t waitTime, const Core::NodeId& thunder, const string& callsign)
+            : BaseClass()
+            , _adminLock()
         {
-            return (_smartType != nullptr);
+            BaseClass::Open(waitTime, thunder, callsign);
         }
-        uint32_t Open(const uint32_t waitTime, const Core::NodeId& node, const string& callsign)
+        ~CryptographyLink() override
         {
-            return (_monitor.Open(waitTime, node, callsign));
+            _interfaces.Clear();
+            BaseClass::Close(Core::infinite);
         }
-        uint32_t Close(const uint32_t waitTime)
+        static CryptographyLink& Instance(const std::string& callsign = Callsign)
         {
-            return (_monitor.Close(waitTime));
+            return Core::SingletonType<CryptographyLink>::Instance(TimeOut, PluginConnector, callsign);
         }
+        Cryptography::ICryptography* Aquire(const Core::NodeId& nodeId)
+        {
+            return BaseClass::Aquire<Cryptography::ICryptography>(3000, nodeId, _T(""), ~0);
+        }
+        Cryptography::ICryptography* Cryptography(const std::string& connectionPoint);
 
-        // IMPORTANT NOTE:
-        // If you aquire the interface here, take action on the interface and release it. Do not maintain/stash it
-        // since the interface might require to be dropped in the mean time.
-        // So usage on the interface should be deterministic and short !!!
-        INTERFACE* Interface(const string& connector) const
+        template <typename TYPE, typename... Args>
+        Core::ProxyType<Core::Service<TYPE>> Register(Args&&... args)
         {
             Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
-            INTERFACE* result = _smartType;
-
-            if (result != nullptr) {
-                result->AddRef();
-            }
-
-            return (result);
-        }
-
-        // Allow a derived class to take action on a new interface, or almost dissapeared interface..
-        virtual void Operational(const bool upAndRunning)
-        {
+            return _interfaces.template Instance<Core::Service<TYPE>>(std::forward<Args>(args)...);
         }
 
     private:
-        friend class WPEFramework::RPC::PluginMonitorType<SmartInterfaceType<INTERFACE, ENGINE>&, ENGINE>;
-        void Activated(PluginHost::IShell* plugin)
+        void Operational(const bool upAndRunning) override
         {
-            ASSERT(plugin != nullptr);
-            _adminLock.Lock();
-            DropInterface();
-            _monitor.Aquire(Core::infinite, "/tmp/svalbard", "IMPLENTATION", ~0, _smartType);
-            _adminLock.Unlock();
-            Operational(true);
-        }
-        void Deactivated(PluginHost::IShell* /* plugin */)
-        {
-            Operational(false);
-            _adminLock.Lock();
-            DropInterface();
-            _adminLock.Unlock();
-        }
-        void DropInterface()
-        {
-            if (_smartType != nullptr) {
-                _smartType->Release();
-                _smartType = nullptr;
+            if (upAndRunning == false) {
+                Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+                _interfaces.Clear();
             }
         }
 
     private:
         mutable Core::CriticalSection _adminLock;
-        WPEFramework::RPC::PluginMonitorType<SmartInterfaceType<INTERFACE, ENGINE>&, ENGINE> _monitor;
-        INTERFACE* _smartType;
+        Core::ProxyListType<IRPCLink> _interfaces;
     };
 
-    class RemoteCryptography : public SmartInterfaceType<Cryptography::ICryptography> {
-    private:
-        using BaseClass = SmartInterfaceType<Cryptography::ICryptography>;
+    class RPCDiffieHellmanImpl : public IRPCLink, public Cryptography::IDiffieHellman {
+    public:
+        RPCDiffieHellmanImpl(Cryptography::IDiffieHellman* iface)
+            : _accessor(iface)
+        {
+            if (_accessor != nullptr) {
+                _accessor->AddRef();
+            }
+        }
+        ~RPCDiffieHellmanImpl()
+        {
+            Clear();
+        }
+
+        BEGIN_INTERFACE_MAP(RPCDiffieHellmanImpl)
+        INTERFACE_ENTRY(Cryptography::IDiffieHellman)
+        END_INTERFACE_MAP
 
     public:
-        RemoteCryptography(const uint32_t waitTime, const Core::NodeId& node, const string& callsign)
-            : BaseClass()
+        uint32_t Generate(const uint8_t generator,
+            const uint16_t modulusSize, const uint8_t modulus[],
+            uint32_t& privKeyId, uint32_t& pubKeyId) override
         {
-            BaseClass::Open(waitTime, node, callsign);
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+            return (_accessor != nullptr) ? _accessor->Generate(generator, modulusSize, modulus, privKeyId, pubKeyId) : 0;
         }
-        ~RemoteCryptography()
+
+        uint32_t Derive(const uint32_t privateKey, const uint32_t peerPublicKeyId, uint32_t& secretId) override
         {
-            BaseClass::Close(Core::infinite);
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+            return (_accessor != nullptr) ? _accessor->Derive(privateKey, peerPublicKeyId, secretId) : 0;
+        }
+
+        void Clear() override
+        {
+            if (_accessor != nullptr) {
+                Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+                _accessor->Release();
+                _accessor = nullptr;
+            }
         }
 
     private:
-        void Operational(const bool upAndRunning)
-        {
-            printf("Operational state of RemoteCryptography: %s\n", upAndRunning ? _T("true") : _T("false"));
-        }
+        Core::CriticalSection _adminLock;
+        Cryptography::IDiffieHellman* _accessor;
     };
 
-    static RemoteCryptography _externalVaults(3000, "/tmp/communicator", "Svalbard");
+    class RPCCipherImpl : public IRPCLink, public Cryptography::ICipher {
+    public:
+        RPCCipherImpl(Cryptography::ICipher* iface)
+            : _accessor(iface)
+        {
+            if (_accessor != nullptr) {
+                _accessor->AddRef();
+            }
+        }
+        ~RPCCipherImpl()
+        {
+            Clear();
+        }
+
+        BEGIN_INTERFACE_MAP(RPCCipherImpl)
+        INTERFACE_ENTRY(Cryptography::ICipher)
+        END_INTERFACE_MAP
+
+    public:
+        int32_t Encrypt(const uint8_t ivLength, const uint8_t iv[],
+            const uint32_t inputLength, const uint8_t input[],
+            const uint32_t maxOutputLength, uint8_t output[]) const override
+        {
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+            return (_accessor != nullptr) ? _accessor->Encrypt(ivLength, iv, inputLength, input, maxOutputLength, output) : 0;
+        }
+
+        int32_t Decrypt(const uint8_t ivLength, const uint8_t iv[],
+            const uint32_t inputLength, const uint8_t input[],
+            const uint32_t maxOutputLength, uint8_t output[]) const override
+        {
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+            return (_accessor != nullptr) ? _accessor->Decrypt(ivLength, iv, inputLength, input, maxOutputLength, output) : 0;
+        }
+
+        void Clear() override
+        {
+            if (_accessor != nullptr) {
+                Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+                _accessor->Release();
+                _accessor = nullptr;
+            }
+        }
+
+    private:
+        mutable Core::CriticalSection _adminLock;
+        Cryptography::ICipher* _accessor;
+    };
+
+    class RPCHashImpl : public IRPCLink, public Cryptography::IHash {
+    public:
+        RPCHashImpl(Cryptography::IHash* hash)
+            : _accessor(hash)
+        {
+            if (_accessor != nullptr) {
+                _accessor->AddRef();
+            }
+        }
+        ~RPCHashImpl()
+        {
+            Clear();
+        }
+
+        BEGIN_INTERFACE_MAP(RPCHashImpl)
+        INTERFACE_ENTRY(Cryptography::IHash)
+        END_INTERFACE_MAP
+
+    public:
+        /* Ingest data into the hash calculator (multiple calls possible) */
+        virtual uint32_t Ingest(const uint32_t length, const uint8_t data[] /* @length:length */) override
+        {
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+            return (_accessor != nullptr ? _accessor->Ingest(length, data) : 0);
+        }
+
+        /* Calculate the hash from all ingested data */
+        uint8_t Calculate(const uint8_t maxLength, uint8_t data[] /* @out @maxlength:maxLength */) override
+        {
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+            return (_accessor != nullptr ? _accessor->Calculate(maxLength, data) : 0);
+        }
+
+        void Clear() override
+        {
+            if (_accessor != nullptr) {
+                Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+                _accessor->Release();
+                _accessor = nullptr;
+            }
+        }
+
+    private:
+        Core::CriticalSection _adminLock;
+        Cryptography::IHash* _accessor;
+    };
+
+    class RPCVaultImpl : virtual public IRPCLink, public Cryptography::IVault {
+    public:
+        RPCVaultImpl(Cryptography::IVault* vault)
+            : _accessor(vault)
+        {
+            if (_accessor != nullptr) {
+                _accessor->AddRef();
+            }
+        }
+        ~RPCVaultImpl()
+        {
+            Clear();
+        }
+
+        BEGIN_INTERFACE_MAP(RPCVaultImpl)
+        INTERFACE_ENTRY(Cryptography::IVault)
+        END_INTERFACE_MAP
+
+    public:
+        // Return size of a vault data blob
+        // (-1 if the blob exists in the vault but is not extractable and 0 if the ID does not exist)
+        uint16_t Size(const uint32_t id) const override
+        {
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+            return (_accessor != nullptr ? _accessor->Size(id) : 0);
+        }
+
+        // Import unencrypted data blob into the vault (returns blob ID)
+        // Note: User IDs are always greater than 0x80000000, values below 0x80000000 are reserved for implementation-specific internal data blobs.
+        uint32_t Import(const uint16_t length, const uint8_t blob[] /* @length:length */) override
+        {
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+            return (_accessor != nullptr ? _accessor->Import(length, blob) : 0);
+        }
+
+        // Export unencrypted data blob out of the vault (returns blob ID), only public blobs are exportable
+        uint16_t Export(const uint32_t id, const uint16_t maxLength, uint8_t blob[] /* @out @maxlength:maxLength */) const override
+        {
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+            return (_accessor != nullptr ? _accessor->Export(id, maxLength, blob) : 0);
+        }
+
+        // Set encrypted data blob in the vault (returns blob ID)
+        uint32_t Set(const uint16_t length, const uint8_t blob[] /* @length:length */) override
+        {
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+            return (_accessor != nullptr ? _accessor->Set(length, blob) : 0);
+        }
+
+        // Get encrypted data blob out of the vault (data identified by ID, returns size of the retrieved data)
+        uint16_t Get(const uint32_t id, const uint16_t maxLength, uint8_t blob[] /* @out @maxlength:maxLength */) const override
+        {
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+            return (_accessor != nullptr ? _accessor->Get(id, maxLength, blob) : 0);
+        }
+
+        // Delete a data blob from the vault
+        bool Delete(const uint32_t id) override
+        {
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+            return (_accessor != nullptr ? _accessor->Delete(id) : false);
+        }
+
+        // Crypto operations using the vault for key storage
+        // -----------------------------------------------------
+
+        // Retrieve a HMAC calculator
+        Cryptography::IHash* HMAC(const Cryptography::hashtype hashType, const uint32_t keyId) override
+        {
+            Cryptography::IHash* iface = nullptr;
+
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+
+            if (_accessor != nullptr) {
+
+                iface = _accessor->HMAC(hashType, keyId);
+
+                if (iface != nullptr) {
+                    Core::ProxyType<Core::Service<RPCHashImpl>> object = CryptographyLink::Instance().Register<RPCHashImpl>(iface);
+
+                    ASSERT(object.IsValid() == true);
+
+                    iface->Release();
+
+                    iface = reinterpret_cast<Cryptography::IHash*>(object->QueryInterface(Cryptography::IHash::ID));
+                }
+            }
+
+            return iface;
+        }
+
+        // Retrieve an AES encryptor/decryptor
+        Cryptography::ICipher* AES(const Cryptography::aesmode aesMode, const uint32_t keyId) override
+        {
+            Cryptography::ICipher* iface = nullptr;
+
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+
+            if (_accessor != nullptr) {
+
+                iface = _accessor->AES(aesMode, keyId);
+
+                if (iface != nullptr) {
+                    Core::ProxyType<Core::Service<RPCCipherImpl>> object = CryptographyLink::Instance().Register<RPCCipherImpl>(iface);
+
+                    ASSERT(object.IsValid() == true);
+
+                    iface->Release();
+
+                    iface = reinterpret_cast<Cryptography::ICipher*>(object->QueryInterface(Cryptography::ICipher::ID));
+                }
+            }
+
+            return iface;
+        }
+
+        // Retrieve a Diffie-Hellman key creator
+        Cryptography::IDiffieHellman* DiffieHellman() override
+        {
+            Cryptography::IDiffieHellman* iface = nullptr;
+
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+
+            if (_accessor != nullptr) {
+
+                iface = _accessor->DiffieHellman();
+
+                if (iface != nullptr) {
+                    Core::ProxyType<Core::Service<RPCDiffieHellmanImpl>> object = CryptographyLink::Instance().Register<RPCDiffieHellmanImpl>(iface);
+
+                    ASSERT(object.IsValid() == true);
+
+                    iface->Release();
+
+                    iface = reinterpret_cast<Cryptography::IDiffieHellman*>(object->QueryInterface(Cryptography::IDiffieHellman::ID));
+                }
+            }
+
+            return iface;
+        }
+
+        void Clear() override
+        {
+            if (_accessor != nullptr) {
+                Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+                _accessor->Release();
+                _accessor = nullptr;
+            }
+        }
+
+    private:
+        mutable Core::CriticalSection _adminLock;
+        Cryptography::IVault* _accessor;
+    };
+
+    class RPCCryptographyImpl : public IRPCLink, public Cryptography::ICryptography {
+    public:
+        RPCCryptographyImpl() = delete;
+        RPCCryptographyImpl(const RPCCryptographyImpl&) = delete;
+        RPCCryptographyImpl& operator=(const RPCCryptographyImpl&) = delete;
+
+        RPCCryptographyImpl(Cryptography::ICryptography* iface)
+            : _accessor(iface)
+        {
+            _accessor->AddRef();
+        }
+        ~RPCCryptographyImpl()
+        {
+            Clear();
+        };
+
+        BEGIN_INTERFACE_MAP(RPCCryptographyImpl)
+        INTERFACE_ENTRY(Cryptography::ICryptography)
+        END_INTERFACE_MAP
+
+    public:
+        // Retrieve a hash calculator
+        Cryptography::IHash* Hash(const Cryptography::hashtype hashType) override
+        {
+            Cryptography::IHash* iface = nullptr;
+
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+
+            if (_accessor != nullptr) {
+
+                iface = _accessor->Hash(hashType);
+
+                if (iface != nullptr) {
+                    Core::ProxyType<Core::Service<RPCHashImpl>> object = CryptographyLink::Instance().Register<RPCHashImpl>(iface);
+
+                    ASSERT(object.IsValid() == true);
+
+                    iface->Release();
+
+                    iface = reinterpret_cast<Cryptography::IHash*>(object->QueryInterface(Cryptography::IHash::ID));
+                }
+            }
+
+            return iface;
+        }
+
+        // Retrieve a vault (TEE identified by ID)
+        Cryptography::IVault* Vault(const cryptographyvault id) override
+        {
+            Cryptography::IVault* iface = nullptr;
+
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+
+            if (_accessor != nullptr) {
+
+                iface = _accessor->Vault(id);
+
+                if (iface != nullptr) {
+                    Core::ProxyType<Core::Service<RPCVaultImpl>> object = CryptographyLink::Instance().Register<RPCVaultImpl>(iface);
+
+                    ASSERT(object.IsValid() == true);
+
+                    iface->Release();
+
+                    iface = reinterpret_cast<Cryptography::IVault*>(object->QueryInterface(Cryptography::IVault::ID));
+                }
+            }
+
+            return iface;
+        }
+
+        void Clear() override
+        {
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+            if (_accessor != nullptr) {
+                _accessor->Release();
+                _accessor = nullptr;
+            }
+        }
+
+    private:
+        mutable Core::CriticalSection _adminLock;
+        Cryptography::ICryptography* _accessor;
+    };
+
+    Cryptography::ICryptography* CryptographyLink::Cryptography(const std::string& connectionPoint)
+    {
+        Cryptography::ICryptography* iface = BaseClass::Aquire<Cryptography::ICryptography>(3000, Core::NodeId(connectionPoint.c_str()), _T(""), ~0);
+
+        // Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+
+        if (iface != nullptr) {
+            Core::ProxyType<Core::Service<RPCCryptographyImpl>> object = Register<RPCCryptographyImpl>(iface);
+
+            ASSERT(object.IsValid() == true);
+
+            iface->Release();
+
+            iface = reinterpret_cast<Cryptography::ICryptography*>(object->QueryInterface(Cryptography::ICryptography::ID));
+        }
+
+        return iface;
+    }
 
     class HashImpl : virtual public WPEFramework::Cryptography::IHash {
     public:
@@ -452,7 +798,7 @@ namespace Implementation {
         result = Core::Service<Implementation::CryptographyImpl>::Create<Cryptography::ICryptography>();
     } else {
         // Seems we received a connection point
-        result = Implementation::_externalVaults.Interface(connectionPoint);
+        result = Implementation::CryptographyLink::Instance().Cryptography(connectionPoint);
     }
 
     return result;

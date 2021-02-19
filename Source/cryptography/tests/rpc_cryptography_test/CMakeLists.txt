@@ -15,18 +15,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(TARGET vault_client)
+option(COMRPCVAULT "Include Com RPC Vault test tool" ON)
 
-add_executable(vault_client main.cpp)
+find_package(GTest REQUIRED)
 
-target_include_directories(vault_client 
+set(TARGET rpc_cryptography_test)
+
+add_executable(${TARGET} rpc_cryptography_test.cpp)
+
+target_include_directories(${TARGET}  
     PRIVATE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
 )
 
-target_link_libraries(vault_client
+target_link_libraries(${TARGET} 
     PRIVATE
-        ${NAMESPACE}Cryptography)
+        GTest::GTest
+        ${NAMESPACE}Cryptography
+)
 
-install(TARGETS vault_client 
+install(TARGETS ${TARGET}  
     DESTINATION bin)

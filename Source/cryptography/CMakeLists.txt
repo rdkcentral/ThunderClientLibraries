@@ -153,4 +153,6 @@ if(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY)
     )
 endif(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY)
 
-add_subdirectory(Tests)
+if("${BUILD_TYPE}" STREQUAL "Debug")
+    add_subdirectory(tests)
+endif()
