@@ -15,8 +15,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-option(COMRPCVAULT "Include Com RPC Vault test tool" ON)
-
-if(COMRPCVAULT)
-add_subdirectory(ComRPCVault)
-endif()
+add_subdirectory(rpc_cryptography_test)
