@@ -85,7 +85,9 @@ protected:
             ASSERT(_remote != nullptr);
 
             if (_remote == nullptr) {
-                _client.Release();
+                if (_client.IsValid()) {
+                  _client.Release();
+                }
             }
         }
     }
@@ -150,7 +152,11 @@ public:
         // This is first call from WebKit when new session is started
         // If ProxyStub return error for this call, there will be not next call from WebKit
         Reconnect();
-        return (_remote->IsTypeSupported(keySystem, mimeType));
+        bool result = false;
+        if (_remote != nullptr) {
+            result = _remote->IsTypeSupported(keySystem, mimeType);
+        }
+        return result;
     }
 
     virtual OCDM::OCDM_RESULT Metadata(const std::string& keySystem,
