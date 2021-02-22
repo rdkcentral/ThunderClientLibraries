@@ -25,29 +25,39 @@
 #include <cryptalgo/cryptalgo.h>
 
 #include <openssl/dh.h>
+#include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/sha.h>
-#include <openssl/evp.h>
 
 #include <limits.h>
 
 #include "Vault.h"
 
-
 struct CipherImplementation {
     virtual int32_t Encrypt(const uint8_t ivLength, const uint8_t iv[],
-                             const uint32_t inputLength, const uint8_t input[],
-                             const uint32_t maxOutputLength, uint8_t output[]) const = 0;
+        const uint32_t inputLength, const uint8_t input[],
+        const uint32_t maxOutputLength, uint8_t output[]) const = 0;
 
     virtual int32_t Decrypt(const uint8_t ivLength, const uint8_t iv[],
-                             const uint32_t inputLength, const uint8_t input[],
-                             const uint32_t maxOutputLength, uint8_t output[]) const = 0;
+        const uint32_t inputLength, const uint8_t input[],
+        const uint32_t maxOutputLength, uint8_t output[]) const = 0;
 
-    virtual ~CipherImplementation() { }
+    virtual ~CipherImplementation() {}
 };
 
-
 namespace Implementation {
+
+std::string GetSSLError()
+{
+    unsigned long ErrCode = ERR_get_error();
+    char ErrBuf[120];
+    ERR_error_string(ErrCode, ErrBuf);
+
+    ERR_clear_error();
+
+    return std::string(ErrBuf);
+}
 
 class Cipher : public CipherImplementation {
 public:
@@ -55,7 +65,7 @@ public:
     Cipher& operator=(const Cipher) = delete;
     Cipher() = delete;
 
-    Cipher(const Implementation::Vault* vault, const EVP_CIPHER *cipher, const uint32_t keyId, const uint8_t keyLength, const uint8_t ivLength)
+    Cipher(const Implementation::Vault* vault, const EVP_CIPHER* cipher, const uint32_t keyId, const uint8_t keyLength, const uint8_t ivLength)
         : _context(nullptr)
         , _vault(vault)
         , _cipher(cipher)
@@ -81,24 +91,24 @@ public:
     }
 
     int32_t Encrypt(const uint8_t ivLength, const uint8_t iv[],
-                     const uint32_t inputLength, const uint8_t input[],
-                     const uint32_t maxOutputLength, uint8_t output[]) const override
+        const uint32_t inputLength, const uint8_t input[],
+        const uint32_t maxOutputLength, uint8_t output[]) const override
     {
         return (Operation(true, ivLength, iv, inputLength, input, maxOutputLength, output));
     }
 
     int32_t Decrypt(const uint8_t ivLength, const uint8_t iv[],
-                     const uint32_t inputLength, const uint8_t input[],
-                     const uint32_t maxOutputLength, uint8_t output[]) const override
+        const uint32_t inputLength, const uint8_t input[],
+        const uint32_t maxOutputLength, uint8_t output[]) const override
     {
         return (Operation(false, ivLength, iv, inputLength, input, maxOutputLength, output));
     }
 
 private:
     int32_t Operation(bool encrypt,
-                       const uint8_t ivLength, const uint8_t iv[],
-                       const uint32_t inputLength, const uint8_t input[],
-                       const uint32_t maxOutputLength, uint8_t output[]) const
+        const uint8_t ivLength, const uint8_t iv[],
+        const uint32_t inputLength, const uint8_t input[],
+        const uint32_t maxOutputLength, uint8_t output[]) const
     {
         int32_t result = 0;
 
@@ -112,7 +122,7 @@ private:
         } else if (maxOutputLength < inputLength) {
             // Note: Pitfall, AES CBC/ECB will use padding
             TRACE_L1("Too small output buffer, expected: %i bytes", inputLength);
-            result = (-static_cast<int32_t>(inputLength  + (16 - (inputLength % 16))) );
+            result = (-static_cast<int32_t>(inputLength + (16 - (inputLength % 16))));
         } else {
             uint8_t* keyBuf = reinterpret_cast<uint8_t*>(ALLOCA(_keyLength));
             ASSERT(keyBuf != nullptr);
@@ -123,25 +133,27 @@ private:
             if (length != _keyLength) {
                 TRACE_L1("Failed to retrieve a valid encryption key from id 0x%08x", _keyId);
             } else {
+                ERR_clear_error();
                 int len = 0;
                 int initResult = EVP_CipherInit_ex(_context, _cipher, nullptr, keyBuf, iv, encrypt);
                 ::memset(keyBuf, 0xFF, length);
 
                 if (initResult == 0) {
-                    TRACE_L1("EVP_CipherInit_ex() failed");
+                    TRACE_L1("EVP_CipherInit_ex() failed: %s", GetSSLError().c_str());
                 } else {
                     if (EVP_CipherUpdate(_context, output, &len, input, inputLength) == 0) {
-                        TRACE_L1("EVP_CipherUpdate() failed");
+                        TRACE_L1("EVP_CipherUpdate() failed: %s", GetSSLError().c_str());
                     } else {
                         result = len;
+                        len = 0;
                         // Note: EVP_CipherFinal_ex() can still write to the output buffer!
-                        if (EVP_CipherFinal_ex(_context, (output + len), &len) == 0) {
-                            TRACE_L1("EVP_CipherFinal_ex() failed");
+                        if (EVP_CipherFinal_ex(_context, (output + result), &len) == 0) {
+                            TRACE_L1("EVP_CipherFinal_ex() failed: %s", GetSSLError().c_str());
                             result = 0;
                         } else {
                             result += len;
                             TRACE_L2("Completed %scryption, input size: %i, output size: %i",
-                                     (encrypt? "en" : "de"), inputLength, result);
+                                (encrypt ? "en" : "de"), inputLength, result);
                         }
                     }
                 }
@@ -216,18 +228,17 @@ const EVP_CIPHER* AESCipher(const uint8_t keySize, const aes_mode mode)
 
 } // namespace Implementation
 
-
 extern "C" {
 
-struct CipherImplementation* cipher_create_aes(const struct VaultImplementation* vault , const aes_mode mode, const uint32_t key_id)
+struct CipherImplementation* cipher_create_aes(const struct VaultImplementation* vault, const aes_mode mode, const uint32_t key_id)
 {
     ASSERT(vault != nullptr);
 
     CipherImplementation* cipher = nullptr;
-    const Implementation::Vault *vaultImpl = reinterpret_cast<const Implementation::Vault*>(vault);
+    const Implementation::Vault* vaultImpl = reinterpret_cast<const Implementation::Vault*>(vault);
 
     uint16_t keyLength = vaultImpl->Size(key_id, true);
-    if ( (keyLength == 0) || (keyLength > 0xFF)) {
+    if ((keyLength == 0) || (keyLength > 0xFF)) {
         TRACE_L1("Key 0x%08x does not exist", key_id);
     } else {
         const EVP_CIPHER* evpcipher = Implementation::AESCipher(static_cast<uint8_t>(keyLength), mode);
@@ -247,14 +258,14 @@ void cipher_destroy(struct CipherImplementation* cipher)
 }
 
 int32_t cipher_encrypt(const struct CipherImplementation* cipher, const uint8_t iv_length, const uint8_t iv[],
-                        const uint32_t input_length, const uint8_t input[], const uint32_t max_output_length, uint8_t output[])
+    const uint32_t input_length, const uint8_t input[], const uint32_t max_output_length, uint8_t output[])
 {
     ASSERT(cipher != nullptr);
     return (cipher->Encrypt(iv_length, iv, input_length, input, max_output_length, output));
 }
 
 int32_t cipher_decrypt(const struct CipherImplementation* cipher, const uint8_t iv_length, const uint8_t iv[],
-                        const uint32_t input_length, const uint8_t input[], const uint32_t max_output_length, uint8_t output[])
+    const uint32_t input_length, const uint8_t input[], const uint32_t max_output_length, uint8_t output[])
 {
     ASSERT(cipher != nullptr);
     return (cipher->Decrypt(iv_length, iv, input_length, input, max_output_length, output));

@@ -23,7 +23,7 @@
 
 #include "cryptography_vault_ids.h"
 
-/* @stubgen:include <cryptography_vault_ids.h> */
+/* @stubgen:include "cryptography_vault_ids.h" */
 
 namespace WPEFramework {
 
