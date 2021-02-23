@@ -76,7 +76,7 @@ namespace Netflix {
                 uint16_t blobSize = (static_cast<uint16_t>(fileSize) - IV_SIZE);
                 uint8_t* decryptedBlob = reinterpret_cast<uint8_t*>(ALLOCA(blobSize));
                 uint8_t* input = reinterpret_cast<uint8_t*>(ALLOCA(fileSize));
-                uint16_t inSize = file.Read(input, static_cast<uint32_t>(fileSize));
+                file.Read(input, static_cast<uint32_t>(fileSize));
                 blobSize = vault.Cipher(false, (IV_SIZE + blobSize), input, blobSize, decryptedBlob);
 
                 if (blobSize >= sizeof(NetflixData)) {
