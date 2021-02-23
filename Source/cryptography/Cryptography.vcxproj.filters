@@ -19,6 +19,9 @@
     <Filter Include="C Interface">
       <UniqueIdentifier>{f2f6011c-af6e-47c3-bda7-3110e4658309}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Generated Files">
+      <UniqueIdentifier>{6c764605-27d6-47f4-92d0-61e0ef0b64db}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cryptography.h">
@@ -54,6 +57,9 @@
     <ClInclude Include="implementation\vault_implementation.h">
       <Filter>C Interface</Filter>
     </ClInclude>
+    <ClInclude Include="cryptography_vault_ids.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Cryptography.cpp">
@@ -76,6 +82,12 @@
     </ClCompile>
     <ClCompile Include="implementation\OpenSSL\Vault.cpp">
       <Filter>Implementation\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ProxyStubs_NetflixSecurity.cpp">
+      <Filter>Generated Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ProxyStubs_Cryptography.cpp">
+      <Filter>Generated Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
