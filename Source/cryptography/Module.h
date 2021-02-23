@@ -25,8 +25,13 @@
 
 #include <core/core.h>
 #include <tracing/tracing.h>
+#include <com/com.h>
 
-#if defined(__WINDOWS__) && defined(CRYPTOGRAPHY_EXPORTS)
+#if defined(__WINDOWS__) 
+#if defined(CRYPTOGRAPHY_EXPORTS)
 #undef EXTERNAL
 #define EXTERNAL EXTERNAL_EXPORT
+#else
+#pragma comment(lib, "cryptography.lib")
+#endif
 #endif

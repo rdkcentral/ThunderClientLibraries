@@ -55,24 +55,28 @@ private:
 private:
     typedef std::map<string, OpenCDMSession*> KeyMap;
 
-private:
+protected:
     OpenCDMAccessor(const TCHAR domainName[])
         : _refCount(1)
+        , _domain(domainName)
         , _engine(Core::ProxyType<RPC::InvokeServerType<1, 0, 4>>::Create())
-        , _client(Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(domainName), Core::ProxyType<Core::IIPCServer>(_engine)))
+        , _client()
         , _remote(nullptr)
         , _adminLock()
         , _signal(false, true)
         , _interested(0)
         , _sessionKeys()
     {
-        printf("Trying to open an OCDM connection @ %s\n", domainName);
-        Reconnect();
+        TRACE_L1("Trying to open an OCDM connection @ %s\n", domainName);
     }
 
     void Reconnect() const
     {
-        if (_client->IsOpen() == false) {
+        if (_client.IsValid() == false) {
+            _client = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(_domain.c_str()), Core::ProxyType<Core::IIPCServer>(_engine));
+        }
+
+        if ((_client.IsValid() == true) && (_client->IsOpen() == false)) {
             if (_remote != nullptr) {
                 _remote->Release();
             }
@@ -81,7 +85,9 @@ private:
             ASSERT(_remote != nullptr);
 
             if (_remote == nullptr) {
-                _client.Release();
+                if (_client.IsValid()) {
+                  _client.Release();
+                }
             }
         }
     }
@@ -89,31 +95,15 @@ private:
 public:
     static OpenCDMAccessor* Instance()
     {
-        _systemLock.Lock();
-
-        if (_singleton == nullptr) {
-            // See if we have an environment variable set.
-            string connector;
-            if ((Core::SystemInfo::GetEnvironment(_T("OPEN_CDM_SERVER"), connector) == false) || (connector.empty() == true)) {
-                connector = _T("/tmp/ocdm");
-            }
-
-            OpenCDMAccessor* result = new OpenCDMAccessor(connector.c_str());
-
-            if (result->_remote != nullptr) {
-                _singleton = result;
-            } else {
-                delete result;
-            }
-        } else {
-            // Reconnect if server is down
-            _singleton->Reconnect();
+        string connector;
+        if ((Core::SystemInfo::GetEnvironment(_T("OPEN_CDM_SERVER"), connector) == false) || (connector.empty() == true)) {
+            connector = _T("/tmp/ocdm");
         }
-
-        _systemLock.Unlock();
-
-        return (_singleton);
+        static OpenCDMAccessor& result = Core::SingletonType<OpenCDMAccessor>::Instance(connector.c_str());
+        result.Reconnect();
+        return &result;
     }
+
     ~OpenCDMAccessor()
     {
         if (_remote != nullptr) {
@@ -124,7 +114,6 @@ public:
             _client.Release();
         }
 
-        _singleton = nullptr;
         TRACE_L1("Destructed the OpenCDMAccessor %p", this);
     }
     bool WaitForKey(const uint8_t keyLength, const uint8_t keyId[],
@@ -163,7 +152,11 @@ public:
         // This is first call from WebKit when new session is started
         // If ProxyStub return error for this call, there will be not next call from WebKit
         Reconnect();
-        return (_remote->IsTypeSupported(keySystem, mimeType));
+        bool result = false;
+        if (_remote != nullptr) {
+            result = _remote->IsTypeSupported(keySystem, mimeType);
+        }
+        return result;
     }
 
     virtual OCDM::OCDM_RESULT Metadata(const std::string& keySystem,
@@ -319,6 +312,7 @@ public:
 
 private:
     mutable uint32_t _refCount;
+    string _domain;
     Core::ProxyType<RPC::InvokeServerType<1, 0, 4> > _engine;
     mutable Core::ProxyType<RPC::CommunicatorClient> _client;
     mutable OCDM::IAccessorOCDM* _remote;
@@ -326,7 +320,6 @@ private:
     mutable Core::Event _signal;
     mutable volatile uint32_t _interested;
     KeyMap _sessionKeys;
-    static OpenCDMAccessor* _singleton;
 };
 
 struct OpenCDMSession {

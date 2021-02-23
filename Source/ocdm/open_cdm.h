@@ -145,6 +145,14 @@ typedef enum {
 } OpenCDMError;
 
 /**
+ * OpenCDM bool type. 0 is false, 1 is true.
+ */
+typedef enum {
+    OPENCDM_BOOL_FALSE = 0,
+    OPENCDM_BOOL_TRUE = 1
+} OpenCDMBool;
+
+/**
  * Registered callbacks with OCDM sessions.
  */
 typedef struct {
@@ -306,6 +314,16 @@ EXTERNAL struct OpenCDMSession* opencdm_get_session(const uint8_t keyId[],
 EXTERNAL struct OpenCDMSession* opencdm_get_system_session(struct OpenCDMSystem* system, const uint8_t keyId[],
     const uint8_t length, const uint32_t waitTime);
 
+/**
+ * \brief Gets support server certificate.
+ *
+ * Some DRMs (e.g. WideVine) use a system-wide server certificate. This method
+ * gets if system has support for that certificate.
+ * \param system Instance of \ref OpenCDMAccessor.
+ * \return Non-zero on success, zero on error.
+ */
+EXTERNAL OpenCDMBool opencdm_system_supports_server_certificate(
+    struct OpenCDMSystem* system);
 
 /**
  * \brief Sets server certificate.

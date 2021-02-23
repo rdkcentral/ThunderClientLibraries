@@ -19,9 +19,14 @@
 
 #pragma once
 
-enum cryptographyvault {
-    CRYPTOGRAPHY_VAULT_DEFAULT = 0,
-    CRYPTOGRAPHY_VAULT_PLATFORM = 1,
-    CRYPTOGRAPHY_VAULT_PROVISIONING = 0x10,
-    CRYPTOGRAPHY_VAULT_NETFLIX = 0x11
-};
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C"
+#endif
+    enum cryptographyvault : uint8_t {
+        CRYPTOGRAPHY_VAULT_DEFAULT = 0,
+        CRYPTOGRAPHY_VAULT_PLATFORM = 1,
+        CRYPTOGRAPHY_VAULT_PROVISIONING = 0x10,
+        CRYPTOGRAPHY_VAULT_NETFLIX = 0x11
+    };

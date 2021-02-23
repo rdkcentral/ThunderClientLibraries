@@ -98,7 +98,6 @@ KeyStatus CDMState(const OCDM::ISession::KeyStatus state)
     return KeyStatus::InternalError;
 }
 
-/* static */ OpenCDMAccessor* OpenCDMAccessor::_singleton = nullptr;
 
 /**
  * Destructs an \ref OpenCDMAccessor instance.
@@ -130,7 +129,7 @@ OpenCDMError opencdm_is_type_supported(const char keySystem[],
     OpenCDMAccessor * accessor = OpenCDMAccessor::Instance();
     OpenCDMError result(OpenCDMError::ERROR_KEYSYSTEM_NOT_SUPPORTED);
 
-    if ((accessor != nullptr) && (accessor->IsTypeSupported(std::string(keySystem), std::string(mimeType)) == 0)) {
+    if ((accessor != nullptr) && (accessor->IsTypeSupported(std::string(keySystem), std::string(mimeType)) == true)) {
         result = OpenCDMError::ERROR_NONE;
     }
     return (result);
@@ -198,6 +197,19 @@ struct OpenCDMSession* opencdm_get_system_session(struct OpenCDMSystem* system, 
     return (result);
 }
 
+/**
+ * \brief Gets support server certificate.
+ *
+ * Some DRMs (e.g. WideVine) use a system-wide server certificate. This method
+ * gets if system has support for that certificate.
+ * \param system Instance of \ref OpenCDMAccessor.
+ * \return Non-zero on success, zero on error.
+ */
+EXTERNAL OpenCDMBool opencdm_system_supports_server_certificate(
+    struct OpenCDMSystem* system)
+{
+  return OPENCDM_BOOL_FALSE;
+}
 
 /**
  * \brief Sets server certificate.
