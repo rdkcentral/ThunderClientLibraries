@@ -3,8 +3,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#ifdef _MSVC_LANG
 #undef EXTERNAL
+#ifdef _MSVC_LANG
 #ifdef DISPLAYINFO_EXPORTS
 #define EXTERNAL __declspec(dllexport)
 #else

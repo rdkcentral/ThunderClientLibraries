@@ -213,10 +213,13 @@ private:
                 }
 
             private:
-                void StateChange(PluginHost::IShell* plugin, const string&) override
+                void Activated(const string& , PluginHost::IShell* plugin) override
                 {
                     plugin->AddRef();
                     _instances.push_back(plugin);
+                }
+                void Deactivated(const string& , PluginHost::IShell* plugin) override
+                {
                 }
 
                 BEGIN_INTERFACE_MAP(Catalog)
