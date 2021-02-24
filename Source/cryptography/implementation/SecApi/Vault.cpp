@@ -505,10 +505,12 @@ extern "C" {
             break;
         case CRYPTOGRAPHY_VAULT_DEFAULT:
             if (strlen(storagePath) == 0) {
-                vault = new  Implementation::Vault;
+                static Implementation::Vault vaultDefault;
+		vault = &(vaultDefault);
             }
             else {
-                vault = new Implementation::Vault(storagePath);
+                static Implementation::Vault vaultPath(storagePath);
+		vault = &(vaultPath);
             }
 
             if (vault != nullptr)
