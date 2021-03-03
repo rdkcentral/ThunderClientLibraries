@@ -15,11 +15,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(TARGET compositorclient)
+project(compositorclient VERSION 1.0.0)
+cmake_minimum_required(VERSION 3.3)
+
+find_package(WPEFramework)
+
+set(TARGET ${PROJECT_NAME})
+
+message("Setup ${TARGET} v${PROJECT_VERSION}")
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 option(PLUGIN_COMPOSITOR_IMPLEMENTATION "Defines which implementation is used." "None")
 
-message("Setup ${TARGET} v${VERSION}...")
+find_package(CompileSettingsDebug CONFIG REQUIRED)
+find_package(${NAMESPACE}Core REQUIRED)
 
 if("${PLUGIN_COMPOSITOR_IMPLEMENTATION}" STREQUAL "Nexus")
     if (COMPOSITORCLIENT_IMPLEMENTATION_PATH)

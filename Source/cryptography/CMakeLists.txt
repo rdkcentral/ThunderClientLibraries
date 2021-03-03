@@ -15,7 +15,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(TARGET ${NAMESPACE}Cryptography)
+project(Cryptography VERSION 1.0.0)
+cmake_minimum_required(VERSION 3.3)
+
+find_package(WPEFramework)
+
+set(TARGET ${NAMESPACE}${PROJECT_NAME})
+
+message("Setup ${TARGET} v${PROJECT_VERSION}")
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
@@ -74,8 +81,8 @@ set_target_properties(${TARGET} PROPERTIES
     FRAMEWORK FALSE
     PUBLIC_HEADER "${PUBLIC_HEADERS}"
     LINK_WHAT_YOU_USE TRUE
-    VERSION ${VERSION}
-    SOVERSION ${VERSION_MAJOR}
+    VERSION ${PROJECT_VERSION}
+    VERSION ${PROJECT_VERSION_MAJOR}
 )
 
 install(
@@ -131,8 +138,8 @@ if(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY)
         CXX_STANDARD_REQUIRED YES
         FRAMEWORK FALSE
         LINK_WHAT_YOU_USE TRUE
-        VERSION ${VERSION}
-        SOVERSION ${VERSION_MAJOR}
+        VERSION ${PROJECT_VERSION}
+        VERSION ${PROJECT_VERSION_MAJOR}
     )
 
     install(

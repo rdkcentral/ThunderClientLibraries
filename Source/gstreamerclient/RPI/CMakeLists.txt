@@ -17,7 +17,7 @@
 
 set(TARGET gstreamerclient)
 
-message("Setup ${TARGET} v${VERSION}...")
+message("Setup ${TARGET} v${PROJECT_VERSION}...")
 
 add_library(${TARGET} SHARED Implementation.cpp)
 
@@ -43,8 +43,8 @@ set_target_properties(${TARGET} PROPERTIES
         CXX_STANDARD_REQUIRED YES
         FRAMEWORK FALSE
         PUBLIC_HEADER "${PUBLIC_HEADERS}"
-        VERSION ${VERSION}
-        SOVERSION ${VERSION_MAJOR}
+        VERSION ${PROJECT_VERSION}
+        VERSION ${PROJECT_VERSION_MAJOR}
         )
 
 install(

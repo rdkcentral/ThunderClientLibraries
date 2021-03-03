@@ -15,12 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-find_package(WPEFramework)
-find_package(${NAMESPACE}Protocols REQUIRED)
-find_package(CompileSettingsDebug CONFIG REQUIRED)
-
-option(PROTOCOLS "Include the protocols library." ON)
-
+option(PROTOCOLS 
+        "Include the protocols library." ON)
 option(COMPOSITORCLIENT
         "Include a graphics backend abstraction for external applications." OFF)
 option(GSTREAMERCLIENT

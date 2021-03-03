@@ -15,8 +15,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(TARGET provisionproxy)
+project(provisionproxy VERSION 1.0.0)
+cmake_minimum_required(VERSION 3.3)
 
+find_package(WPEFramework)
+
+set(TARGET ${PROJECT_NAME})
+
+message("Setup ${TARGET} v${PROJECT_VERSION}")
+
+find_package(CompileSettingsDebug CONFIG REQUIRED)
+find_package(${NAMESPACE}Core REQUIRED)
 find_package(libprovision REQUIRED)
 
 # Construct a library object
@@ -45,8 +54,8 @@ set_target_properties(${TARGET} PROPERTIES
         CXX_STANDARD_REQUIRED YES
         FRAMEWORK FALSE
         PUBLIC_HEADER "${PUBLIC_HEADERS}" # specify the public headers
-        VERSION ${VERSION}
-        SOVERSION ${VERSION_MAJOR}
+        VERSION ${PROJECT_VERSION}
+        VERSION ${PROJECT_VERSION_MAJOR}
         )
 
 target_include_directories( ${TARGET}

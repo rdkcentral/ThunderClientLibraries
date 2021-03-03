@@ -15,11 +15,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(TARGET gstreamerclient)
+project(gstreamerclient VERSION 1.0.0)
+cmake_minimum_required(VERSION 3.3)
+
+find_package(WPEFramework)
+
+set(TARGET ${PROJECT_NAME})
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+message("Setup ${TARGET} v${PROJECT_VERSION}")
 
 option(GSTREAMER_CLIENT_IMPLEMENTATION "Defines which implementation is used." "None")
 
-message("Setup ${TARGET} v${VERSION}...")
+find_package(CompileSettingsDebug CONFIG REQUIRED)
+find_package(${NAMESPACE}Core REQUIRED)
+if(PROTOCOLS)
+    find_package(${NAMESPACE}Protocols REQUIRED)
+else()
+    find_package(${NAMESPACE}COM REQUIRED)
+endif()
 
 if (NOT "${GSTREAMER_CLIENT_IMPLEMENTATION}" STREQUAL "None")
 
