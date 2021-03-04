@@ -76,7 +76,7 @@ set_target_properties(${TARGET} PROPERTIES
         CXX_STANDARD 11
         CXX_STANDARD_REQUIRED YES
         VERSION ${PROJECT_VERSION}
-        VERSION ${PROJECT_VERSION_MAJOR}
+        SOVERSION ${PROJECT_VERSION_MAJOR}
 )
 
 target_include_directories(${TARGET}
