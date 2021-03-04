@@ -1,337 +1,213 @@
-#include <com/com.h>
 #include <core/core.h>
-#include <stdlib.h>
 #include <tracing/tracing.h>
+#include <plugins/plugins.h>
+#include <com/com.h>
 
-#include <deviceinfo.h>
+#include "deviceinfo.h"
 #include <interfaces/IDeviceInfo.h>
 
-namespace WPEFramework {
-class DeviceInfo : public Core::IReferenceCounted {
-private:
+namespace {
+
+    static WPEFramework::Core::NodeId Connector() {
 #ifdef __WINDOWS__
-#pragma warning(disable : 4355)
-#endif
-    DeviceInfo(const string& deviceName, Exchange::IDeviceInfo::IProperties* interface)
-        : _refCount(1)
-        , _name(deviceName)
-        , _deviceProperties(interface)
-        , _deviceCapabilities(interface != nullptr ?  interface->QueryInterface<Exchange::IDeviceInfo::ICapabilities>() : nullptr)
-        , _identifier(interface != nullptr ? interface->QueryInterface<PluginHost::ISubSystem::IIdentifier>() : nullptr)
-    {
-        ASSERT(_deviceProperties != nullptr);
-        _deviceProperties->AddRef();
-    }
-#ifdef __WINDOWS__
-#pragma warning(default : 4355)
-#endif
-    ~DeviceInfo()
-    {
-        if (_deviceProperties != nullptr) {
-            _deviceProperties->Release();
-        }
-        
-        if (_deviceCapabilities != nullptr) {
-            _deviceCapabilities->Release();
-        }
-        
-        if (_identifier != nullptr) {
-            _identifier->Release();
-        }
-    }
-    class DeviceInfoAdministration : protected std::list<DeviceInfo*> {
-    public:
-        DeviceInfoAdministration(const DeviceInfoAdministration&) = delete;
-        DeviceInfoAdministration& operator=(const DeviceInfoAdministration&) = delete;
-
-        DeviceInfoAdministration()
-            : _adminLock()
-            , _engine(Core::ProxyType<RPC::InvokeServerType<1, 0, 8>>::Create())
-            , _comChannel(Core::ProxyType<RPC::CommunicatorClient>::Create(Connector(), Core::ProxyType<Core::IIPCServer>(_engine)))
-        {
-            ASSERT(_engine != nullptr);
-            ASSERT(_comChannel != nullptr);
-            _engine->Announcements(_comChannel->Announcement());
-        }
-
-        ~DeviceInfoAdministration()
-        {
-            std::list<DeviceInfo*>::iterator index(std::list<DeviceInfo*>::begin());
-
-            while (index != std::list<DeviceInfo*>::end()) {
-                TRACE_L1(_T("Closing %s"), (*index)->Name().c_str());
-                ++index;
-            }
-
-            ASSERT(std::list<DeviceInfo*>::size() == 0);
-        }
-
-        DeviceInfo* Instance(const string& name)
-        {
-            DeviceInfo* result(nullptr);
-
-            _adminLock.Lock();
-
-            result = Find(name);
-
-            if (result == nullptr) {
-                Exchange::IDeviceInfo::IProperties* interface = _comChannel->Open<Exchange::IDeviceInfo::IProperties>(name);
-
-                if (interface != nullptr) {
-                    result = new DeviceInfo(name, interface);
-                    std::list<DeviceInfo*>::emplace_back(result);
-                    interface->Release();
-                }
-            }
-            _adminLock.Unlock();
-
-            return (result);
-        }
-
-        static Core::NodeId Connector()
-        {
-            const TCHAR* comPath = ::getenv(_T("COMMUNICATOR_PATH"));
-
-            if (comPath == nullptr) {
-#ifdef __WINDOWS__
-                comPath = _T("127.0.0.1:62000");
+        static constexpr const TCHAR PluginConnector[] = _T("127.0.0.1:62000");
 #else
-                comPath = _T("/tmp/communicator");
+        static constexpr const TCHAR PluginConnector[] = _T("/tmp/communicator");
 #endif
-            }
 
-            return Core::NodeId(comPath);
+        return (WPEFramework::Core::NodeId(PluginConnector));
+    }
+
+    static string Callsign() {
+        static constexpr const TCHAR Default[] = _T("DeviceInfo");
+        return (Default);
+    }
+
+    class DeviceInfoLink : public WPEFramework::RPC::SmartInterfaceType<WPEFramework::Exchange::IDeviceCapabilities> {
+    private:
+        using BaseClass = WPEFramework::RPC::SmartInterfaceType<WPEFramework::Exchange::IDeviceCapabilities>;
+        static constexpr uint32_t TimeOut = 3000;
+
+        friend class WPEFramework::Core::SingletonType<DeviceInfoLink>;
+        DeviceInfoLink() : BaseClass()
+        {
+            BaseClass::Open(TimeOut, Connector(), Callsign());
         }
 
-        uint32_t Delete(const DeviceInfo* deviceInfo, int& refCount)
+    public:
+        ~DeviceInfoLink() override
         {
-            uint32_t result(Core::ERROR_NONE);
-
-            _adminLock.Lock();
-
-            if (Core::InterlockedDecrement(refCount) == 0) {
-                std::list<DeviceInfo*>::iterator index(
-                    std::find(std::list<DeviceInfo*>::begin(), std::list<DeviceInfo*>::end(), deviceInfo));
-
-                ASSERT(index != std::list<DeviceInfo*>::end());
-
-                if (index != std::list<DeviceInfo*>::end()) {
-                    std::list<DeviceInfo*>::erase(index);
-                }
-                delete const_cast<DeviceInfo*>(deviceInfo);
-                result = Core::ERROR_DESTRUCTION_SUCCEEDED;
-            }
-
-            _adminLock.Unlock();
-
-            return result;
+            BaseClass::Close(WPEFramework::Core::infinite);
+        }
+        static DeviceInfoLink& Instance()
+        {
+            return WPEFramework::Core::SingletonType<DeviceInfoLink>::Instance();
         }
 
     private:
-        DeviceInfo* Find(const string& name)
+        void Operational(const bool upAndRunning) override
         {
-            DeviceInfo* result(nullptr);
-
-            std::list<DeviceInfo*>::iterator index(std::list<DeviceInfo*>::begin());
-
-            while ((index != std::list<DeviceInfo*>::end()) && ((*index)->Name() != name)) {
-                index++;
+            if (upAndRunning == false) {
             }
-
-            if (index != std::list<DeviceInfo*>::end()) {
-                result = *index;
-                result->AddRef();
-            }
-
-            return result;
         }
-
-        Core::CriticalSection _adminLock;
-        Core::ProxyType<RPC::InvokeServerType<1, 0, 8>> _engine;
-        Core::ProxyType<RPC::CommunicatorClient> _comChannel;
     };
 
-    mutable int _refCount;
-    const string _name;
-    Exchange::IDeviceInfo::IProperties* _deviceProperties;
-    Exchange::IDeviceInfo::ICapabilities* _deviceCapabilities;
-    
-    PluginHost::ISubSystem::IIdentifier* _identifier;
-    static DeviceInfo::DeviceInfoAdministration _administration;
-
-public:
-    DeviceInfo() = delete;
-    DeviceInfo(const DeviceInfo&) = delete;
-    DeviceInfo& operator=(const DeviceInfo&) = delete;
-
-    static DeviceInfo* Instance(const string& name)
-    {
-        return _administration.Instance(name);
-    }
-    void AddRef() const
-    {
-        Core::InterlockedIncrement(_refCount);
-    }
-    uint32_t Release() const
-    {
-        return _administration.Delete(this, _refCount);
-    }
-
-    const string& Name() const { return _name; }
-
-    int16_t Chipset(char buffer[], const uint8_t length) const
-    {
-        int16_t stringLength = 0;
-
-        if (_deviceProperties != nullptr) {
-            string chipset = _deviceProperties->Chipset();
-            stringLength = chipset.length();
-
-            if (length > stringLength) {
-                strncpy(buffer, chipset.c_str(), length);
-            } else {
-                return -stringLength;
-            }
-        }
-        return stringLength;
-    }
-
-    int16_t FirmwareVersion(char buffer[], const uint8_t length) const
-    {
-        int16_t stringLength = 0;
-
-        if (_deviceProperties != nullptr) {
-            string firmware = _deviceProperties->FirmwareVersion();
-            stringLength = firmware.length();
-
-            if (length > stringLength) {
-                strncpy(buffer, firmware.c_str(), length);
-            } else {
-                return -stringLength;
-            }
-        }
-        return stringLength;
-    }
-
-    int16_t Identifier(uint8_t buffer[], const uint8_t length) const
-    {
-        int16_t result = 0;
-
-        if (_identifier != nullptr) {
-
-            result = _identifier->Identifier(length, buffer);
-
-            if (result == length) {
-                uint8_t newBuffer[2048];
-                return -_identifier->Identifier(sizeof(newBuffer), newBuffer);
-            }
-        }
-        return result;
-    }
-    
-    Exchange::IDeviceInfo::ICapabilities::OutputResolution OutputResolution() const
-    {
-        Exchange::IDeviceInfo::ICapabilities::OutputResolution value =
-            Exchange::IDeviceInfo::ICapabilities::OutputResolution::RESOLUTION_UNKNOWN;
-
-        if (_deviceCapabilities != nullptr) {
-            Exchange::IDeviceInfo::ICapabilities::IOutputResolutionIterator* resolutionIt = nullptr;
-            if (_deviceCapabilities->Resolutions(resolutionIt) == Core::ERROR_NONE && resolutionIt != nullptr) {
-                value = resolutionIt->Current();
-            }
-        }
-        return value;
-    }
-};
-/* static */ DeviceInfo::DeviceInfoAdministration DeviceInfo::_administration;
-
-} // namespace WPEFramework
+} // nameless namespace
 
 using namespace WPEFramework;
 extern "C" {
 
-struct deviceinfo_type* deviceinfo_instance(const char name[])
+uint32_t deviceinfo_chipset(char buffer[], uint8_t* length)
 {
-    if (name != NULL) {
-        return reinterpret_cast<deviceinfo_type*>(DeviceInfo::Instance(string(name)));
+    uint32_t result = Core::ERROR_UNAVAILABLE;
+
+    Exchange::IDeviceCapabilities* accessor = DeviceInfoLink::Instance().Interface();
+
+    if (accessor != nullptr) {
+        Exchange::IDeviceProperties* properties = accessor->QueryInterface<Exchange::IDeviceProperties>();
+
+        if (properties != nullptr) {
+            result = Core::ERROR_NONE;
+
+            std::string newValue = Core::ToString(properties->Chipset());
+
+            strncpy(buffer, newValue.c_str(), *length);
+
+            *length = static_cast<uint8_t>(strlen(buffer));
+
+            properties->Release();
+        }
+        accessor->Release();
     }
-    return NULL;
+
+    return (result);
 }
 
-void deviceinfo_release(struct deviceinfo_type* instance)
+uint32_t deviceinfo_firmware_version(char buffer[], uint8_t* length)
 {
-    if (instance != NULL) {
-        reinterpret_cast<DeviceInfo*>(instance)->Release();
+    uint32_t result = Core::ERROR_UNAVAILABLE;
+
+    Exchange::IDeviceCapabilities* accessor = DeviceInfoLink::Instance().Interface();
+
+    if (accessor != nullptr) {
+        Exchange::IDeviceProperties* properties = accessor->QueryInterface<Exchange::IDeviceProperties>();
+
+        if (properties != nullptr) {
+            result = Core::ERROR_NONE;
+
+            std::string newValue = Core::ToString(properties->FirmwareVersion());
+
+            strncpy(buffer, newValue.c_str(), *length);
+
+            *length = static_cast<uint8_t>(strlen(buffer));
+
+            properties->Release();
+        }
+        accessor->Release();
     }
+    return (result);
 }
 
-int16_t deviceinfo_chipset(struct deviceinfo_type* instance, char buffer[], const uint8_t length)
+uint32_t deviceinfo_id(uint8_t buffer[], uint8_t* length)
 {
-    if (instance != NULL && buffer != NULL) {
-        return reinterpret_cast<DeviceInfo*>(instance)->Chipset(buffer, length);
+    uint32_t result = Core::ERROR_UNAVAILABLE;
+
+    Exchange::IDeviceCapabilities* accessor = DeviceInfoLink::Instance().Interface();
+
+    if (accessor != nullptr) {
+        PluginHost::ISubSystem::IIdentifier* identifier = accessor->QueryInterface<PluginHost::ISubSystem::IIdentifier>();
+
+        if (identifier != nullptr) {
+            result = Core::ERROR_NONE;
+
+            *length =  identifier->Identifier(*length, buffer);
+
+            identifier->Release();
+        }
+        accessor->Release();
     }
-    return 0;
+    return (result);
 }
 
-int16_t deviceinfo_firmware_version(struct deviceinfo_type* instance, char buffer[], const uint8_t length)
-{
-    if (instance != NULL && buffer != NULL) {
-        return reinterpret_cast<DeviceInfo*>(instance)->FirmwareVersion(buffer, length);
-    }
-    return 0;
+static deviceinfo_output_resolution_type Convert(const Exchange::IDeviceCapabilities::OutputResolution from) {
+    static struct LUT {
+        Exchange::IDeviceCapabilities::OutputResolution lhs;
+        deviceinfo_output_resolution_type rhs;
+    }   resolution[] =
+    {
+        { Exchange::IDeviceCapabilities::OutputResolution::RESOLUTION_480I,    DEVICEINFO_RESOLUTION_480I    },
+        { Exchange::IDeviceCapabilities::OutputResolution::RESOLUTION_480P,    DEVICEINFO_RESOLUTION_480P    },
+        { Exchange::IDeviceCapabilities::OutputResolution::RESOLUTION_576I,    DEVICEINFO_RESOLUTION_576I    },
+        { Exchange::IDeviceCapabilities::OutputResolution::RESOLUTION_576P,    DEVICEINFO_RESOLUTION_576P    },
+        { Exchange::IDeviceCapabilities::OutputResolution::RESOLUTION_720P,    DEVICEINFO_RESOLUTION_720P    },
+        { Exchange::IDeviceCapabilities::OutputResolution::RESOLUTION_1080I,   DEVICEINFO_RESOLUTION_1080I   },
+        { Exchange::IDeviceCapabilities::OutputResolution::RESOLUTION_1080P,   DEVICEINFO_RESOLUTION_1080P   },
+        { Exchange::IDeviceCapabilities::OutputResolution::RESOLUTION_2160P30, DEVICEINFO_RESOLUTION_2160P30 },
+        { Exchange::IDeviceCapabilities::OutputResolution::RESOLUTION_2160P60, DEVICEINFO_RESOLUTION_2160P60 },
+        { Exchange::IDeviceCapabilities::OutputResolution::RESOLUTION_4320P30, DEVICEINFO_RESOLUTION_4320P30 },
+        { Exchange::IDeviceCapabilities::OutputResolution::RESOLUTION_4320P60, DEVICEINFO_RESOLUTION_4320P60 }
+    };
+    uint8_t index = 0;
+    while ((index < (sizeof(resolution) / sizeof(LUT))) && (resolution[index].lhs != from)) index++;
+
+    return (index < (sizeof(resolution) / sizeof(LUT)) ? resolution[index].rhs : DEVICEINFO_RESOLUTION_480I);
 }
 
-int16_t deviceinfo_id(struct deviceinfo_type* instance, uint8_t buffer[], const uint8_t length)
+uint32_t deviceinfo_output_resolution(deviceinfo_output_resolution_t value[], uint8_t* length)
 {
-    if (instance != NULL && buffer != NULL) {
-        return reinterpret_cast<DeviceInfo*>(instance)->Identifier(buffer, length);
+    uint32_t result = Core::ERROR_UNAVAILABLE;
+
+    Exchange::IDeviceCapabilities* accessor = DeviceInfoLink::Instance().Interface();
+
+    if (accessor != nullptr) {
+        Exchange::IDeviceCapabilities::IOutputResolutionIterator* index;
+        accessor->Resolutions(index);
+        if (index != nullptr) {
+            Exchange::IDeviceCapabilities::OutputResolution field;
+            uint8_t inserted = 0;
+            while ((inserted < *length) && (index->Next(field) == true)) {
+                deviceinfo_output_resolution_type converted = Convert(field);
+                uint8_t loop = 0;
+
+                while ( (loop < inserted) && (value[loop] != converted) ) { loop++;  }
+
+                if (loop == inserted) {
+                    value[inserted] = converted;
+                    inserted++;
+                }
+            }
+            *length = inserted;
+            index->Release();
+        }
+        accessor->Release();
     }
-    return 0;
+    return (result);
 }
 
-deviceinfo_output_resolution_t deviceinfo_output_resolution(struct deviceinfo_type* instance)
-{
-    deviceinfo_output_resolution_t result = DEVICEINFO_RESOLUTION_UNKNOWN;
-    if (instance != NULL) {
-        switch (reinterpret_cast<DeviceInfo*>(instance)->OutputResolution()) {
-        case Exchange::IDeviceInfo::ICapabilities::OutputResolution::RESOLUTION_480I:
-            result = DEVICEINFO_RESOLUTION_480I;
-            break;
-        case Exchange::IDeviceInfo::ICapabilities::OutputResolution::RESOLUTION_480P:
-            result = DEVICEINFO_RESOLUTION_480P;
-            break;
-        case Exchange::IDeviceInfo::ICapabilities::OutputResolution::RESOLUTION_576I:
-            result = DEVICEINFO_RESOLUTION_576I;
-            break;
-        case Exchange::IDeviceInfo::ICapabilities::OutputResolution::RESOLUTION_576P:
-            result = DEVICEINFO_RESOLUTION_576P;
-            break;
-        case Exchange::IDeviceInfo::ICapabilities::OutputResolution::RESOLUTION_720P:
-            result = DEVICEINFO_RESOLUTION_720P;
-            break;
-        case Exchange::IDeviceInfo::ICapabilities::OutputResolution::RESOLUTION_1080I:
-            result = DEVICEINFO_RESOLUTION_1080I;
-            break;
-        case Exchange::IDeviceInfo::ICapabilities::OutputResolution::RESOLUTION_1080P:
-            result = DEVICEINFO_RESOLUTION_1080P;
-            break;
-        case Exchange::IDeviceInfo::ICapabilities::OutputResolution::RESOLUTION_2160P30:
-            result = DEVICEINFO_RESOLUTION_2160P30;
-            break;
-        case Exchange::IDeviceInfo::ICapabilities::OutputResolution::RESOLUTION_2160P60:
-            result = DEVICEINFO_RESOLUTION_2160P60;
-            break;
-        case Exchange::IDeviceInfo::ICapabilities::OutputResolution::RESOLUTION_4320P30:
-            result = DEVICEINFO_RESOLUTION_4320P30;
-            break;
-        case Exchange::IDeviceInfo::ICapabilities::OutputResolution::RESOLUTION_4320P60:
-            result = DEVICEINFO_RESOLUTION_4320P60;
-            break;
-        default:
-            result = DEVICEINFO_RESOLUTION_UNKNOWN;
-            break;
+uint32_t deviceinfo_maximum_output_resolutions(deviceinfo_output_resolution_t* value) {
+    deviceinfo_output_resolution_type resolutions[32];
+    uint8_t maxLength = sizeof(resolutions) / sizeof(deviceinfo_output_resolution_type);
+
+    uint32_t result = deviceinfo_output_resolution(resolutions, &maxLength);
+
+    if (result == Core::ERROR_NONE) {
+        if (maxLength == 0) {
+            result = Core::ERROR_INVALID_INPUT_LENGTH;
+        }
+        else {
+            uint8_t index = 0;
+            *value = DEVICEINFO_RESOLUTION_480I;
+
+            while (index < maxLength) {
+                if (resolutions[index] > *value) {
+                    *value = resolutions[index];
+                }
+                index++;
+            }
         }
     }
-    return result;
+    return (result);
 }
+
+
 }

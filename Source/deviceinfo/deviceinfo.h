@@ -4,7 +4,7 @@
 
 #ifdef _MSVC_LANG
 #undef EXTERNAL
-#ifdef DISPLAYINFO_EXPORTS
+#ifdef DEVICEINFO_EXPORTS
 #define EXTERNAL __declspec(dllexport)
 #else
 #define EXTERNAL __declspec(dllimport)
@@ -17,8 +17,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-struct deviceinfo_type;
 
 typedef enum deviceinfo_output_resolution_type {
     DEVICEINFO_RESOLUTION_UNKNOWN,
@@ -37,21 +35,6 @@ typedef enum deviceinfo_output_resolution_type {
 } deviceinfo_output_resolution_t;
 
 /**
- * @brief Get a @ref deviceinfo_type instance that matches the DeviceIdentification implementation
- * 
- * @param name Name of the implementation
- * @return EXTERNAL struct* @ref instance, NULL if error.
- */
-EXTERNAL struct deviceinfo_type* deviceinfo_instance(const char name[]);
-
-/**
- * @brief Release the @ref instance
- * 
- * @param instance  Instance of @ref deviceinfo_type
- */
-EXTERNAL void deviceinfo_release(struct deviceinfo_type* instance);
-
-/**
  * @brief Get the device chipset name 
  * 
  * @param instance Instance of @ref deviceinfo_type
@@ -60,7 +43,7 @@ EXTERNAL void deviceinfo_release(struct deviceinfo_type* instance);
  * @return if the buffer is not big enough returns -LENGHTH of required buffer, otherwise return LENGTH
  *         if instance or buffer is null, returns 0
  */
-EXTERNAL int16_t deviceinfo_chipset(struct deviceinfo_type* instance, char buffer[], const uint8_t length);
+EXTERNAL uint32_t deviceinfo_chipset(char buffer[], uint8_t* length);
 
 /**
  * @brief Get the device firmware version 
@@ -71,7 +54,7 @@ EXTERNAL int16_t deviceinfo_chipset(struct deviceinfo_type* instance, char buffe
  * @return if the buffer is not big enough returns -LENGHTH of required buffer, otherwise return LENGTH of string
  *         if instance or buffer is null, returns 0
  */
-EXTERNAL int16_t deviceinfo_firmware_version(struct deviceinfo_type* instance, char buffer[], const uint8_t length);
+EXTERNAL uint32_t deviceinfo_firmware_version(char buffer[], uint8_t* length);
 
 /**
  * @brief Get the device ID  
@@ -83,7 +66,7 @@ EXTERNAL int16_t deviceinfo_firmware_version(struct deviceinfo_type* instance, c
  *         returns 0 if ID is not available for the device, or instance or buffer is null.
  * 
  */
-EXTERNAL int16_t deviceinfo_id(struct deviceinfo_type* instance, uint8_t buffer[], const uint8_t length);
+EXTERNAL uint32_t deviceinfo_id(uint8_t buffer[], uint8_t* length);
 
 /**
  * @brief Get the device maximum supported output resolution
@@ -94,7 +77,9 @@ EXTERNAL int16_t deviceinfo_id(struct deviceinfo_type* instance, uint8_t buffer[
  * @return if the buffer is not big enough returns -LENGHTH of required buffer, otherwise return LENGTH of string
  *         if instance or buffer is null, returns 0
  */
-EXTERNAL deviceinfo_output_resolution_t deviceinfo_output_resolution(struct deviceinfo_type* instance);
+EXTERNAL uint32_t deviceinfo_output_resolutions(deviceinfo_output_resolution_t value[], uint8_t* length);
+EXTERNAL uint32_t deviceinfo_maximum_output_resolutions(deviceinfo_output_resolution_t* value);
+
 
 #ifdef __cplusplus
 } // extern "C"
