@@ -39,7 +39,7 @@ namespace Implementation {
             WPEFramework::Core::File file(path.c_str(), true);
             /*Send an empty buffer for cases where boundndkymsg File is not required or  present.
             The buffer content will be ignored by Secapi-Netflix lib for such cases*/    
-            static constexpr uint32_t MaxFileSize = 300;
+            static constexpr uint32_t MaxFileSize = 4096;
             uint8_t buf[MaxFileSize]={0};
             uint16_t inSize = MaxFileSize;
             if (file.Open(true) == true) {
