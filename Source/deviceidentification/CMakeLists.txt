@@ -5,10 +5,7 @@ find_package(WPEFramework)
 
 set(TARGET ${NAMESPACE}${PROJECT_NAME})
 
-Version(1 0 0)
-
 message("Setup ${TARGET} v${PROJECT_VERSION}")
-
 
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
