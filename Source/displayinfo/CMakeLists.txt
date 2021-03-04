@@ -20,7 +20,7 @@ cmake_minimum_required(VERSION 3.3)
 
 find_package(WPEFramework)
 
-set(TARGET ${NAMESPACE}${PROJECT_NAME})
+set(TARGET ${PROJECT_NAME})
 
 message("Setup ${TARGET} v${PROJECT_VERSION}")
 
