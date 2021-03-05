@@ -551,11 +551,8 @@ public:
     inline string Metadata() const 
     { 
         ASSERT(_session != nullptr);
-        if (_session != nullptr)
-        {
-            return _session->Metadata();
-        }
-        return "";
+
+        return _session->Metadata();
     }
     inline const string& BufferId() const
     {
@@ -584,42 +581,33 @@ public:
     {
         ASSERT(_session != nullptr);
 
-        if (_session != nullptr)
-        {
-            _session->Close();
-        }
+        _session->Close();
     }
     inline void ResetOutputProtection() {
         ASSERT (_session != nullptr);
 
-        if (_session != nullptr)
-        {
-            _session->ResetOutputProtection();
-        }
+        _session->ResetOutputProtection();
     }
     inline int Remove()
     {
 
         ASSERT(_session != nullptr);
 
-        return ((_session != nullptr) && (_session->Remove() == 0));
+        return (_session->Remove() == 0);
     }
     inline int Load()
     {
 
         ASSERT(_session != nullptr);
 
-        return ((_session != nullptr) && (_session->Load() == 0));
+        return (_session->Load() == 0);
     }
     inline void Update(const uint8_t* pbResponse, const uint16_t cbResponse)
     {
 
         ASSERT(_session != nullptr);
 
-        if (_session != nullptr)
-        {
-            _session->Update(pbResponse, cbResponse);
-        }
+        _session->Update(pbResponse, cbResponse);
     }
     uint32_t Decrypt(uint8_t* encryptedData, const uint32_t encryptedDataLength,
         const uint8_t* ivData, uint16_t ivDataLength,
