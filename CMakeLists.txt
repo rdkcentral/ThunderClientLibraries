@@ -16,17 +16,7 @@
 # limitations under the License.
 
 cmake_minimum_required(VERSION 3.3)
-
-project(WPEFramework)
-
-set(VERSION_MAJOR 1)
-set(VERSION_MINOR 0)
-set(VERSION_PATCH 0)
-
-set(VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
-set(NAMESPACE ${PROJECT_NAME} CACHE STRING "Namespace of the project")
-
-message(STATUS "Setting up ${PROJECT_NAME} v${VERSION}")
+project(ClientLibraries)
 
 if (BUILD_REFERENCE)
     add_definitions (-DBUILD_REFERENCE=${BUILD_REFERENCE})

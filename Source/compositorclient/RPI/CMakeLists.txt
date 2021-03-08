@@ -17,9 +17,15 @@
 
 set(TARGET compositorclient)
 
-message("Setup ${TARGET} v${VERSION}...")
-
 find_package(EGL REQUIRED)
+
+find_package(CompileSettingsDebug CONFIG REQUIRED)
+find_package(${NAMESPACE}Core REQUIRED)
+if(PROTOCOLS)
+    find_package(${NAMESPACE}Protocols REQUIRED)
+else()
+    find_package(${NAMESPACE}COM REQUIRED)
+endif()
 
 if(VC6)
     find_package(GBM REQUIRED)
@@ -69,8 +75,8 @@ endif()
 set_target_properties(${TARGET} PROPERTIES
         CXX_STANDARD 11
         CXX_STANDARD_REQUIRED YES
-        VERSION ${VERSION}
-        SOVERSION ${VERSION_MAJOR}
+        VERSION ${PROJECT_VERSION}
+        SOVERSION ${PROJECT_VERSION_MAJOR}
 )
 
 target_include_directories(${TARGET}
