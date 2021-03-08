@@ -357,6 +357,11 @@ opencdm_construct_session(struct OpenCDMSystem* system,
         *session = new OpenCDMSession(system, std::string(initDataType),
                             initData, initDataLength, CDMData,
                             CDMDataLength, licenseType, callbacks, userData);
+        if ((*session != nullptr) && ((*session)->IsValid() == false))
+        {
+            delete *session;
+            *session = nullptr;
+        }
         result = (*session != nullptr ? OpenCDMError::ERROR_NONE
                                       : OpenCDMError::ERROR_INVALID_SESSION);
     }
