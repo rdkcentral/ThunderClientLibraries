@@ -17,29 +17,62 @@
  * limitations under the License.
  */
 
-#include <stdlib.h>
-
 #include <com/com.h>
 #include <core/core.h>
+#include <plugins/Types.h>
+
+#include <stdlib.h>
 
 #include <displayinfo.h>
 #include <interfaces/IDisplayInfo.h>
 
-#ifndef __DEBUG__
-#define Trace(fmt, ...)                                                                                                                     \
-    do {                                                                                                                                    \
-        fprintf(stdout, "\033[1;32m[%s:%d](%s){%p}<%d>:" fmt "\n\033[0m", __FILE__, __LINE__, __FUNCTION__, this, getpid(), ##__VA_ARGS__); \
-        fflush(stdout);                                                                                                                     \
-    } while (0)
-#else
-#define Trace(fmt, ...)
-#endif
-
 namespace WPEFramework {
-class DisplayInfo : public Core::IReferenceCounted {
+class DisplayInfo : protected RPC::SmartInterfaceType<Exchange::IConnectionProperties> {
 private:
-    typedef std::map<displayinfo_updated_cb, void*> Callbacks;
+    using BaseClass = RPC::SmartInterfaceType<Exchange::IConnectionProperties>;
+    using DisplayOutputUpdatedCallbacks = std::map<displayinfo_display_output_change_cb, void*>;
+    using OperationalStateChangeCallbacks = std::map<displayinfo_operational_state_change_cb, void*>;
 
+    //CONSTRUCTORS
+    DisplayInfo(const uint32_t waitTime, const Core::NodeId& node, const string& callsign)
+        : BaseClass()
+        , _displayConnection(nullptr)
+        , _hdrProperties(nullptr)
+        , _graphicsProperties(nullptr)
+        , _callsign(callsign)
+        , _displayUpdatedNotification(this)
+    {
+        BaseClass::Open(waitTime, node, callsign);
+    }
+
+    DisplayInfo() = delete;
+    DisplayInfo(const DisplayInfo&) = delete;
+    DisplayInfo& operator=(const DisplayInfo&) = delete;
+
+    static Core::NodeId Connector()
+    {
+        const TCHAR* comPath = ::getenv(_T("COMMUNICATOR_PATH"));
+
+        if (comPath == nullptr) {
+#ifdef __WINDOWS__
+            comPath = _T("127.0.0.1:62000");
+#else
+            comPath = _T("/tmp/communicator");
+#endif
+        }
+
+        return Core::NodeId(comPath);
+    }
+
+private:
+    void DisplayOutputUpdated(const Exchange::IConnectionProperties::INotification::Source event)
+    {
+        for (auto& index : _displayChangeCallbacks) {
+            index.first(index.second);
+        }
+    }
+
+    //NOTIFICATIONS
     class Notification : public Exchange::IConnectionProperties::INotification {
     public:
         Notification() = delete;
@@ -53,7 +86,7 @@ private:
 
         void Updated(const Exchange::IConnectionProperties::INotification::Source event) override
         {
-            _parent.Updated(event);
+            _parent.DisplayOutputUpdated(event);
         }
 
         BEGIN_INTERFACE_MAP(Notification)
@@ -64,543 +97,520 @@ private:
         DisplayInfo& _parent;
     };
 
-    #ifdef __WINDOWS__
-    #pragma warning(disable : 4355)
-    #endif
-    DisplayInfo(const string& displayName, Exchange::IConnectionProperties* interface)
-        : _refCount(1)
-        , _name(displayName)
-        , _displayConnection(interface)
-        , _hdrProperties(interface != nullptr ? interface->QueryInterface<Exchange::IHDRProperties>() : nullptr)
-        , _graphicsProperties(interface != nullptr ? interface->QueryInterface<Exchange::IGraphicsProperties>() : nullptr)
-        , _notification(this)
-        , _callbacks()
+    void Operational(const bool upAndRunning) override
     {
-        ASSERT (_displayConnection != nullptr);
-        _displayConnection->AddRef();
-        _displayConnection->Register(&_notification);
-    }
 
-    #ifdef __WINDOWS__
-    #pragma warning(default : 4355)
-    #endif
-
-    class DisplayInfoAdministration : protected std::list<DisplayInfo*> {
-    public:
-        DisplayInfoAdministration(const DisplayInfoAdministration&) = delete;
-        DisplayInfoAdministration& operator=(const DisplayInfoAdministration&) = delete;
-
-        DisplayInfoAdministration()
-            : _adminLock()
-            , _engine()
-            , _comChannel()
-        {
-        }
-        ~DisplayInfoAdministration()
-        {
-            std::list<DisplayInfo*>::iterator index(std::list<DisplayInfo*>::begin());
-
-            while (index != std::list<DisplayInfo*>::end()) {
-                Trace("Removing DisplayInfoAdministration with an instance unreleased. <%s>", (*index)->Name().c_str());
-                ++index;
-            }
-            ASSERT(std::list<DisplayInfo*>::size() == 0);
-            if (_comChannel.IsValid() == true) {
-                _comChannel.Release();
-            }
-        }
-
-        DisplayInfo* Instance(const string& name)
-        {
-            _adminLock.Lock();
-
-            if (_comChannel == nullptr) {
-                _engine = Core::ProxyType<RPC::InvokeServerType<1, 0, 8>>::Create();
-                _comChannel = Core::ProxyType<RPC::CommunicatorClient>::Create(Connector(),Core::ProxyType<Core::IIPCServer>(_engine));
-                ASSERT(_engine != nullptr);
-                ASSERT(_comChannel != nullptr);
-                _engine->Announcements(_comChannel->Announcement());
-             }
-
-            DisplayInfo* result = Find(name);
-
-            if (result == nullptr) {
-                Exchange::IConnectionProperties* displayInterface = _comChannel->Open<Exchange::IConnectionProperties>(name);
-
-                if (displayInterface != nullptr) {
-                    result = new DisplayInfo(name, displayInterface);
-                    std::list<DisplayInfo*>::emplace_back(result);
-                    displayInterface->Release();
-                }
-            }
-            _adminLock.Unlock();
-
-            return (result);
-        }
-
-        static Core::NodeId Connector() {
-            const TCHAR* comPath = ::getenv(_T("COMMUNICATOR_PATH"));
-
-            if (comPath == nullptr) {
-#ifdef __WINDOWS__
-                comPath = _T("127.0.0.1:62000");
-#else
-                comPath = _T("/tmp/communicator");
-#endif
-            }
-
-            return Core::NodeId(comPath);
-
-        }
-
-        uint32_t Delete(const DisplayInfo* displayInfo, int& refCount)
-        {
-            uint32_t result(Core::ERROR_NONE);
-
-            _adminLock.Lock();
-
-            if (Core::InterlockedDecrement(refCount) == 0) {
-                std::list<DisplayInfo*>::iterator index(
-                    std::find(std::list<DisplayInfo*>::begin(), std::list<DisplayInfo*>::end(), displayInfo));
-
-                ASSERT(index != std::list<DisplayInfo*>::end());
-
-                if (index != std::list<DisplayInfo*>::end()) {
-                    std::list<DisplayInfo*>::erase(index);
-                }
-                delete const_cast<DisplayInfo*>(displayInfo);
-                result = Core::ERROR_DESTRUCTION_SUCCEEDED;
-
-                if ((_comChannel.IsValid() == true) && (std::list<DisplayInfo*>::size() == 0)) {
-                    _comChannel.Release();
-                }
-            }
-
-            _adminLock.Unlock();
-
-            return result;
-        }
-
-        static uint8_t Enumerate(std::vector<string>& instances)
-        {
-            class Catalog : protected PluginHost::IPlugin::INotification {
-            public:
-                Catalog(const Catalog&) = delete;
-                Catalog& operator=(const Catalog&) = delete;
-
-                Catalog() = default;
-                ~Catalog() override = default;
-
-                void Load(PluginHost::IShell* systemInterface, std::vector<string>& modules)
-                {
-                    ASSERT(_instances.size() == 0);
-
-                    systemInterface->Register(this);
-                    systemInterface->Unregister(this);
-  
-                    while (_instances.size() > 0) {
-
-                        PluginHost::IShell* current = _instances.back();
-                        Exchange::IConnectionProperties* props = current->QueryInterface<Exchange::IConnectionProperties>();
-
-                        if (props != nullptr) {
-                            modules.push_back(current->Callsign());
-                            props->Release();
-                        }
-                        current->Release();
-                        _instances.pop_back();
-                    }
+        if (upAndRunning) {
+            if (_displayConnection == nullptr) {
+                _displayConnection = BaseClass::Interface();
+                if (_displayConnection != nullptr) {
+                    _displayConnection->Register(&_displayUpdatedNotification);
                 }
 
-            private:
-                void Activated(const string& , PluginHost::IShell* plugin) override
-                {
-                    plugin->AddRef();
-                    _instances.push_back(plugin);
+                if (_displayConnection != nullptr && _hdrProperties == nullptr) {
+                    _hdrProperties = _displayConnection->QueryInterface<Exchange::IHDRProperties>();
                 }
-                void Deactivated(const string& , PluginHost::IShell* plugin) override
-                {
+                if (_displayConnection != nullptr && _graphicsProperties == nullptr) {
+                    _graphicsProperties = _displayConnection->QueryInterface<Exchange::IGraphicsProperties>();
                 }
-
-                BEGIN_INTERFACE_MAP(Catalog)
-                INTERFACE_ENTRY(PluginHost::IPlugin::INotification)
-                END_INTERFACE_MAP
-
-            private:
-                std::vector<PluginHost::IShell*> _instances;
-            };
-
-            Core::ProxyType<RPC::InvokeServerType<1, 0, 4>> engine(Core::ProxyType<RPC::InvokeServerType<1, 0, 4>>::Create());
-            ASSERT(engine != nullptr);
-            Core::ProxyType<RPC::CommunicatorClient> comChannel(
-                    Core::ProxyType<RPC::CommunicatorClient>::Create(DisplayInfoAdministration::Connector(),
-                    Core::ProxyType<Core::IIPCServer>(engine)));
-            ASSERT(comChannel != nullptr);
-            engine->Announcements(comChannel->Announcement());
-
-            PluginHost::IShell* systemInterface = comChannel->Open<PluginHost::IShell>(string());
-            if (systemInterface != nullptr) {
-                Core::Sink<Catalog> mySink;
-                mySink.Load(systemInterface, instances);
-                systemInterface->Release();
             }
-
-            return static_cast<uint8_t>(instances.size());
-        }
-
-    private:
-        DisplayInfo* Find(const string& name)
-        {
-            DisplayInfo* result(nullptr);
-
-            std::list<DisplayInfo*>::iterator index(std::list<DisplayInfo*>::begin());
-
-            while ((index != std::list<DisplayInfo*>::end()) && ((*index)->Name() != name)) {
-                index++;
+        } else {
+            if (_graphicsProperties != nullptr) {
+                _graphicsProperties->Release();
+                _graphicsProperties = nullptr;
             }
-
-            if (index != std::list<DisplayInfo*>::end()) {
-                result = *index;
-                result->AddRef();
+            if (_hdrProperties != nullptr) {
+                _hdrProperties->Release();
+                _hdrProperties = nullptr;
             }
-
-            return result;
-        }
-
-        Core::CriticalSection _adminLock;
-        Core::ProxyType<RPC::InvokeServerType<1, 0, 8>> _engine;
-        Core::ProxyType<RPC::CommunicatorClient> _comChannel;
-    };
-
-    ~DisplayInfo()
-    {
-        if (_displayConnection != nullptr) {
-            _displayConnection->Unregister(&_notification);
-            _displayConnection->Release();
-        }
-        if (_hdrProperties != nullptr) {
-            _hdrProperties->Release();
-        }
-        if(_graphicsProperties != nullptr) {
-            _graphicsProperties->Release();
-        }
-    }
-
-public:
-    DisplayInfo() = delete;
-    DisplayInfo(const DisplayInfo&) = delete;
-    DisplayInfo& operator=(const DisplayInfo&) = delete;
-
-    static bool Enumerate(const uint8_t index, const uint8_t length, char* buffer)
-    {
-
-        static std::vector<string> interfaces;
-        static Core::CriticalSection interfacesLock;
-        bool result(false);
-
-        interfacesLock.Lock();
-
-        if (index == 0) {
-            interfaces.clear();
-            DisplayInfoAdministration::Enumerate(interfaces);
-        }
-
-        if (index < interfaces.size()) {
-            if (length > 0) {
-                ASSERT(buffer != nullptr);
-                ::strncpy(buffer, interfaces[index].c_str(), length);
+            if (_displayConnection != nullptr) {
+                _displayConnection->Unregister(&_displayUpdatedNotification);
+                _displayConnection->Release();
+                _displayConnection = nullptr;
             }
-
-            result = true;
         }
 
-        interfacesLock.Unlock();
-
-        return result;
-    }
-    static DisplayInfo* Instance(const string& displayName)
-    {
-        return _administration.Instance(displayName);
-    }
-
-    void AddRef() const
-    {
-        Core::InterlockedIncrement(_refCount);
-    }
-    uint32_t Release() const
-    {
-        return _administration.Delete(this, _refCount);
-    }
-
-    void Updated(const Exchange::IConnectionProperties::INotification::Source /* event */)
-    {
-        Callbacks::iterator index(_callbacks.begin());
-
-        while (index != _callbacks.end()) {
-            index->first(reinterpret_cast<displayinfo_type*>(this), index->second);
-            index++;
+        for (auto& index : _operationalStateCallbacks) {
+            index.first(upAndRunning, index.second);
         }
-    }
-    void Register(displayinfo_updated_cb callback, void* userdata)
-    {
-        Callbacks::iterator index(_callbacks.find(callback));
-
-        if (index == _callbacks.end()) {
-            _callbacks.emplace(std::piecewise_construct,
-                std::forward_as_tuple(callback),
-                std::forward_as_tuple(userdata));
-        }
-    }
-    void Unregister(displayinfo_updated_cb callback)
-    {
-        Callbacks::iterator index(_callbacks.find(callback));
-
-        if (index != _callbacks.end()) {
-            _callbacks.erase(index);
-        }
-    }
-
-    const string& Name() const { return _name; }
-
-    bool IsAudioPassthrough() const
-    {
-        ASSERT(_displayConnection != nullptr);
-        bool value = false;
-        return (_displayConnection != nullptr ? 
-                   ( _displayConnection->IsAudioPassthrough(value) == Core::ERROR_NONE ? value: false) :
-                   false );
-    }
-    bool Connected() const
-    {
-        ASSERT(_displayConnection != nullptr);
-        bool value = false;
-        return (_displayConnection != nullptr ? 
-                   ( _displayConnection->Connected(value) == Core::ERROR_NONE ? value : false) :
-                   false );
-    }
-    uint32_t Width() const
-    {
-        ASSERT(_displayConnection != nullptr);
-        uint32_t value = 0;
-        return (_displayConnection != nullptr ? 
-                   ( _displayConnection->Width(value) == Core::ERROR_NONE ? value : 0) :
-                   0 );
-    }
-    uint32_t Height() const
-    {
-        ASSERT(_displayConnection != nullptr);
-        uint32_t value = 0;
-        return (_displayConnection != nullptr ? 
-                   ( _displayConnection->Height(value) == Core::ERROR_NONE ? value : 0) :
-                   0 );
-    }
-    uint8_t WidthInCentimeters() const
-    {
-        ASSERT(_displayConnection != nullptr);
-        uint8_t value = 0;
-        return (_displayConnection != nullptr ?
-                   ( _displayConnection->WidthInCentimeters(value) == Core::ERROR_NONE ? value : 0) :
-                   0 );
-    }
-    uint8_t HeightInCentimeters() const
-    {
-        ASSERT(_displayConnection != nullptr);
-        uint8_t value = 0;
-        return (_displayConnection != nullptr ?
-                   ( _displayConnection->HeightInCentimeters(value) == Core::ERROR_NONE ? value : 0) :
-                   0 );
-    }
-    uint32_t VerticalFreq() const
-    {
-        ASSERT(_displayConnection != nullptr);
-        uint32_t value = 0;
-        return (_displayConnection != nullptr ? 
-                   ( _displayConnection->VerticalFreq(value) == Core::ERROR_NONE ? value : 0) :
-                   0 );
-    }
-
-    uint32_t EDID(uint16_t& len, uint8_t data[]) {
-        ASSERT(_displayConnection != nullptr);
-        return _displayConnection->EDID(len, data);
-    }
-
-    Exchange::IHDRProperties::HDRType HDR() const
-    {
-        Exchange::IHDRProperties::HDRType value = Exchange::IHDRProperties::HDRType::HDR_OFF;
-        return (_hdrProperties != nullptr ?
-                   ( _hdrProperties->HDRSetting(value) == Core::ERROR_NONE ? value :
-                     Exchange::IHDRProperties::HDRType::HDR_OFF ) :
-                     Exchange::IHDRProperties::HDRType::HDR_OFF );
-    }
-    Exchange::IConnectionProperties::HDCPProtectionType HDCPProtection() const
-    {
-        ASSERT(_displayConnection != nullptr);
-        Exchange::IConnectionProperties::HDCPProtectionType value = Exchange::IConnectionProperties::HDCPProtectionType::HDCP_Unencrypted;
-        return (_displayConnection != nullptr ? 
-                   ( static_cast<const Exchange::IConnectionProperties*>(_displayConnection)->HDCPProtection(value) == Core::ERROR_NONE ? value : 
-                     Exchange::IConnectionProperties::HDCPProtectionType::HDCP_Unencrypted ) :
-                   Exchange::IConnectionProperties::HDCPProtectionType::HDCP_Unencrypted );
-    }
-    uint64_t TotalGpuRam() const 
-    {
-        uint64_t memory(0);
-        return (_graphicsProperties != nullptr ? (_graphicsProperties->TotalGpuRam(memory) == Core::ERROR_NONE ? memory : 0) : 0);
-    }
-    uint64_t FreeGpuRam() const 
-    {
-        uint64_t memory(0);
-        return (_graphicsProperties != nullptr ? (_graphicsProperties->FreeGpuRam(memory) == Core::ERROR_NONE ? memory : 0) : 0);
     }
 
 private:
-    mutable int _refCount;
-    const string _name;
+    //MEMBERS
+    static DisplayInfo* _instance;
+
     Exchange::IConnectionProperties* _displayConnection;
     Exchange::IHDRProperties* _hdrProperties;
     Exchange::IGraphicsProperties* _graphicsProperties;
-    Core::Sink<Notification> _notification;
-    Callbacks _callbacks;
-    static DisplayInfo::DisplayInfoAdministration _administration;
+    std::string _callsign;
+
+    DisplayOutputUpdatedCallbacks _displayChangeCallbacks;
+    OperationalStateChangeCallbacks _operationalStateCallbacks;
+    Core::Sink<Notification> _displayUpdatedNotification;
+
+public:
+    //OBJECT MANAGEMENT
+    ~DisplayInfo()
+    {
+        BaseClass::Close(Core::infinite);
+    }
+
+    static DisplayInfo* Instance()
+    {
+        if (_instance == nullptr) {
+            _instance = new DisplayInfo(3000, Connector(), "DisplayInfo");
+        }
+        return _instance;
+    }
+    void DestroyInstance()
+    {
+        delete _instance;
+    }
+
+public:
+    //METHODS FROM INTERFACE
+    const string& Name() const
+    {
+        return _callsign;
+    }
+
+    uint32_t RegisterOperationalStateChangedCallback(displayinfo_operational_state_change_cb callback, void* userdata)
+    {
+
+        OperationalStateChangeCallbacks::iterator index(_operationalStateCallbacks.find(callback));
+
+        if (index == _operationalStateCallbacks.end()) {
+            _operationalStateCallbacks.emplace(std::piecewise_construct,
+                std::forward_as_tuple(callback),
+                std::forward_as_tuple(userdata));
+            return Core::ERROR_NONE;
+        }
+        return Core::ERROR_GENERAL;
+    }
+
+    uint32_t UnregisterOperationalStateChangedCallback(displayinfo_operational_state_change_cb callback)
+    {
+        OperationalStateChangeCallbacks::iterator index(_operationalStateCallbacks.find(callback));
+
+        if (index != _operationalStateCallbacks.end()) {
+            _operationalStateCallbacks.erase(index);
+            return Core::ERROR_NONE;
+        }
+        return Core::ERROR_NOT_EXIST;
+    }
+
+    uint32_t RegisterDisplayOutputChangeCallback(displayinfo_display_output_change_cb callback, void* userdata)
+    {
+        DisplayOutputUpdatedCallbacks::iterator index(_displayChangeCallbacks.find(callback));
+
+        if (index == _displayChangeCallbacks.end()) {
+            _displayChangeCallbacks.emplace(std::piecewise_construct,
+                std::forward_as_tuple(callback),
+                std::forward_as_tuple(userdata));
+            return Core::ERROR_NONE;
+        }
+        return Core::ERROR_GENERAL;
+    }
+
+    uint32_t UnregisterDolbyAudioModeChangedCallback(displayinfo_display_output_change_cb callback)
+    {
+        DisplayOutputUpdatedCallbacks::iterator index(_displayChangeCallbacks.find(callback));
+
+        if (index != _displayChangeCallbacks.end()) {
+            _displayChangeCallbacks.erase(index);
+            return Core::ERROR_NONE;
+        }
+        return Core::ERROR_NOT_EXIST;
+    }
+
+    uint32_t IsAudioPassthrough(bool& outIsEnabled) const
+    {
+        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+        const Exchange::IConnectionProperties* impl = _displayConnection;
+
+        if (impl != nullptr) {
+            errorCode = impl->IsAudioPassthrough(outIsEnabled);
+        }
+
+        return errorCode;
+    }
+    uint32_t Connected(bool& outIsConnected) const
+    {
+        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+        const Exchange::IConnectionProperties* impl = _displayConnection;
+
+        if (impl != nullptr) {
+            errorCode = impl->Connected(outIsConnected);
+        }
+
+        return errorCode;
+    }
+    uint32_t Width(uint32_t& outWidth) const
+    {
+
+        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+        const Exchange::IConnectionProperties* impl = _displayConnection;
+
+        if (impl != nullptr) {
+            errorCode = impl->Width(outWidth);
+        }
+
+        return errorCode;
+    }
+
+    uint32_t Height(uint32_t& outHeight) const
+    {
+        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+        const Exchange::IConnectionProperties* impl = _displayConnection;
+
+        if (impl != nullptr) {
+            errorCode = impl->Height(outHeight);
+        }
+
+        return errorCode;
+    }
+
+    uint32_t WidthInCentimeters(uint8_t& outWidthInCentimeters) const
+    {
+        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+        const Exchange::IConnectionProperties* impl = _displayConnection;
+
+        if (impl != nullptr) {
+            errorCode = impl->WidthInCentimeters(outWidthInCentimeters);
+        }
+
+        return errorCode;
+    }
+
+    uint32_t HeightInCentimeters(uint8_t& outHeightInCentimeters) const
+    {
+        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+        const Exchange::IConnectionProperties* impl = _displayConnection;
+
+        if (impl != nullptr) {
+            errorCode = impl->HeightInCentimeters(outHeightInCentimeters);
+        }
+
+        return errorCode;
+    }
+
+    uint32_t VerticalFreq(uint32_t& outVerticalFreq) const
+    {
+        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+        const Exchange::IConnectionProperties* impl = _displayConnection;
+
+        if (impl != nullptr) {
+            errorCode = impl->VerticalFreq(outVerticalFreq);
+        }
+
+        return errorCode;
+    }
+
+    uint32_t EDID(uint16_t& len, uint8_t outData[])
+    {
+        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+
+        if (_displayConnection != nullptr) {
+            errorCode = _displayConnection->EDID(len, outData);
+        }
+
+        return errorCode;
+    }
+
+    uint32_t HDR(Exchange::IHDRProperties::HDRType& outHdrType) const
+    {
+        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+
+        const Exchange::IHDRProperties* hdr = _hdrProperties;
+
+        if (hdr != nullptr) {
+            errorCode = hdr->HDRSetting(outHdrType);
+        }
+
+        return errorCode;
+    }
+
+    uint32_t HDCPProtection(Exchange::IConnectionProperties::HDCPProtectionType& outType) const
+    {
+        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+        const Exchange::IConnectionProperties* impl = _displayConnection;
+
+        if (impl != nullptr) {
+            errorCode = impl->HDCPProtection(outType);
+        }
+
+        return errorCode;
+    }
+    uint32_t TotalGpuRam(uint64_t& outTotalRam) const
+    {
+        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+        const Exchange::IGraphicsProperties* graphicsProperties = _graphicsProperties;
+
+        if (graphicsProperties != nullptr) {
+            errorCode = graphicsProperties->TotalGpuRam(outTotalRam);
+        }
+
+        return errorCode;
+    }
+
+    uint32_t FreeGpuRam(uint64_t& outFreeRam) const
+    {
+        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+        const Exchange::IGraphicsProperties* graphicsProperties = _graphicsProperties;
+
+        if (graphicsProperties != nullptr) {
+            errorCode = graphicsProperties->FreeGpuRam(outFreeRam);
+        }
+
+        return errorCode;
+    }
 };
 
-/* static */ DisplayInfo::DisplayInfoAdministration DisplayInfo::_administration;
+DisplayInfo* DisplayInfo::_instance = nullptr;
 
 } // namespace WPEFramework
 
 using namespace WPEFramework;
 
 extern "C" {
-bool displayinfo_enumerate(const uint8_t index, const uint8_t length, char* buffer)
+struct displayinfo_type* displayinfo_instance()
 {
-
-    return DisplayInfo::Enumerate(index, length, buffer);
+    return reinterpret_cast<displayinfo_type*>(DisplayInfo::Instance());
 }
 
-struct displayinfo_type* displayinfo_instance(const char displayName[] = "DisplayInfo")
+void displayinfo_release(struct displayinfo_type* instance)
 {
-    return reinterpret_cast<displayinfo_type*>(DisplayInfo::Instance(string(displayName)));
+    if (instance != NULL) {
+        reinterpret_cast<DisplayInfo*>(instance)->DestroyInstance();
+    }
 }
 
-void displayinfo_release(struct displayinfo_type* displayinfo)
+uint32_t displayinfo_register_operational_state_change_callback(struct displayinfo_type* instance,
+    displayinfo_operational_state_change_cb callback,
+    void* userdata)
 {
-    reinterpret_cast<DisplayInfo*>(displayinfo)->Release();
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+    if (instance != NULL) {
+        errorCode = reinterpret_cast<DisplayInfo*>(instance)->RegisterOperationalStateChangedCallback(callback, userdata);
+    }
+    return errorCode;
 }
 
-void displayinfo_register(struct displayinfo_type* displayinfo, displayinfo_updated_cb callback, void* userdata)
+uint32_t displayinfo_unregister_operational_state_change_callback(struct displayinfo_type* instance,
+    displayinfo_operational_state_change_cb callback)
 {
-    reinterpret_cast<DisplayInfo*>(displayinfo)->Register(callback, userdata);
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+    if (instance != NULL) {
+        errorCode = reinterpret_cast<DisplayInfo*>(instance)->UnregisterOperationalStateChangedCallback(callback);
+    }
+    return errorCode;
 }
 
-void displayinfo_unregister(struct displayinfo_type* displayinfo, displayinfo_updated_cb callback)
+uint32_t displayinfo_register_display_output_change_callback(struct displayinfo_type* instance, displayinfo_display_output_change_cb callback, void* userdata)
 {
-    reinterpret_cast<DisplayInfo*>(displayinfo)->Unregister(callback);
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+
+    if (instance != NULL) {
+        errorCode = reinterpret_cast<DisplayInfo*>(instance)->RegisterDisplayOutputChangeCallback(callback, userdata);
+    }
+    return errorCode;
 }
 
-void displayinfo_name(struct displayinfo_type* displayinfo, char buffer[], const uint8_t length)
+uint32_t displayinfo_unregister_display_output_change_callback(struct displayinfo_type* instance, displayinfo_display_output_change_cb callback)
 {
-    string name = reinterpret_cast<DisplayInfo*>(displayinfo)->Name();
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+
+    if (instance != NULL) {
+        errorCode = reinterpret_cast<DisplayInfo*>(instance)->UnregisterDolbyAudioModeChangedCallback(callback);
+    }
+
+    return errorCode;
+}
+
+void displayinfo_name(struct displayinfo_type* instance, char buffer[], const uint8_t length)
+{
+    string name = reinterpret_cast<DisplayInfo*>(instance)->Name();
     strncpy(buffer, name.c_str(), length);
 }
 
-bool displayinfo_is_audio_passthrough(struct displayinfo_type* displayinfo)
+uint32_t displayinfo_is_audio_passthrough(struct displayinfo_type* instance, bool* is_passthrough)
 {
-    return reinterpret_cast<DisplayInfo*>(displayinfo)->IsAudioPassthrough();
-}
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
 
-bool displayinfo_connected(struct displayinfo_type* displayinfo)
-{
-    return reinterpret_cast<DisplayInfo*>(displayinfo)->Connected();
-}
-
-uint32_t displayinfo_width(struct displayinfo_type* displayinfo)
-{
-    return reinterpret_cast<DisplayInfo*>(displayinfo)->Width();
-}
-
-uint32_t displayinfo_height(struct displayinfo_type* displayinfo)
-{
-    return reinterpret_cast<DisplayInfo*>(displayinfo)->Height();
-}
-
-uint32_t displayinfo_vertical_frequency(struct displayinfo_type* displayinfo)
-{
-    return reinterpret_cast<DisplayInfo*>(displayinfo)->VerticalFreq();
-}
-
-displayinfo_hdr_t displayinfo_hdr(struct displayinfo_type* displayinfo)
-{
-    displayinfo_hdr_t result = DISPLAYINFO_HDR_UNKNOWN;
-
-    switch (reinterpret_cast<DisplayInfo*>(displayinfo)->HDR()) {
-    case Exchange::IHDRProperties::HDR_OFF:
-        result = DISPLAYINFO_HDR_OFF;
-        break;
-    case Exchange::IHDRProperties::HDR_10:
-        result = DISPLAYINFO_HDR_10;
-        break;
-    case Exchange::IHDRProperties::HDR_10PLUS:
-        result = DISPLAYINFO_HDR_10PLUS;
-        break;
-    case Exchange::IHDRProperties::HDR_DOLBYVISION:
-        result = DISPLAYINFO_HDR_DOLBYVISION;
-        break;
-    case Exchange::IHDRProperties::HDR_TECHNICOLOR:
-        result = DISPLAYINFO_HDR_TECHNICOLOR;
-        break;
-    default:
-        result = DISPLAYINFO_HDR_UNKNOWN;
-        break;
+    if (instance != NULL && is_passthrough != NULL) {
+        errorCode = reinterpret_cast<DisplayInfo*>(instance)->IsAudioPassthrough(*is_passthrough);
     }
 
-    return result;
+    return errorCode;
 }
 
-displayinfo_hdcp_protection_t displayinfo_hdcp_protection(struct displayinfo_type* displayinfo)
+uint32_t displayinfo_connected(struct displayinfo_type* instance, bool* is_connected)
 {
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
 
-    displayinfo_hdcp_protection_t type = DISPLAYINFO_HDCP_UNKNOWN;
-
-    switch (reinterpret_cast<DisplayInfo*>(displayinfo)->HDCPProtection()) {
-    case Exchange::IConnectionProperties::HDCP_Unencrypted:
-        type = DISPLAYINFO_HDCP_UNENCRYPTED;
-        break;
-    case Exchange::IConnectionProperties::HDCP_1X:
-        type = DISPLAYINFO_HDCP_1X;
-        break;
-    case Exchange::IConnectionProperties::HDCP_2X:
-        type = DISPLAYINFO_HDCP_2X;
-        break;
-    default:
-        type = DISPLAYINFO_HDCP_UNKNOWN;
-        break;
+    if (instance != NULL && is_connected != NULL) {
+        errorCode = reinterpret_cast<DisplayInfo*>(instance)->Connected(*is_connected);
     }
 
-    return type;
+    return errorCode;
 }
 
-uint64_t displayinfo_total_gpu_ram(struct displayinfo_type* instance)
+uint32_t displayinfo_width(struct displayinfo_type* instance, uint32_t* width)
 {
-    return reinterpret_cast<DisplayInfo*>(instance)->TotalGpuRam();
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+
+    if (instance != NULL && width != NULL) {
+        errorCode = reinterpret_cast<DisplayInfo*>(instance)->Width(*width);
+    }
+
+    return errorCode;
 }
 
-uint64_t displayinfo_free_gpu_ram(struct displayinfo_type* instance)
+uint32_t displayinfo_height(struct displayinfo_type* instance, uint32_t* height)
 {
-    return reinterpret_cast<DisplayInfo*>(instance)->FreeGpuRam();
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+
+    if (instance != NULL && height != NULL) {
+        errorCode = reinterpret_cast<DisplayInfo*>(instance)->Height(*height);
+    }
+
+    return errorCode;
 }
 
-uint32_t displayinfo_edid(struct displayinfo_type* displayinfo, uint8_t buffer[], uint16_t* length)
+uint32_t displayinfo_vertical_frequency(struct displayinfo_type* instance, uint32_t* vertical_freq)
 {
-    return reinterpret_cast<DisplayInfo*>(displayinfo)->EDID(*length, buffer);
+
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+
+    if (instance != NULL && vertical_freq != NULL) {
+        errorCode = reinterpret_cast<DisplayInfo*>(instance)->VerticalFreq(*vertical_freq);
+    }
+
+    return errorCode;
 }
 
-uint8_t displayinfo_width_in_centimeters(struct displayinfo_type* displayinfo)
+EXTERNAL uint32_t displayinfo_hdr(struct displayinfo_type* instance, displayinfo_hdr_t* hdr)
 {
-    return reinterpret_cast<DisplayInfo*>(displayinfo)->WidthInCentimeters();
+
+    if (instance != NULL && hdr != NULL) {
+        Exchange::IHDRProperties::HDRType value = Exchange::IHDRProperties::HDRType::HDR_OFF;
+        *hdr = DISPLAYINFO_HDR_UNKNOWN;
+
+        if (reinterpret_cast<DisplayInfo*>(instance)->HDR(value) == Core::ERROR_NONE) {
+            switch (value) {
+            case Exchange::IHDRProperties::HDR_OFF:
+                *hdr = DISPLAYINFO_HDR_OFF;
+                break;
+            case Exchange::IHDRProperties::HDR_10:
+                *hdr = DISPLAYINFO_HDR_10;
+                break;
+            case Exchange::IHDRProperties::HDR_10PLUS:
+                *hdr = DISPLAYINFO_HDR_10PLUS;
+                break;
+            case Exchange::IHDRProperties::HDR_DOLBYVISION:
+                *hdr = DISPLAYINFO_HDR_DOLBYVISION;
+                break;
+            case Exchange::IHDRProperties::HDR_TECHNICOLOR:
+                *hdr = DISPLAYINFO_HDR_TECHNICOLOR;
+                break;
+            default:
+                fprintf(stderr, "New HDR type in the interface, not handled in client library\n");
+                ASSERT(false && "Invalid enum");
+                *hdr = DISPLAYINFO_HDR_UNKNOWN;
+                return Core::ERROR_UNKNOWN_KEY;
+                break;
+            }
+            return Core::ERROR_NONE;
+        }
+    }
+
+    return Core::ERROR_UNAVAILABLE;
 }
 
-uint8_t displayinfo_height_in_centimeters(struct displayinfo_type* displayinfo)
+uint32_t displayinfo_hdcp_protection(struct displayinfo_type* instance, displayinfo_hdcp_protection_t* hdcp)
 {
-    return reinterpret_cast<DisplayInfo*>(displayinfo)->HeightInCentimeters();
+    if (instance != NULL && hdcp != NULL) {
+        Exchange::IConnectionProperties::HDCPProtectionType value = Exchange::IConnectionProperties::HDCPProtectionType::HDCP_AUTO;
+        *hdcp = DISPLAYINFO_HDCP_UNKNOWN;
+
+        if (reinterpret_cast<DisplayInfo*>(instance)->HDCPProtection(value) == Core::ERROR_NONE) {
+            switch (value) {
+            case Exchange::IConnectionProperties::HDCP_Unencrypted:
+                *hdcp = DISPLAYINFO_HDCP_UNENCRYPTED;
+                break;
+            case Exchange::IConnectionProperties::HDCP_1X:
+                *hdcp = DISPLAYINFO_HDCP_1X;
+                break;
+            case Exchange::IConnectionProperties::HDCP_2X:
+                *hdcp = DISPLAYINFO_HDCP_2X;
+                break;
+            default:
+                fprintf(stderr, "New HDCP type in the interface, not handled in client library\n");
+                ASSERT(false && "Invalid enum");
+                *hdcp = DISPLAYINFO_HDCP_UNKNOWN;
+                return Core::ERROR_UNKNOWN_KEY;
+                break;
+            }
+            return Core::ERROR_NONE;
+        }
+    }
+    return Core::ERROR_UNAVAILABLE;
+}
+
+uint32_t displayinfo_total_gpu_ram(struct displayinfo_type* instance, uint64_t* total_ram)
+{
+
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+
+    if (instance != NULL && total_ram != NULL) {
+        errorCode = reinterpret_cast<DisplayInfo*>(instance)->TotalGpuRam(*total_ram);
+    }
+
+    return errorCode;
+}
+
+uint32_t displayinfo_free_gpu_ram(struct displayinfo_type* instance, uint64_t* free_ram)
+{
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+
+    if (instance != NULL && free_ram != NULL) {
+        errorCode = reinterpret_cast<DisplayInfo*>(instance)->FreeGpuRam(*free_ram);
+    }
+
+    return errorCode;
+}
+
+uint32_t displayinfo_edid(struct displayinfo_type* instance, uint8_t buffer[], uint16_t* length)
+{
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+
+    if (instance != NULL && buffer != NULL && length != NULL) {
+        errorCode = reinterpret_cast<DisplayInfo*>(instance)->EDID(*length, buffer);
+    }
+
+    return errorCode;
+}
+
+uint32_t displayinfo_width_in_centimeters(struct displayinfo_type* instance, uint8_t* width)
+{
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+
+    if (instance != NULL && width != NULL) {
+        errorCode = reinterpret_cast<DisplayInfo*>(instance)->WidthInCentimeters(*width);
+    }
+
+    return errorCode;
+}
+
+uint32_t displayinfo_height_in_centimeters(struct displayinfo_type* instance, uint8_t* height)
+{
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+
+    if (instance != NULL && height != NULL) {
+        errorCode = reinterpret_cast<DisplayInfo*>(instance)->HeightInCentimeters(*height);
+    }
+
+    return errorCode;
 }
 
 bool displayinfo_is_atmos_supported(struct displayinfo_type* displayinfo)
