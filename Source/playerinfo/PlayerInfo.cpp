@@ -19,6 +19,8 @@
 
 #include <com/com.h>
 #include <core/core.h>
+#include <plugins/Types.h>
+
 #include <stdlib.h>
 #include <tracing/tracing.h>
 
@@ -26,37 +28,85 @@
 #include <interfaces/IPlayerInfo.h>
 #include <playerinfo.h>
 
+#include <interfaces/IDictionary.h>
+
 namespace WPEFramework {
-class PlayerInfo : public Core::IReferenceCounted {
+
+class PlayerInfo : protected RPC::SmartInterfaceType<Exchange::IPlayerProperties> {
 private:
-#ifdef __WINDOWS__
-#pragma warning(disable : 4355)
-#endif
-    PlayerInfo(const string& playerName, Exchange::IPlayerProperties* interface)
-        : _refCount(1)
-        , _name(playerName)
-        , _playerConnection(interface)
-        , _dolby(interface != nullptr ? interface->QueryInterface<Exchange::Dolby::IOutput>() : nullptr)
-        , _notification(this)
-        , _callbacks()
+    using BaseClass = RPC::SmartInterfaceType<Exchange::IPlayerProperties>;
+    using DolbyModeAudioUpdateCallbacks = std::map<playerinfo_dolby_audio_updated_cb, void*>;
+    using OperationalStateChangeCallbacks = std::map<playerinfo_operational_state_change_cb, void*>;
+
+    //CONSTRUCTORS
+    PlayerInfo(const uint32_t waitTime, const Core::NodeId& node, const string& callsign)
+        : BaseClass()
+        , _playerInterface(nullptr)
+        , _dolbyInterface(nullptr)
+        , _callsign(callsign)
+        , _dolbyNotification(this)
     {
-        ASSERT(_playerConnection != nullptr);
-        _playerConnection->AddRef();
+        BaseClass::Open(waitTime, node, callsign);
     }
-#ifdef __WINDOWS__
-#pragma warning(default : 4355)
-#endif
-    ~PlayerInfo()
+
+    PlayerInfo() = delete;
+    PlayerInfo(const PlayerInfo&) = delete;
+    PlayerInfo& operator=(const PlayerInfo&) = delete;
+
+    static Core::NodeId Connector()
     {
-        if (_playerConnection != nullptr) {
-            _playerConnection->Release();
+        const TCHAR* comPath = ::getenv(_T("COMMUNICATOR_PATH"));
+
+        if (comPath == nullptr) {
+#ifdef __WINDOWS__
+            comPath = _T("127.0.0.1:62000");
+#else
+            comPath = _T("/tmp/communicator");
+#endif
         }
-        if (_dolby != nullptr) {
-            _dolby->Release();
+
+        return Core::NodeId(comPath);
+    }
+
+private:
+    //NOTIFICATIONS
+    void DolbySoundModeUpdated(const Exchange::Dolby::IOutput::SoundModes mode, const bool enabled)
+    {
+        for (auto& index : _dolbyCallbacks) {
+            index.first(index.second);
         }
     }
 
-    typedef std::map<playerinfo_dolby_audio_updated_cb, void*> Callbacks;
+    void Operational(const bool upAndRunning) override
+    {
+        if (upAndRunning) {
+            if (_playerInterface == nullptr) {
+                _playerInterface = BaseClass::Interface();
+
+                if (_playerInterface != nullptr && _dolbyInterface == nullptr) {
+                    _dolbyInterface = _playerInterface->QueryInterface<Exchange::Dolby::IOutput>();
+
+                    if (_dolbyInterface != nullptr) {
+                        _dolbyInterface->Register(&_dolbyNotification);
+                    }
+                }
+            }
+        } else {
+            if (_dolbyInterface != nullptr) {
+                _dolbyInterface->Unregister(&_dolbyNotification);
+                _dolbyInterface->Release();
+                _dolbyInterface = nullptr;
+            }
+            if (_playerInterface != nullptr) {
+                _playerInterface->Release();
+                _playerInterface = nullptr;
+            }
+        }
+
+        for (auto& index : _operationalStateCallbacks) {
+            index.first(upAndRunning, index.second);
+        }
+    }
 
     class Notification : public Exchange::Dolby::IOutput::INotification {
     public:
@@ -64,14 +114,14 @@ private:
         Notification(const Notification&) = delete;
         Notification& operator=(const Notification&) = delete;
 
-        Notification(PlayerInfo* parent)
+        explicit Notification(PlayerInfo* parent)
             : _parent(*parent)
         {
         }
 
         void AudioModeChanged(const Exchange::Dolby::IOutput::SoundModes mode, const bool enabled) override
         {
-            _parent.Updated(mode, enabled);
+            _parent.DolbySoundModeUpdated(mode, enabled);
         }
 
         BEGIN_INTERFACE_MAP(Notification)
@@ -82,405 +132,377 @@ private:
         PlayerInfo& _parent;
     };
 
-    class PlayerInfoAdministration : protected std::list<PlayerInfo*> {
-    public:
-        PlayerInfoAdministration(const PlayerInfoAdministration&) = delete;
-        PlayerInfoAdministration& operator=(const PlayerInfoAdministration&) = delete;
+private:
+    //MEMBERS
+    static PlayerInfo* _instance;
+    Exchange::IPlayerProperties* _playerInterface;
+    Exchange::Dolby::IOutput* _dolbyInterface;
+    std::string _callsign;
 
-        PlayerInfoAdministration()
-            : _adminLock()
-            , _engine(Core::ProxyType<RPC::InvokeServerType<1, 0, 8>>::Create())
-            , _comChannel(Core::ProxyType<RPC::CommunicatorClient>::Create(Connector(), Core::ProxyType<Core::IIPCServer>(_engine)))
-        {
-            ASSERT(_engine != nullptr);
-            ASSERT(_comChannel != nullptr);
-            _engine->Announcements(_comChannel->Announcement());
-        }
-
-        ~PlayerInfoAdministration()
-        {
-            std::list<PlayerInfo*>::iterator index(std::list<PlayerInfo*>::begin());
-
-            while (index != std::list<PlayerInfo*>::end()) {
-                TRACE_L1(_T("Closing %s"), (*index)->Name().c_str());
-                ++index;
-            }
-
-            ASSERT(std::list<PlayerInfo*>::size() == 0);
-            if (_comChannel.IsValid() == true) {
-                _comChannel.Release();
-            }
-        }
-
-        PlayerInfo* Instance(const string& name)
-        {
-            PlayerInfo* result(nullptr);
-
-            _adminLock.Lock();
-
-            result = Find(name);
-
-            if (result == nullptr) {
-
-                Exchange::IPlayerProperties* interface = _comChannel->Open<Exchange::IPlayerProperties>(name);
-
-                if (interface != nullptr) {
-                    result = new PlayerInfo(name, interface);
-                    std::list<PlayerInfo*>::emplace_back(result);
-                    interface->Release();
-                }
-            }
-            _adminLock.Unlock();
-
-            return (result);
-        }
-
-        static Core::NodeId Connector()
-        {
-            const TCHAR* comPath = ::getenv(_T("COMMUNICATOR_PATH"));
-
-            if (comPath == nullptr) {
-#ifdef __WINDOWS__
-                comPath = _T("127.0.0.1:62000");
-#else
-                comPath = _T("/tmp/communicator");
-#endif
-            }
-
-            return Core::NodeId(comPath);
-        }
-
-        uint32_t Delete(const PlayerInfo* playerInfo, int& refCount)
-        {
-            uint32_t result(Core::ERROR_NONE);
-
-            _adminLock.Lock();
-
-            if (Core::InterlockedDecrement(refCount) == 0) {
-                std::list<PlayerInfo*>::iterator index(
-                    std::find(std::list<PlayerInfo*>::begin(), std::list<PlayerInfo*>::end(), playerInfo));
-
-                ASSERT(index != std::list<PlayerInfo*>::end());
-
-                if (index != std::list<PlayerInfo*>::end()) {
-                    std::list<PlayerInfo*>::erase(index);
-                }
-                delete const_cast<PlayerInfo*>(playerInfo);
-
-                if ((_comChannel.IsValid() == true) && (std::list<PlayerInfo*>::size() == 0)) {
-                    _comChannel.Release();
-                }
-                result = Core::ERROR_DESTRUCTION_SUCCEEDED;
-            }
-
-            _adminLock.Unlock();
-
-            return result;
-        }
-
-    private:
-        PlayerInfo* Find(const string& name)
-        {
-            PlayerInfo* result(nullptr);
-
-            std::list<PlayerInfo*>::iterator index(std::list<PlayerInfo*>::begin());
-
-            while ((index != std::list<PlayerInfo*>::end()) && ((*index)->Name() != name)) {
-                index++;
-            }
-
-            if (index != std::list<PlayerInfo*>::end()) {
-                result = *index;
-                result->AddRef();
-            }
-
-            return result;
-        }
-
-        Core::CriticalSection _adminLock;
-        Core::ProxyType<RPC::InvokeServerType<1, 0, 8>> _engine;
-        Core::ProxyType<RPC::CommunicatorClient> _comChannel;
-    };
-    mutable int _refCount;
-    const string _name;
-    Exchange::IPlayerProperties* _playerConnection;
-    Exchange::Dolby::IOutput* _dolby;
-    Core::Sink<Notification> _notification;
-    Callbacks _callbacks;
-    static PlayerInfo::PlayerInfoAdministration _administration;
+    DolbyModeAudioUpdateCallbacks _dolbyCallbacks;
+    OperationalStateChangeCallbacks _operationalStateCallbacks;
+    Core::Sink<Notification> _dolbyNotification;
 
 public:
-    PlayerInfo() = delete;
-    PlayerInfo(const PlayerInfo&) = delete;
-    PlayerInfo& operator=(const PlayerInfo&) = delete;
-
-    static PlayerInfo* Instance(const string& name)
+    //OBJECT MANAGEMENT
+    ~PlayerInfo()
     {
-        return _administration.Instance(name);
-    }
-    void AddRef() const
-    {
-        Core::InterlockedIncrement(_refCount);
-    }
-    uint32_t Release() const
-    {
-        return _administration.Delete(this, _refCount);
+        BaseClass::Close(Core::infinite);
     }
 
-    const string& Name() const { return _name; }
-
-    void Updated(const Exchange::Dolby::IOutput::SoundModes mode, const bool enabled)
+    static PlayerInfo* Instance()
     {
-        Callbacks::iterator index(_callbacks.begin());
-
-        while (index != _callbacks.end()) {
-            index->first(reinterpret_cast<playerinfo_type*>(this), index->second);
-            index++;
+        if (_instance == nullptr) {
+            _instance = new PlayerInfo(3000, Connector(), "PlayerInfo");
         }
+        return _instance;
     }
-    void Register(playerinfo_dolby_audio_updated_cb callback, void* userdata)
+    void DestroyInstance()
     {
-        Callbacks::iterator index(_callbacks.find(callback));
+        delete _instance;
+        _instance = nullptr;
+    }
 
-        if (index == _callbacks.end()) {
-            _callbacks.emplace(std::piecewise_construct,
+public:
+    //METHODS FROM INTERFACE
+    const string& Name() const
+    {
+        return _callsign;
+    }
+    uint32_t RegisterOperationalStateChangedCallback(playerinfo_operational_state_change_cb callback, void* userdata)
+    {
+        OperationalStateChangeCallbacks::iterator index(_operationalStateCallbacks.find(callback));
+
+        if (index == _operationalStateCallbacks.end()) {
+            _operationalStateCallbacks.emplace(std::piecewise_construct,
                 std::forward_as_tuple(callback),
                 std::forward_as_tuple(userdata));
+            return Core::ERROR_NONE;
         }
+        return Core::ERROR_GENERAL;
     }
-    void Unregister(playerinfo_dolby_audio_updated_cb callback)
-    {
-        Callbacks::iterator index(_callbacks.find(callback));
 
-        if (index != _callbacks.end()) {
-            _callbacks.erase(index);
+    uint32_t UnregisterOperationalStateChangedCallback(playerinfo_operational_state_change_cb callback)
+    {
+        OperationalStateChangeCallbacks::iterator index(_operationalStateCallbacks.find(callback));
+
+        if (index != _operationalStateCallbacks.end()) {
+            _operationalStateCallbacks.erase(index);
+            return Core::ERROR_NONE;
         }
+        return Core::ERROR_NOT_EXIST;
+    }
+
+    uint32_t RegisterDolbyAudioModeChangedCallback(playerinfo_dolby_audio_updated_cb callback, void* userdata)
+    {
+        DolbyModeAudioUpdateCallbacks::iterator index(_dolbyCallbacks.find(callback));
+
+        if (index == _dolbyCallbacks.end()) {
+            _dolbyCallbacks.emplace(std::piecewise_construct,
+                std::forward_as_tuple(callback),
+                std::forward_as_tuple(userdata));
+            return Core::ERROR_NONE;
+        }
+        return Core::ERROR_GENERAL;
+    }
+
+    uint32_t UnregisterDolbyAudioModeChangedCallback(playerinfo_dolby_audio_updated_cb callback)
+    {
+        DolbyModeAudioUpdateCallbacks::iterator index(_dolbyCallbacks.find(callback));
+
+        if (index != _dolbyCallbacks.end()) {
+            _dolbyCallbacks.erase(index);
+            return Core::ERROR_NONE;
+        }
+        return Core::ERROR_NOT_EXIST;
     }
 
     uint32_t IsAudioEquivalenceEnabled(bool& outIsEnabled) const
     {
-        ASSERT(_playerConnection != nullptr);
+        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+        const Exchange::IPlayerProperties* constPlayerInterface = _playerInterface;
 
-        return _playerConnection->IsAudioEquivalenceEnabled(outIsEnabled);
+        if (constPlayerInterface != nullptr) {
+            errorCode = _playerInterface->IsAudioEquivalenceEnabled(outIsEnabled);
+        }
+
+        return errorCode;
     }
 
     uint32_t PlaybackResolution(Exchange::IPlayerProperties::PlaybackResolution& outResolution) const
     {
-        ASSERT(_playerConnection != nullptr);
+        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+        const Exchange::IPlayerProperties* constPlayerInterface = _playerInterface;
 
-        return _playerConnection->Resolution(outResolution);
+        if (constPlayerInterface != nullptr) {
+            errorCode = constPlayerInterface->Resolution(outResolution);
+        }
+
+        return errorCode;
     }
 
     int8_t VideoCodecs(playerinfo_videocodec_t array[], const uint8_t length) const
     {
+        const Exchange::IPlayerProperties* constPlayerInterface = _playerInterface;
         Exchange::IPlayerProperties::IVideoCodecIterator* videoCodecs;
         int8_t value = 0;
 
-        ASSERT(_playerConnection != nullptr);
+        if (constPlayerInterface != nullptr) {
+            if (constPlayerInterface->VideoCodecs(videoCodecs) == Core::ERROR_NONE && videoCodecs != nullptr) {
 
-        if (_playerConnection->VideoCodecs(videoCodecs) == Core::ERROR_NONE && videoCodecs != nullptr) {
+                Exchange::IPlayerProperties::VideoCodec codec;
 
-            Exchange::IPlayerProperties::VideoCodec codec;
+                uint8_t numberOfCodecs = 0;
+                const uint8_t newArraySize = 50;
+                playerinfo_videocodec_t newArray[newArraySize];
 
-            uint8_t numberOfCodecs = 0;
-            const uint8_t newArraySize = 50;
-            playerinfo_videocodec_t newArray[newArraySize];
-
-            while (videoCodecs->Next(codec) && numberOfCodecs < newArraySize) {
-                switch (codec) {
-                case Exchange::IPlayerProperties::VideoCodec::VIDEO_UNDEFINED:
-                    newArray[numberOfCodecs] = PLAYERINFO_VIDEO_UNDEFINED;
-                    break;
-                case Exchange::IPlayerProperties::VideoCodec::VIDEO_H263:
-                    newArray[numberOfCodecs] = PLAYERINFO_VIDEO_H263;
-                    break;
-                case Exchange::IPlayerProperties::VideoCodec::VIDEO_H264:
-                    newArray[numberOfCodecs] = PLAYERINFO_VIDEO_H264;
-                    break;
-                case Exchange::IPlayerProperties::VideoCodec::VIDEO_H265:
-                    newArray[numberOfCodecs] = PLAYERINFO_VIDEO_H265;
-                    break;
-                case Exchange::IPlayerProperties::VideoCodec::VIDEO_H265_10:
-                    newArray[numberOfCodecs] = PLAYERINFO_VIDEO_H265_10;
-                    break;
-                case Exchange::IPlayerProperties::VideoCodec::VIDEO_MPEG:
-                    newArray[numberOfCodecs] = PLAYERINFO_VIDEO_MPEG;
-                    break;
-                case Exchange::IPlayerProperties::VideoCodec::VIDEO_VP8:
-                    newArray[numberOfCodecs] = PLAYERINFO_VIDEO_VP8;
-                    break;
-                case Exchange::IPlayerProperties::VideoCodec::VIDEO_VP9:
-                    newArray[numberOfCodecs] = PLAYERINFO_VIDEO_VP9;
-                    break;
-                case Exchange::IPlayerProperties::VideoCodec::VIDEO_VP10:
-                    newArray[numberOfCodecs] = PLAYERINFO_VIDEO_VP10;
-                    break;
-                default:
-                    fprintf(stderr, "New video codec in the interface, not handled in client library!\n");
-                    ASSERT(false && "Invalid enum");
-                    newArray[numberOfCodecs] = PLAYERINFO_VIDEO_UNDEFINED;
-                    break;
+                while (videoCodecs->Next(codec) && numberOfCodecs < newArraySize) {
+                    switch (codec) {
+                    case Exchange::IPlayerProperties::VideoCodec::VIDEO_UNDEFINED:
+                        newArray[numberOfCodecs] = PLAYERINFO_VIDEO_UNDEFINED;
+                        break;
+                    case Exchange::IPlayerProperties::VideoCodec::VIDEO_H263:
+                        newArray[numberOfCodecs] = PLAYERINFO_VIDEO_H263;
+                        break;
+                    case Exchange::IPlayerProperties::VideoCodec::VIDEO_H264:
+                        newArray[numberOfCodecs] = PLAYERINFO_VIDEO_H264;
+                        break;
+                    case Exchange::IPlayerProperties::VideoCodec::VIDEO_H265:
+                        newArray[numberOfCodecs] = PLAYERINFO_VIDEO_H265;
+                        break;
+                    case Exchange::IPlayerProperties::VideoCodec::VIDEO_H265_10:
+                        newArray[numberOfCodecs] = PLAYERINFO_VIDEO_H265_10;
+                        break;
+                    case Exchange::IPlayerProperties::VideoCodec::VIDEO_MPEG:
+                        newArray[numberOfCodecs] = PLAYERINFO_VIDEO_MPEG;
+                        break;
+                    case Exchange::IPlayerProperties::VideoCodec::VIDEO_VP8:
+                        newArray[numberOfCodecs] = PLAYERINFO_VIDEO_VP8;
+                        break;
+                    case Exchange::IPlayerProperties::VideoCodec::VIDEO_VP9:
+                        newArray[numberOfCodecs] = PLAYERINFO_VIDEO_VP9;
+                        break;
+                    case Exchange::IPlayerProperties::VideoCodec::VIDEO_VP10:
+                        newArray[numberOfCodecs] = PLAYERINFO_VIDEO_VP10;
+                        break;
+                    default:
+                        fprintf(stderr, "New video codec in the interface, not handled in client library!\n");
+                        ASSERT(false && "Invalid enum");
+                        newArray[numberOfCodecs] = PLAYERINFO_VIDEO_UNDEFINED;
+                        break;
+                    }
+                    ++numberOfCodecs;
                 }
-                ++numberOfCodecs;
-            }
-            if (numberOfCodecs < length) {
-                value = numberOfCodecs;
-                ::memcpy(array, newArray, numberOfCodecs * sizeof(playerinfo_videocodec_t));
-            } else {
-                value = -numberOfCodecs;
+                if (numberOfCodecs < length) {
+                    value = numberOfCodecs;
+                    std::copy(newArray, newArray + numberOfCodecs, array);
+                } else {
+                    value = -numberOfCodecs;
+                }
+                videoCodecs->Release();
             }
         }
 
         return value;
     }
-
     int8_t AudioCodecs(playerinfo_audiocodec_t array[], const uint8_t length) const
     {
+        const Exchange::IPlayerProperties* constPlayerInterface = _playerInterface;
         Exchange::IPlayerProperties::IAudioCodecIterator* audioCodecs;
         int8_t value = 0;
 
-        ASSERT(_playerConnection != nullptr);
+        if (constPlayerInterface != nullptr) {
 
-        if (_playerConnection->AudioCodecs(audioCodecs) == Core::ERROR_NONE && audioCodecs != nullptr) {
+            if (constPlayerInterface->AudioCodecs(audioCodecs) == Core::ERROR_NONE && audioCodecs != nullptr) {
 
-            Exchange::IPlayerProperties::AudioCodec codec;
+                Exchange::IPlayerProperties::AudioCodec codec;
 
-            uint8_t numberOfCodecs = 0;
-            const uint8_t newArraySize = 50;
-            playerinfo_audiocodec_t newArray[newArraySize];
+                uint8_t numberOfCodecs = 0;
+                const uint8_t newArraySize = 50;
+                playerinfo_audiocodec_t newArray[newArraySize];
 
-            while (audioCodecs->Next(codec) && numberOfCodecs < newArraySize) {
-                switch (codec) {
-                case Exchange::IPlayerProperties::AudioCodec::AUDIO_UNDEFINED:
-                    newArray[numberOfCodecs] = PLAYERINFO_AUDIO_UNDEFINED;
-                    break;
-                case Exchange::IPlayerProperties::AudioCodec::AUDIO_AAC:
-                    newArray[numberOfCodecs] = PLAYERINFO_AUDIO_AAC;
-                    break;
-                case Exchange::IPlayerProperties::AudioCodec::AUDIO_AC3:
-                    newArray[numberOfCodecs] = PLAYERINFO_AUDIO_AC3;
-                    break;
-                case Exchange::IPlayerProperties::AudioCodec::AUDIO_AC3_PLUS:
-                    newArray[numberOfCodecs] = PLAYERINFO_AUDIO_AC3_PLUS;
-                    break;
-                case Exchange::IPlayerProperties::AudioCodec::AUDIO_DTS:
-                    newArray[numberOfCodecs] = PLAYERINFO_AUDIO_DTS;
-                    break;
-                case Exchange::IPlayerProperties::AudioCodec::AUDIO_MPEG1:
-                    newArray[numberOfCodecs] = PLAYERINFO_AUDIO_MPEG1;
-                    break;
-                case Exchange::IPlayerProperties::AudioCodec::AUDIO_MPEG2:
-                    newArray[numberOfCodecs] = PLAYERINFO_AUDIO_MPEG2;
-                    break;
-                case Exchange::IPlayerProperties::AudioCodec::AUDIO_MPEG3:
-                    newArray[numberOfCodecs] = PLAYERINFO_AUDIO_MPEG3;
-                    break;
-                case Exchange::IPlayerProperties::AudioCodec::AUDIO_MPEG4:
-                    newArray[numberOfCodecs] = PLAYERINFO_AUDIO_MPEG4;
-                    break;
-                case Exchange::IPlayerProperties::AudioCodec::AUDIO_OPUS:
-                    newArray[numberOfCodecs] = PLAYERINFO_AUDIO_OPUS;
-                    break;
-                case Exchange::IPlayerProperties::AudioCodec::AUDIO_VORBIS_OGG:
-                    newArray[numberOfCodecs] = PLAYERINFO_AUDIO_VORBIS_OGG;
-                    break;
-                case Exchange::IPlayerProperties::AudioCodec::AUDIO_WAV:
-                    newArray[numberOfCodecs] = PLAYERINFO_AUDIO_WAV;
-                    break;
-                default:
-                    fprintf(stderr, "New audio codec in the interface, not handled in client library!\n");
-                    ASSERT(false && "Invalid enum");
-                    newArray[numberOfCodecs] = PLAYERINFO_AUDIO_UNDEFINED;
-                    break;
+                while (audioCodecs->Next(codec) && numberOfCodecs < newArraySize) {
+                    switch (codec) {
+                    case Exchange::IPlayerProperties::AudioCodec::AUDIO_UNDEFINED:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_UNDEFINED;
+                        break;
+                    case Exchange::IPlayerProperties::AudioCodec::AUDIO_AAC:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_AAC;
+                        break;
+                    case Exchange::IPlayerProperties::AudioCodec::AUDIO_AC3:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_AC3;
+                        break;
+                    case Exchange::IPlayerProperties::AudioCodec::AUDIO_AC3_PLUS:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_AC3_PLUS;
+                        break;
+                    case Exchange::IPlayerProperties::AudioCodec::AUDIO_DTS:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_DTS;
+                        break;
+                    case Exchange::IPlayerProperties::AudioCodec::AUDIO_MPEG1:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_MPEG1;
+                        break;
+                    case Exchange::IPlayerProperties::AudioCodec::AUDIO_MPEG2:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_MPEG2;
+                        break;
+                    case Exchange::IPlayerProperties::AudioCodec::AUDIO_MPEG3:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_MPEG3;
+                        break;
+                    case Exchange::IPlayerProperties::AudioCodec::AUDIO_MPEG4:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_MPEG4;
+                        break;
+                    case Exchange::IPlayerProperties::AudioCodec::AUDIO_OPUS:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_OPUS;
+                        break;
+                    case Exchange::IPlayerProperties::AudioCodec::AUDIO_VORBIS_OGG:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_VORBIS_OGG;
+                        break;
+                    case Exchange::IPlayerProperties::AudioCodec::AUDIO_WAV:
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_WAV;
+                        break;
+                    default:
+                        fprintf(stderr, "New audio codec in the interface, not handled in client library!\n");
+                        ASSERT(false && "Invalid enum");
+                        newArray[numberOfCodecs] = PLAYERINFO_AUDIO_UNDEFINED;
+                        break;
+                    }
+                    ++numberOfCodecs;
                 }
-                ++numberOfCodecs;
-            }
-            if (numberOfCodecs < length) {
-                value = numberOfCodecs;
-                ::memcpy(array, newArray, numberOfCodecs * sizeof(playerinfo_audiocodec_t));
-            } else {
-                value = -numberOfCodecs;
+                if (numberOfCodecs < length) {
+                    value = numberOfCodecs;
+                    std::copy(newArray, newArray + numberOfCodecs, array);
+                } else {
+                    value = -numberOfCodecs;
+                }
+                audioCodecs->Release();
             }
         }
-
         return value;
     }
 
     bool IsAtmosMetadataSupported() const
     {
-        if (_dolby != nullptr) {
-            bool isSupported = false;
-            if (_dolby->AtmosMetadata(isSupported) != Core::ERROR_NONE) {
-                return false;
+        bool isSupported = false;
+
+        const Exchange::Dolby::IOutput* constDolby = _dolbyInterface;
+        if (constDolby != nullptr) {
+            if (constDolby->AtmosMetadata(isSupported) != Core::ERROR_NONE) {
+                isSupported = false;
             }
-            return isSupported;
         }
-        return false;
+
+        return isSupported;
     }
 
     uint32_t DolbySoundMode(Exchange::Dolby::IOutput::SoundModes& mode) const
     {
-        ASSERT(_dolby != nullptr);
+        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
 
-        return _dolby->SoundMode(mode);
+        const Exchange::Dolby::IOutput* constDolby = _dolbyInterface;
+
+        if (constDolby != nullptr) {
+            errorCode = constDolby->SoundMode(mode);
+        }
+
+        return errorCode;
     }
-
     uint32_t EnableAtmosOutput(const bool enabled)
     {
-        ASSERT(_dolby != nullptr);
+        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
 
-        return _dolby->EnableAtmosOutput(enabled);
+        if (_dolbyInterface != nullptr) {
+            errorCode = _dolbyInterface->EnableAtmosOutput(enabled);
+        }
+
+        return errorCode;
     }
-
     uint32_t SetDolbyMode(const Exchange::Dolby::IOutput::Type& mode)
     {
-        ASSERT(_dolby != nullptr);
+        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
 
-        return _dolby->Mode(mode);
+        if (_dolbyInterface != nullptr) {
+            errorCode = _dolbyInterface->Mode(mode);
+        }
+
+        return errorCode;
     }
-
-    uint32_t GetDolbyMode(Exchange::Dolby::IOutput::Type& mode) const
+    uint32_t GetDolbyMode(Exchange::Dolby::IOutput::Type& outMode) const
     {
-        ASSERT(_dolby != nullptr);
+        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+        const Exchange::Dolby::IOutput* constDolby = _dolbyInterface;
 
-        const WPEFramework::Exchange::Dolby::IOutput* constDolby = _dolby;
-        return constDolby->Mode(mode);
+        if (constDolby != nullptr) {
+            errorCode = constDolby->Mode(outMode);
+        }
+
+        return errorCode;
     }
 };
 
-/* static */ PlayerInfo::PlayerInfoAdministration PlayerInfo::_administration;
+PlayerInfo* PlayerInfo::_instance = nullptr;
+
 } //namespace WPEFramework
 
 using namespace WPEFramework;
 extern "C" {
 
-struct playerinfo_type* playerinfo_instance(const char name[])
+struct playerinfo_type* playerinfo_instance()
 {
-    if (name != NULL) {
-        return reinterpret_cast<playerinfo_type*>(PlayerInfo::Instance(string(name)));
-    }
-    return NULL;
-}
-
-void playerinfo_register(struct playerinfo_type* instance, playerinfo_dolby_audio_updated_cb callback, void* userdata)
-{
-    if (instance != NULL) {
-        reinterpret_cast<PlayerInfo*>(instance)->Register(callback, userdata);
-    }
-}
-
-void playerinfo_unregister(struct playerinfo_type* instance, playerinfo_dolby_audio_updated_cb callback)
-{
-    if (instance != NULL) {
-        reinterpret_cast<PlayerInfo*>(instance)->Unregister(callback);
-    }
+    return reinterpret_cast<playerinfo_type*>(PlayerInfo::Instance());
 }
 
 void playerinfo_release(struct playerinfo_type* instance)
 {
     if (instance != NULL) {
-        reinterpret_cast<PlayerInfo*>(instance)->Release();
+        reinterpret_cast<PlayerInfo*>(instance)->DestroyInstance();
     }
+}
+
+uint32_t playerinfo_register_operational_state_change_callback(struct playerinfo_type* instance,
+    playerinfo_operational_state_change_cb callback,
+    void* userdata)
+{
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+
+    if (instance != NULL) {
+        errorCode = reinterpret_cast<PlayerInfo*>(instance)->RegisterOperationalStateChangedCallback(callback, userdata);
+    }
+    return errorCode;
+}
+
+uint32_t playerinfo_unregister_operational_state_change_callback(struct playerinfo_type* instance,
+    playerinfo_operational_state_change_cb callback)
+{
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+
+    if (instance != NULL) {
+        errorCode = reinterpret_cast<PlayerInfo*>(instance)->UnregisterOperationalStateChangedCallback(callback);
+    }
+    return errorCode;
+}
+
+uint32_t playerinfo_register_dolby_sound_mode_updated_callback(struct playerinfo_type* instance, playerinfo_dolby_audio_updated_cb callback, void* userdata)
+{
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+
+    if (instance != NULL) {
+        errorCode = reinterpret_cast<PlayerInfo*>(instance)->RegisterDolbyAudioModeChangedCallback(callback, userdata);
+    }
+    return errorCode;
+}
+
+uint32_t playerinfo_unregister_dolby_sound_mode_updated_callback(struct playerinfo_type* instance, playerinfo_dolby_audio_updated_cb callback)
+{
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+    if (instance != NULL) {
+        errorCode = reinterpret_cast<PlayerInfo*>(instance)->UnregisterDolbyAudioModeChangedCallback(callback);
+    }
+    return errorCode;
+}
+
+void playerinfo_name(struct playerinfo_type* instance, char buffer[], const uint8_t length)
+{
+    string name = reinterpret_cast<PlayerInfo*>(instance)->Name();
+    strncpy(buffer, name.c_str(), length);
 }
 
 uint32_t playerinfo_playback_resolution(struct playerinfo_type* instance, playerinfo_playback_resolution_t* resolution)
@@ -488,6 +510,7 @@ uint32_t playerinfo_playback_resolution(struct playerinfo_type* instance, player
 
     if (instance != NULL && resolution != NULL) {
         Exchange::IPlayerProperties::PlaybackResolution value = Exchange::IPlayerProperties::PlaybackResolution::RESOLUTION_UNKNOWN;
+        *resolution = PLAYERINFO_RESOLUTION_UNKNOWN;
 
         if (reinterpret_cast<PlayerInfo*>(instance)->PlaybackResolution(value) == Core::ERROR_NONE) {
             switch (value) {
@@ -631,8 +654,9 @@ uint32_t playerinfo_set_dolby_mode(struct playerinfo_type* instance, const playe
 uint32_t playerinfo_get_dolby_mode(struct playerinfo_type* instance, playerinfo_dolby_mode_t* mode)
 {
     if (instance != NULL && mode != NULL) {
-
         Exchange::Dolby::IOutput::Type value = Exchange::Dolby::IOutput::Type::AUTO;
+        *mode = PLAYERINFO_DOLBY_MODE_AUTO;
+
         if (reinterpret_cast<PlayerInfo*>(instance)->GetDolbyMode(value) == Core::ERROR_NONE) {
             switch (value) {
             case Exchange::Dolby::IOutput::Type::AUTO:
