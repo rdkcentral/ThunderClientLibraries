@@ -41,7 +41,6 @@ private:
     //CONSTRUCTORS
     PlayerInfo(const uint32_t waitTime, const Core::NodeId& node, const string& callsign)
         : BaseClass()
-        , _playerInterface(nullptr)
         , _dolbyInterface(nullptr)
         , _callsign(callsign)
         , _dolbyNotification(this)
@@ -134,7 +133,6 @@ private:
 
 private:
     //MEMBERS
-    static PlayerInfo* _instance;
     Exchange::IPlayerProperties* _playerInterface;
     Exchange::Dolby::IOutput* _dolbyInterface;
     std::string _callsign;
@@ -150,17 +148,11 @@ public:
         BaseClass::Close(Core::infinite);
     }
 
-    static PlayerInfo* Instance()
+    static PlayerInfo& Instance()
     {
-        if (_instance == nullptr) {
-            _instance = new PlayerInfo(3000, Connector(), "PlayerInfo");
-        }
-        return _instance;
-    }
-    void DestroyInstance()
-    {
-        delete _instance;
-        _instance = nullptr;
+        static PlayerInfo instance(3000, Connector(), "PlayerInfo");
+
+        return instance;
     }
 
 public:
@@ -437,82 +429,48 @@ public:
         return errorCode;
     }
 };
-
-PlayerInfo* PlayerInfo::_instance = nullptr;
-
 } //namespace WPEFramework
 
 using namespace WPEFramework;
 extern "C" {
 
-struct playerinfo_type* playerinfo_instance()
-{
-    return reinterpret_cast<playerinfo_type*>(PlayerInfo::Instance());
-}
-
-void playerinfo_release(struct playerinfo_type* instance)
-{
-    if (instance != NULL) {
-        reinterpret_cast<PlayerInfo*>(instance)->DestroyInstance();
-    }
-}
-
-uint32_t playerinfo_register_operational_state_change_callback(struct playerinfo_type* instance,
+uint32_t playerinfo_register_operational_state_change_callback(
     playerinfo_operational_state_change_cb callback,
     void* userdata)
 {
-    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-
-    if (instance != NULL) {
-        errorCode = reinterpret_cast<PlayerInfo*>(instance)->RegisterOperationalStateChangedCallback(callback, userdata);
-    }
-    return errorCode;
+    return PlayerInfo::Instance().RegisterOperationalStateChangedCallback(callback, userdata);
 }
 
-uint32_t playerinfo_unregister_operational_state_change_callback(struct playerinfo_type* instance,
+uint32_t playerinfo_unregister_operational_state_change_callback(
     playerinfo_operational_state_change_cb callback)
 {
-    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-
-    if (instance != NULL) {
-        errorCode = reinterpret_cast<PlayerInfo*>(instance)->UnregisterOperationalStateChangedCallback(callback);
-    }
-    return errorCode;
+    return PlayerInfo::Instance().UnregisterOperationalStateChangedCallback(callback);
 }
 
-uint32_t playerinfo_register_dolby_sound_mode_updated_callback(struct playerinfo_type* instance, playerinfo_dolby_audio_updated_cb callback, void* userdata)
+uint32_t playerinfo_register_dolby_sound_mode_updated_callback(playerinfo_dolby_audio_updated_cb callback, void* userdata)
 {
-    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
 
-    if (instance != NULL) {
-        errorCode = reinterpret_cast<PlayerInfo*>(instance)->RegisterDolbyAudioModeChangedCallback(callback, userdata);
-    }
-    return errorCode;
+    return PlayerInfo::Instance().RegisterDolbyAudioModeChangedCallback(callback, userdata);
 }
 
-uint32_t playerinfo_unregister_dolby_sound_mode_updated_callback(struct playerinfo_type* instance, playerinfo_dolby_audio_updated_cb callback)
+uint32_t playerinfo_unregister_dolby_sound_mode_updated_callback(playerinfo_dolby_audio_updated_cb callback)
 {
-    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-    if (instance != NULL) {
-        errorCode = reinterpret_cast<PlayerInfo*>(instance)->UnregisterDolbyAudioModeChangedCallback(callback);
-    }
-    return errorCode;
+
+    return PlayerInfo::Instance().UnregisterDolbyAudioModeChangedCallback(callback);
 }
 
-void playerinfo_name(struct playerinfo_type* instance, char buffer[], const uint8_t length)
+void playerinfo_name(char buffer[], const uint8_t length)
 {
-    string name = reinterpret_cast<PlayerInfo*>(instance)->Name();
-    strncpy(buffer, name.c_str(), length);
+    strncpy(buffer, PlayerInfo::Instance().Name().c_str(), length);
 }
 
-uint32_t playerinfo_playback_resolution(struct playerinfo_type* instance, playerinfo_playback_resolution_t* resolution)
+uint32_t playerinfo_playback_resolution(playerinfo_playback_resolution_t* resolution)
 {
-
-    if (instance != NULL && resolution != NULL) {
+    if (resolution != nullptr) {
         Exchange::IPlayerProperties::PlaybackResolution value = Exchange::IPlayerProperties::PlaybackResolution::RESOLUTION_UNKNOWN;
         *resolution = PLAYERINFO_RESOLUTION_UNKNOWN;
 
-        if (reinterpret_cast<PlayerInfo*>(instance)->PlaybackResolution(value) == Core::ERROR_NONE) {
+        if (PlayerInfo::Instance().PlaybackResolution(value) == Core::ERROR_NONE) {
             switch (value) {
             case Exchange::IPlayerProperties::PlaybackResolution::RESOLUTION_UNKNOWN:
                 *resolution = PLAYERINFO_RESOLUTION_UNKNOWN;
@@ -556,43 +514,33 @@ uint32_t playerinfo_playback_resolution(struct playerinfo_type* instance, player
     return Core::ERROR_UNAVAILABLE;
 }
 
-uint32_t playerinfo_is_audio_equivalence_enabled(struct playerinfo_type* instance, bool* is_enabled)
+uint32_t playerinfo_is_audio_equivalence_enabled(bool* is_enabled)
 {
-    if (instance != NULL && is_enabled != NULL) {
-        return reinterpret_cast<PlayerInfo*>(instance)->IsAudioEquivalenceEnabled(*is_enabled);
-    }
-    return Core::ERROR_UNAVAILABLE;
+    return (is_enabled != nullptr) ? PlayerInfo::Instance().IsAudioEquivalenceEnabled(*is_enabled) : Core::ERROR_UNAVAILABLE;
 }
 
-int8_t playerinfo_video_codecs(struct playerinfo_type* instance, playerinfo_videocodec_t array[], const uint8_t length)
+int8_t playerinfo_video_codecs(playerinfo_videocodec_t array[], const uint8_t length)
 {
-    if (instance != NULL && array != NULL) {
-        return reinterpret_cast<PlayerInfo*>(instance)->VideoCodecs(array, length);
-    }
-    return 0;
+    return PlayerInfo::Instance().VideoCodecs(array, length);
 }
 
-int8_t playerinfo_audio_codecs(struct playerinfo_type* instance, playerinfo_audiocodec_t array[], const uint8_t length)
+int8_t playerinfo_audio_codecs(playerinfo_audiocodec_t array[], const uint8_t length)
 {
-    if (instance != NULL && array != NULL) {
-        return reinterpret_cast<PlayerInfo*>(instance)->AudioCodecs(array, length);
-    }
-    return 0;
+    return PlayerInfo::Instance().AudioCodecs(array, length);
 }
 
-bool playerinfo_is_dolby_atmos_supported(struct playerinfo_type* instance)
+bool playerinfo_is_dolby_atmos_supported()
 {
-    if (instance != NULL) {
-        return reinterpret_cast<PlayerInfo*>(instance)->IsAtmosMetadataSupported();
-    }
-    return false;
+    return PlayerInfo::Instance().IsAtmosMetadataSupported();
 }
 
-uint32_t playerinfo_set_dolby_sound_mode(struct playerinfo_type* instance, playerinfo_dolby_sound_mode_t* sound_mode)
+uint32_t playerinfo_set_dolby_sound_mode(playerinfo_dolby_sound_mode_t* sound_mode)
 {
-    if (instance != NULL && sound_mode != NULL) {
+    uint32_t result = Core::ERROR_UNAVAILABLE;
+
+    if (sound_mode != nullptr) {
         Exchange::Dolby::IOutput::SoundModes value = Exchange::Dolby::IOutput::SoundModes::UNKNOWN;
-        if (reinterpret_cast<PlayerInfo*>(instance)->DolbySoundMode(value) == Core::ERROR_NONE) {
+        if (PlayerInfo::Instance().DolbySoundMode(value) == Core::ERROR_NONE) {
             switch (value) {
             case Exchange::Dolby::IOutput::SoundModes::UNKNOWN:
                 *sound_mode = PLAYERINFO_DOLBY_SOUND_UNKNOWN;
@@ -613,51 +561,52 @@ uint32_t playerinfo_set_dolby_sound_mode(struct playerinfo_type* instance, playe
                 fprintf(stderr, "New dolby sound mode in the interface, not handled in client library!\n");
                 ASSERT(false && "Invalid enum");
                 *sound_mode = PLAYERINFO_DOLBY_SOUND_UNKNOWN;
-                return Core::ERROR_UNKNOWN_KEY;
+                result = Core::ERROR_UNKNOWN_KEY;
                 break;
             }
-            return Core::ERROR_NONE;
+            result = Core::ERROR_NONE;
         }
     }
-    return Core::ERROR_UNAVAILABLE;
+
+    return result;
 }
-uint32_t playerinfo_enable_atmos_output(struct playerinfo_type* instance, const bool is_enabled)
+uint32_t playerinfo_enable_atmos_output(const bool is_enabled)
 {
-    if (instance != NULL) {
-        return reinterpret_cast<PlayerInfo*>(instance)->EnableAtmosOutput(is_enabled);
-    }
-    return Core::ERROR_UNAVAILABLE;
+    return PlayerInfo::Instance().EnableAtmosOutput(is_enabled);
 }
 
-uint32_t playerinfo_set_dolby_mode(struct playerinfo_type* instance, const playerinfo_dolby_mode_t mode)
+uint32_t playerinfo_set_dolby_mode(const playerinfo_dolby_mode_t mode)
 {
-    if (instance != NULL) {
-        switch (mode) {
-        case PLAYERINFO_DOLBY_MODE_AUTO:
-            return reinterpret_cast<PlayerInfo*>(instance)->SetDolbyMode(Exchange::Dolby::IOutput::Type::AUTO);
-        case PLAYERINFO_DOLBY_MODE_DIGITAL_PCM:
-            return reinterpret_cast<PlayerInfo*>(instance)->SetDolbyMode(Exchange::Dolby::IOutput::Type::DIGITAL_PCM);
-        case PLAYERINFO_DOLBY_MODE_DIGITAL_AC3:
-            return reinterpret_cast<PlayerInfo*>(instance)->SetDolbyMode(Exchange::Dolby::IOutput::Type::DIGITAL_AC3);
-        case PLAYERINFO_DOLBY_MODE_DIGITAL_PLUS:
-            return reinterpret_cast<PlayerInfo*>(instance)->SetDolbyMode(Exchange::Dolby::IOutput::Type::DIGITAL_PLUS);
-        case PLAYERINFO_DOLBY_MODE_MS12:
-            return reinterpret_cast<PlayerInfo*>(instance)->SetDolbyMode(Exchange::Dolby::IOutput::Type::MS12);
-        default:
-            fprintf(stderr, "Unknown enum value, not included in playerinfo_dolby_mode_type?\n");
-            return Core::ERROR_UNKNOWN_KEY;
-        }
+    uint32_t result = Core::ERROR_UNAVAILABLE;
+
+    switch (mode) {
+    case PLAYERINFO_DOLBY_MODE_AUTO:
+        result = PlayerInfo::Instance().SetDolbyMode(Exchange::Dolby::IOutput::Type::AUTO);
+    case PLAYERINFO_DOLBY_MODE_DIGITAL_PCM:
+        result = PlayerInfo::Instance().SetDolbyMode(Exchange::Dolby::IOutput::Type::DIGITAL_PCM);
+    case PLAYERINFO_DOLBY_MODE_DIGITAL_AC3:
+        result = PlayerInfo::Instance().SetDolbyMode(Exchange::Dolby::IOutput::Type::DIGITAL_AC3);
+    case PLAYERINFO_DOLBY_MODE_DIGITAL_PLUS:
+        result = PlayerInfo::Instance().SetDolbyMode(Exchange::Dolby::IOutput::Type::DIGITAL_PLUS);
+    case PLAYERINFO_DOLBY_MODE_MS12:
+        result = PlayerInfo::Instance().SetDolbyMode(Exchange::Dolby::IOutput::Type::MS12);
+    default:
+        fprintf(stderr, "Unknown enum value, not included in playerinfo_dolby_mode_type?\n");
+        return Core::ERROR_UNKNOWN_KEY;
     }
-    return Core::ERROR_UNAVAILABLE;
+
+    return result;
 }
 
-uint32_t playerinfo_get_dolby_mode(struct playerinfo_type* instance, playerinfo_dolby_mode_t* mode)
+uint32_t playerinfo_get_dolby_mode(playerinfo_dolby_mode_t* mode)
 {
-    if (instance != NULL && mode != NULL) {
+    uint32_t result = Core::ERROR_UNAVAILABLE;
+
+    if (mode != nullptr) {
         Exchange::Dolby::IOutput::Type value = Exchange::Dolby::IOutput::Type::AUTO;
         *mode = PLAYERINFO_DOLBY_MODE_AUTO;
 
-        if (reinterpret_cast<PlayerInfo*>(instance)->GetDolbyMode(value) == Core::ERROR_NONE) {
+        if (PlayerInfo::Instance().GetDolbyMode(value) == Core::ERROR_NONE) {
             switch (value) {
             case Exchange::Dolby::IOutput::Type::AUTO:
                 *mode = PLAYERINFO_DOLBY_MODE_AUTO;
@@ -678,11 +627,12 @@ uint32_t playerinfo_get_dolby_mode(struct playerinfo_type* instance, playerinfo_
                 fprintf(stderr, "New dolby mode in the interface, not handled in client library!\n");
                 ASSERT(false && "Invalid enum");
                 *mode = PLAYERINFO_DOLBY_MODE_AUTO;
-                return Core::ERROR_UNKNOWN_KEY;
+                result = Core::ERROR_UNKNOWN_KEY;
+                break;
             }
-            return Core::ERROR_NONE;
+            result = Core::ERROR_NONE;
         }
     }
-    return Core::ERROR_UNAVAILABLE;
+    return result;
 }
 }
