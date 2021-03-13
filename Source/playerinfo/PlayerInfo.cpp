@@ -28,8 +28,6 @@
 #include <interfaces/IPlayerInfo.h>
 #include <playerinfo.h>
 
-#include <interfaces/IDictionary.h>
-
 namespace WPEFramework {
 
 class PlayerInfo : protected RPC::SmartInterfaceType<Exchange::IPlayerProperties> {
