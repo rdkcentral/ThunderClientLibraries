@@ -16,17 +16,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "Module.h"
 
-#include <com/com.h>
-#include <core/core.h>
-#include <plugins/Types.h>
-
-#include <stdlib.h>
-#include <tracing/tracing.h>
+#include <playerinfo.h>
 
 #include <interfaces/IDolby.h>
 #include <interfaces/IPlayerInfo.h>
-#include <playerinfo.h>
+
+#include <plugins/Types.h>
 
 namespace WPEFramework {
 
@@ -501,8 +498,7 @@ uint32_t playerinfo_playback_resolution(playerinfo_playback_resolution_t* resolu
                 *resolution = PLAYERINFO_RESOLUTION_2160P60;
                 break;
             default:
-                fprintf(stderr, "New resolution in the interface, not handled in client library!\n");
-                ASSERT(false && "Invalid enum");
+                TRACE_GLOBAL(Trace::Warning, ("New resolution in the interface, not handled in client library!"));
                 *resolution = PLAYERINFO_RESOLUTION_UNKNOWN;
                 return Core::ERROR_UNKNOWN_KEY;
             }
@@ -556,8 +552,7 @@ uint32_t playerinfo_set_dolby_sound_mode(playerinfo_dolby_sound_mode_t* sound_mo
                 *sound_mode = PLAYERINFO_DOLBY_SOUND_PASSTHRU;
                 break;
             default:
-                fprintf(stderr, "New dolby sound mode in the interface, not handled in client library!\n");
-                ASSERT(false && "Invalid enum");
+                TRACE_GLOBAL(Trace::Warning, ("New dolby sound mode in the interface, not handled in client library!"));
                 *sound_mode = PLAYERINFO_DOLBY_SOUND_UNKNOWN;
                 result = Core::ERROR_UNKNOWN_KEY;
                 break;
@@ -589,8 +584,8 @@ uint32_t playerinfo_set_dolby_mode(const playerinfo_dolby_mode_t mode)
     case PLAYERINFO_DOLBY_MODE_MS12:
         result = PlayerInfo::Instance().SetDolbyMode(Exchange::Dolby::IOutput::Type::MS12);
     default:
-        fprintf(stderr, "Unknown enum value, not included in playerinfo_dolby_mode_type?\n");
-        return Core::ERROR_UNKNOWN_KEY;
+        TRACE_GLOBAL(Trace::Warning, ("Unknown enum value, not included in playerinfo_dolby_mode_type?"));
+        result = Core::ERROR_UNKNOWN_KEY;
     }
 
     return result;
@@ -622,8 +617,8 @@ uint32_t playerinfo_get_dolby_mode(playerinfo_dolby_mode_t* mode)
                 *mode = PLAYERINFO_DOLBY_MODE_MS12;
                 break;
             default:
-                fprintf(stderr, "New dolby mode in the interface, not handled in client library!\n");
-                ASSERT(false && "Invalid enum");
+                TRACE_GLOBAL(Trace::Warning, ("New dolby mode in the interface, not handled in client library!"));
+
                 *mode = PLAYERINFO_DOLBY_MODE_AUTO;
                 result = Core::ERROR_UNKNOWN_KEY;
                 break;
