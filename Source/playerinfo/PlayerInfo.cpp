@@ -34,33 +34,18 @@ private:
     using OperationalStateChangeCallbacks = std::map<playerinfo_operational_state_change_cb, void*>;
 
     //CONSTRUCTORS
-    PlayerInfo(const uint32_t waitTime, const Core::NodeId& node, const string& callsign)
+    PlayerInfo(const string& callsign)
         : BaseClass()
         , _dolbyInterface(nullptr)
         , _callsign(callsign)
         , _dolbyNotification(this)
     {
-        BaseClass::Open(waitTime, node, callsign);
+        BaseClass::Open(RPC::CommunicationTimeOut, BaseClass::Connector(), callsign);
     }
 
     PlayerInfo() = delete;
     PlayerInfo(const PlayerInfo&) = delete;
     PlayerInfo& operator=(const PlayerInfo&) = delete;
-
-    static Core::NodeId Connector()
-    {
-        const TCHAR* comPath = ::getenv(_T("COMMUNICATOR_PATH"));
-
-        if (comPath == nullptr) {
-#ifdef __WINDOWS__
-            comPath = _T("127.0.0.1:62000");
-#else
-            comPath = _T("/tmp/communicator");
-#endif
-        }
-
-        return Core::NodeId(comPath);
-    }
 
 private:
     //NOTIFICATIONS
@@ -145,7 +130,7 @@ public:
 
     static PlayerInfo& Instance()
     {
-        static PlayerInfo instance(3000, Connector(), "PlayerInfo");
+        static PlayerInfo instance("PlayerInfo");
 
         return instance;
     }
