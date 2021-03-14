@@ -121,9 +121,7 @@ public:
         static Platform singleton;
         return singleton;
     }
-    ~Platform()
-    {
-    }
+    ~Platform() = default;
 
 public:
     EGLNativeDisplayType Display() const 
@@ -418,9 +416,7 @@ private:
                 , _destination( { 0, 0, width, height } ) 
             {
             }
-            ~RemoteAccess() override 
-            {
-            }
+            ~RemoteAccess() override = default;
 
         public:
             inline const EGLSurface& Surface() const
@@ -750,16 +746,16 @@ Display::SurfaceImplementation::SurfaceImplementation(
 
     _display.AddRef();
 
-    // To support scanout the underlying FB should be large enough to support the selected mode
-    // An FB of 1280x720 on a 1920x1080 display will probably fail. Currently, they should have 
-    // equal dimensions
+    // To support scanout the underlying buffer should be large enough to support the selected mode
+    // A buffer of smaller dimensions than the display will fail. A larger one is possible but will
+    // probably fail in the current setup. Currently, it is best to give both equal dimensions
 
-    if ((width > _display.DisplaySizeWidth()) || (height >  _display.DisplaySizeHeight())) {
+    if ((width != _display.DisplaySizeWidth()) || (height != _display.DisplaySizeHeight())) {
         TRACE_L1(_T("Requested surface dimensions [%d, %d] might not be honered. Rendering might fail!"), width, height);
 
         // Truncating
-        if (realWidth  > _display.DisplaySizeWidth())  { realWidth  = _display.DisplaySizeWidth();  }
-        if (realHeight > _display.DisplaySizeHeight()) { realHeight = _display.DisplaySizeHeight(); }
+        if (realWidth  != _display.DisplaySizeWidth())  { realWidth  = _display.DisplaySizeWidth();  }
+        if (realHeight != _display.DisplaySizeHeight()) { realHeight = _display.DisplaySizeHeight(); }
     }
 
     EGLSurface nativeSurface = Platform::Instance().CreateSurface(_display.Native(), realWidth, realHeight);

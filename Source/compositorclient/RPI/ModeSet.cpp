@@ -3,24 +3,35 @@
 #include <vector>
 #include <list>
 #include <string>
-#include <assert.h>
+#include <cassert>
+#include <limits>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <drm_fourcc.h>
+
+extern "C"
+{
+#include <drm/drm_fourcc.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 #include <gbm.h>
-#include <drm_fourcc.h>
+}
 
-#define DRM_MAX_DEVICES 16
+static constexpr uint8_t DrmMaxDevices()
+{
+    // Just an arbitrary choice
+    return 16;
+}
 
 static void GetNodes(uint32_t type, std::vector<std::string>& list)
 {
-    drmDevicePtr devices[DRM_MAX_DEVICES];
+    drmDevicePtr devices[DrmMaxDevices()];
 
-    int device_count = drmGetDevices2(0 /* flags */, &devices[0], DRM_MAX_DEVICES);
+    static_assert(sizeof(DrmMaxDevices()) <= sizeof(int));
+    static_assert(std::numeric_limits<decltype(DrmMaxDevices())>::max() <= std::numeric_limits<int>::max());
+
+    int device_count = drmGetDevices2(0 /* flags */, &devices[0], static_cast<int>(DrmMaxDevices()));
 
     if (device_count > 0)
     {
@@ -51,9 +62,11 @@ static void GetNodes(uint32_t type, std::vector<std::string>& list)
 static int FileDescriptor()
 {
     int fd = -1;
+    static std::vector<std::string> nodes;
 
-    std::vector<std::string> nodes;
-    GetNodes(DRM_NODE_PRIMARY, nodes);
+    if (nodes.size() == 0) {
+        GetNodes(DRM_NODE_PRIMARY, nodes);
+    }
 
     std::vector<std::string>::iterator index(nodes.begin());
 
@@ -67,6 +80,7 @@ static int FileDescriptor()
         }
         index++;
     }
+
     return (fd);
 }
 
@@ -207,6 +221,7 @@ static bool CreateBuffer(int fd, const uint32_t connector, gbm_device*& device, 
 {
     assert(fd != -1);
 
+    bool created = false;
     buffer = nullptr;
     modeIndex = 0;
     id = 0;
@@ -255,38 +270,46 @@ static bool CreateBuffer(int fd, const uint32_t connector, gbm_device*& device, 
                 index++;
             }
 
-            drmModeFreeConnector(pconnector);
-
             // A large enough initial buffer for scan out
             struct gbm_bo* bo = gbm_bo_create(
                                   device, 
                                   pconnector->modes[modeIndex].hdisplay,
                                   pconnector->modes[modeIndex].vdisplay,
-                                  DRM_FORMAT_XRGB8888, 
+                                  ModeSet::SupportedBufferType(),
                                   GBM_BO_USE_SCANOUT /* presented on a screen */ | GBM_BO_USE_RENDERING /* used for rendering */);
+
+            drmModeFreeConnector(pconnector);
 
             if(nullptr != bo)
             {
                 // Associate a frame buffer with this bo
                 int32_t fb_fd = gbm_device_get_fd(device);
 
+                uint32_t format = gbm_bo_get_format(bo);
+
+                assert (format == DRM_FORMAT_XRGB8888 || format == DRM_FORMAT_ARGB8888);
+
+                uint32_t bpp = gbm_bo_get_bpp(bo);
+
                 int32_t ret = drmModeAddFB(
                                 fb_fd, 
                                 gbm_bo_get_width(bo), 
                                 gbm_bo_get_height(bo), 
-                                24, 32, 
+                                format != DRM_FORMAT_ARGB8888 ? bpp - 8 : bpp,
+                                bpp,
                                 gbm_bo_get_stride(bo), 
                                 gbm_bo_get_handle(bo).u32, &id);
 
                 if(0 == ret)
                 {
                     buffer = bo;
+                    created = true;
                 }
             }
         }
     }
 
-    return false;
+   return created;
 }
 
 ModeSet::ModeSet()
@@ -297,22 +320,32 @@ ModeSet::ModeSet()
     , _buffer(nullptr)
 {
     if (drmAvailable() > 0) {
+        Create();
+    }
+}
 
-        int fd = FileDescriptor();
+void ModeSet::Create()
+{
+    _fd = FileDescriptor();
 
-        if (fd != -1)
-        {
-            uint32_t id;
+    if(_fd >= 0) {
+        bool enabled = false;
+        if ( (FindProperDisplay(_fd, _crtc, _encoder, _connector, _fb) == true) && 
+             /* TODO: Changes the original fb which might not be what is intended */
+             (CreateBuffer(_fd, _connector, _device, _mode, _fb, _buffer) == true) && 
+             (drmSetMaster(_fd) == 0) ) {
 
-            if ( (FindProperDisplay(fd, _crtc, _encoder, _connector, _fb) == false) ||
-                 (CreateBuffer(fd, _connector, _device, _mode, id, _buffer) == false) ||
-                 (drmSetMaster(fd) != 0)  ) 
-            {
-                // We are NOT initialized properly, destruct !!!
-                Destruct();
+            drmModeConnectorPtr pconnector = drmModeGetConnector(fd, _connector);
+
+            if(pconnector != nullptr) {
+                /* At least one mode has to be set */
+                enabled = (0 == drmModeSetCrtc(fd, _crtc, _fb, 0, 0, &_connector, 1, &(pconnector->modes[_mode])));
+
+                drmModeFreeConnector(pconnector);
             }
-
-            close(fd);
+        }
+        if (enabled == false) {
+            Destruct();
         }
     }
 }
@@ -337,6 +370,10 @@ void ModeSet::Destruct()
         _device = nullptr;
     }
 
+    if(_fd >= 0) {
+        close(_fd);
+    }
+
     _crtc = 0;
     _encoder = 0;
     _connector = 0;
@@ -344,6 +381,7 @@ void ModeSet::Destruct()
 
 uint32_t ModeSet::Width() const
 {
+    // Derived from modinfo if CreateBuffer was called prior to this
     uint32_t width = 0;
 
     if (nullptr != _buffer)
@@ -356,6 +394,7 @@ uint32_t ModeSet::Width() const
 
 uint32_t ModeSet::Height() const
 {
+    // Derived from modinfo if CreateBuffer was called prior to this
     uint32_t height = 0;
 
     if (nullptr != _buffer)
@@ -373,7 +412,7 @@ struct gbm_surface* ModeSet::CreateRenderTarget(const uint32_t width, const uint
 
     if(nullptr != _device)
     {
-        result = gbm_surface_create(_device, width, height, DRM_FORMAT_XRGB8888, GBM_BO_USE_SCANOUT /* presented on a screen */ | GBM_BO_USE_RENDERING /* used for rendering */);
+        result = gbm_surface_create(_device, width, height, SupportedBufferType(), GBM_BO_USE_SCANOUT /* presented on a screen */ | GBM_BO_USE_RENDERING /* used for rendering */);
     }
 
     return result;
@@ -383,8 +422,6 @@ void ModeSet::DestroyRenderTarget(struct gbm_surface* surface)
 {
     if (nullptr != surface)
     {
-        gbm_surface_release_buffer(surface, _buffer);
-
         gbm_surface_destroy(surface);
     }
 }
