@@ -32,7 +32,7 @@ private:
     using OperationalStateChangeCallbacks = std::map<displayinfo_operational_state_change_cb, void*>;
 
     //CONSTRUCTORS
-    DisplayInfo(const uint32_t waitTime, const Core::NodeId& node, const string& callsign)
+    DisplayInfo(const string& callsign)
         : BaseClass()
         , _displayConnection(nullptr)
         , _hdrProperties(nullptr)
@@ -40,27 +40,13 @@ private:
         , _callsign(callsign)
         , _displayUpdatedNotification(this)
     {
-        BaseClass::Open(waitTime, node, callsign);
+        BaseClass::Open(RPC::CommunicationTimeOut, BaseClass::Connector(), callsign);
     }
 
     DisplayInfo() = delete;
     DisplayInfo(const DisplayInfo&) = delete;
     DisplayInfo& operator=(const DisplayInfo&) = delete;
 
-    static Core::NodeId Connector()
-    {
-        const TCHAR* comPath = ::getenv(_T("COMMUNICATOR_PATH"));
-
-        if (comPath == nullptr) {
-#ifdef __WINDOWS__
-            comPath = _T("127.0.0.1:62000");
-#else
-            comPath = _T("/tmp/communicator");
-#endif
-        }
-
-        return Core::NodeId(comPath);
-    }
 
 private:
     void DisplayOutputUpdated(const Exchange::IConnectionProperties::INotification::Source event)
@@ -153,7 +139,7 @@ public:
 
     static DisplayInfo& Instance()
     {
-        static DisplayInfo instance(3000, Connector(), "DisplayInfo");
+        static DisplayInfo instance("DisplayInfo");
         return instance;
     }
 
