@@ -55,14 +55,6 @@ typedef enum displayinfo_hdcp_protection_type {
     DISPLAYINFO_HDCP_UNKNOWN
 } displayinfo_hdcp_protection_t;
 
-/* Where is this needed?
-typedef enum displayinfo_error_type {
-    DISPLAYINFO_ERROR_NONE = 0,
-    DISPLAYINFO_ERROR_UNKNOWN = 1,
-    DISPLAYINFO_ERROR_INVALID_INSTANCE = 2,
-} displayinfo_error_t;
-*/
-
 /**
 * @brief Will be called if there are changes regarding operational state of the
 *        instance - if it is not operational that means any function calls using it 
@@ -82,21 +74,6 @@ typedef void (*displayinfo_operational_state_change_cb)(bool is_operational, voi
 * @param userData Pointer passed along when \ref displayinfo_register was issued.
 */
 typedef void (*displayinfo_display_output_change_cb)(void* userdata);
-
-/**
- * @brief Get a @ref displayinfo_type instance that matches the a DisplayInfo implementation.
- * 
- * @return @ref displayinfo_type instance, NULL on error.
- **/
-EXTERNAL struct displayinfo_type* displayinfo_instance();
-
-/**
- * @brief Release the @ref displayinfo_type instance.
- * 
- * @param instance Instance of ref displayinfo_type.
- * 
- **/
-EXTERNAL void displayinfo_release();
 
 /**
  * @brief Register for the operational state change notification of the instance
