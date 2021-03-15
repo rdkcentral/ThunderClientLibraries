@@ -29,6 +29,7 @@ message("Setup ${TARGET} v${PROJECT_VERSION}")
 
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
+find_package(${NAMESPACE}Tracing REQUIRED)
 if(PROTOCOLS)
     find_package(${NAMESPACE}Protocols REQUIRED)
 else()
@@ -40,12 +41,14 @@ set(PUBLIC_HEADERS
         "include/ExtendedDisplayIdentification.h")
 
 add_library(${TARGET}  SHARED 
+    Module.cpp
     DisplayInfo.cpp
 )
 
 target_link_libraries(${TARGET}
         PUBLIC
           ${NAMESPACE}Core::${NAMESPACE}Core
+          ${NAMESPACE}Tracing::${NAMESPACE}Tracing
           CompileSettingsDebug::CompileSettingsDebug
         )
 

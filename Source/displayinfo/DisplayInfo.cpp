@@ -17,11 +17,9 @@
  * limitations under the License.
  */
 
-#include <com/com.h>
-#include <core/core.h>
-#include <plugins/Types.h>
+#include "Module.h"
 
-#include <stdlib.h>
+#include <plugins/Types.h>
 
 #include <displayinfo.h>
 #include <interfaces/IDisplayInfo.h>
@@ -472,7 +470,7 @@ EXTERNAL uint32_t displayinfo_hdr(displayinfo_hdr_t* hdr)
                 *hdr = DISPLAYINFO_HDR_TECHNICOLOR;
                 break;
             default:
-                fprintf(stderr, "New HDR type in the interface, not handled in client library\n");
+                TRACE_GLOBAL(Trace::Warning, ("New HDR type in the interface, not handled in client library"));
                 *hdr = DISPLAYINFO_HDR_UNKNOWN;
                 errorCode = Core::ERROR_UNKNOWN_KEY;
                 break;
@@ -504,7 +502,7 @@ uint32_t displayinfo_hdcp_protection(displayinfo_hdcp_protection_t* hdcp)
                 *hdcp = DISPLAYINFO_HDCP_2X;
                 break;
             default:
-                fprintf(stderr, "New HDCP type in the interface, not handled in client library\n");
+                TRACE_GLOBAL(Trace::Warning, ("New HDCP type in the interface, not handled in client library"));
                 *hdcp = DISPLAYINFO_HDCP_UNKNOWN;
                 errorCode = Core::ERROR_UNKNOWN_KEY;
                 break;
