@@ -137,8 +137,6 @@ private:
 
 private:
     //MEMBERS
-    static DisplayInfo* _instance;
-
     Exchange::IConnectionProperties* _displayConnection;
     Exchange::IHDRProperties* _hdrProperties;
     Exchange::IGraphicsProperties* _graphicsProperties;
@@ -155,16 +153,10 @@ public:
         BaseClass::Close(Core::infinite);
     }
 
-    static DisplayInfo* Instance()
+    static DisplayInfo& Instance()
     {
-        if (_instance == nullptr) {
-            _instance = new DisplayInfo(3000, Connector(), "DisplayInfo");
-        }
-        return _instance;
-    }
-    void DestroyInstance()
-    {
-        delete _instance;
+        static DisplayInfo instance(3000, Connector(), "DisplayInfo");
+        return instance;
     }
 
 public:
@@ -365,138 +357,104 @@ public:
         return errorCode;
     }
 };
-
-DisplayInfo* DisplayInfo::_instance = nullptr;
-
 } // namespace WPEFramework
 
 using namespace WPEFramework;
 
 extern "C" {
-struct displayinfo_type* displayinfo_instance()
-{
-    return reinterpret_cast<displayinfo_type*>(DisplayInfo::Instance());
-}
-
-void displayinfo_release(struct displayinfo_type* instance)
-{
-    if (instance != NULL) {
-        reinterpret_cast<DisplayInfo*>(instance)->DestroyInstance();
-    }
-}
-
-uint32_t displayinfo_register_operational_state_change_callback(struct displayinfo_type* instance,
+uint32_t displayinfo_register_operational_state_change_callback(
     displayinfo_operational_state_change_cb callback,
     void* userdata)
 {
-    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-    if (instance != NULL) {
-        errorCode = reinterpret_cast<DisplayInfo*>(instance)->RegisterOperationalStateChangedCallback(callback, userdata);
-    }
-    return errorCode;
+    return DisplayInfo::Instance().RegisterOperationalStateChangedCallback(callback, userdata);
 }
 
-uint32_t displayinfo_unregister_operational_state_change_callback(struct displayinfo_type* instance,
+uint32_t displayinfo_unregister_operational_state_change_callback(
     displayinfo_operational_state_change_cb callback)
 {
-    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-    if (instance != NULL) {
-        errorCode = reinterpret_cast<DisplayInfo*>(instance)->UnregisterOperationalStateChangedCallback(callback);
-    }
-    return errorCode;
+    return DisplayInfo::Instance().UnregisterOperationalStateChangedCallback(callback);
 }
 
-uint32_t displayinfo_register_display_output_change_callback(struct displayinfo_type* instance, displayinfo_display_output_change_cb callback, void* userdata)
+uint32_t displayinfo_register_display_output_change_callback(displayinfo_display_output_change_cb callback, void* userdata)
 {
-    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-
-    if (instance != NULL) {
-        errorCode = reinterpret_cast<DisplayInfo*>(instance)->RegisterDisplayOutputChangeCallback(callback, userdata);
-    }
-    return errorCode;
+    return DisplayInfo::Instance().RegisterDisplayOutputChangeCallback(callback, userdata);
 }
 
-uint32_t displayinfo_unregister_display_output_change_callback(struct displayinfo_type* instance, displayinfo_display_output_change_cb callback)
+uint32_t displayinfo_unregister_display_output_change_callback(displayinfo_display_output_change_cb callback)
 {
-    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-
-    if (instance != NULL) {
-        errorCode = reinterpret_cast<DisplayInfo*>(instance)->UnregisterDolbyAudioModeChangedCallback(callback);
-    }
-
-    return errorCode;
+    return DisplayInfo::Instance().UnregisterDolbyAudioModeChangedCallback(callback);
 }
 
-void displayinfo_name(struct displayinfo_type* instance, char buffer[], const uint8_t length)
+void displayinfo_name(char buffer[], const uint8_t length)
 {
-    string name = reinterpret_cast<DisplayInfo*>(instance)->Name();
+    string name = DisplayInfo::Instance().Name();
     strncpy(buffer, name.c_str(), length);
 }
 
-uint32_t displayinfo_is_audio_passthrough(struct displayinfo_type* instance, bool* is_passthrough)
+uint32_t displayinfo_is_audio_passthrough(bool* is_passthrough)
 {
     uint32_t errorCode = Core::ERROR_UNAVAILABLE;
 
-    if (instance != NULL && is_passthrough != NULL) {
-        errorCode = reinterpret_cast<DisplayInfo*>(instance)->IsAudioPassthrough(*is_passthrough);
+    if (is_passthrough != nullptr) {
+        errorCode = DisplayInfo::Instance().IsAudioPassthrough(*is_passthrough);
     }
 
     return errorCode;
 }
 
-uint32_t displayinfo_connected(struct displayinfo_type* instance, bool* is_connected)
+uint32_t displayinfo_connected(bool* is_connected)
 {
     uint32_t errorCode = Core::ERROR_UNAVAILABLE;
 
-    if (instance != NULL && is_connected != NULL) {
-        errorCode = reinterpret_cast<DisplayInfo*>(instance)->Connected(*is_connected);
+    if (is_connected != nullptr) {
+        return DisplayInfo::Instance().Connected(*is_connected);
     }
 
     return errorCode;
 }
 
-uint32_t displayinfo_width(struct displayinfo_type* instance, uint32_t* width)
+uint32_t displayinfo_width(uint32_t* width)
 {
     uint32_t errorCode = Core::ERROR_UNAVAILABLE;
 
-    if (instance != NULL && width != NULL) {
-        errorCode = reinterpret_cast<DisplayInfo*>(instance)->Width(*width);
+    if (width != nullptr) {
+        errorCode = DisplayInfo::Instance().Width(*width);
     }
 
     return errorCode;
 }
 
-uint32_t displayinfo_height(struct displayinfo_type* instance, uint32_t* height)
+uint32_t displayinfo_height(uint32_t* height)
 {
     uint32_t errorCode = Core::ERROR_UNAVAILABLE;
 
-    if (instance != NULL && height != NULL) {
-        errorCode = reinterpret_cast<DisplayInfo*>(instance)->Height(*height);
+    if (height != nullptr) {
+        errorCode = DisplayInfo::Instance().Height(*height);
     }
 
     return errorCode;
 }
 
-uint32_t displayinfo_vertical_frequency(struct displayinfo_type* instance, uint32_t* vertical_freq)
+uint32_t displayinfo_vertical_frequency(uint32_t* vertical_freq)
 {
-
     uint32_t errorCode = Core::ERROR_UNAVAILABLE;
 
-    if (instance != NULL && vertical_freq != NULL) {
-        errorCode = reinterpret_cast<DisplayInfo*>(instance)->VerticalFreq(*vertical_freq);
+    if (vertical_freq != nullptr) {
+        errorCode = DisplayInfo::Instance().VerticalFreq(*vertical_freq);
     }
 
     return errorCode;
 }
 
-EXTERNAL uint32_t displayinfo_hdr(struct displayinfo_type* instance, displayinfo_hdr_t* hdr)
+EXTERNAL uint32_t displayinfo_hdr(displayinfo_hdr_t* hdr)
 {
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
 
-    if (instance != NULL && hdr != NULL) {
+    if (hdr != nullptr) {
         Exchange::IHDRProperties::HDRType value = Exchange::IHDRProperties::HDRType::HDR_OFF;
         *hdr = DISPLAYINFO_HDR_UNKNOWN;
 
-        if (reinterpret_cast<DisplayInfo*>(instance)->HDR(value) == Core::ERROR_NONE) {
+        if (DisplayInfo::Instance().HDR(value) == Core::ERROR_NONE) {
             switch (value) {
             case Exchange::IHDRProperties::HDR_OFF:
                 *hdr = DISPLAYINFO_HDR_OFF;
@@ -515,25 +473,26 @@ EXTERNAL uint32_t displayinfo_hdr(struct displayinfo_type* instance, displayinfo
                 break;
             default:
                 fprintf(stderr, "New HDR type in the interface, not handled in client library\n");
-                ASSERT(false && "Invalid enum");
                 *hdr = DISPLAYINFO_HDR_UNKNOWN;
-                return Core::ERROR_UNKNOWN_KEY;
+                errorCode = Core::ERROR_UNKNOWN_KEY;
                 break;
             }
-            return Core::ERROR_NONE;
+            errorCode = Core::ERROR_NONE;
         }
     }
 
-    return Core::ERROR_UNAVAILABLE;
+    return errorCode;
 }
 
-uint32_t displayinfo_hdcp_protection(struct displayinfo_type* instance, displayinfo_hdcp_protection_t* hdcp)
+uint32_t displayinfo_hdcp_protection(displayinfo_hdcp_protection_t* hdcp)
 {
-    if (instance != NULL && hdcp != NULL) {
+    uint32_t errorCode = Core::ERROR_UNAVAILABLE;
+
+    if (hdcp != nullptr) {
         Exchange::IConnectionProperties::HDCPProtectionType value = Exchange::IConnectionProperties::HDCPProtectionType::HDCP_AUTO;
         *hdcp = DISPLAYINFO_HDCP_UNKNOWN;
 
-        if (reinterpret_cast<DisplayInfo*>(instance)->HDCPProtection(value) == Core::ERROR_NONE) {
+        if (DisplayInfo::Instance().HDCPProtection(value) == Core::ERROR_NONE) {
             switch (value) {
             case Exchange::IConnectionProperties::HDCP_Unencrypted:
                 *hdcp = DISPLAYINFO_HDCP_UNENCRYPTED;
@@ -546,74 +505,73 @@ uint32_t displayinfo_hdcp_protection(struct displayinfo_type* instance, displayi
                 break;
             default:
                 fprintf(stderr, "New HDCP type in the interface, not handled in client library\n");
-                ASSERT(false && "Invalid enum");
                 *hdcp = DISPLAYINFO_HDCP_UNKNOWN;
-                return Core::ERROR_UNKNOWN_KEY;
+                errorCode = Core::ERROR_UNKNOWN_KEY;
                 break;
             }
-            return Core::ERROR_NONE;
+            errorCode = Core::ERROR_NONE;
         }
     }
-    return Core::ERROR_UNAVAILABLE;
+
+    return errorCode;
 }
 
-uint32_t displayinfo_total_gpu_ram(struct displayinfo_type* instance, uint64_t* total_ram)
+uint32_t displayinfo_total_gpu_ram(uint64_t* total_ram)
 {
-
     uint32_t errorCode = Core::ERROR_UNAVAILABLE;
 
-    if (instance != NULL && total_ram != NULL) {
-        errorCode = reinterpret_cast<DisplayInfo*>(instance)->TotalGpuRam(*total_ram);
+    if (total_ram != nullptr) {
+        errorCode = DisplayInfo::Instance().TotalGpuRam(*total_ram);
     }
 
     return errorCode;
 }
 
-uint32_t displayinfo_free_gpu_ram(struct displayinfo_type* instance, uint64_t* free_ram)
+uint32_t displayinfo_free_gpu_ram(uint64_t* free_ram)
 {
     uint32_t errorCode = Core::ERROR_UNAVAILABLE;
 
-    if (instance != NULL && free_ram != NULL) {
-        errorCode = reinterpret_cast<DisplayInfo*>(instance)->FreeGpuRam(*free_ram);
+    if (free_ram != nullptr) {
+        errorCode = DisplayInfo::Instance().FreeGpuRam(*free_ram);
     }
 
     return errorCode;
 }
 
-uint32_t displayinfo_edid(struct displayinfo_type* instance, uint8_t buffer[], uint16_t* length)
+uint32_t displayinfo_edid(uint8_t buffer[], uint16_t* length)
 {
     uint32_t errorCode = Core::ERROR_UNAVAILABLE;
 
-    if (instance != NULL && buffer != NULL && length != NULL) {
-        errorCode = reinterpret_cast<DisplayInfo*>(instance)->EDID(*length, buffer);
+    if (buffer != nullptr && length != nullptr) {
+        errorCode = DisplayInfo::Instance().EDID(*length, buffer);
     }
 
     return errorCode;
 }
 
-uint32_t displayinfo_width_in_centimeters(struct displayinfo_type* instance, uint8_t* width)
+uint32_t displayinfo_width_in_centimeters(uint8_t* width)
 {
     uint32_t errorCode = Core::ERROR_UNAVAILABLE;
 
-    if (instance != NULL && width != NULL) {
-        errorCode = reinterpret_cast<DisplayInfo*>(instance)->WidthInCentimeters(*width);
+    if (width != nullptr) {
+        errorCode = DisplayInfo::Instance().WidthInCentimeters(*width);
     }
 
     return errorCode;
 }
 
-uint32_t displayinfo_height_in_centimeters(struct displayinfo_type* instance, uint8_t* height)
+uint32_t displayinfo_height_in_centimeters(uint8_t* height)
 {
     uint32_t errorCode = Core::ERROR_UNAVAILABLE;
 
-    if (instance != NULL && height != NULL) {
-        errorCode = reinterpret_cast<DisplayInfo*>(instance)->HeightInCentimeters(*height);
+    if (height != nullptr) {
+        errorCode = DisplayInfo::Instance().HeightInCentimeters(*height);
     }
 
     return errorCode;
 }
 
-bool displayinfo_is_atmos_supported(struct displayinfo_type* displayinfo)
+bool displayinfo_is_atmos_supported()
 {
     return false;
 }

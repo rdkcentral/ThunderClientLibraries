@@ -22,8 +22,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#ifdef _MSVC_LANG
 #undef EXTERNAL
+#ifdef _MSVC_LANG
 #ifdef DISPLAYINFO_EXPORTS
 #define EXTERNAL __declspec(dllexport)
 #else
@@ -96,7 +96,7 @@ EXTERNAL struct displayinfo_type* displayinfo_instance();
  * @param instance Instance of ref displayinfo_type.
  * 
  **/
-EXTERNAL void displayinfo_release(struct displayinfo_type* instance);
+EXTERNAL void displayinfo_release();
 
 /**
  * @brief Register for the operational state change notification of the instance
@@ -108,7 +108,7 @@ EXTERNAL void displayinfo_release(struct displayinfo_type* instance);
  *         ERROR_GENERAL if callback already registered 
  *         ERROR_UNAVAILABLE if: instance or is NULL
  */
-EXTERNAL uint32_t displayinfo_register_operational_state_change_callback(struct displayinfo_type* instance,
+EXTERNAL uint32_t displayinfo_register_operational_state_change_callback(
     displayinfo_operational_state_change_cb callback,
     void* userdata);
 /**
@@ -120,7 +120,7 @@ EXTERNAL uint32_t displayinfo_register_operational_state_change_callback(struct 
  *         ERROR_NOT_EXIST if callback not registered
  *         ERROR_UNAVAILABLE if: instance or is NULL
  */
-EXTERNAL uint32_t displayinfo_unregister_operational_state_change_callback(struct displayinfo_type* instance,
+EXTERNAL uint32_t displayinfo_unregister_operational_state_change_callback(
     displayinfo_operational_state_change_cb callback);
 
 /**
@@ -133,7 +133,7 @@ EXTERNAL uint32_t displayinfo_unregister_operational_state_change_callback(struc
  *         ERROR_GENERAL if callback already registered 
  *         ERROR_UNAVAILABLE if: instance or is NULL
  **/
-EXTERNAL uint32_t displayinfo_register_display_output_change_callback(struct displayinfo_type* instance, displayinfo_display_output_change_cb callback, void* userdata);
+EXTERNAL uint32_t displayinfo_register_display_output_change_callback( displayinfo_display_output_change_cb callback, void* userdata);
 
 /**
  * @brief Unregister for updates of the display output.
@@ -144,7 +144,7 @@ EXTERNAL uint32_t displayinfo_register_display_output_change_callback(struct dis
  *         ERROR_NOT_EXIST if callback not registered
  *         ERROR_UNAVAILABLE if: instance or is NULL
  **/
-EXTERNAL uint32_t displayinfo_unregister_display_output_change_callback(struct displayinfo_type* instance, displayinfo_display_output_change_cb callback);
+EXTERNAL uint32_t displayinfo_unregister_display_output_change_callback( displayinfo_display_output_change_cb callback);
 
 /**
  * @brief Returns name of display output.
@@ -154,7 +154,7 @@ EXTERNAL uint32_t displayinfo_unregister_display_output_change_callback(struct d
  * @param length Size of @ref buffer.
  *
  **/
-EXTERNAL void displayinfo_name(struct displayinfo_type* instance, char buffer[], const uint8_t length);
+EXTERNAL void displayinfo_name( char buffer[], const uint8_t length);
 
 /**
  * @brief Checks if a audio passthrough is enabled.
@@ -164,7 +164,7 @@ EXTERNAL void displayinfo_name(struct displayinfo_type* instance, char buffer[],
  * @return ERROR_NONE on succes,
  *         ERROR_UNAVAILABLE if instance or is_enabled param is NULL or invalid connection
  */
-EXTERNAL uint32_t displayinfo_is_audio_passthrough(struct displayinfo_type* instance, bool* is_passthrough);
+EXTERNAL uint32_t displayinfo_is_audio_passthrough( bool* is_passthrough);
 
 /**
  * @brief Checks if a display is connected to the display output.
@@ -174,7 +174,7 @@ EXTERNAL uint32_t displayinfo_is_audio_passthrough(struct displayinfo_type* inst
  * @return ERROR_NONE on succes,
  *         ERROR_UNAVAILABLE if instance or is_enabled param is NULL or invalid connection
  */
-EXTERNAL uint32_t displayinfo_connected(struct displayinfo_type* instance, bool* is_connected);
+EXTERNAL uint32_t displayinfo_connected( bool* is_connected);
 
 /**
  * @brief Get the width of the connected display  
@@ -184,7 +184,7 @@ EXTERNAL uint32_t displayinfo_connected(struct displayinfo_type* instance, bool*
  * @return ERROR_NONE on succes,
  *         ERROR_UNAVAILABLE if instance or is_enabled param is NULL or invalid connection
  */
-EXTERNAL uint32_t displayinfo_width(struct displayinfo_type* instance, uint32_t* width);
+EXTERNAL uint32_t displayinfo_width( uint32_t* width);
 
 /**
  * @brief Get the height of the connected display  
@@ -194,7 +194,7 @@ EXTERNAL uint32_t displayinfo_width(struct displayinfo_type* instance, uint32_t*
  * @return ERROR_NONE on succes,
  *         ERROR_UNAVAILABLE if instance or is_enabled param is NULL or invalid connection
  */
-EXTERNAL uint32_t displayinfo_height(struct displayinfo_type* instance, uint32_t* height);
+EXTERNAL uint32_t displayinfo_height( uint32_t* height);
 
 /**
  * @brief Get the vertical refresh rate ("v-sync")  
@@ -204,7 +204,7 @@ EXTERNAL uint32_t displayinfo_height(struct displayinfo_type* instance, uint32_t
  * @return ERROR_NONE on succes,
  *         ERROR_UNAVAILABLE if instance or is_enabled param is NULL or invalid connection
  */
-EXTERNAL uint32_t displayinfo_vertical_frequency(struct displayinfo_type* instance, uint32_t* vertical_freq);
+EXTERNAL uint32_t displayinfo_vertical_frequency( uint32_t* vertical_freq);
 
 /**
  * @brief Get the current HDR system of the connected display  
@@ -216,7 +216,7 @@ EXTERNAL uint32_t displayinfo_vertical_frequency(struct displayinfo_type* instan
  *         ERROR_UNKNOWN_KEY if: ThunderInterfaces contains new hdr type not defined in this library 
  *         ERROR_UNAVAILABLE if: instance or hdr param is NULL or invalid connection
  */
-EXTERNAL uint32_t displayinfo_hdr(struct displayinfo_type* instance, displayinfo_hdr_t* hdr);
+EXTERNAL uint32_t displayinfo_hdr( displayinfo_hdr_t* hdr);
 
 /**
  * @brief Get the current HDCP protection level of the connected display  
@@ -228,7 +228,7 @@ EXTERNAL uint32_t displayinfo_hdr(struct displayinfo_type* instance, displayinfo
  *         ERROR_UNKNOWN_KEY if: ThunderInterfaces contains new hdcp protection type not defined in this library 
  *         ERROR_UNAVAILABLE if: instance or hdr param is NULL or invalid connection
  */
-EXTERNAL uint32_t displayinfo_hdcp_protection(struct displayinfo_type* instance, displayinfo_hdcp_protection_t* hdcp);
+EXTERNAL uint32_t displayinfo_hdcp_protection( displayinfo_hdcp_protection_t* hdcp);
 
 /**
  * @brief Get the total available GPU RAM space in bytes.
@@ -238,7 +238,7 @@ EXTERNAL uint32_t displayinfo_hdcp_protection(struct displayinfo_type* instance,
  * @return ERROR_NONE on succes,
  *         ERROR_UNAVAILABLE if instance or total_ram param is NULL or invalid connection  
  */
-EXTERNAL uint32_t displayinfo_total_gpu_ram(struct displayinfo_type* instance, uint64_t* total_ram);
+EXTERNAL uint32_t displayinfo_total_gpu_ram( uint64_t* total_ram);
 
 /**
  * @brief Get the free available GPU RAM space in bytes.
@@ -248,7 +248,7 @@ EXTERNAL uint32_t displayinfo_total_gpu_ram(struct displayinfo_type* instance, u
  * @return ERROR_NONE on succes,
  *         ERROR_UNAVAILABLE if instance or free_ram param is NULL or invalid connection
  */
-EXTERNAL uint32_t displayinfo_free_gpu_ram(struct displayinfo_type* instance, uint64_t* free_ram);
+EXTERNAL uint32_t displayinfo_free_gpu_ram( uint64_t* free_ram);
 
 /**
  * @brief Returns EDID data of a connected display.
@@ -259,7 +259,7 @@ EXTERNAL uint32_t displayinfo_free_gpu_ram(struct displayinfo_type* instance, ui
  * @return  ERROR_NONE on succes,
  *         ERROR_UNAVAILABLE if instance or free_ram param is NULL or invalid connection
  */
-EXTERNAL uint32_t displayinfo_edid(struct displayinfo_type* instance, uint8_t buffer[], uint16_t* length);
+EXTERNAL uint32_t displayinfo_edid( uint8_t buffer[], uint16_t* length);
 
 /**
  * @brief Get the width of the connected display in centimaters
@@ -269,7 +269,7 @@ EXTERNAL uint32_t displayinfo_edid(struct displayinfo_type* instance, uint8_t bu
  * @return ERROR_NONE on succes,
  *         ERROR_UNAVAILABLE if instance or width param is NULL or invalid connection 
  */
-EXTERNAL uint32_t displayinfo_width_in_centimeters(struct displayinfo_type* instance, uint8_t* width);
+EXTERNAL uint32_t displayinfo_width_in_centimeters( uint8_t* width);
 
 /**
  * @brief Get the heigth of the connected display in centimaters
@@ -279,7 +279,7 @@ EXTERNAL uint32_t displayinfo_width_in_centimeters(struct displayinfo_type* inst
  * @return ERROR_NONE on succes,
  *         ERROR_UNAVAILABLE if instance or height param is NULL or invalid connection 
  */
-EXTERNAL uint32_t displayinfo_height_in_centimeters(struct displayinfo_type* instance, uint8_t* height);
+EXTERNAL uint32_t displayinfo_height_in_centimeters( uint8_t* height);
 
 /**
  * @brief Checks if Dolby ATMOS is enabled.
@@ -287,7 +287,7 @@ EXTERNAL uint32_t displayinfo_height_in_centimeters(struct displayinfo_type* ins
  * @param instance Instance of @ref displayinfo_type.
  * @return true if Dolby ATMOS is enabled, false otherwise.
  */
-EXTERNAL bool displayinfo_is_atmos_supported(struct displayinfo_type* instance);
+EXTERNAL bool displayinfo_is_atmos_supported();
 
 #ifdef __cplusplus
 } // extern "C"
