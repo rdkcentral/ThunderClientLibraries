@@ -17,10 +17,7 @@
  * limitations under the License.
  */
 
-#include <stdlib.h>
-
-#include <com/com.h>
-#include <core/core.h>
+#include "Module.h"
 
 #include <displayinfo.h>
 #include <interfaces/IDisplayInfo.h>

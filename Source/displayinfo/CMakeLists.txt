@@ -23,12 +23,14 @@ set(PUBLIC_HEADERS
         )
 
 add_library(${TARGET}  SHARED 
+    Module.cpp
     DisplayInfo.cpp
 )
 
 target_link_libraries(${TARGET}
         PUBLIC
           ${NAMESPACE}Core::${NAMESPACE}Core
+          ${NAMESPACE}Tracing::${NAMESPACE}Tracing
           CompileSettingsDebug::CompileSettingsDebug
         )
 
