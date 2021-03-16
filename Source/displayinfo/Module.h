@@ -19,7 +19,7 @@
 #pragma once
 
 #ifndef MODULE_NAME
-#define MODULE_NAME DisplayInfo
+#define MODULE_NAME ClientLibrary_DisplayInfo
 #endif
 
 #include <com/com.h>
