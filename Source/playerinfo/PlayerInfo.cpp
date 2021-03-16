@@ -43,6 +43,7 @@ private:
         BaseClass::Open(RPC::CommunicationTimeOut, BaseClass::Connector(), callsign);
     }
 
+public:
     PlayerInfo() = delete;
     PlayerInfo(const PlayerInfo&) = delete;
     PlayerInfo& operator=(const PlayerInfo&) = delete;
