@@ -43,10 +43,10 @@ private:
         BaseClass::Open(RPC::CommunicationTimeOut, BaseClass::Connector(), callsign);
     }
 
+public:
     DisplayInfo() = delete;
     DisplayInfo(const DisplayInfo&) = delete;
     DisplayInfo& operator=(const DisplayInfo&) = delete;
-
 
 private:
     void DisplayOutputUpdated(const Exchange::IConnectionProperties::INotification::Source event)
@@ -83,7 +83,6 @@ private:
 
     void Operational(const bool upAndRunning) override
     {
-
         if (upAndRunning) {
             if (_displayConnection == nullptr) {
                 _displayConnection = BaseClass::Interface();
