@@ -116,7 +116,7 @@ int main(int argc, char* argv[])
 
         case 'C': {
             bool is_connected = false;
-            if (displayinfo_is_audio_passthrough(&is_connected) == 0) {
+            if (displayinfo_connected(&is_connected) == 0) {
                 Trace("Display %s connected", is_connected ? "is" : "is not");
             } else {
                 Trace("Instance or is_connected param is NULL, or invalid connection");
