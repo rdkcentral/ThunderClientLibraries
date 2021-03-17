@@ -335,11 +335,11 @@ void ModeSet::Create()
              (CreateBuffer(_fd, _connector, _device, _mode, _fb, _buffer) == true) && 
              (drmSetMaster(_fd) == 0) ) {
 
-            drmModeConnectorPtr pconnector = drmModeGetConnector(fd, _connector);
+            drmModeConnectorPtr pconnector = drmModeGetConnector(_fd, _connector);
 
             if(pconnector != nullptr) {
                 /* At least one mode has to be set */
-                enabled = (0 == drmModeSetCrtc(fd, _crtc, _fb, 0, 0, &_connector, 1, &(pconnector->modes[_mode])));
+                enabled = (0 == drmModeSetCrtc(_fd, _crtc, _fb, 0, 0, &_connector, 1, &(pconnector->modes[_mode])));
 
                 drmModeFreeConnector(pconnector);
             }
