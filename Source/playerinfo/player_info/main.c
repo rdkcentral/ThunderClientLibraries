@@ -33,7 +33,7 @@
 void show_menu()
 {
     printf("Enter\n"
-           "\tI : Get instance.\n"
+           "\tI : Register operational event.\n"
            "\tS : Register for an event.\n"
            "\tU : Unregister from an event.\n"
            "\tL : Check Loudness Equivalence in platform .\n"
@@ -62,7 +62,6 @@ void on_operational_state_change(bool is_operational, void* data)
 
 int main(int argc, char* argv[])
 {
-    struct playerinfo_type* player = NULL;
     playerinfo_videocodec_t videoCodecs[BUFFER_LENGTH];
     playerinfo_audiocodec_t audioCodecs[BUFFER_LENGTH];
 
@@ -74,29 +73,22 @@ int main(int argc, char* argv[])
 
         switch (character) {
         case 'I': {
-            player = playerinfo_instance();
 
-            if (player == NULL) {
-                Trace("Exiting: getting interface failed.");
-                character = 'Q';
-            } else {
-                Trace("Created instance");
-                if (playerinfo_register_operational_state_change_callback(player, on_operational_state_change, NULL) == 0) {
-                    Trace("Registered for operational state changes.");
-                }
+            if (playerinfo_register_operational_state_change_callback(on_operational_state_change, NULL) == 0) {
+                Trace("Registered for operational state changes.");
             }
 
             break;
         }
         case 'S': {
-            if (playerinfo_register_dolby_sound_mode_updated_callback(player, on_dolby_event, NULL) == 0) {
+            if (playerinfo_register_dolby_sound_mode_updated_callback(on_dolby_event, NULL) == 0) {
                 Trace("Registered for an dolby sound mode update.");
             }
             break;
         }
 
         case 'U': {
-            if (playerinfo_unregister_dolby_sound_mode_updated_callback(player, on_dolby_event) == 0) {
+            if (playerinfo_unregister_dolby_sound_mode_updated_callback(on_dolby_event) == 0) {
                 Trace("Unregistered from an dolby sound mode update.");
             }
             break;
@@ -104,7 +96,7 @@ int main(int argc, char* argv[])
 
         case 'L': {
             bool is_enabled = false;
-            if (playerinfo_is_audio_equivalence_enabled(player, &is_enabled) == 0) {
+            if (playerinfo_is_audio_equivalence_enabled(&is_enabled) == 0) {
                 Trace("Loudnes %s enabled", is_enabled ? "is" : "not");
             } else {
                 Trace("Instance or is_enabled param is NULL");
@@ -115,7 +107,7 @@ int main(int argc, char* argv[])
 
         case 'R': {
             playerinfo_playback_resolution_t resolution;
-            if (playerinfo_playback_resolution(player, &resolution) != 0) {
+            if (playerinfo_playback_resolution(&resolution) != 0) {
                 Trace("Instance or resolution param is null");
             } else {
                 switch (resolution) {
@@ -168,7 +160,7 @@ int main(int argc, char* argv[])
             break;
         }
         case 'A': {
-            int8_t numberOfCodecs = playerinfo_audio_codecs(player, audioCodecs, BUFFER_LENGTH);
+            int8_t numberOfCodecs = playerinfo_audio_codecs(audioCodecs, BUFFER_LENGTH);
             if (numberOfCodecs < 0) {
                 Trace("Buffer too small, need at least %d length", -numberOfCodecs);
 
@@ -226,7 +218,7 @@ int main(int argc, char* argv[])
         }
 
         case 'V': {
-            int8_t numberOfCodecs = playerinfo_video_codecs(player, videoCodecs, BUFFER_LENGTH);
+            int8_t numberOfCodecs = playerinfo_video_codecs(videoCodecs, BUFFER_LENGTH);
             if (numberOfCodecs < 0) {
                 Trace("Buffer too small, need at least %d length", -numberOfCodecs);
 
@@ -275,14 +267,14 @@ int main(int argc, char* argv[])
 
         case 'M': {
             bool is_supported = false;
-            is_supported = playerinfo_is_dolby_atmos_supported(player);
+            is_supported = playerinfo_is_dolby_atmos_supported();
             Trace("Dolby Atmos %s supported", is_supported ? "is" : "not");
             break;
         }
 
         case 'B': {
             playerinfo_dolby_sound_mode_t sound_mode;
-            if (playerinfo_set_dolby_sound_mode(player, &sound_mode) != 0) {
+            if (playerinfo_set_dolby_sound_mode(&sound_mode) != 0) {
                 Trace("Instance or sound_mode param is null");
             } else {
                 switch (sound_mode) {
@@ -309,7 +301,7 @@ int main(int argc, char* argv[])
             break;
         }
         case 'E': {
-            if (playerinfo_enable_atmos_output(player, true) == 0) {
+            if (playerinfo_enable_atmos_output(true) == 0) {
                 Trace("Enabled Atmos output");
 
             } else {
@@ -319,7 +311,7 @@ int main(int argc, char* argv[])
         }
 
         case 'D': {
-            if (playerinfo_enable_atmos_output(player, false) == 0) {
+            if (playerinfo_enable_atmos_output(false) == 0) {
                 Trace("Disable Atmos output");
 
             } else {
@@ -329,7 +321,7 @@ int main(int argc, char* argv[])
         }
 
         case 'O': {
-            if (playerinfo_set_dolby_mode(player, PLAYERINFO_DOLBY_MODE_DIGITAL_PCM) == 0) {
+            if (playerinfo_set_dolby_mode(PLAYERINFO_DOLBY_MODE_DIGITAL_PCM) == 0) {
                 Trace("Setting succeded");
 
             } else {
@@ -340,7 +332,7 @@ int main(int argc, char* argv[])
 
         case 'P': {
             playerinfo_dolby_mode_t mode;
-            if (playerinfo_get_dolby_mode(player, &mode) == 0) {
+            if (playerinfo_get_dolby_mode(&mode) == 0) {
                 switch (mode) {
 
                 case PLAYERINFO_DOLBY_MODE_DIGITAL_PCM:
@@ -377,11 +369,8 @@ int main(int argc, char* argv[])
         }
     } while (character != 'Q');
 
-    playerinfo_unregister_operational_state_change_callback(player, on_operational_state_change);
+    playerinfo_unregister_operational_state_change_callback(on_operational_state_change);
     Trace("Unregistered operational state changed callback.");
-    playerinfo_release(player);
-
-    Trace("Released instance.");
 
     return 0;
 }

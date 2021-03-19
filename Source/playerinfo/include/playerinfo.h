@@ -31,7 +31,7 @@
 #pragma comment(lib, "playerinfo.lib")
 #endif
 #else
-#define EXTERNAL __attribute__ ((visibility ("default")))
+#define EXTERNAL __attribute__((visibility("default")))
 #endif
 
 #ifdef __cplusplus
@@ -128,7 +128,7 @@ EXTERNAL struct playerinfo_type* playerinfo_instance();
  * 
  * @param instance  Instance of @ref playerinfo_type
  */
-EXTERNAL void playerinfo_release(struct playerinfo_type* instance);
+EXTERNAL void playerinfo_release();
 
 /**
  * @brief Register for the operational state change notification of the instance
@@ -140,9 +140,8 @@ EXTERNAL void playerinfo_release(struct playerinfo_type* instance);
  *          ERROR_GENERAL if callback already registered 
  *          ERROR_UNAVAILABLE if: instance or is NULL
  */
-EXTERNAL uint32_t playerinfo_register_operational_state_change_callback(struct playerinfo_type* instance,
-                                                                    playerinfo_operational_state_change_cb callback,
-                                                                    void* userdata);
+EXTERNAL uint32_t playerinfo_register_operational_state_change_callback(playerinfo_operational_state_change_cb callback,
+    void* userdata);
 /**
  * @brief Unregister from the operational state change notification of the instance
  * 
@@ -152,8 +151,7 @@ EXTERNAL uint32_t playerinfo_register_operational_state_change_callback(struct p
  *         ERROR_NOT_EXIST if callback not registered
  *         ERROR_UNAVAILABLE if: instance or is NULL
  */
-EXTERNAL uint32_t playerinfo_unregister_operational_state_change_callback(struct playerinfo_type* instance,
-                                                                      playerinfo_operational_state_change_cb callback);
+EXTERNAL uint32_t playerinfo_unregister_operational_state_change_callback(playerinfo_operational_state_change_cb callback);
 /**
  * @brief Register for the updates of the Dolby Audio Mode changes
  * 
@@ -164,7 +162,7 @@ EXTERNAL uint32_t playerinfo_unregister_operational_state_change_callback(struct
  *          ERROR_GENERAL if callback already registered 
  *          ERROR_UNAVAILABLE if: instance or is NULL
  */
-EXTERNAL uint32_t playerinfo_register_dolby_sound_mode_updated_callback(struct playerinfo_type* instance, playerinfo_dolby_audio_updated_cb callback, void* userdata);
+EXTERNAL uint32_t playerinfo_register_dolby_sound_mode_updated_callback(playerinfo_dolby_audio_updated_cb callback, void* userdata);
 
 /**
  * @brief Unregister from the updates of the Dolby Audio Mode changes
@@ -174,7 +172,7 @@ EXTERNAL uint32_t playerinfo_register_dolby_sound_mode_updated_callback(struct p
  * @return ERROR_NONE on succes, 
  *         ERROR_NOT_EXIST if callback not registered
  *         ERROR_UNAVAILABLE if: instance or is NULL */
-EXTERNAL uint32_t playerinfo_unregister_dolby_sound_mode_updated_callback(struct playerinfo_type* instance, playerinfo_dolby_audio_updated_cb callback);
+EXTERNAL uint32_t playerinfo_unregister_dolby_sound_mode_updated_callback(playerinfo_dolby_audio_updated_cb callback);
 
 /**
  * @brief Get the instance name (callsign)
@@ -183,7 +181,7 @@ EXTERNAL uint32_t playerinfo_unregister_dolby_sound_mode_updated_callback(struct
  * @param buffer Buffer that will contain instance name.
  * @param length Size of @ref buffer.
  */
-EXTERNAL void playerinfo_name(struct playerinfo_type* instance, char buffer[], const uint8_t length);
+EXTERNAL void playerinfo_name(char buffer[], const uint8_t length);
 
 /**
  * @brief Get current video playback resolution
@@ -194,7 +192,7 @@ EXTERNAL void playerinfo_name(struct playerinfo_type* instance, char buffer[], c
  *         ERROR_UNKNOWN_KEY if: ThunderInterfaces contains new resolution not defined in this library 
  *         ERROR_UNAVAILABLE if: instance or resolution param is NULL or invalid connection
  */
-EXTERNAL uint32_t playerinfo_playback_resolution(struct playerinfo_type* instance, playerinfo_playback_resolution_t* resolution);
+EXTERNAL uint32_t playerinfo_playback_resolution(playerinfo_playback_resolution_t* resolution);
 
 /**
  * @brief Checks Loudness Equivalence in platform
@@ -203,7 +201,7 @@ EXTERNAL uint32_t playerinfo_playback_resolution(struct playerinfo_type* instanc
  * @return ERROR_NONE on succes,
  *         ERROR_UNAVAILABLE if instance or is_enabled param is NULL or invalid connection
  */
-EXTERNAL uint32_t playerinfo_is_audio_equivalence_enabled(struct playerinfo_type* instance, bool* is_enabled);
+EXTERNAL uint32_t playerinfo_is_audio_equivalence_enabled(bool* is_enabled);
 
 /**
  * @brief Gets Player audio codecs
@@ -217,7 +215,7 @@ EXTERNAL uint32_t playerinfo_is_audio_equivalence_enabled(struct playerinfo_type
  *         -NUMBER OF CODECS if array is not large enough, 
  *         0 if: buffer or instance is NULL, or invalid connection.
  */
-EXTERNAL int8_t playerinfo_audio_codecs(struct playerinfo_type* instance, playerinfo_audiocodec_t array[], const uint8_t length);
+EXTERNAL int8_t playerinfo_audio_codecs(playerinfo_audiocodec_t array[], const uint8_t length);
 
 /**
  * @brief Gets Player video codecs
@@ -231,7 +229,7 @@ EXTERNAL int8_t playerinfo_audio_codecs(struct playerinfo_type* instance, player
  *         -NUMBER OF CODECS if: array is not large enough return 
  *         0 if: buffer or instance is NULL, or invalid connection.
  */
-EXTERNAL int8_t playerinfo_video_codecs(struct playerinfo_type* instance, playerinfo_videocodec_t array[], const uint8_t length);
+EXTERNAL int8_t playerinfo_video_codecs(playerinfo_videocodec_t array[], const uint8_t length);
 
 /**
  * @brief Atmos capabilities of Sink
@@ -240,7 +238,7 @@ EXTERNAL int8_t playerinfo_video_codecs(struct playerinfo_type* instance, player
  * @return true if atmos is supported, 
  *         false otherwise
  */
-EXTERNAL bool playerinfo_is_dolby_atmos_supported(struct playerinfo_type* instance);
+EXTERNAL bool playerinfo_is_dolby_atmos_supported();
 
 /**
  * @brief Get Sound Mode - Mono/Stereo/Surround etc.
@@ -250,7 +248,7 @@ EXTERNAL bool playerinfo_is_dolby_atmos_supported(struct playerinfo_type* instan
  * @return ERROR_NONE on succes, 
  *         ERROR_UNAVAILABLE if instance or sound_mode param is NULL or invalid connection
  */
-EXTERNAL uint32_t playerinfo_set_dolby_sound_mode(struct playerinfo_type* instance, playerinfo_dolby_sound_mode_t* sound_mode);
+EXTERNAL uint32_t playerinfo_set_dolby_sound_mode(playerinfo_dolby_sound_mode_t* sound_mode);
 
 /**
  * @brief Enable Atmos Audio Output
@@ -260,7 +258,7 @@ EXTERNAL uint32_t playerinfo_set_dolby_sound_mode(struct playerinfo_type* instan
  * @return ERROR_NONE on succes
  *         ERROR_UNAVAILABLE if instance == NULL or invalid connection
  */
-EXTERNAL uint32_t playerinfo_enable_atmos_output(struct playerinfo_type* instance, const bool is_enabled);
+EXTERNAL uint32_t playerinfo_enable_atmos_output(const bool is_enabled);
 
 /**
  * @brief Set the dolby mode 
@@ -271,7 +269,7 @@ EXTERNAL uint32_t playerinfo_enable_atmos_output(struct playerinfo_type* instanc
  *         ERROR_UNAVAILABLE on instance == NULL or invalid connection
  *         ERROR_UNKNOWN_KEY on unknown mode
  */
-EXTERNAL uint32_t playerinfo_set_dolby_mode(struct playerinfo_type* instance, const playerinfo_dolby_mode_t mode);
+EXTERNAL uint32_t playerinfo_set_dolby_mode(const playerinfo_dolby_mode_t mode);
 
 /**
  * @brief Get the dolby mode object
@@ -282,7 +280,7 @@ EXTERNAL uint32_t playerinfo_set_dolby_mode(struct playerinfo_type* instance, co
  *         ERROR_UNAVAILABLE on instance == NULL or invalid connection
  *         ERROR_UNKNOWN_KEY on unknown mode
  */
-EXTERNAL uint32_t playerinfo_get_dolby_mode(struct playerinfo_type* instance, playerinfo_dolby_mode_t* mode);
+EXTERNAL uint32_t playerinfo_get_dolby_mode(playerinfo_dolby_mode_t* mode);
 
 #ifdef __cplusplus
 } // extern "C"
