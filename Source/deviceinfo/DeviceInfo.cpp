@@ -34,15 +34,16 @@ public:
 
     PluginHost::ISubSystem* SubSystem()
     {
-        PluginHost::ISubSystem* r = nullptr;
+        PluginHost::ISubSystem* subsystem = nullptr;
 
         PluginHost::IShell* shell = Aquire<PluginHost::IShell>(RPC::CommunicationTimeOut, BaseClass::Connector(), _T(""), ~0);
 
         if (shell != nullptr) {
-            r = shell->SubSystems();
+            subsystem = shell->SubSystems();
+            shell->Release();
         }
 
-        return r;
+        return subsystem;
     }
 
 private:
