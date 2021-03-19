@@ -28,12 +28,13 @@ set(TARGET ${PROJECT_NAME})
 message("Setup ${TARGET} v${PROJECT_VERSION}")
 
 find_package(${NAMESPACE}Core REQUIRED)
+find_package(${NAMESPACE}Tracing REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 
 if(PROTOCOLS)
     find_package(${NAMESPACE}Protocols REQUIRED)
 else()
-    find_package(${NAMESPACE}CON REQUIRED)
+    find_package(${NAMESPACE}COM REQUIRED)
 endif()
 
 set(PUBLIC_HEADERS "include/deviceinfo.h")
@@ -45,6 +46,7 @@ add_library(${TARGET}  SHARED
 target_link_libraries(${TARGET}
         PUBLIC
           ${NAMESPACE}Core::${NAMESPACE}Core
+          ${NAMESPACE}Tracing::${NAMESPACE}Tracing 
           CompileSettingsDebug::CompileSettingsDebug
         )
 
@@ -65,8 +67,8 @@ set_target_properties(${TARGET} PROPERTIES
         CXX_STANDARD_REQUIRED YES
         FRAMEWORK FALSE
         PUBLIC_HEADER "${PUBLIC_HEADERS}" # specify the public headers
-        VERSION ${VERSION}
-        SOVERSION ${VERSION_MAJOR}
+        VERSION ${PROJECT_VERSION}
+        SOVERSION ${PROJECT_VERSION_MAJOR}
         )
 
 target_include_directories( ${TARGET}
