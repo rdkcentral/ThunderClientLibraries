@@ -18,8 +18,35 @@
  */
 #include <ctype.h>
 #include <displayinfo.h>
+#include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
+
+static void toHexString(
+    const uint8_t data[], const uint32_t dataLength,
+    char buf[], uint32_t* bufLength)
+{
+    uint32_t totalLength = (6 * dataLength) + (dataLength / 8);
+
+    if (*bufLength >= totalLength) {
+        uint32_t length = 0;
+
+        for (int i = 0; i < dataLength; i++) {
+            length += snprintf(&buf[length], (*bufLength - length), "%s0x%02X%s",
+                (i % 8 == 0) ? "\n" : "",
+                data[i],
+                (i == dataLength - 1) ? "" : ", ");
+        }
+
+        buf[length] = '\0';
+
+        *bufLength = length;
+
+    } else {
+        printf("ERROR: bufLength %d is too small for %d chars\n", *bufLength, totalLength);
+        *bufLength = 0;
+    }
+}
 
 #define Trace(fmt, ...)                                 \
     do {                                                \
@@ -39,8 +66,9 @@ void on_operational_state_change(bool is_operational, void* data)
 
 void ShowMenu()
 {
-    printf("Enter\n"
-           "\tI : Get instance.\n"
+    printf("Version %s\n"
+           "Enter\n"
+           "\tI : Register for events.\n"
            "\tA : Is audio passthru.\n"
            "\tC : Check display connection.\n"
            "\tD : Get current display resolution.\n"
@@ -52,13 +80,12 @@ void ShowMenu()
            "\tF : Get free gpu ram\n"
            "\tX : Get display dimensions in centimeters \n"
            "\t? : Help\n"
-           "\tQ : Quit\n");
+           "\tQ : Quit\n",
+        __TIMESTAMP__);
 }
 
 int main(int argc, char* argv[])
 {
-    struct displayinfo_type* display = NULL;
-
     ShowMenu();
 
     int character;
@@ -67,26 +94,18 @@ int main(int argc, char* argv[])
 
         switch (character) {
         case 'I': {
-            display = displayinfo_instance();
-
-            if (display == NULL) {
-                Trace("Exiting: getting interface failed.");
-                character = 'Q';
-            } else {
-                Trace("Created instance");
-                if (displayinfo_register_display_output_change_callback(display, displayinfo_display_updated, NULL) == 0) {
-                    Trace("Registered for display upadate events");
-                }
-                if (displayinfo_register_operational_state_change_callback(display, on_operational_state_change, NULL) == 0) {
-                    Trace("Registered for operational state changes of the instance");
-                }
+            if (displayinfo_register_display_output_change_callback(displayinfo_display_updated, NULL) == 0) {
+                Trace("Registered for display update events");
+            }
+            if (displayinfo_register_operational_state_change_callback(on_operational_state_change, NULL) == 0) {
+                Trace("Registered for operational state changes of the instance");
             }
 
             break;
         }
         case 'A': {
             bool is_passthru = false;
-            if (displayinfo_is_audio_passthrough(display, &is_passthru) == 0) {
+            if (displayinfo_is_audio_passthrough(&is_passthru) == 0) {
                 Trace("Audio %s passthrough", is_passthru ? "is" : "is not");
             } else {
                 Trace("Instance or is_passthru param is NULL, or invalid connection");
@@ -97,7 +116,7 @@ int main(int argc, char* argv[])
 
         case 'C': {
             bool is_connected = false;
-            if (displayinfo_is_audio_passthrough(display, &is_connected) == 0) {
+            if (displayinfo_connected(&is_connected) == 0) {
                 Trace("Display %s connected", is_connected ? "is" : "is not");
             } else {
                 Trace("Instance or is_connected param is NULL, or invalid connection");
@@ -107,7 +126,7 @@ int main(int argc, char* argv[])
         }
         case 'D': {
             uint32_t width = 0, height = 0;
-            if (displayinfo_width(display, &width) == 0 && displayinfo_height(display, &height) == 0) {
+            if (displayinfo_width(&width) == 0 && displayinfo_height(&height) == 0) {
                 Trace("Display resolution %dhx%dw", width, height);
             } else {
                 Trace("Instance or width/height param is NULL, or invalid connection");
@@ -117,7 +136,7 @@ int main(int argc, char* argv[])
         }
         case 'V': {
             uint32_t vertical_frequency = 0;
-            if (displayinfo_vertical_frequency(display, &vertical_frequency) == 0) {
+            if (displayinfo_vertical_frequency(&vertical_frequency) == 0) {
                 Trace("Vertical frequency %d", vertical_frequency);
             } else {
                 Trace("Instance or vertical_frequency is NULL, or invalid connection");
@@ -129,7 +148,7 @@ int main(int argc, char* argv[])
         case 'H': {
             displayinfo_hdr_t hdr;
 
-            if (displayinfo_hdr(display, &hdr) != 0) {
+            if (displayinfo_hdr(&hdr) != 0) {
                 Trace("Instance or hdr param is null or invalid connection");
             } else {
 
@@ -165,7 +184,7 @@ int main(int argc, char* argv[])
         case 'P': {
             displayinfo_hdcp_protection_t hdcp;
 
-            if (displayinfo_hdcp_protection(display, &hdcp) != 0) {
+            if (displayinfo_hdcp_protection(&hdcp) != 0) {
                 Trace("Instance or hdcp param is null or invalid connection");
             } else {
                 switch (hdcp) {
@@ -191,8 +210,8 @@ int main(int argc, char* argv[])
         }
         case 'T': {
             uint64_t total_ram = 0;
-            if (displayinfo_total_gpu_ram(display, &total_ram) == 0) {
-                Trace("Total ram: %lld", total_ram);
+            if (displayinfo_total_gpu_ram(&total_ram) == 0) {
+                Trace("Total ram: %" PRIu64, total_ram);
             } else {
                 Trace("Instance or total_ram is NULL, or invalid connection");
             }
@@ -202,10 +221,13 @@ int main(int argc, char* argv[])
             //just for testing purposes
 
             uint8_t buffer[1000];
-            uint16_t length = 1000;
-            if (displayinfo_edid(display, buffer, &length) == 0) {
+            uint16_t length = sizeof(buffer);
+            if (displayinfo_edid(buffer, &length) == 0) {
                 Trace("Length: %d", length);
-                Trace("EDID: %s", buffer);
+                char edid[3000];
+                uint32_t edidSize = sizeof(edid);
+                toHexString(buffer, length, edid, &edidSize);
+                Trace("EDID: %s", edid);
             } else {
                 Trace("Instance or buffer or length is NULL, or invalid connection");
             }
@@ -214,8 +236,8 @@ int main(int argc, char* argv[])
 
         case 'F': {
             uint64_t free_ram = 0;
-            if (displayinfo_free_gpu_ram(display, &free_ram) == 0) {
-                Trace("Free ram: %lld", free_ram);
+            if (displayinfo_free_gpu_ram(&free_ram) == 0) {
+                Trace("Free ram: %" PRIu64, free_ram);
             } else {
                 Trace("Instance or free_ram is NULL, or invalid connection");
             }
@@ -223,7 +245,7 @@ int main(int argc, char* argv[])
         }
         case 'X': {
             uint8_t width = 0, height = 0;
-            if (displayinfo_width_in_centimeters(display, &width) == 0 && displayinfo_height_in_centimeters(display, &height) == 0) {
+            if (displayinfo_width_in_centimeters(&width) == 0 && displayinfo_height_in_centimeters(&height) == 0) {
                 Trace("Display dimension in cm: %dhx%dw", width, height);
             } else {
                 Trace("Instance or width/height param is NULL, or invalid connection");
@@ -240,9 +262,8 @@ int main(int argc, char* argv[])
         }
     } while (character != 'Q');
 
-    displayinfo_unregister_operational_state_change_callback(display, on_operational_state_change);
-    displayinfo_unregister_display_output_change_callback(display, displayinfo_display_updated);
-    displayinfo_release(display);
+    displayinfo_unregister_operational_state_change_callback(on_operational_state_change);
+    displayinfo_unregister_display_output_change_callback(displayinfo_display_updated);
 
     Trace("Done");
 
