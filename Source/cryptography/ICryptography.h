@@ -34,7 +34,8 @@ namespace Cryptography {
         ID_VAULT,
         ID_CIPHER,
         ID_DIFFIE_HELLMAN,
-        ID_CRYPTOGRAPHY
+        ID_CRYPTOGRAPHY,
+        ID_PERSISTENT
     };
 
     enum aesmode : uint8_t {
@@ -55,14 +56,6 @@ namespace Cryptography {
         SHA512 = 64
     };
 
-
-    enum keytype {
-        AES128,
-        AES256,
-        HMAC128,
-        HMAC160,
-        HMAC256
-    };
 
     
     struct EXTERNAL IHash : virtual public Core::IUnknown {
@@ -113,6 +106,35 @@ namespace Cryptography {
         virtual uint32_t Derive(const uint32_t privateKey, const uint32_t peerPublicKeyId, uint32_t& secretId /* @out */) = 0;
     };
 
+    struct IPersistent : virtual public Core::IUnknown {
+
+    enum { ID = ID_PERSISTENT };
+
+    enum keytype {
+        AES128,
+        AES256,
+        HMAC128,
+        HMAC160,
+        HMAC256
+    };
+
+    virtual ~IPersistent() { }
+
+    //Check if a named key exists in peristent storage
+    virtual uint32_t Exists(const string& locator, bool& result) const =0;
+
+    //Load persistent key details to vault
+    virtual uint32_t Load(const string& locator, uint32_t&  id) = 0;
+
+    //Create a new key on persistent storage
+    virtual uint32_t Create(const string& locator, const keytype keyType, uint32_t& id) = 0 ;
+
+    //To explicitly flush resources at the backend
+    virtual uint32_t Persistent_Flush() = 0;
+
+    };
+
+
     struct EXTERNAL IVault : virtual public Core::IUnknown {
 
         enum { ID = ID_VAULT };
@@ -128,7 +150,7 @@ namespace Cryptography {
 
         // Import unencrypted data blob into the vault (returns blob ID)
         // Note: User IDs are always greater than 0x80000000, values below 0x80000000 are reserved for implementation-specific internal data blobs.
-        virtual uint32_t Import(const uint16_t length, const uint8_t blob[] /* @length:length */, const bool blobIsName =false) = 0;
+        virtual uint32_t Import(const uint16_t length, const uint8_t blob[] /* @length:length */) = 0;
 
         // Export unencrypted data blob out of the vault (returns blob ID), only public blobs are exportable
         virtual uint16_t Export(const uint32_t id, const uint16_t maxLength, uint8_t blob[] /* @out @maxlength:maxLength */) const = 0;
@@ -142,8 +164,6 @@ namespace Cryptography {
         // Delete a data blob from the vault
         virtual bool Delete(const uint32_t id) = 0;
 
-        //Create a new key of required type
-        virtual uint32_t CreateNamedKey(bool exportable ,const keytype keyType, const string keyFile="") = 0;
 
         // Crypto operations using the vault for key storage
         // -----------------------------------------------------
@@ -169,7 +189,7 @@ namespace Cryptography {
         virtual IHash* Hash(const hashtype hashType) = 0;
 
         // Retrieve a vault (TEE identified by ID)
-        virtual IVault* Vault(const cryptographyvault id, std::string storagePath ="") = 0;
+        virtual IVault* Vault(const cryptographyvault id) = 0;
     };
 
 } // namespace Cryptography

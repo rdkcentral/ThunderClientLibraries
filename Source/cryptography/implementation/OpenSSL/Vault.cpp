@@ -20,6 +20,7 @@
 #include "../../Module.h"
 
 #include <vault_implementation.h>
+#include <persistent_implementation.h>
 
 #include <cryptalgo/cryptalgo.h>
 
@@ -327,29 +328,6 @@ bool Vault::Delete(const uint32_t id)
     return (result);
 }
 
-uint32_t Vault::CreateKey(bool exportable,const key_type keyType)
-{
-    uint16_t keySize = 0;
-
-    _lock.Lock();
-    if((keyType==key_type::AES128)||(keyType==key_type::HMAC128)) {
-        keySize = 16;
-    } else if((keyType==key_type::AES256)||(keyType==key_type::HMAC256)) {
-        keySize = 32;
-    } else if (keyType==key_type::HMAC160) {
-        keySize = 20;
-    } else {
-         TRACE_L1("Invalid key size \n");
-         return keySize;
-    }
-
-    uint8_t key[keySize];
-    RAND_bytes(key,keySize);
-    _lock.Unlock();
-
-    return(Import(keySize,key,true)); //Imported into vault as a raw blob
-
-}
 
 } // namespace Implementation
 
@@ -357,7 +335,7 @@ extern "C" {
 
 // Vault
 
-VaultImplementation* vault_instance(const cryptographyvault id,const char storagePath[])
+VaultImplementation* vault_instance(const cryptographyvault id)
 {
     Implementation::Vault* vault = nullptr;
 
@@ -383,10 +361,9 @@ uint16_t vault_size(const VaultImplementation* vault, const uint32_t id)
     return (vaultImpl->Size(id));
 }
 
-uint32_t vault_import(VaultImplementation* vault, const uint16_t length, const uint8_t data[],const bool blobIsName)
+uint32_t vault_import(VaultImplementation* vault, const uint16_t length, const uint8_t data[])
 {
     ASSERT(vault != nullptr);
-    ASSERT(blobIsName == false); //OpenSSLdoes not handle named key files importing
     Implementation::Vault* vaultImpl = reinterpret_cast<Implementation::Vault*>(vault);
     return (vaultImpl->Import(length, data, true /* imported in clear is always exportable */));
 }
@@ -420,15 +397,6 @@ bool vault_delete(VaultImplementation* vault, const uint32_t id)
 }
 
 
-uint32_t vault_create_namedkey(struct VaultImplementation* vault,bool exportable ,const key_type keyType, const char namedKeyFile[])
-{
-    ASSERT(vault != nullptr);
-    Implementation::Vault* vaultImpl = reinterpret_cast<Implementation::Vault*>(vault);
-    return (vaultImpl->CreateKey(exportable,keyType)); //namedKeyFile not applicable for OpenSSL
-}
-
-
-
 // Netflix Security
 
 uint16_t netflix_security_esn(const uint16_t max_length, uint8_t data[])
@@ -453,6 +421,26 @@ uint32_t netflix_security_hmac_key(void)
 uint32_t netflix_security_wrapping_key(void)
 {
     return (Implementation::Vault::NetflixInstance().Size(Implementation::Netflix::KPW_ID) != 0 ? Implementation::Netflix::KPW_ID : 0);
+}
+
+uint32_t persistence_key_exists( struct VaultImplementation* vault ,const string& locator,bool& result)
+{
+    return(WPEFramework::Core::ERROR_UNAVAILABLE);
+}
+
+uint32_t persistence_key_load(struct VaultImplementation* vault,const string& locator,uint32_t&  id)
+{
+    return(WPEFramework::Core::ERROR_UNAVAILABLE);
+}
+
+uint32_t persistence_key_create( struct VaultImplementation* vault,const string& locator,const key_type keyType,uint32_t& id)
+{
+    return(WPEFramework::Core::ERROR_UNAVAILABLE);
+}
+
+uint32_t persistence_flush(struct VaultImplementation* vault)
+{
+    return(WPEFramework::Core::ERROR_UNAVAILABLE);
 }
 
 } // extern "C"

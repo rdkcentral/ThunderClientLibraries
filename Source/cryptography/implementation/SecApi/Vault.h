@@ -31,9 +31,10 @@
 #include "../../Module.h"
 #include "cryptography_vault_ids.h"
 #include "vault_implementation.h"
+#include "persistent_implementation.h"
 
 #define globalDir "/opt/drm/"
-#define appDir "/tmp/"
+#define appDir "/opt/drm/vault/"  //TODO:To get this path from client
 
 #define DH_PUBLIC_KEY_MAX    (129)
 #define KEYLEN_AES_HMAC_128  (16)
@@ -60,7 +61,6 @@ namespace Implementation {
     public:
         static Vault& NetflixInstance();
         Vault();
-        Vault(const char* storagePath);
         ~Vault();
 
     private:
@@ -110,12 +110,16 @@ namespace Implementation {
 
     public:
         uint16_t Size(const uint32_t id, bool allowSealed = false) const;
-        uint32_t Import(const uint16_t size, const uint8_t blob[],const bool blobIsName, bool exportable = false);
+        uint32_t Import(const uint16_t size, const uint8_t blob[], bool exportable = false);
         uint16_t Export(const uint32_t id, const uint16_t size, uint8_t blob[], bool allowSealed = false) const;
         uint32_t Put(const uint16_t size, const uint8_t blob[]);
         uint16_t Get(const uint32_t id, const uint16_t size, uint8_t blob[]) const;
         bool Delete(const uint32_t id);
+        /*IPersistent APIs*/
+        uint32_t ImportNamedKey(const string keyFile);
         uint32_t CreateNamedKey(const string keyFile,bool exportable ,const key_type keyType);
+        bool CheckNamedKey(const string keyFile);
+        void ProcessorRelease();
 
     private:
         mutable WPEFramework::Core::CriticalSection _lock;

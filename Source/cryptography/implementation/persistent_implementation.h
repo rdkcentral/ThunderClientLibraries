@@ -22,29 +22,30 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "cryptography_vault_ids.h"
+#include "vault_implementation.h" 
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+typedef enum {
+        AES128,
+        AES256,
+        HMAC128,
+        HMAC160,
+        HMAC256
+}key_type;
 
-struct VaultImplementation;
+uint32_t persistence_key_exists( struct VaultImplementation* vault ,const string& locator,bool& result);
 
-struct VaultImplementation* vault_instance(const enum cryptographyvault id);
+uint32_t persistence_key_load(struct VaultImplementation* vault,const string& locator,uint32_t&  id);
 
-uint16_t vault_size(const struct VaultImplementation* vault, const uint32_t id);
+uint32_t persistence_key_create( struct VaultImplementation* vault,const string& locator,const key_type keyType,uint32_t& id);
 
-uint32_t vault_import(struct VaultImplementation* vault, const uint16_t length, const uint8_t blob[],const bool blobIsName);
-
-uint16_t vault_export(const struct VaultImplementation* vault, const uint32_t id, const uint16_t max_length, uint8_t blob[]);
-
-uint32_t vault_set(struct VaultImplementation* vault, const uint16_t length, const uint8_t blob[]);
-
-uint16_t vault_get(const struct VaultImplementation* vault, const uint32_t id, const uint16_t max_length, uint8_t blob[]);
-
-bool vault_delete(struct VaultImplementation* vault, const uint32_t id);
+uint32_t persistence_flush(struct VaultImplementation* vault);
 
 
 #ifdef __cplusplus
 } // extern "C"
 #endif
+

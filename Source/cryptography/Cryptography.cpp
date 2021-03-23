@@ -25,6 +25,7 @@
 #include "implementation/diffiehellman_implementation.h"
 #include "implementation/hash_implementation.h"
 #include "implementation/vault_implementation.h"
+#include "implementation/persistent_implementation.h"
 
 #include <com/com.h>
 #include <plugins/Types.h>
@@ -527,7 +528,7 @@ namespace Implementation {
         HashImplementation* _implementation;
     }; // class HashImpl
 
-    class VaultImpl : virtual public WPEFramework::Cryptography::IVault {
+    class VaultImpl : virtual public WPEFramework::Cryptography::IVault,virtual public WPEFramework::Cryptography::IPersistent {
     public:
         VaultImpl() = delete;
         VaultImpl(const VaultImpl&) = delete;
@@ -547,9 +548,9 @@ namespace Implementation {
             return (vault_size(_implementation, id));
         }
 
-        uint32_t Import(const uint16_t length, const uint8_t blob[], const bool blobIsName ) override
+        uint32_t Import(const uint16_t length, const uint8_t blob[] ) override
         {
-            return (vault_import(_implementation, length, blob,blobIsName));
+            return (vault_import(_implementation, length, blob));
         }
 
         uint16_t Export(const uint32_t id, const uint16_t maxLength, uint8_t blob[]) const override
@@ -571,12 +572,27 @@ namespace Implementation {
         {
             return (vault_delete(_implementation, id));
         }
-    
-        uint32_t CreateNamedKey(bool exportable ,const WPEFramework::Cryptography::keytype keyType,const string keyFile) override
+   
+        uint32_t Exists(const string& locator,bool& result) const override
         {
-            return(vault_create_namedkey(_implementation,exportable,static_cast<key_type>(keyType),keyFile.c_str()));
+            return(persistence_key_exists(_implementation,locator,result));
         }
 
+        uint32_t Load(const string& locator,uint32_t& id) override
+        {
+            return(persistence_key_load(_implementation,locator,id));
+        }
+
+        uint32_t Create(const string& locator, const keytype keyType,uint32_t&  id ) override
+        {
+            return(persistence_key_create(_implementation,locator, static_cast<key_type>(keyType),id));
+        }
+
+        uint32_t Persistent_Flush() override
+        {
+            return(persistence_flush(_implementation));
+        }
+ 
         VaultImplementation* Implementation()
         {
             return _implementation;
@@ -743,6 +759,7 @@ namespace Implementation {
     public:
         BEGIN_INTERFACE_MAP(VaultImpl)
         INTERFACE_ENTRY(WPEFramework::Cryptography::IVault)
+        INTERFACE_ENTRY(WPEFramework::Cryptography::IPersistent)
         END_INTERFACE_MAP
 
     private:
@@ -774,10 +791,10 @@ namespace Implementation {
             return (hash);
         }
 
-        WPEFramework::Cryptography::IVault* Vault(const cryptographyvault id,const std::string storagePath ="") override
+        WPEFramework::Cryptography::IVault* Vault(const cryptographyvault id) override
         {
             WPEFramework::Cryptography::IVault* vault(nullptr);
-            VaultImplementation* impl = vault_instance(id,storagePath.c_str());
+            VaultImplementation* impl = vault_instance(id);
 
             if (impl != nullptr) {
                 vault = WPEFramework::Core::Service<Implementation::VaultImpl>::Create<WPEFramework::Cryptography::IVault>(impl);
