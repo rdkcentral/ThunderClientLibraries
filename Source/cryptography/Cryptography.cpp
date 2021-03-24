@@ -575,22 +575,22 @@ namespace Implementation {
    
         uint32_t Exists(const string& locator,bool& result) const override
         {
-            return(persistence_key_exists(_implementation,locator,result));
+            return(persistent_key_exists(_implementation,locator.c_str(),&result));
         }
 
         uint32_t Load(const string& locator,uint32_t& id) override
         {
-            return(persistence_key_load(_implementation,locator,id));
+            return(persistent_key_load(_implementation,locator.c_str(),&id));
         }
 
         uint32_t Create(const string& locator, const keytype keyType,uint32_t&  id ) override
         {
-            return(persistence_key_create(_implementation,locator, static_cast<key_type>(keyType),id));
+            return(persistent_key_create(_implementation,locator.c_str(), static_cast<key_type>(keyType),&id));
         }
 
-        uint32_t Persistent_Flush() override
+        uint32_t Flush() override
         {
-            return(persistence_flush(_implementation));
+            return(persistent_flush(_implementation));
         }
  
         VaultImplementation* Implementation()

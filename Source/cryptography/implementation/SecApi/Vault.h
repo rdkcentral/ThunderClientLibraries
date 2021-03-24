@@ -116,9 +116,9 @@ namespace Implementation {
         uint16_t Get(const uint32_t id, const uint16_t size, uint8_t blob[]) const;
         bool Delete(const uint32_t id);
         /*IPersistent APIs*/
-        uint32_t ImportNamedKey(const string keyFile);
-        uint32_t CreateNamedKey(const string keyFile,bool exportable ,const key_type keyType);
-        bool CheckNamedKey(const string keyFile);
+        uint32_t ImportNamedKey(const char keyFile[]);
+        uint32_t CreateNamedKey(const char keyFile[],bool exportable ,const key_type keyType);
+        bool CheckNamedKey(const char keyFile[]);
         void ProcessorRelease();
 
     private:

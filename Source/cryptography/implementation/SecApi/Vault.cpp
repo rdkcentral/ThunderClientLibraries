@@ -24,8 +24,6 @@
 
 namespace Implementation {
 
-
-
     cryptographyvault  vaultId;
 
     /* Added a default COTR */
@@ -40,9 +38,7 @@ namespace Implementation {
             _secProcHandle = NULL;
         }
         _lastHandle = 0x80000000;
-            
     }
-
 
     /* Destructor */
     Vault::~Vault()
@@ -53,8 +49,8 @@ namespace Implementation {
         }
 	
     }
-  
-    /*To release sec processor resource explicitly*/
+
+    /*To release sec processor resource explicitly.Before this call make sure to call Release on hmac, cipher or dh objects if used*/
     void Vault::ProcessorRelease()
     {
        if (_secProcHandle != NULL) {
@@ -127,7 +123,7 @@ namespace Implementation {
     uint32_t Vault::Import(const uint16_t size, const uint8_t blob[], bool exportable)
     {
         uint32_t id = 0;
- 
+
         _lock.Lock();
             if (size > 0) {
                 id = (_lastHandle + 1);
@@ -192,12 +188,12 @@ namespace Implementation {
                }
            }
            TRACE_L2(_T("SEC : import ends the id assigned is 0x%08x \n"), id);
-         
+
         _lock.Unlock();
-   
+
         return(id);
 
-    }    
+    }
 
     /*********************************************************************
      * @function ImportNamedKey
@@ -209,15 +205,15 @@ namespace Implementation {
      * @return id of vault cross which the hmac/AES object ids are stored.
      *
      *********************************************************************/
-    uint32_t Vault::ImportNamedKey(const string keyFile)
+    uint32_t Vault::ImportNamedKey(const char keyFile[])
     {
         uint32_t id = 0;
 
         _lock.Lock();
-
         SEC_OBJECTID idcheck = 0x0;
         struct IdStore ids;
-        string fileName = keyFile.substr(0,SEC_ID_SIZE);
+        string kFile(keyFile);
+        string fileName = kFile.substr(0,SEC_ID_SIZE);
         uint64_t secId  = stoull(fileName,0,16);
         if (secId != 0 ) {
             idcheck = secId;
@@ -225,10 +221,20 @@ namespace Implementation {
             Sec_KeyHandle* sec_key_check;
             Sec_Result sec_res = SecKey_GetInstance(_secProcHandle,idcheck, &sec_key_check);
             if( sec_res == SEC_RESULT_SUCCESS ) {
+                Sec_KeyType key_type = SecKey_GetKeyType(sec_key_check);
+                if((key_type == SEC_KEYTYPE_HMAC_256) ||(key_type == SEC_KEYTYPE_HMAC_128)||(key_type == SEC_KEYTYPE_HMAC_160)) {
+                    ids.idHmac = idcheck;
+                }
+                else if ((key_type == SEC_KEYTYPE_AES_128)||(key_type == SEC_KEYTYPE_AES_256)) {
+                    ids.idAes = idcheck;
+                }
+                else {
+                    TRACE_L1(_T("SEC:key type not supported :%d\n"),key_type);
+                    SecKey_Release(sec_key_check);
+                    _lock.Unlock();
+                    return id;
+                }
                 id = (_lastHandle + 1);
-                ids.idAes = idcheck;
-                ids.idHmac = idcheck;
-
                 _items.emplace(std::piecewise_construct, std::forward_as_tuple(id),
                                std::forward_as_tuple(false, ids,SEC_ID_SIZE));
 
@@ -241,14 +247,14 @@ namespace Implementation {
             }
         }
         else {
-            TRACE_L1(_T("SEC:cannot retrieve valid sec object id from filename \n"));
+            TRACE_L1(_T("SEC:cannot retrieve valid sec object id from filename %s \n"),kFile.c_str());
 
         }
         _lock.Unlock();
 
         return(id);
     }
-    
+
     /*********************************************************************
      * @function CheckNamedKey
      *
@@ -260,13 +266,14 @@ namespace Implementation {
      *
      *********************************************************************/
 
-    bool Vault::CheckNamedKey(const string keyFile)
+    bool Vault::CheckNamedKey(const char keyFile[])
     {
         bool ret =false;
-        _lock.Lock();
 
+        _lock.Lock();
         SEC_OBJECTID idcheck = 0x0;
-        string fileName = keyFile.substr(0,SEC_ID_SIZE);
+        string kFile(keyFile);
+        string fileName = kFile.substr(0,SEC_ID_SIZE);
         uint64_t secId  = stoull(fileName,0,16);
         if (secId != 0 ) {
             idcheck = secId;
@@ -282,7 +289,7 @@ namespace Implementation {
             }
         }
         else {
-            TRACE_L1(_T("SEC:cannot retrieve valid sec object id from filename \n"));
+            TRACE_L1(_T("SEC:cannot retrieve valid sec object id from filename %s \n"),kFile.c_str());
 
         }
         _lock.Unlock();
@@ -302,12 +309,11 @@ namespace Implementation {
      * @return id across which the hmac/AES object ids are stored.
      *
      *********************************************************************/
-    uint32_t Vault::CreateNamedKey(const string keyFile,bool exportable ,const key_type  keyType)
+    uint32_t Vault::CreateNamedKey(const char keyFile[] ,bool exportable ,const key_type  keyType)
     {
         uint32_t id = 0;
-        
-        _lock.Lock();
 
+        _lock.Lock();
         struct IdStore ids;
         Sec_KeyType key = SEC_KEYTYPE_AES_128; //DEFAULT
 
@@ -328,12 +334,14 @@ namespace Implementation {
                 key = SEC_KEYTYPE_HMAC_256;
                 break;
             default :
-                TRACE_L1(_T("SEC :cannot generate any other key types" ));          
+                TRACE_L1(_T("SEC :cannot generate any other key types" ));
+                _lock.Unlock();
                 return (id);
         }
 
-        if(!keyFile.empty() && (keyFile.length() >= SEC_ID_SIZE)) {
-            string keyName = keyFile.substr(0,SEC_ID_SIZE);
+        string kFile(keyFile);
+        if(!kFile.empty() && (kFile.length() >= SEC_ID_SIZE)) {
+            string keyName = kFile.substr(0,SEC_ID_SIZE);
             uint64_t secId = stoull(keyName,0,16);
             if( secId != 0) {
                 TRACE_L2(_T("SEC:the key name/sec id is  %llx \n"),secId);
@@ -342,7 +350,7 @@ namespace Implementation {
                     id = (_lastHandle + 1);
                     if ((keyType == AES128) || (keyType == AES256)) {
                         ids.idAes = secId;
-                    }    
+                    }
                     else {
                         ids.idHmac = secId;
                     }
@@ -350,25 +358,23 @@ namespace Implementation {
                                    std::forward_as_tuple(exportable, ids, SEC_ID_SIZE));
                     TRACE_L2(_T("SEC: new  key placed at %x vault id ,sec obj id %llx \n"),id,secId);
                     _lastHandle = id;
-                }       
+                }
                 else {
                     TRACE_L1(_T("SEC:new  key cannot be created for sec id %llx  ,retVal %d\n"),secId,res);
                 }
             }
             else {
-                TRACE_L1(_T("SEC:valid sec id not retreived  from file name \n"));
+                TRACE_L1(_T("SEC:valid sec id not retreived  from file name %s \n"),kFile.c_str());
             }
         }
         else {
-            TRACE_L1(_T("SEC:Invalid File name : %s\n"),keyFile.c_str());
+            TRACE_L1(_T("SEC:Invalid File name : %s\n"),kFile.c_str());
         }
-   
-        _lock.Unlock();    
-        return (id);
-   
-    }
 
- 
+        _lock.Unlock();
+        return (id);
+
+    }
 
     /*********************************************************************
      * @function Export
@@ -468,7 +474,6 @@ namespace Implementation {
         return (id);
     }
 
-
     /*********************************************************************
      * @function Get 
      *
@@ -547,11 +552,9 @@ namespace Implementation {
 
 } // namespace Implementation
 
-
 extern "C" {
 
     // Vault
-
     VaultImplementation* vault_instance(const cryptographyvault id)
     {
         Implementation::Vault* vault = nullptr;
@@ -679,7 +682,7 @@ extern "C" {
         }
     }
 
-    uint32_t persistence_key_create( struct VaultImplementation* vault,const string& locator,const key_type keyType,uint32_t& id)
+    uint32_t persistent_key_create( struct VaultImplementation* vault,const char locator[],const key_type keyType,uint32_t* id)
     {
         ASSERT(vault != nullptr);
         if (Implementation::vaultId == CRYPTOGRAPHY_VAULT_NETFLIX) {
@@ -687,15 +690,14 @@ extern "C" {
             return (WPEFramework::Core::ERROR_UNAVAILABLE);
         }
         else {
-            TRACE_L2(_T("SEC:persistence_key_create generic\n"));
+            TRACE_L2(_T("SEC:persistent_key_create generic\n"));
             Implementation::Vault* vaultImpl = reinterpret_cast<Implementation::Vault*>(vault);
-            id = vaultImpl->CreateNamedKey(locator,false,keyType);
-            return 0;
+            (*id) = vaultImpl->CreateNamedKey(locator,false,keyType) ; //SEC keys are not exportable
+            return (((*id)!=0)?(WPEFramework::Core::ERROR_NONE):(WPEFramework::Core::ERROR_GENERAL)) ;
         }
     }
 
-
-    uint32_t persistence_key_load(struct VaultImplementation* vault,const string& locator,uint32_t& id)
+    uint32_t persistent_key_load(struct VaultImplementation* vault,const char locator[],uint32_t* id)
     {
         ASSERT(vault != nullptr);
         if (Implementation::vaultId == CRYPTOGRAPHY_VAULT_NETFLIX) {
@@ -703,15 +705,15 @@ extern "C" {
             return (WPEFramework::Core::ERROR_UNAVAILABLE);
         }
         else {
-            TRACE_L2(_T("SEC:persistence_key_load  generic\n"));
+            TRACE_L2(_T("SEC:persistent_key_load  generic\n"));
             Implementation::Vault* vaultImpl = reinterpret_cast<Implementation::Vault*>(vault);
-            id = vaultImpl->ImportNamedKey(locator);
-            return 0;
+            (*id) = vaultImpl->ImportNamedKey(locator);
+            return (((*id)!=0)?(WPEFramework::Core::ERROR_NONE):(WPEFramework::Core::ERROR_GENERAL)) ;
         }
 
     }
 
-    uint32_t  persistence_key_exists( struct VaultImplementation* vault ,const string& locator,bool& result)
+    uint32_t  persistent_key_exists( struct VaultImplementation* vault ,const char locator[],bool* result)
     {
         ASSERT(vault != nullptr);
         if (Implementation::vaultId == CRYPTOGRAPHY_VAULT_NETFLIX) {
@@ -719,26 +721,26 @@ extern "C" {
             return (WPEFramework::Core::ERROR_UNAVAILABLE);
         }
         else {
-            TRACE_L2(_T("SEC:persistence_key_exists generic\n"));
+            TRACE_L2(_T("SEC:persistent_key_exists generic\n"));
             Implementation::Vault* vaultImpl = reinterpret_cast<Implementation::Vault*>(vault);
-            result= vaultImpl->CheckNamedKey(locator);
-            return 0;
+            (*result)= vaultImpl->CheckNamedKey(locator);
+            return (WPEFramework::Core::ERROR_NONE);
         }
 
     }
 
-    uint32_t persistence_flush(struct VaultImplementation* vault)
+    uint32_t persistent_flush(struct VaultImplementation* vault)
     {
         ASSERT(vault != nullptr);
         if (Implementation::vaultId == CRYPTOGRAPHY_VAULT_DEFAULT) {
-            TRACE_L2(_T("SEC:persistence_flush generic\n"));
+            TRACE_L2(_T("SEC:persistent_flush generic\n"));
             Implementation::Vault* vaultImpl = reinterpret_cast<Implementation::Vault*>(vault);
             vaultImpl->ProcessorRelease();
-            return 0;
+            return (WPEFramework::Core::ERROR_NONE);
         }
         else {
             return (WPEFramework::Core::ERROR_UNAVAILABLE);
         }
-                 
+
     }
 } // extern "C"

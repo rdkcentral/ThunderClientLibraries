@@ -34,7 +34,7 @@ struct VaultImplementation* vault_instance(const enum cryptographyvault id);
 
 uint16_t vault_size(const struct VaultImplementation* vault, const uint32_t id);
 
-uint32_t vault_import(struct VaultImplementation* vault, const uint16_t length, const uint8_t blob[],const bool blobIsName);
+uint32_t vault_import(struct VaultImplementation* vault, const uint16_t length, const uint8_t blob[]);
 
 uint16_t vault_export(const struct VaultImplementation* vault, const uint32_t id, const uint16_t max_length, uint8_t blob[]);
 

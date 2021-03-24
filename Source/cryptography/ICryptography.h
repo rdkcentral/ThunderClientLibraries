@@ -121,16 +121,16 @@ namespace Cryptography {
     virtual ~IPersistent() { }
 
     //Check if a named key exists in peristent storage
-    virtual uint32_t Exists(const string& locator, bool& result) const =0;
+    virtual uint32_t Exists(const string& locator, bool& result /* @out */) const =0;
 
     //Load persistent key details to vault
-    virtual uint32_t Load(const string& locator, uint32_t&  id) = 0;
+    virtual uint32_t Load(const string& locator, uint32_t&  id /* @out */) = 0;
 
     //Create a new key on persistent storage
-    virtual uint32_t Create(const string& locator, const keytype keyType, uint32_t& id) = 0 ;
+    virtual uint32_t Create(const string& locator, const keytype keyType, uint32_t& id /* @out */) = 0 ;
 
     //To explicitly flush resources at the backend
-    virtual uint32_t Persistent_Flush() = 0;
+    virtual uint32_t Flush() = 0;
 
     };
 

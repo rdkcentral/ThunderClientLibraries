@@ -36,13 +36,13 @@ typedef enum {
         HMAC256
 }key_type;
 
-uint32_t persistence_key_exists( struct VaultImplementation* vault ,const string& locator,bool& result);
+uint32_t persistent_key_exists( struct VaultImplementation* vault ,const char locator[],bool* result);
 
-uint32_t persistence_key_load(struct VaultImplementation* vault,const string& locator,uint32_t&  id);
+uint32_t persistent_key_load(struct VaultImplementation* vault,const char locator[],uint32_t*  id);
 
-uint32_t persistence_key_create( struct VaultImplementation* vault,const string& locator,const key_type keyType,uint32_t& id);
+uint32_t persistent_key_create( struct VaultImplementation* vault,const char locator[],const key_type keyType,uint32_t* id);
 
-uint32_t persistence_flush(struct VaultImplementation* vault);
+uint32_t persistent_flush(struct VaultImplementation* vault);
 
 
 #ifdef __cplusplus
