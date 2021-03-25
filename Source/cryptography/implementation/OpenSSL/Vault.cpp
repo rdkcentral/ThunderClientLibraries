@@ -52,7 +52,7 @@ namespace Netflix {
     auto ctor = [](Vault& vault) {
         std::string path;
         WPEFramework::Core::SystemInfo::GetEnvironment(_T("NETFLIX_VAULT"), path);
-        WPEFramework::Core::File file(path.c_str(), true);
+        WPEFramework::Core::File file(path);
 
         if (file.Open(true) == true) {
 #ifdef __WINDOWS__
