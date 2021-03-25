@@ -17,7 +17,10 @@
 
 set(TARGET displayinfo)
 
-set(PUBLIC_HEADERS "include/displayinfo.h")
+set(PUBLIC_HEADERS 
+        "include/displayinfo.h"
+        "include/ExtendedDisplayIdentification.h"
+        )
 
 add_library(${TARGET}  SHARED 
     DisplayInfo.cpp
