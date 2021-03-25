@@ -196,6 +196,7 @@ namespace Implementation {
                     if (res != SEC_RESULT_SUCCESS) {
                         TRACE_L1(_T("SEC : SecMac_GetInstance() failed reval :%d \n"),res);
                         SecKey_Release(sec_key);
+                        sec_key =nullptr;
                         _failure = true;
                     }
                     else {
@@ -223,8 +224,9 @@ namespace Implementation {
         if (_vault_digest != nullptr) {
             delete _vault_digest;
         }
-        if (sec_key != nullptr)
+        if (sec_key != nullptr) {
             SecKey_Release(sec_key);
+        }
     }
 
     template<typename OPERATION>

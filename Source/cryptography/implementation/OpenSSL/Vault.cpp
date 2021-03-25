@@ -20,6 +20,7 @@
 #include "../../Module.h"
 
 #include <vault_implementation.h>
+#include <persistent_implementation.h>
 
 #include <cryptalgo/cryptalgo.h>
 
@@ -327,6 +328,7 @@ bool Vault::Delete(const uint32_t id)
     return (result);
 }
 
+
 } // namespace Implementation
 
 extern "C" {
@@ -394,6 +396,7 @@ bool vault_delete(VaultImplementation* vault, const uint32_t id)
     return (vaultImpl->Delete(id));
 }
 
+
 // Netflix Security
 
 uint16_t netflix_security_esn(const uint16_t max_length, uint8_t data[])
@@ -418,6 +421,26 @@ uint32_t netflix_security_hmac_key(void)
 uint32_t netflix_security_wrapping_key(void)
 {
     return (Implementation::Vault::NetflixInstance().Size(Implementation::Netflix::KPW_ID) != 0 ? Implementation::Netflix::KPW_ID : 0);
+}
+
+uint32_t persistent_key_exists( struct VaultImplementation* vault ,const char locator[],bool* result)
+{
+    return(WPEFramework::Core::ERROR_UNAVAILABLE);
+}
+
+uint32_t persistent_key_load(struct VaultImplementation* vault,const char locator[],uint32_t*  id)
+{
+    return(WPEFramework::Core::ERROR_UNAVAILABLE);
+}
+
+uint32_t persistent_key_create( struct VaultImplementation* vault,const char locator[],const key_type keyType,uint32_t* id)
+{
+    return(WPEFramework::Core::ERROR_UNAVAILABLE);
+}
+
+uint32_t persistent_flush(struct VaultImplementation* vault)
+{
+    return(WPEFramework::Core::ERROR_UNAVAILABLE);
 }
 
 } // extern "C"

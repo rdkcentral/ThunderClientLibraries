@@ -21,6 +21,7 @@
 
 #include <ICryptographic.h>
 #include <vault_implementation.h>
+#include <persistent_implementation.h>
 
 #include <core/core.h>
 #include <cryptalgo/cryptalgo.h>
@@ -237,6 +238,26 @@ uint16_t vault_get(const uint32_t id, const uint16_t max_length, uint8_t data[])
 bool vault_clear(const uint32_t id)
 {
     return (Implementation::Vault::Instance().Dispose(id));
+}
+
+uint32_t persistent_key_exists( struct VaultImplementation* vault ,const char locator[],bool* result)
+{
+    return(WPEFramework::Core::ERROR_UNAVAILABLE);
+}
+
+uint32_t persistent_key_load(struct VaultImplementation* vault,const char locator[],uint32_t*  id)
+{
+    return(WPEFramework::Core::ERROR_UNAVAILABLE);
+}
+
+uint32_t persistent_key_create( struct VaultImplementation* vault,const char locator[],const key_type keyType,uint32_t* id)
+{
+    return(WPEFramework::Core::ERROR_UNAVAILABLE);
+}
+
+uint32_t persistent_flush(struct VaultImplementation* vault)
+{
+    return(WPEFramework::Core::ERROR_UNAVAILABLE);
 }
 
 } // extern "C"

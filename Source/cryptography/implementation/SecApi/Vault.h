@@ -30,9 +30,11 @@
 
 #include "../../Module.h"
 #include "cryptography_vault_ids.h"
+#include "vault_implementation.h"
+#include "persistent_implementation.h"
 
 #define globalDir "/opt/drm/"
-#define appDir "/tmp"
+#define appDir "/opt/drm/vault/"  //TODO:To get this path from client
 
 #define DH_PUBLIC_KEY_MAX    (129)
 #define KEYLEN_AES_HMAC_128  (16)
@@ -44,6 +46,7 @@
 #define KEY_PUBLIC	     (2)
 #define NFLX_DH_ALG          (5)
 #define ENC_ID           (1)        
+#define SEC_ID_SIZE          (16)
 
 namespace Implementation {
 
@@ -112,6 +115,11 @@ namespace Implementation {
         uint32_t Put(const uint16_t size, const uint8_t blob[]);
         uint16_t Get(const uint32_t id, const uint16_t size, uint8_t blob[]) const;
         bool Delete(const uint32_t id);
+        /*IPersistent APIs*/
+        uint32_t ImportNamedKey(const char keyFile[]);
+        uint32_t CreateNamedKey(const char keyFile[],bool exportable ,const key_type keyType);
+        bool CheckNamedKey(const char keyFile[]);
+        void ProcessorRelease();
 
     private:
         mutable WPEFramework::Core::CriticalSection _lock;

@@ -34,7 +34,8 @@ namespace Cryptography {
         ID_VAULT,
         ID_CIPHER,
         ID_DIFFIE_HELLMAN,
-        ID_CRYPTOGRAPHY
+        ID_CRYPTOGRAPHY,
+        ID_PERSISTENT
     };
 
     enum aesmode : uint8_t {
@@ -55,6 +56,8 @@ namespace Cryptography {
         SHA512 = 64
     };
 
+
+    
     struct EXTERNAL IHash : virtual public Core::IUnknown {
 
         enum { ID = ID_HASH };
@@ -102,6 +105,35 @@ namespace Cryptography {
         /* Calculate a DH shared secret */
         virtual uint32_t Derive(const uint32_t privateKey, const uint32_t peerPublicKeyId, uint32_t& secretId /* @out */) = 0;
     };
+
+    struct IPersistent : virtual public Core::IUnknown {
+
+    enum { ID = ID_PERSISTENT };
+
+    enum keytype {
+        AES128,
+        AES256,
+        HMAC128,
+        HMAC160,
+        HMAC256
+    };
+
+    virtual ~IPersistent() { }
+
+    //Check if a named key exists in peristent storage
+    virtual uint32_t Exists(const string& locator, bool& result /* @out */) const =0;
+
+    //Load persistent key details to vault
+    virtual uint32_t Load(const string& locator, uint32_t&  id /* @out */) = 0;
+
+    //Create a new key on persistent storage
+    virtual uint32_t Create(const string& locator, const keytype keyType, uint32_t& id /* @out */) = 0 ;
+
+    //To explicitly flush resources at the backend
+    virtual uint32_t Flush() = 0;
+
+    };
+
 
     struct EXTERNAL IVault : virtual public Core::IUnknown {
 

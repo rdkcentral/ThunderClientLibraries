@@ -25,6 +25,7 @@
 #include "implementation/diffiehellman_implementation.h"
 #include "implementation/hash_implementation.h"
 #include "implementation/vault_implementation.h"
+#include "implementation/persistent_implementation.h"
 
 #include <com/com.h>
 #include <plugins/Types.h>
@@ -527,7 +528,7 @@ namespace Implementation {
         HashImplementation* _implementation;
     }; // class HashImpl
 
-    class VaultImpl : virtual public WPEFramework::Cryptography::IVault {
+    class VaultImpl : virtual public WPEFramework::Cryptography::IVault,virtual public WPEFramework::Cryptography::IPersistent {
     public:
         VaultImpl() = delete;
         VaultImpl(const VaultImpl&) = delete;
@@ -547,7 +548,7 @@ namespace Implementation {
             return (vault_size(_implementation, id));
         }
 
-        uint32_t Import(const uint16_t length, const uint8_t blob[]) override
+        uint32_t Import(const uint16_t length, const uint8_t blob[] ) override
         {
             return (vault_import(_implementation, length, blob));
         }
@@ -571,7 +572,27 @@ namespace Implementation {
         {
             return (vault_delete(_implementation, id));
         }
+   
+        uint32_t Exists(const string& locator,bool& result) const override
+        {
+            return(persistent_key_exists(_implementation,locator.c_str(),&result));
+        }
 
+        uint32_t Load(const string& locator,uint32_t& id) override
+        {
+            return(persistent_key_load(_implementation,locator.c_str(),&id));
+        }
+
+        uint32_t Create(const string& locator, const keytype keyType,uint32_t&  id ) override
+        {
+            return(persistent_key_create(_implementation,locator.c_str(), static_cast<key_type>(keyType),&id));
+        }
+
+        uint32_t Flush() override
+        {
+            return(persistent_flush(_implementation));
+        }
+ 
         VaultImplementation* Implementation()
         {
             return _implementation;
@@ -738,6 +759,7 @@ namespace Implementation {
     public:
         BEGIN_INTERFACE_MAP(VaultImpl)
         INTERFACE_ENTRY(WPEFramework::Cryptography::IVault)
+        INTERFACE_ENTRY(WPEFramework::Cryptography::IPersistent)
         END_INTERFACE_MAP
 
     private:
