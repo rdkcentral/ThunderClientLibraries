@@ -683,7 +683,7 @@ public:
     {
         return (_errorCode);
     }
-    inline uint32_t Error(const uint8_t keyId[], uint8_t length) const
+    inline uint32_t Error(const uint8_t[], uint8_t) const
     {
         return (_sysError);
     }

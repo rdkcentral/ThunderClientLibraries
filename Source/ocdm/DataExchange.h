@@ -125,7 +125,7 @@ public:
         const Administration* admin = reinterpret_cast<const Administration*>(AdministrationBuffer());
         return (admin->IV);
     }
-    const uint8_t IVKeyLength() const
+    uint8_t IVKeyLength() const
     {
         const Administration* admin = reinterpret_cast<const Administration*>(AdministrationBuffer());
         return (admin->IVLength);

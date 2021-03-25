@@ -124,10 +124,10 @@ namespace Compositor {
             // Methods
             virtual EGLNativeWindowType Native() const = 0;
             virtual std::string Name() const = 0;
-            virtual void Keyboard(IKeyboard* keyboard) { }
-            virtual void Pointer(IPointer* pointer) { }
-            virtual void Wheel(IWheel* wheel) { }
-            virtual void TouchPanel(ITouchPanel* touchpanel) { }
+            virtual void Keyboard(IKeyboard*) { }
+            virtual void Pointer(IPointer*) { }
+            virtual void Wheel(IWheel*) { }
+            virtual void TouchPanel(ITouchPanel*) { }
             virtual int32_t Width() const = 0;
             virtual int32_t Height() const = 0;
         };

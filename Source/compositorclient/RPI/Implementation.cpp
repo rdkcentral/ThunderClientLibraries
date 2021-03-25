@@ -227,7 +227,7 @@ public:
         graphics_get_display_size(0, &width, &height);
         return (height);
     }
-    EGLSurface CreateSurface (const EGLNativeWindowType& display, const uint32_t width, const uint32_t height) 
+    EGLSurface CreateSurface (const EGLNativeWindowType&, const uint32_t, const uint32_t) 
     {
         EGLSurface result;
 
@@ -504,31 +504,31 @@ private:
         }
         inline void SendKey(
             const uint32_t key,
-            const IKeyboard::state action, const uint32_t time)
+            const IKeyboard::state action, const uint32_t)
         {
             if (_keyboard != nullptr) {
                 _keyboard->Direct(key, action);
             }
         }
-        inline void SendWheelMotion(const int16_t x, const int16_t y, const uint32_t time)
+        inline void SendWheelMotion(const int16_t x, const int16_t y, const uint32_t)
         {
             if (_wheel != nullptr) {
                 _wheel->Direct(x, y);
             }
         }
-        inline void SendPointerButton(const uint8_t button, const IPointer::state state, const uint32_t time)
+        inline void SendPointerButton(const uint8_t button, const IPointer::state state, const uint32_t)
         {
             if (_pointer != nullptr) {
                 _pointer->Direct(button, state);
             }
         }
-        inline void SendPointerPosition(const int16_t x, const int16_t y, const uint32_t time)
+        inline void SendPointerPosition(const int16_t x, const int16_t y, const uint32_t)
         {
             if (_pointer != nullptr) {
                 _pointer->Direct(x, y);
             }
         }
-        inline void SendTouch(const uint8_t index, const ITouchPanel::state state, const uint16_t x, const uint16_t y, const uint32_t time)
+        inline void SendTouch(const uint8_t index, const ITouchPanel::state state, const uint16_t x, const uint16_t y, const uint32_t)
         {
             if (_touchpanel != nullptr) {
                 _touchpanel->Direct(index, state, x, y);
@@ -895,7 +895,7 @@ int Display::FileDescriptor() const
     return (g_pipefd[0]);
 }
 
-Compositor::IDisplay::ISurface* Display::SurfaceByName(const std::string& name)
+Compositor::IDisplay::ISurface* Display::SurfaceByName(const std::string&)
 {
     //TODO not implemented
     return nullptr;

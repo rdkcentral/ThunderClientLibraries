@@ -206,7 +206,7 @@ struct OpenCDMSession* opencdm_get_system_session(struct OpenCDMSystem* system, 
  * \return Non-zero on success, zero on error.
  */
 EXTERNAL OpenCDMBool opencdm_system_supports_server_certificate(
-    struct OpenCDMSystem* system)
+    struct OpenCDMSystem*)
 {
   return OPENCDM_BOOL_FALSE;
 }
