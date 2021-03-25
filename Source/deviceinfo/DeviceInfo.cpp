@@ -272,7 +272,7 @@ uint32_t deviceinfo_id_str(char buffer[], uint8_t* length)
 
             if (*length >= id.size()) {
                 memcpy(buffer, id.c_str(), id.size() + 1);
-                *length = id.size();
+                *length = static_cast<uint8_t>(id.size());
                 result = Core::ERROR_NONE;
             } else {
                 result = Core::ERROR_WRITE_ERROR;
