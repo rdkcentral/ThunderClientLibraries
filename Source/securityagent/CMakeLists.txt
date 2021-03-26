@@ -18,7 +18,7 @@
 set(TARGET securityagent)
 
 # Construct a library object
-add_library(${TARGET} STATIC
+add_library(${TARGET} SHARED
         ipclink.cpp
         Module.cpp
         )
