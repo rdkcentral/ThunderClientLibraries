@@ -31,7 +31,7 @@ message("Setup ${TARGET} v${PROJECT_VERSION}")
 find_package(${NAMESPACE}Core REQUIRED)
 
 # Construct a library object
-add_library(${TARGET} STATIC
+add_library(${TARGET} SHARED
         ipclink.cpp
         Module.cpp
         )
