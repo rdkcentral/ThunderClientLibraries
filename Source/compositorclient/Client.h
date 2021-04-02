@@ -23,6 +23,11 @@
 #include <assert.h>
 #include <string.h>
 #include <cstddef>
+
+#ifndef EGL_NO_X11
+#define EGL_NO_X11
+#endif
+
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <string>

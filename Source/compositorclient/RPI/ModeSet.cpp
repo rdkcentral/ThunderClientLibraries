@@ -77,6 +77,7 @@ static int FileDescriptor()
             // The node might be priviliged and the call will fail.
             // Do not close fd with exec functions! No O_CLOEXEC!
             fd = open(index->c_str(), O_RDWR); 
+            printf("Opening: %s [%d]\n", index->c_str(), fd);
         }
         index++;
     }
@@ -320,32 +321,27 @@ ModeSet::ModeSet()
     , _buffer(nullptr)
 {
     if (drmAvailable() > 0) {
-        Create();
-    }
-}
+        _fd = FileDescriptor();
 
-void ModeSet::Create()
-{
-    _fd = FileDescriptor();
+        if(_fd >= 0) {
+            bool enabled = false;
+            if ( (FindProperDisplay(_fd, _crtc, _encoder, _connector, _fb) == true) && 
+                 /* TODO: Changes the original fb which might not be what is intended */
+                 (CreateBuffer(_fd, _connector, _device, _mode, _fb, _buffer) == true) && 
+                 (drmSetMaster(_fd) == 0) ) {
 
-    if(_fd >= 0) {
-        bool enabled = false;
-        if ( (FindProperDisplay(_fd, _crtc, _encoder, _connector, _fb) == true) && 
-             /* TODO: Changes the original fb which might not be what is intended */
-             (CreateBuffer(_fd, _connector, _device, _mode, _fb, _buffer) == true) && 
-             (drmSetMaster(_fd) == 0) ) {
+                drmModeConnectorPtr pconnector = drmModeGetConnector(_fd, _connector);
 
-            drmModeConnectorPtr pconnector = drmModeGetConnector(_fd, _connector);
+                if(pconnector != nullptr) {
+                    /* At least one mode has to be set */
+                    enabled = (0 == drmModeSetCrtc(_fd, _crtc, _fb, 0, 0, &_connector, 1, &(pconnector->modes[_mode])));
 
-            if(pconnector != nullptr) {
-                /* At least one mode has to be set */
-                enabled = (0 == drmModeSetCrtc(_fd, _crtc, _fb, 0, 0, &_connector, 1, &(pconnector->modes[_mode])));
-
-                drmModeFreeConnector(pconnector);
+                    drmModeFreeConnector(pconnector);
+                }
             }
-        }
-        if (enabled == false) {
-            Destruct();
+            if (enabled == false) {
+                Destruct();
+            }
         }
     }
 }
@@ -413,6 +409,7 @@ struct gbm_surface* ModeSet::CreateRenderTarget(const uint32_t width, const uint
     if(nullptr != _device)
     {
         result = gbm_surface_create(_device, width, height, SupportedBufferType(), GBM_BO_USE_SCANOUT /* presented on a screen */ | GBM_BO_USE_RENDERING /* used for rendering */);
+        printf ("Created a render target...[%p]\n", result);
     }
 
     return result;

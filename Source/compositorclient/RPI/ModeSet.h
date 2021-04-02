@@ -45,6 +45,10 @@ class ModeSet
             // See SupportedBufferType(), total number of bits representing the R, G, B channels
             return 24;
         }
+        int Descriptor() const
+        {
+            return (_fd);
+        }
 
         uint32_t Width() const;
         uint32_t Height() const;
@@ -52,7 +56,6 @@ class ModeSet
         void DestroyRenderTarget(struct gbm_surface* surface);
 
     private:
-        void Create();
         void Destruct();
 
     private:

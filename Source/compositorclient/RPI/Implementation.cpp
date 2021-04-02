@@ -36,70 +36,7 @@
 #include <virtualinput/virtualinput.h>
 #include "../Client.h"
 
-int g_pipefd[2];
-
-enum inputtype {
-    KEYBOARD,
-    MOUSE,
-    TOUCHSCREEN
-};
-
-struct Message {
-    inputtype type;
-    union {
-        struct {
-            keyactiontype type;
-            uint32_t code;
-        } keyData;
-        struct {
-            mouseactiontype type;
-            uint16_t button;
-            int16_t horizontal;
-            int16_t vertical;
-        } mouseData;
-        struct {
-            touchactiontype type;
-            uint16_t index;
-            uint16_t x;
-            uint16_t y;
-        } touchData;
-    };
-};
-
 static const char* connectorNameVirtualInput = "/tmp/keyhandler";
-
-static void VirtualKeyboardCallback(keyactiontype type, unsigned int code)
-{
-    if (type != KEY_COMPLETED) {
-        Message message;
-        message.type = KEYBOARD;
-        message.keyData.type = type;
-        message.keyData.code = code;
-        write(g_pipefd[1], &message, sizeof(message));
-    }
-}
-
-static void VirtualMouseCallback(mouseactiontype type, unsigned short button, signed short horizontal, signed short vertical)
-{
-    Message message;
-    message.type = MOUSE;
-    message.mouseData.type = type;
-    message.mouseData.button = button;
-    message.mouseData.horizontal = horizontal;
-    message.mouseData.vertical = vertical;
-    write(g_pipefd[1], &message, sizeof(message));
-}
-
-static void VirtualTouchScreenCallback(touchactiontype type, unsigned short index, unsigned short x, unsigned short y)
-{
-    Message message;
-    message.type = TOUCHSCREEN;
-    message.touchData.type = type;
-    message.touchData.index = index;
-    message.touchData.x = x;
-    message.touchData.y = y;
-    write(g_pipefd[1], &message, sizeof(message));
-}
 
 namespace {
 
@@ -108,18 +45,12 @@ namespace {
 using namespace WPEFramework;
 
 class Platform {
-private:
-    Platform() : _platform()
-    {
-    }
-
 public:
     Platform(const Platform&) = delete;
     Platform& operator=(const Platform&) = delete;
 
-    static Platform& Instance() {
-        static Platform singleton;
-        return singleton;
+    Platform(const string&) : _platform()
+    {
     }
     ~Platform() = default;
 
@@ -152,7 +83,7 @@ public:
         // A Native surface that acts as a native window
         EGLSurface result = reinterpret_cast<EGLSurface>(_platform.CreateRenderTarget(width, height));
 
-        if (result != 0) {
+        if (result == 0) {
             TRACE_L1(_T("The native window (handle) might be invalid / unsupported. Expect undefined behavior!"));
         }
 
@@ -174,6 +105,9 @@ public:
     {
         TRACE_L1(_T("Currently not supported"));
     }
+    int Descriptor() const {
+        return(_platform.Descriptor());
+    }
  
 private:
     ModeSet _platform;
@@ -190,18 +124,13 @@ private:
         uint8_t opacity;
     };
 
-    Platform()
-    {
-        bcm_host_init();
-    }
-
 public:
     Platform(const Platform&) = delete;
     Platform& operator=(const Platform&) = delete;
 
-    static Platform& Instance() {
-        static Platform singleton;
-        return singleton;
+    Platform(const string&)
+    {
+        bcm_host_init();
     }
     ~Platform()
     {
@@ -209,6 +138,9 @@ public:
     }
 
 public:
+    bool IsValid() const {
+        return (true);
+    }
     EGLNativeDisplayType Display() const 
     {
         EGLNativeDisplayType result (static_cast<EGLNativeDisplayType>(EGL_DEFAULT_DISPLAY));
@@ -334,6 +266,10 @@ public:
         vc_dispmanx_element_change_layer(dispmanUpdate, object->surface.element, actualLayer);
         vc_dispmanx_update_submit_sync(dispmanUpdate);
     }
+
+    int Descriptor() const {
+       return (-1);
+    }
 };
 
 #endif
@@ -354,12 +290,6 @@ static Core::NodeId Connector()
 
 class Display : public Compositor::IDisplay {
 private:
-    Display() = delete;
-    Display(const Display&) = delete;
-    Display& operator=(const Display&) = delete;
-    
-    Display(const std::string& displayName);
-
     class EXTERNAL CompositorClient {
     private:
         // -------------------------------------------------------------------
@@ -399,7 +329,6 @@ private:
     private:
         string _text;
     };
-
     class SurfaceImplementation : public Compositor::IDisplay::ISurface {
     private:
         class RemoteAccess : public Exchange::IComposition::IClient {
@@ -408,8 +337,9 @@ private:
             RemoteAccess(const RemoteAccess&) = delete;
             RemoteAccess& operator= (const RemoteAccess&) = delete;
 
-            RemoteAccess(EGLSurface& surface, const string& name, const uint32_t width, const uint32_t height)
-                : _name(name)
+            RemoteAccess(Display& display, EGLSurface& surface, const string& name, const uint32_t width, const uint32_t height)
+                : _display(display)
+                , _name(name)
                 , _opacity(Exchange::IComposition::maxOpacity)
                 , _layer(0)
                 , _nativeSurface(surface)
@@ -446,6 +376,7 @@ private:
             END_INTERFACE_MAP
  
         private:
+            Display& _display;
             const std::string _name;
 
             uint32_t _opacity;
@@ -462,7 +393,7 @@ private:
         SurfaceImplementation& operator=(const SurfaceImplementation&) = delete;
 
         SurfaceImplementation(
-            Display* compositor, const std::string& name,
+            Display& compositor, const std::string& name,
             const uint32_t width, const uint32_t height);
         ~SurfaceImplementation() override;
 
@@ -546,8 +477,90 @@ private:
         RemoteAccess* _remoteAccess;
     };
 
+    using InputFunction = std::function<void(SurfaceImplementation*)>;
+
+    static void VirtualKeyboardCallback(keyactiontype type, unsigned int code)
+    {
+        if (type != KEY_COMPLETED) {
+            time_t timestamp = time(nullptr);
+            const IDisplay::IKeyboard::state state = ((type == KEY_RELEASED) ? IDisplay::IKeyboard::released : 
+                                                     ((type == KEY_REPEAT)   ? IDisplay::IKeyboard::repeated : 
+                                                                               IDisplay::IKeyboard::pressed));
+
+            InputFunction action = [=](SurfaceImplementation* s) { s->SendKey(code, state, timestamp); };
+
+            Publish(action);
+        }
+    }
+
+    static void VirtualMouseCallback(mouseactiontype type, unsigned short button, signed short horizontal, signed short vertical)
+    {
+        static int32_t pointer_x = 0;
+        static int32_t pointer_y = 0;
+
+        time_t timestamp = time(nullptr);
+        InputFunction action;
+        pointer_x = pointer_x + horizontal;
+        pointer_y = pointer_y + vertical;
+
+        switch (type)
+        {
+            case MOUSE_MOTION:
+                action = [=](SurfaceImplementation* s) { 
+                    int32_t X = std::min(std::max(0, pointer_x), s->Width());
+                    int32_t Y = std::min(std::max(0, pointer_y), s->Height());
+                    s->SendPointerPosition(X,Y,timestamp); };
+                break;
+            case MOUSE_SCROLL:
+                action = [=](SurfaceImplementation* s) { s->SendWheelMotion(horizontal, vertical, timestamp); };
+                break;
+            case MOUSE_RELEASED:
+            case MOUSE_PRESSED:
+                action = [=](SurfaceImplementation* s) { s->SendPointerButton(button, type == MOUSE_RELEASED? IDisplay::IPointer::released : IDisplay::IPointer::pressed, timestamp); };
+                break;
+        }
+
+        Publish(action);
+    }
+
+    static void VirtualTouchScreenCallback(touchactiontype type, unsigned short index, unsigned short x, unsigned short y)
+    {
+        static uint16_t touch_x = ~0;
+        static uint16_t touch_y = ~0;
+        static touchactiontype last_type = TOUCH_RELEASED;
+
+        // Get touch position in pixels
+        // Reduce IPC traffic. The physical touch coordinates might be different, but when scaled to screen position, they may be same as previous.
+        if ((x != touch_x) || (y != touch_y) || (type != last_type)) {
+
+            last_type = type;
+            touch_x = x;
+            touch_y = y;
+
+            time_t timestamp = time(nullptr);
+            const IDisplay::ITouchPanel::state state = ((type == TOUCH_RELEASED) ? ITouchPanel::released : 
+                                                       ((type == TOUCH_PRESSED)  ? ITouchPanel::pressed  : 
+                                                                                   ITouchPanel::motion));
+
+            InputFunction action = [=](SurfaceImplementation* s) { 
+                const uint16_t mapped_x = (s->Width() * x) >> 16;
+                const uint16_t mapped_y = (s->Height() * y) >> 16;
+                s->SendTouch(index, state, mapped_x, mapped_y, timestamp); 
+            };
+
+            Publish(action);
+        }
+    }
+
+
+    Display(const std::string& displayName);
+
 public:
-    typedef std::map<const string, Display*> DisplayMap;
+    using DisplayMap = std::map<const string, Display*>;
+    
+    Display() = delete;
+    Display(const Display&) = delete;
+    Display& operator=(const Display&) = delete;
     
     ~Display() override;
 
@@ -601,7 +614,7 @@ public:
     }
     EGLNativeDisplayType Native() const override
     {
-        return (Platform::Instance().Display());
+        return (_platform.Display());
     }
     const std::string& Name() const final override
     {
@@ -616,13 +629,27 @@ public:
 
     inline uint32_t DisplaySizeWidth() const
     {
-        return Platform::Instance().Width();
+        return _platform.Width();
     }
 
     inline uint32_t DisplaySizeHeight() const
     {
-        return Platform::Instance().Height();
+        return _platform.Height();
     }
+
+    EGLSurface CreateSurface (const uint32_t width, const uint32_t height) {
+        return (_platform.CreateSurface(_platform.Display(), width, height));
+    }
+
+    void DestroySurface(const EGLSurface& surface) 
+    {
+        _platform.DestroySurface(surface);
+    }
+    Platform& Controller()
+    {
+        return(_platform);
+    }
+ 
 
 private:
     inline void Register(SurfaceImplementation* surface);
@@ -630,6 +657,15 @@ private:
     inline void OfferClientInterface(Exchange::IComposition::IClient* client);
     inline void RevokeClientInterface(Exchange::IComposition::IClient* client);
 
+    inline static void Publish (InputFunction& action) {
+        if (action != nullptr) {
+            _displaysMapLock.Lock();
+            for (std::pair<const string, Display*>& entry : _displays) {
+                std::for_each(begin(entry.second->_surfaces), end(entry.second->_surfaces), action);
+            }
+            _displaysMapLock.Unlock();
+        }
+    }
     inline void Initialize()
     {
         _adminLock.Lock();
@@ -670,10 +706,6 @@ private:
             TRACE_L1(_T("Initialization of virtual input failed for Display %s!"), Name().c_str());
         }
 
-        if (pipe(g_pipefd) == -1) {
-            g_pipefd[0] = -1;
-            g_pipefd[1] = -1;
-        }
         _adminLock.Unlock();
     }
 
@@ -682,16 +714,9 @@ private:
         _adminLock.Lock();
         _isRunning = false;
 
-        Message message;
-        memset(&message, 0, sizeof(message));
-        write(g_pipefd[1], &message, sizeof(message));
-
         if (_virtualinput != nullptr) {
             virtualinput_close(_virtualinput);
         }
-
-        close(g_pipefd[1]);
-        close(g_pipefd[0]);
 
         std::list<SurfaceImplementation*>::iterator index(_surfaces.begin());
         while (index != _surfaces.end()) {
@@ -713,17 +738,13 @@ private:
     static DisplayMap _displays; 
     static Core::CriticalSection _displaysMapLock;
 
+    Platform _platform;
     bool _isRunning;
     std::string _displayName;
     mutable Core::CriticalSection _adminLock;
     void* _virtualinput;
     std::list<SurfaceImplementation*> _surfaces;
     Core::ProxyType<RPC::CommunicatorClient> _compositerServerRPCConnection;
-    uint16_t _pointer_x;
-    uint16_t _pointer_y;
-    uint16_t _touch_x;
-    uint16_t _touch_y;
-    uint16_t _touch_state;
 
     mutable uint32_t _refCount;
 };
@@ -732,10 +753,10 @@ Display::DisplayMap Display::_displays;
 Core::CriticalSection Display::_displaysMapLock;
 
 Display::SurfaceImplementation::SurfaceImplementation(
-    Display* display,
+    Display& display,
     const std::string& name,
     const uint32_t width, const uint32_t height)
-    : _display(*display)
+    : _display(display)
     , _keyboard(nullptr)
     , _wheel(nullptr)
     , _pointer(nullptr)
@@ -758,11 +779,11 @@ Display::SurfaceImplementation::SurfaceImplementation(
         if (realHeight != _display.DisplaySizeHeight()) { realHeight = _display.DisplaySizeHeight(); }
     }
 
-    EGLSurface nativeSurface = Platform::Instance().CreateSurface(_display.Native(), realWidth, realHeight);
+    EGLSurface nativeSurface = _display.CreateSurface(realWidth, realHeight);
 
     _display.Register(this);
 
-    _remoteAccess = Core::Service<RemoteAccess>::Create<RemoteAccess>(nativeSurface, name, realWidth, realHeight);
+    _remoteAccess = Core::Service<RemoteAccess>::Create<RemoteAccess>(_display, nativeSurface, name, realWidth, realHeight);
 
     _display.OfferClientInterface(_remoteAccess);
 }
@@ -773,7 +794,7 @@ Display::SurfaceImplementation::~SurfaceImplementation()
 
     _display.Unregister(this);
 
-    Platform::Instance().DestroySurface(_remoteAccess->Surface());
+    _display.DestroySurface(_remoteAccess->Surface());
 
     _display.RevokeClientInterface(_remoteAccess);
 
@@ -788,7 +809,7 @@ void Display::SurfaceImplementation::RemoteAccess::Opacity(
 
     _opacity = (value > Exchange::IComposition::maxOpacity) ? Exchange::IComposition::maxOpacity : value;
 
-    Platform::Instance().Opacity(_nativeSurface, _opacity);
+    _display.Controller().Opacity(_nativeSurface, _opacity);
 }
 
 
@@ -796,7 +817,7 @@ uint32_t Display::SurfaceImplementation::RemoteAccess::Geometry(const Exchange::
 {
     _destination = rectangle;
 
-    Platform::Instance().Geometry(_nativeSurface, _destination);
+    _display.Controller().Geometry(_nativeSurface, _destination);
     return (Core::ERROR_NONE);
 }
 
@@ -809,7 +830,7 @@ uint32_t Display::SurfaceImplementation::RemoteAccess::ZOrder(const uint16_t zor
 {
     _layer = zorder;
 
-    Platform::Instance().ZOrder(_nativeSurface, _layer);
+    _display.Controller().ZOrder(_nativeSurface, _layer);
 
     return (Core::ERROR_NONE);
 }
@@ -819,16 +840,12 @@ uint32_t Display::SurfaceImplementation::RemoteAccess::ZOrder() const {
 }
 
 Display::Display(const string& name)
-    : _isRunning(true)
+    : _platform(name)
+    , _isRunning(true)
     , _displayName(name)
     , _adminLock()
     , _virtualinput(nullptr)
     , _compositerServerRPCConnection()
-    , _pointer_x(0)
-    , _pointer_y(0)
-    , _touch_x(-1)
-    , _touch_y(-1)
-    , _touch_state(0)
     , _refCount(0)
 {
 }
@@ -839,60 +856,12 @@ Display::~Display()
 
 int Display::Process(const uint32_t data)
 {
-    Message message;
-    if ((data != 0) && (g_pipefd[0] != -1) && (read(g_pipefd[0], &message, sizeof(message)) > 0)) {
-        _adminLock.Lock();
-
-        time_t timestamp = time(nullptr);
-        std::function<void(SurfaceImplementation*)> action = nullptr;
-        if (message.type == KEYBOARD) {
-            const IDisplay::IKeyboard::state state = ((message.keyData.type == KEY_RELEASED)? IDisplay::IKeyboard::released : ((message.keyData.type == KEY_REPEAT)? IDisplay::IKeyboard::repeated : IDisplay::IKeyboard::pressed));
-            action = [=](SurfaceImplementation* s) { s->SendKey(message.keyData.code, state, timestamp); };
-        } else if (message.type == MOUSE) {
-            // Clamp movement to display size
-            // TODO: Handle surfaces that are not full screen
-            _pointer_x = std::max(0, std::min(static_cast<int32_t>(_pointer_x) + message.mouseData.horizontal, static_cast<int32_t>(DisplaySizeWidth() - 1)));
-            _pointer_y = std::max(0, std::min(static_cast<int32_t>(_pointer_y) + message.mouseData.vertical, static_cast<int32_t>(DisplaySizeHeight() - 1)));
-            switch (message.mouseData.type)
-            {
-            case MOUSE_MOTION:
-                action = [=](SurfaceImplementation* s) { s->SendPointerPosition(_pointer_x, _pointer_y, timestamp); };
-                break;
-            case MOUSE_SCROLL:
-                action = [=](SurfaceImplementation* s) { s->SendWheelMotion(message.mouseData.horizontal, message.mouseData.vertical, timestamp); };
-                break;
-            case MOUSE_RELEASED:
-            case MOUSE_PRESSED:
-                action = [=](SurfaceImplementation* s) { s->SendPointerButton(message.mouseData.button, message.mouseData.type == MOUSE_RELEASED? IDisplay::IPointer::released : IDisplay::IPointer::pressed , timestamp); };
-                break;
-            }
-        } else if (message.type == TOUCHSCREEN) {
-            // Get touch position in pixels
-            // TODO: Handle surfaces that are not full screen
-            const uint16_t x = (DisplaySizeWidth() * (message.touchData.x)) >> 16;
-            const uint16_t y = (DisplaySizeHeight() * (message.touchData.y)) >> 16;
-            const IDisplay::ITouchPanel::state state = ((message.touchData.type == TOUCH_RELEASED)? ITouchPanel::released : ((message.touchData.type == TOUCH_PRESSED)? ITouchPanel::pressed : ITouchPanel::motion));
-            // Reduce IPC traffic. The physical touch coordinates might be different, but when scaled to screen position, they may be same as previous.
-            if ((x != _touch_x) || (y != _touch_y) || (state != _touch_state)) {
-                action = [=](SurfaceImplementation* s) { s->SendTouch(message.touchData.index, state, x, y, timestamp); };
-                _touch_state = state;
-                _touch_x = x;
-                _touch_y = y;
-            }
-        }
-
-        if ((action != nullptr) && (_isRunning == true)) {
-            std::for_each(begin(_surfaces), end(_surfaces), action);
-        }
-
-        _adminLock.Unlock();
-    }
-    return (0);
+    return(1);
 }
 
 int Display::FileDescriptor() const
 {
-    return (g_pipefd[0]);
+    return (_platform.Descriptor());
 }
 
 Compositor::IDisplay::ISurface* Display::SurfaceByName(const std::string&)
@@ -904,7 +873,7 @@ Compositor::IDisplay::ISurface* Display::SurfaceByName(const std::string&)
 Compositor::IDisplay::ISurface* Display::Create(
     const std::string& name, const uint32_t width, const uint32_t height)
 {
-    Core::ProxyType<SurfaceImplementation> retval = (Core::ProxyType<SurfaceImplementation>::Create(this, name, width, height));
+    Core::ProxyType<SurfaceImplementation> retval = (Core::ProxyType<SurfaceImplementation>::Create(*this, name, width, height));
     Compositor::IDisplay::ISurface* result = &(*retval);
     result->AddRef();
     return result;
@@ -977,6 +946,7 @@ void Display::RevokeClientInterface(Exchange::IComposition::IClient* client)
 
 Compositor::IDisplay* Compositor::IDisplay::Instance(const string& displayName)
 {
-    return (&(RPI::Display::Instance(displayName)));
+    Compositor::IDisplay* result = (&(RPI::Display::Instance(displayName)));
+    return (result);
 }
 } // WPEFramework
