@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#include <mutex>
+
 extern "C"
 {
 #include <drm/drm_fourcc.h>
@@ -76,6 +78,7 @@ static int FileDescriptor()
         {
             // The node might be priviliged and the call will fail.
             // Do not close fd with exec functions! No O_CLOEXEC!
+            printf("Opened: %s\n", index->c_str());
             fd = open(index->c_str(), O_RDWR); 
         }
         index++;
@@ -426,3 +429,127 @@ void ModeSet::DestroyRenderTarget(struct gbm_surface* surface)
     }
 }
 
+bool ModeSet::ScanOutRenderTarget (struct gbm_surface* surface) {
+    bool _ret = false;
+
+    static gbm_bo_t _bo;
+
+   _bo = gbm_surface_lock_front_buffer (surface);
+
+    if (_bo != gbm_bo_t_DEFAULT ()) {
+        uint32_t _format = gbm_bo_get_format (_bo);
+        uint32_t _bpp = gbm_bo_get_bpp (_bo);
+        uint32_t _stride = gbm_bo_get_stride (_bo);
+        uint32_t _height = gbm_bo_get_height (_bo);
+        uint32_t _width = gbm_bo_get_width (_bo);
+        uint32_t _handle = gbm_bo_get_handle (_bo).u32;
+
+        // Nothing better to initialize it with
+        uint32_t __fb = _fb;
+
+        if (_fd > 0 && drmModeAddFB (_fd, _width, _height, _format != DRM_FORMAT_ARGB8888 ? _bpp - BPP () + ColorDepth () : _bpp, _bpp, _stride, _handle, &_fb) == 0) {
+                    using drm_callback_data_t = struct { int fd; uint32_t fb; gbm_bo_t bo; bool waiting; };
+
+                    static drm_callback_data_t _callback_data = {_fd, __fb, _bo, true};
+
+                    // Guardian of the shared data presented one line earlier
+                    static std::mutex _mutex;
+
+                    _callback_data = {_fd, __fb, _bo, true};
+
+                    int _err = drmModePageFlip (_fd, _crtc, _fb, DRM_MODE_PAGE_FLIP_EVENT, &_callback_data);
+
+                    switch (0 - _err) {
+                        case 0      :   {   // No error
+                                            // Strictly speaking c++ linkage and not C linkage
+                                            // Asynchronous, but never called more than once, waiting in scope
+                                            auto handler = +[] (int fd, unsigned int frame, unsigned int sec, unsigned int usec, void* data) {
+                                                std::lock_guard < decltype (_mutex) > _lock (_mutex);
+
+                                                if (data != nullptr) {
+                                                    drm_callback_data_t* _data = reinterpret_cast <drm_callback_data_t*> (data);
+
+                                                    assert (fd == _data->fd);
+
+
+                                                    // Encourages the loop to break
+                                                    _data->waiting = false;
+                                                }
+                                                else {
+                                                    //TRACE_L1 (_T ("Invalid callback data"));
+                                                    fprintf (stdout, "Invalid callback data\n");
+                                                }
+                                            };
+
+                                            // Use the magic constant here because the struct is versioned!
+                                            drmEventContext _context = { .version = 2, . vblank_handler = nullptr, .page_flip_handler = handler };
+
+                                            fd_set _fds;
+
+                                            struct timespec _timeout = { .tv_sec = FrameDuration (), .tv_nsec = 0 };
+
+                                            bool _waiting = true;
+
+                                            {
+                                                std::lock_guard < decltype (_mutex) > _lock (_mutex);
+                                                _waiting = _callback_data.waiting;
+                                            }
+
+                                            while (_waiting != false) {
+                                                FD_ZERO (&_fds);
+                                                FD_SET( _fd, &_fds);
+
+                                                // Race free
+                                                _err  = pselect(_fd + 1, &_fds, nullptr, nullptr, &_timeout, nullptr);
+
+                                                if (_err < 0) {
+                                                    // Error; break the loop
+                                                    break;
+                                                }
+                                                else {
+                                                    if (_err == 0) {
+                                                            // Timeout; retry
+// TODO: add an additional condition to break the loop to limit the number of retries, but then deal with the asynchronous nature of the callback
+                                                    }
+                                                    else { // ret > 0
+                                                        if (FD_ISSET (_fd, &_fds) != 0) {
+                                                            // Node is readable
+                                                            if (drmHandleEvent (_fd, &_context) != 0) {
+                                                                // Error; break the loop
+                                                                break;
+                                                            }
+
+                                                            // Flip probably occured already otherwise it loops again
+                                                        }
+                                                    }
+                                                }
+
+                                                {
+                                                    std::lock_guard < decltype (_mutex) > _lock (_mutex);
+                                                    _waiting = _callback_data.waiting;
+                                                }
+                                            }
+
+                                            break;
+                                        }
+                        // Many causes, but the most obvious is a busy resource or a missing drmModeSetCrtc
+                        case EINVAL :   {   // Probably a missing drmModeSetCrtc or an invalid _crtc
+                                            // See ModeSet::Create, not recovering here
+                                            assert (false);
+                                            break;
+                                        }
+                        case EBUSY  :
+                        default     :   {
+                                        // There is nothing to be done about it
+                                        }
+                    }
+        }
+
+        // These two should be kept in sync for multiple buffers
+
+        /* void */ gbm_surface_release_buffer (surface, _bo);
+        /* int */ drmModeRmFB(_fd, __fb);
+    }
+
+    return _ret;
+}
