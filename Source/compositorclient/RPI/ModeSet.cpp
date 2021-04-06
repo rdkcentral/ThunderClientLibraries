@@ -9,13 +9,12 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <mutex>
 
 #include <drm/drm_fourcc.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 #include <gbm.h>
-
-#include <core/core.h>
 
 static constexpr uint8_t DrmMaxDevices()
 {
@@ -430,10 +429,12 @@ static void PageFlip (int, unsigned int, unsigned int, unsigned int, void* data)
 
     assert (data != nullptr);
 
-    reinterpret_cast<WPEFramework::Core::Event*> (data)->SetEvent();
+    reinterpret_cast<std::mutex*> (data)->unlock();
 };
 
 void ModeSet::ScanOutRenderTarget (struct gbm_surface* surface) {
+
+    assert (_fd > 0);
 
     gbm_bo* _bo = gbm_surface_lock_front_buffer (surface);
 
@@ -446,64 +447,56 @@ void ModeSet::ScanOutRenderTarget (struct gbm_surface* surface) {
         // Nothing better to initialize it with
         uint32_t __fb = _fb;
 
-        if (_fd > 0 && drmModeAddFB (_fd, gbm_bo_get_width (_bo), gbm_bo_get_height (_bo), _format != DRM_FORMAT_ARGB8888 ? _bpp - BPP () + ColorDepth () : _bpp, _bpp, _stride, _handle, &_fb) == 0) {
+        if (drmModeAddFB (_fd, gbm_bo_get_width (_bo), gbm_bo_get_height (_bo), _format != DRM_FORMAT_ARGB8888 ? _bpp - BPP () + ColorDepth () : _bpp, _bpp, _stride, _handle, &_fb) == 0) {
 
-            WPEFramework::Core::Event signal(false, true);
+            std::mutex signal; 
+            signal.lock();
 
-            int _err = drmModePageFlip (_fd, _crtc, _fb, DRM_MODE_PAGE_FLIP_EVENT, &signal);
+            int err = drmModePageFlip (_fd, _crtc, _fb, DRM_MODE_PAGE_FLIP_EVENT, &signal);
 
             // Many causes, but the most obvious is a busy resource or a missing drmModeSetCrtc
             // Probably a missing drmModeSetCrtc or an invalid _crtc
             // See ModeSet::Create, not recovering here
-            assert (_err != EINVAL);
+            assert (err != EINVAL);
 
-            if (_err == 0) {
+            if (err == 0) {
                 // No error
                 // Strictly speaking c++ linkage and not C linkage
                 // Asynchronous, but never called more than once, waiting in scope
                 // Use the magic constant here because the struct is versioned!
-                drmEventContext _context = { .version = 2, . vblank_handler = nullptr, .page_flip_handler = PageFlip };
+                drmEventContext context = { .version = 2, . vblank_handler = nullptr, .page_flip_handler = PageFlip };
+                struct timespec timeout = { .tv_sec = 1, .tv_nsec = 0 };
+                fd_set fds;
 
-                fd_set _fds;
-
-                struct timespec _timeout = { .tv_sec = 1, .tv_nsec = 0 };
-
-                while (signal.Lock(0) != WPEFramework::Core::ERROR_NONE) {
-                    FD_ZERO (&_fds);
-                    FD_SET( _fd, &_fds);
+                while (signal.try_lock() == false) {
+                    FD_ZERO(&fds);
+                    FD_SET(_fd, &fds);
 
                     // Race free
-                    _err  = pselect(_fd + 1, &_fds, nullptr, nullptr, &_timeout, nullptr);
-
-                    if (_err < 0) {
+                    if ((err = pselect(_fd + 1, &fds, nullptr, nullptr, &timeout, nullptr)) < 0) {
                         // Error; break the loop
                         break;
                     }
-                    else {
-                        if (_err == 0) {
-                            // Timeout; retry
-                            // TODO: add an additional condition to break the loop to limit the 
-                            // number of retries, but then deal with the asynchronous nature of 
-                            // the callback
+                    else if (err == 0) {
+                        // Timeout; retry
+                        // TODO: add an additional condition to break the loop to limit the 
+                        // number of retries, but then deal with the asynchronous nature of 
+                        // the callback
+                    }
+                    else if (FD_ISSET (_fd, &fds) != 0) {
+                        // Node is readable
+                        if (drmHandleEvent (_fd, &context) != 0) {
+                            // Error; break the loop
+                            break;
                         }
-                        else { // ret > 0
-                            if (FD_ISSET (_fd, &_fds) != 0) {
-                                // Node is readable
-                                if (drmHandleEvent (_fd, &_context) != 0) {
-                                    // Error; break the loop
-                                    break;
-                                }
-
-                                // Flip probably occured already otherwise it loops again
-                            }
-                        }
+                        // Flip probably occured already otherwise it loops again
                     }
                 }
             }
         }
 
         // These two should be kept in sync for multiple buffers
-        /* void */ gbm_surface_release_buffer (surface, _bo);
-        /* int */ drmModeRmFB(_fd, __fb);
+        gbm_surface_release_buffer (surface, _bo);
+        drmModeRmFB(_fd, __fb);
     }
 }
