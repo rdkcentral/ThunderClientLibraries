@@ -401,15 +401,61 @@ uint32_t ModeSet::Height() const
     return height;
 }
 
-// These created resources are automatically destroyed if gbm_device is destroyed
-struct gbm_surface* ModeSet::CreateRenderTarget(const uint32_t width, const uint32_t height)
-{
-    struct gbm_surface* result = nullptr;
+static void event_vblank_handler (int fd, unsigned int sequence, unsigned int tv_sec, unsigned int tv_usec, void *user_data) {
+    static_cast<ModeSet::ICallback*>(user_data)->VBlank(sequence, tv_sec, tv_usec);
+}
 
-    if(nullptr != _device)
-    {
-        result = gbm_surface_create(_device, width, height, SupportedBufferType(), GBM_BO_USE_SCANOUT /* presented on a screen */ | GBM_BO_USE_RENDERING /* used for rendering */);
-        printf ("Created a render target...[%p]\n", result);
+static void event_page_flip_handler (int fd, unsigned int sequence, unsigned int tv_sec, unsigned int tv_usec, void *user_data) {
+    static_cast<ModeSet::ICallback*>(user_data)->PageFlip(sequence, tv_sec, tv_usec);
+}
+
+int ModeSet::Handle() {
+    drmEventContext event;
+    event.version = 2;
+    event.vblank_handler = event_vblank_handler;
+    event.page_flip_handler = event_page_flip_handler;
+    return (drmHandleEvent(_fd, &event));
+}
+
+int ModeSet::PageFlip(ICallback* callback, const uint32_t id) {
+    return (drmModePageFlip(_fd, _crtc, id, DRM_MODE_PAGE_FLIP_EVENT, callback));
+}
+
+int ModeSet::VBlank(ICallback* callback) {
+    return (-1);
+}
+
+// These created resources are automatically destroyed if gbm_device is destroyed
+struct gbm_surface* ModeSet::CreateRenderTarget(const uint32_t width, const uint32_t height, uint32_t& id)
+{
+    assert(nullptr != _device);
+
+    struct gbm_surface* result = gbm_surface_create(_device, width, height, SupportedBufferType(), GBM_BO_USE_SCANOUT /* presented on a screen */ | GBM_BO_USE_RENDERING /* used for rendering */);
+
+    if (result != nullptr) {
+        // struct gbm_bo* bo = gbm_surface_lock_front_buffer (result);
+
+        // Associate a frame buffer with this bo
+        uint32_t format = gbm_bo_get_format(_buffer);
+        uint32_t bpp = gbm_bo_get_bpp(_buffer);
+
+        assert (format == DRM_FORMAT_XRGB8888 || format == DRM_FORMAT_ARGB8888);
+
+        int32_t ret = drmModeAddFB(
+                                _fd, 
+                                gbm_bo_get_width(_buffer), 
+                                gbm_bo_get_height(_buffer), 
+                                format != DRM_FORMAT_ARGB8888 ? bpp - BPP() + ColorDepth() : bpp,
+                                bpp,
+                                gbm_bo_get_stride(_buffer), 
+                                gbm_bo_get_handle(_buffer).u32, &id);
+
+        if (ret == 0) {
+            printf ("Created a render target and added...[%p]\n", result);
+        }
+        else {
+            printf ("Created a render target but failed to add it: [%d]...[%p]\n", errno, result);
+        }
     }
 
     return result;

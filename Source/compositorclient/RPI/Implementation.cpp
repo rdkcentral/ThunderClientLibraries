@@ -23,6 +23,7 @@
 
 #ifdef VC6
 #include "ModeSet.h"
+#include <xf86drm.h>
 #else
 #include <EGL/eglext.h>
 #include <bcm_host.h>
@@ -45,11 +46,51 @@ namespace {
 using namespace WPEFramework;
 
 class Platform {
+private:
+    class Surface : public ModeSet::ICallback {
+    public:
+        Surface() = delete;
+        Surface(const Surface&) = delete;
+        Surface& operator= (const Surface&) = delete;
+     
+        Surface(ModeSet& modeSet, const uint32_t id) 
+            : _modeSet(modeSet)
+            , _id(id)
+            , _counter(0) { 
+
+            if (_modeSet.PageFlip(this, _id) != 0) {
+                printf("Failed to insert a wait for page flip [%d].\n", errno);
+            }
+        }
+        ~Surface() = default;
+
+    private:
+        void PageFlip(unsigned int frame, unsigned int sec, unsigned int usec) override {
+            if (_modeSet.PageFlip(this, _id) != 0) {
+                printf("Failed to insert a wait for page flip [%d].\n", errno);
+            }
+            else if (_counter == 0) {
+                printf("Succefully flipped the page.\n");
+            }
+            _counter = ((_counter + 1) & 0x7F);
+        }
+        void VBlank(unsigned int frame, unsigned int sec, unsigned int usec) override {
+            // fprintf(stderr, "VBlank\n");
+        }
+
+    private:
+	ModeSet& _modeSet;
+        uint32_t _id;
+        uint32_t _counter;
+    };
+
+    using SurfaceMap = std::unordered_map<EGLSurface, Surface>;
+
 public:
     Platform(const Platform&) = delete;
     Platform& operator=(const Platform&) = delete;
 
-    Platform(const string&) : _platform()
+    Platform(const string&) : _platform(), _surfaces()
     {
     }
     ~Platform() = default;
@@ -63,6 +104,7 @@ public:
 
         if(pointer != nullptr) {
             result = reinterpret_cast<EGLNativeDisplayType>(const_cast<struct gbm_device*>(pointer));
+
         }
         else {
             TRACE_L1(_T("The native display (id) might be invalid / unsupported. Using the EGL default display instead!"));
@@ -80,11 +122,18 @@ public:
     }
     EGLSurface CreateSurface (const EGLNativeDisplayType& display, const uint32_t width, const uint32_t height) 
     {
+        uint32_t id;
+
         // A Native surface that acts as a native window
-        EGLSurface result = reinterpret_cast<EGLSurface>(_platform.CreateRenderTarget(width, height));
+        EGLSurface result = reinterpret_cast<EGLSurface>(_platform.CreateRenderTarget(width, height, id));
 
         if (result == 0) {
             TRACE_L1(_T("The native window (handle) might be invalid / unsupported. Expect undefined behavior!"));
+        }
+        else {
+            _surfaces.emplace(std::piecewise_construct,
+              std::forward_as_tuple(result),
+              std::forward_as_tuple(_platform, id));
         }
 
         return (result);
@@ -92,6 +141,11 @@ public:
     void DestroySurface(const EGLSurface& surface) 
     {
         _platform.DestroyRenderTarget(reinterpret_cast<struct gbm_surface*>(surface));
+        
+        SurfaceMap::iterator index = _surfaces.find(surface);
+        if (index != _surfaces.end()) {
+            _surfaces.erase(index);
+        }
     }
     void Opacity(const EGLSurface&, const uint8_t) 
     {
@@ -108,9 +162,15 @@ public:
     int Descriptor() const {
         return(_platform.Descriptor());
     }
- 
+    void Process () {
+        if (_platform.Handle() != 0) {
+            printf("Failed to handle events [%d].\n", errno);
+        }
+    }
+
 private:
     ModeSet _platform;
+    SurfaceMap _surfaces;
 };
 
 #else
@@ -269,6 +329,9 @@ public:
 
     int Descriptor() const {
        return (-1);
+    }
+
+    void Process () {
     }
 };
 
@@ -745,8 +808,8 @@ private:
     void* _virtualinput;
     std::list<SurfaceImplementation*> _surfaces;
     Core::ProxyType<RPC::CommunicatorClient> _compositerServerRPCConnection;
-
     mutable uint32_t _refCount;
+    EGLSurface _swappie;
 };
 
 Display::DisplayMap Display::_displays;
@@ -847,6 +910,7 @@ Display::Display(const string& name)
     , _virtualinput(nullptr)
     , _compositerServerRPCConnection()
     , _refCount(0)
+    , _swappie(0)
 {
 }
 
@@ -856,7 +920,8 @@ Display::~Display()
 
 int Display::Process(const uint32_t data)
 {
-    return(1);
+    _platform.Process();    
+    return(0);
 }
 
 int Display::FileDescriptor() const
@@ -876,6 +941,7 @@ Compositor::IDisplay::ISurface* Display::Create(
     Core::ProxyType<SurfaceImplementation> retval = (Core::ProxyType<SurfaceImplementation>::Create(*this, name, width, height));
     Compositor::IDisplay::ISurface* result = &(*retval);
     result->AddRef();
+    _swappie = reinterpret_cast<EGLSurface>(result->Native());
     return result;
 }
 
