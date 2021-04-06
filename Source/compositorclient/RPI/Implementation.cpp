@@ -56,17 +56,24 @@ private:
         Surface(const Surface&) = delete;
         Surface& operator= (const Surface&) = delete;
      
-        Surface(ModeSet& modeSet, const EGLSurface surface, const uint32_t id) 
+        Surface(ModeSet& modeSet, const EGLSurface surface) 
             : _modeSet(modeSet)
-            , _surface(surface)
-            , _id(id)
+            , _surface(reinterpret_cast<struct gbm_surface*>(surface))
+            , _id(~0)
             , _counter(0) { 
         }
-        ~Surface() = default;
+        ~Surface()  {
+            if (_id != static_cast<uint32_t>(~0)) {       
+                _modeSet.DropSurfaceFromOutput(_id);
+            }
+        }
 
     public:
         void ScanOut() {
-            _modeSet.ScanOutRenderTarget (reinterpret_cast<gbm_surface*>(_surface));
+            // See if we have this surface attached to the FramBuffer (or whatever :-) 
+            if ( (_id != static_cast<uint32_t>(~0)) || ((_id = _modeSet.AddSurfaceToOutput(_surface)) != static_cast<uint32_t>(~0)) ) {
+                _modeSet.ScanOutRenderTarget (_surface, _id);
+            }
         }
 
     private:
@@ -82,7 +89,7 @@ private:
 
     private:
 	ModeSet& _modeSet;
-        EGLSurface _surface;
+        struct gbm_surface* _surface;
         uint32_t _id;
         uint32_t _counter;
     };
@@ -131,10 +138,9 @@ public:
             TRACE_L1(_T("The native window (handle) might be invalid / unsupported. Expect undefined behavior!"));
         }
         else {
-            uint32_t id =0;
             _surfaces.emplace(std::piecewise_construct,
               std::forward_as_tuple(result),
-              std::forward_as_tuple(_platform, result, id));
+              std::forward_as_tuple(_platform, result));
         }
 
         return (result);
