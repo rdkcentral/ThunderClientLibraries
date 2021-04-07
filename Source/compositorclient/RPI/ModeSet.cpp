@@ -9,14 +9,12 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <mutex>
 
-extern "C"
-{
 #include <drm/drm_fourcc.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 #include <gbm.h>
-}
 
 static constexpr uint8_t DrmMaxDevices()
 {
@@ -76,6 +74,7 @@ static int FileDescriptor()
         {
             // The node might be priviliged and the call will fail.
             // Do not close fd with exec functions! No O_CLOEXEC!
+            printf("Card: %s\n", index->c_str());
             fd = open(index->c_str(), O_RDWR); 
         }
         index++;
@@ -426,3 +425,85 @@ void ModeSet::DestroyRenderTarget(struct gbm_surface* surface)
     }
 }
 
+static void PageFlip (int, unsigned int, unsigned int, unsigned int, void* data) {
+
+    assert (data != nullptr);
+
+    reinterpret_cast<std::mutex*> (data)->unlock();
+};
+
+uint32_t ModeSet::AddSurfaceToOutput(struct gbm_surface* surface) {
+    uint32_t id = ~0;
+
+    assert (_fd > 0);
+
+    gbm_bo* bo = gbm_surface_lock_front_buffer (surface);
+
+    if (bo != nullptr) {
+        uint32_t _format = gbm_bo_get_format (bo);
+        uint32_t _bpp = gbm_bo_get_bpp (bo);
+        uint32_t _stride = gbm_bo_get_stride (bo);
+        uint32_t _handle = gbm_bo_get_handle (bo).u32;
+
+        if (drmModeAddFB (_fd, gbm_bo_get_width (bo), gbm_bo_get_height (bo), _format != DRM_FORMAT_ARGB8888 ? _bpp - BPP () + ColorDepth () : _bpp, _bpp, _stride, _handle, &id) != 0) {
+            id = ~0;
+        }
+
+        // These two should be kept in sync for multiple buffers
+        gbm_surface_release_buffer (surface, bo);
+    }
+
+    return (id);
+}
+
+void ModeSet::DropSurfaceFromOutput(const uint32_t id) {
+    drmModeRmFB(_fd, id);
+}
+
+void ModeSet::ScanOutRenderTarget (struct gbm_surface* surface, const uint32_t id) {
+
+    std::mutex signal; 
+    signal.lock();
+
+    int err = drmModePageFlip (_fd, _crtc, id, DRM_MODE_PAGE_FLIP_EVENT, &signal);
+
+    // Many causes, but the most obvious is a busy resource or a missing drmModeSetCrtc
+    // Probably a missing drmModeSetCrtc or an invalid _crtc
+    // See ModeSet::Create, not recovering here
+    assert (err != EINVAL);
+
+    if (err == 0) {
+        // No error
+        // Strictly speaking c++ linkage and not C linkage
+        // Asynchronous, but never called more than once, waiting in scope
+        // Use the magic constant here because the struct is versioned!
+        drmEventContext context = { .version = 2, . vblank_handler = nullptr, .page_flip_handler = PageFlip };
+        struct timespec timeout = { .tv_sec = 1, .tv_nsec = 0 };
+        fd_set fds;
+
+        while (signal.try_lock() == false) {
+            FD_ZERO(&fds);
+            FD_SET(_fd, &fds);
+
+            // Race free
+            if ((err = pselect(_fd + 1, &fds, nullptr, nullptr, &timeout, nullptr)) < 0) {
+                // Error; break the loop
+                break;
+            }
+            else if (err == 0) {
+                // Timeout; retry
+                // TODO: add an additional condition to break the loop to limit the 
+                // number of retries, but then deal with the asynchronous nature of 
+                // the callback
+            }
+            else if (FD_ISSET (_fd, &fds) != 0) {
+                // Node is readable
+                if (drmHandleEvent (_fd, &context) != 0) {
+                    // Error; break the loop
+                    break;
+                }
+                // Flip probably occured already otherwise it loops again
+            }
+        }
+    }
+}
