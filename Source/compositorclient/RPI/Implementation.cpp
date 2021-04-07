@@ -789,9 +789,7 @@ private:
     void* _virtualinput;
     std::list<SurfaceImplementation*> _surfaces;
     Core::ProxyType<RPC::CommunicatorClient> _compositerServerRPCConnection;
-
     mutable uint32_t _refCount;
-    std::map <std::string, IDisplay::ISurface*> _surfaceMap;
 };
 
 Display::DisplayMap Display::_displays;
@@ -898,12 +896,9 @@ Display::~Display()
 {
 }
 
-int Display::Process(const uint32_t data)
+int Display::Process(const uint32_t)
 {
-#ifdef VC6
     _platform.ScanOut ();
-#endif
-
     return (0);
 }
 
@@ -914,29 +909,24 @@ int Display::FileDescriptor() const
 
 Compositor::IDisplay::ISurface* Display::SurfaceByName(const std::string& name)
 {
-    IDisplay::ISurface* _ret = nullptr;
+    IDisplay::ISurface* result = nullptr;
 
-    if (_surfaceMap.size () > 0) {
-        auto _it =  _surfaceMap.find (name);
+    std::list<SurfaceImplementation*>::iterator index(_surfaces.begin());
+    while ( (index != _surfaces.end()) && ((*index)->Name() != name) ) { index++; }
 
-        if (_it != _surfaceMap.end ()) {
-            _ret = _it->second;
-        }
+    if (index != _surfaces.end()) {
+        result = *index;
+        result->AddRef();
     }
 
-    assert (_ret != nullptr);
-
-    return _ret;
+    return result;
 }
 
-Compositor::IDisplay::ISurface* Display::Create(
-    const std::string& name, const uint32_t width, const uint32_t height)
+Compositor::IDisplay::ISurface* Display::Create(const std::string& name, const uint32_t width, const uint32_t height)
 {
     Core::ProxyType<SurfaceImplementation> retval = (Core::ProxyType<SurfaceImplementation>::Create(*this, name, width, height));
     Compositor::IDisplay::ISurface* result = &(*retval);
     result->AddRef();
-
-    __attribute__ ((unused)) bool _ret = _surfaceMap.insert (std::pair <std::string, IDisplay::ISurface*> (name, result)).second;
 
     assert (_ret != false);
 

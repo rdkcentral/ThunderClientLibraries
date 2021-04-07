@@ -460,7 +460,6 @@ void ModeSet::DropSurfaceFromOutput(const uint32_t id) {
     drmModeRmFB(_fd, id);
 }
 
-
 void ModeSet::ScanOutRenderTarget (struct gbm_surface* surface, const uint32_t id) {
 
     std::mutex signal; 
