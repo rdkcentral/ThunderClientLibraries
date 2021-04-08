@@ -58,22 +58,19 @@ private:
      
         Surface(ModeSet& modeSet, const EGLSurface surface) 
             : _modeSet(modeSet)
-            , _surface(reinterpret_cast<struct gbm_surface*>(surface))
-            , _id(~0)
             , _counter(0) { 
+
+            _data._surface = reinterpret_cast<struct gbm_surface*>(surface);
+            _data._bo = nullptr;
         }
         ~Surface()  {
-            if (_id != static_cast<uint32_t>(~0)) {       
-                _modeSet.DropSurfaceFromOutput(_id);
-            }
+            _modeSet.DestroyRenderTarget(_data);
         }
 
     public:
         void ScanOut() {
             // See if we have this surface attached to the FramBuffer (or whatever :-) 
-            if ( (_id != static_cast<uint32_t>(~0)) || ((_id = _modeSet.AddSurfaceToOutput(_surface)) != static_cast<uint32_t>(~0)) ) {
-                _modeSet.ScanOutRenderTarget (_surface, _id);
-            }
+            _modeSet.Swap(_data);
         }
 
     private:
@@ -89,8 +86,7 @@ private:
 
     private:
 	ModeSet& _modeSet;
-        struct gbm_surface* _surface;
-        uint32_t _id;
+        ModeSet::BufferInfo _data;
         uint32_t _counter;
     };
 
@@ -147,7 +143,10 @@ public:
     }
     void DestroySurface(const EGLSurface& surface) 
     {
-        _platform.DestroyRenderTarget(reinterpret_cast<struct gbm_surface*>(surface));
+        SurfaceMap::iterator index = _surfaces.find(surface);
+        if (index != _surfaces.end()) {
+            _surfaces.erase(index);
+        }
     }
     void Opacity(const EGLSurface&, const uint8_t) 
     {

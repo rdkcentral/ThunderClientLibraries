@@ -410,11 +410,21 @@ struct gbm_surface* ModeSet::CreateRenderTarget(const uint32_t width, const uint
     return result;
 }
 
-void ModeSet::DestroyRenderTarget(struct gbm_surface* surface)
+void ModeSet::DestroyRenderTarget(struct BufferInfo& buffer)
 {
-    if (nullptr != surface)
+    if (nullptr != buffer._bo) 
     {
-        gbm_surface_destroy(surface);
+        if (static_cast<uint32_t>(~0) == buffer._id) {
+            drmModeRmFB(_fd, buffer._id);
+        }
+
+        gbm_surface_release_buffer(buffer._surface, buffer._bo);
+        buffer._bo = nullptr;
+    }
+
+    if (nullptr != buffer._surface)
+    {
+        gbm_surface_destroy(buffer._surface);
     }
 }
 
@@ -425,78 +435,73 @@ static void PageFlip (int, unsigned int, unsigned int, unsigned int, void* data)
     reinterpret_cast<std::mutex*> (data)->unlock();
 };
 
-uint32_t ModeSet::AddSurfaceToOutput(struct gbm_surface* surface) {
-    uint32_t id = ~0;
-
+void ModeSet::Swap(struct BufferInfo& buffer) {
     assert (_fd > 0);
 
-    gbm_bo* bo = gbm_surface_lock_front_buffer (surface);
+    // Lock the a new buffer so we can use it
+    buffer._bo = gbm_surface_lock_front_buffer (buffer._surface);
 
-    if (bo != nullptr) {
-        uint32_t _format = gbm_bo_get_format (bo);
-        uint32_t _bpp = gbm_bo_get_bpp (bo);
-        uint32_t _stride = gbm_bo_get_stride (bo);
-        uint32_t _handle = gbm_bo_get_handle (bo).u32;
+    if (buffer._bo != nullptr) {
+        uint32_t width = gbm_bo_get_width(buffer._bo);
+        uint32_t height = gbm_bo_get_height(buffer._bo);
+        uint32_t format = gbm_bo_get_format (buffer._bo);
+        uint32_t bpp = gbm_bo_get_bpp (buffer._bo);
+        uint32_t stride = gbm_bo_get_stride (buffer._bo);
+        uint32_t handle = gbm_bo_get_handle (buffer._bo).u32;
 
-        if (drmModeAddFB (_fd, gbm_bo_get_width (bo), gbm_bo_get_height (bo), _format != DRM_FORMAT_ARGB8888 ? _bpp - BPP () + ColorDepth () : _bpp, _bpp, _stride, _handle, &id) != 0) {
-            id = ~0;
+        if (drmModeAddFB (_fd, width, height, format != DRM_FORMAT_ARGB8888 ? bpp - BPP () + ColorDepth () : bpp, bpp, stride, handle, &(buffer._id)) != 0) {
+            buffer._id = ~0;
         }
+        else {
+            std::mutex signal; 
+            signal.lock();
 
-        // These two should be kept in sync for multiple buffers
-        gbm_surface_release_buffer (surface, bo);
-    }
+            int err = drmModePageFlip (_fd, _crtc, buffer._id, DRM_MODE_PAGE_FLIP_EVENT, &signal);
 
-    return (id);
-}
+            // Many causes, but the most obvious is a busy resource or a missing drmModeSetCrtc
+            // Probably a missing drmModeSetCrtc or an invalid _crtc
+            // See ModeSet::Create, not recovering here
+            assert (err != EINVAL);
 
-void ModeSet::DropSurfaceFromOutput(const uint32_t id) {
-    drmModeRmFB(_fd, id);
-}
+            if (err == 0) {
+                // No error
+                // Asynchronous, but never called more than once, waiting in scope
+                // Use the magic constant here because the struct is versioned!
+                drmEventContext context = { .version = 2, . vblank_handler = nullptr, .page_flip_handler = PageFlip };
+                struct timespec timeout = { .tv_sec = 1, .tv_nsec = 0 };
+                fd_set fds;
 
-void ModeSet::ScanOutRenderTarget (struct gbm_surface* surface, const uint32_t id) {
+                while (signal.try_lock() == false) {
+                    FD_ZERO(&fds);
+                    FD_SET(_fd, &fds);
 
-    std::mutex signal; 
-    signal.lock();
-
-    int err = drmModePageFlip (_fd, _crtc, id, DRM_MODE_PAGE_FLIP_EVENT, &signal);
-
-    // Many causes, but the most obvious is a busy resource or a missing drmModeSetCrtc
-    // Probably a missing drmModeSetCrtc or an invalid _crtc
-    // See ModeSet::Create, not recovering here
-    assert (err != EINVAL);
-
-    if (err == 0) {
-        // No error
-        // Strictly speaking c++ linkage and not C linkage
-        // Asynchronous, but never called more than once, waiting in scope
-        // Use the magic constant here because the struct is versioned!
-        drmEventContext context = { .version = 2, . vblank_handler = nullptr, .page_flip_handler = PageFlip };
-        struct timespec timeout = { .tv_sec = 1, .tv_nsec = 0 };
-        fd_set fds;
-
-        while (signal.try_lock() == false) {
-            FD_ZERO(&fds);
-            FD_SET(_fd, &fds);
-
-            // Race free
-            if ((err = pselect(_fd + 1, &fds, nullptr, nullptr, &timeout, nullptr)) < 0) {
-                // Error; break the loop
-                break;
-            }
-            else if (err == 0) {
-                // Timeout; retry
-                // TODO: add an additional condition to break the loop to limit the 
-                // number of retries, but then deal with the asynchronous nature of 
-                // the callback
-            }
-            else if (FD_ISSET (_fd, &fds) != 0) {
-                // Node is readable
-                if (drmHandleEvent (_fd, &context) != 0) {
-                    // Error; break the loop
-                    break;
+                    // Race free
+                    if ((err = pselect(_fd + 1, &fds, nullptr, nullptr, &timeout, nullptr)) < 0) {
+                        // Error; break the loop
+                        break;
+                    }
+                    else if (err == 0) {
+                        // Timeout; retry
+                        // TODO: add an additional condition to break the loop to limit the 
+                        // number of retries, but then deal with the asynchronous nature of 
+                        // the callback
+                    }
+                    else if (FD_ISSET (_fd, &fds) != 0) {
+                        // Node is readable
+                        if (drmHandleEvent (_fd, &context) != 0) {
+                            // Error; break the loop
+                            break;
+                        }
+                        // Flip probably occured already otherwise it loops again
+                    }
                 }
-                // Flip probably occured already otherwise it loops again
             }
+
+            drmModeRmFB(_fd, buffer._id);
         }
+
+        // Release the current active buffer.
+        gbm_surface_release_buffer(buffer._surface, buffer._bo);
+        buffer._bo = nullptr;
     }
 }

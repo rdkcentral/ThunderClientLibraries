@@ -13,6 +13,11 @@ class ModeSet
             virtual void PageFlip(unsigned int frame, unsigned int sec, unsigned int usec) = 0;
             virtual void VBlank(unsigned int frame, unsigned int sec, unsigned int usec) = 0;
         };
+        struct BufferInfo {
+            struct gbm_surface* _surface;
+            struct gbm_bo* _bo;
+            uint32_t _id;
+        };
  
     public:
         ModeSet(const ModeSet&) = delete;
@@ -51,10 +56,8 @@ class ModeSet
         uint32_t Width() const;
         uint32_t Height() const;
         struct gbm_surface* CreateRenderTarget(const uint32_t width, const uint32_t height);
-        uint32_t AddSurfaceToOutput(struct gbm_surface* surface);
-        void DropSurfaceFromOutput(const uint32_t id);
-        void DestroyRenderTarget(struct gbm_surface* surface);
-        void ScanOutRenderTarget (struct gbm_surface* surface, const uint32_t id);
+        void DestroyRenderTarget(struct BufferInfo& buffer);
+        void Swap(struct BufferInfo& buffer);
 
     private:
         void Destruct();
