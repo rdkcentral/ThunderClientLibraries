@@ -57,32 +57,6 @@ static void GetNodes(uint32_t type, std::vector<std::string>& list)
     }
 }
 
-static int FileDescriptor()
-{
-    int fd = -1;
-    static std::vector<std::string> nodes;
-
-    if (nodes.size() == 0) {
-        GetNodes(DRM_NODE_PRIMARY, nodes);
-    }
-
-    std::vector<std::string>::iterator index(nodes.begin());
-
-    while ((index != nodes.end()) && (fd == -1)) {
-        // Select the first from the list
-        if (index->empty() == false)
-        {
-            // The node might be priviliged and the call will fail.
-            // Do not close fd with exec functions! No O_CLOEXEC!
-            printf("Card: %s\n", index->c_str());
-            fd = open(index->c_str(), O_RDWR); 
-        }
-        index++;
-    }
-
-    return (fd);
-}
-
 static uint32_t GetConnectors(int fd, uint32_t type)
 {
     uint32_t bitmask = 0;
@@ -317,34 +291,47 @@ ModeSet::ModeSet()
     , _connector(0)
     , _mode(0)
     , _buffer(nullptr)
+    , _fd(-1)
 {
     if (drmAvailable() > 0) {
-        Create();
-    }
-}
 
-void ModeSet::Create()
-{
-    _fd = FileDescriptor();
+        std::vector<std::string> nodes;
 
-    if(_fd >= 0) {
-        bool enabled = false;
-        if ( (FindProperDisplay(_fd, _crtc, _encoder, _connector, _fb) == true) && 
-             /* TODO: Changes the original fb which might not be what is intended */
-             (CreateBuffer(_fd, _connector, _device, _mode, _fb, _buffer) == true) && 
-             (drmSetMaster(_fd) == 0) ) {
+        GetNodes(DRM_NODE_PRIMARY, nodes);
 
-            drmModeConnectorPtr pconnector = drmModeGetConnector(_fd, _connector);
+        std::vector<std::string>::iterator index(nodes.begin());
 
-            if(pconnector != nullptr) {
-                /* At least one mode has to be set */
-                enabled = (0 == drmModeSetCrtc(_fd, _crtc, _fb, 0, 0, &_connector, 1, &(pconnector->modes[_mode])));
+        while ((index != nodes.end()) && (_fd == -1)) {
+            // Select the first from the list
+            if (index->empty() == false) {
+                // The node might be priviliged and the call will fail.
+                // Do not close fd with exec functions! No O_CLOEXEC!
+                _fd = open(index->c_str(), O_RDWR); 
 
-                drmModeFreeConnector(pconnector);
+                if (_fd >= 0) {
+                    if ( (FindProperDisplay(_fd, _crtc, _encoder, _connector, _fb) == true) && 
+                         /* TODO: Changes the original fb which might not be what is intended */
+                         (CreateBuffer(_fd, _connector, _device, _mode, _fb, _buffer) == true) && 
+                         (drmSetMaster(_fd) == 0) ) {
+
+                        drmModeConnectorPtr pconnector = drmModeGetConnector(_fd, _connector);
+
+                        /* At least one mode has to be set */
+                        if (pconnector != nullptr) {
+
+                            if (0 == drmModeSetCrtc(_fd, _crtc, _fb, 0, 0, &_connector, 1, &(pconnector->modes[_mode]))) {
+                                printf("Opened Card: %s\n", index->c_str());
+                            }
+                            else {
+                                Destruct();
+                            }
+
+                            drmModeFreeConnector(pconnector);
+                        }
+                    }
+                }
             }
-        }
-        if (enabled == false) {
-            Destruct();
+            index++;
         }
     }
 }

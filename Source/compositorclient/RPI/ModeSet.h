@@ -57,7 +57,6 @@ class ModeSet
         void ScanOutRenderTarget (struct gbm_surface* surface, const uint32_t id);
 
     private:
-        void Create();
         void Destruct();
 
     private:
