@@ -290,6 +290,7 @@ ModeSet::ModeSet()
     , _encoder(0)
     , _connector(0)
     , _mode(0)
+    , _device(nullptr)
     , _buffer(nullptr)
     , _fd(-1)
 {
@@ -309,6 +310,9 @@ ModeSet::ModeSet()
                 _fd = open(index->c_str(), O_RDWR); 
 
                 if (_fd >= 0) {
+                    bool success = false;
+
+                    printf("Test Card: %s\n", index->c_str());
                     if ( (FindProperDisplay(_fd, _crtc, _encoder, _connector, _fb) == true) && 
                          /* TODO: Changes the original fb which might not be what is intended */
                          (CreateBuffer(_fd, _connector, _device, _mode, _fb, _buffer) == true) && 
@@ -319,20 +323,21 @@ ModeSet::ModeSet()
                         /* At least one mode has to be set */
                         if (pconnector != nullptr) {
 
-                            if (0 == drmModeSetCrtc(_fd, _crtc, _fb, 0, 0, &_connector, 1, &(pconnector->modes[_mode]))) {
-                                printf("Opened Card: %s\n", index->c_str());
-                            }
-                            else {
-                                Destruct();
-                            }
-
+                            success = (0 == drmModeSetCrtc(_fd, _crtc, _fb, 0, 0, &_connector, 1, &(pconnector->modes[_mode])));
                             drmModeFreeConnector(pconnector);
                         }
+                    }
+                    if (success == true) {
+                        printf("Opened Card: %s\n", index->c_str());
+                    }
+                    else {
+                        Destruct();
                     }
                 }
             }
             index++;
         }
+        printf("Found descriptor: %d\n", _fd); fflush(stdout); fflush(stderr);
     }
 }
 
@@ -358,6 +363,7 @@ void ModeSet::Destruct()
 
     if(_fd >= 0) {
         close(_fd);
+        _fd = -1;
     }
 
     _crtc = 0;
