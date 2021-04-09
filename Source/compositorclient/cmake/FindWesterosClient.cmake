@@ -1,10 +1,10 @@
-# - Try to find BroadCom nxserver library.
+# - Try to find Westeros Client library.
 # Once done this will define
-#  WESTEROS_FOUND - System has westeros
-#  WESTEROS_INCLUDE_DIRS - The westeros include directories
-#  WESTEROS_LIBRARIES    - The libraries needed to use westeros
+#  WESTEROS_CLIENT_FOUND - System has westeros client
+#  WESTEROS_CLIENT_INCLUDE_DIRS - The westeros client include directories
+#  WESTEROS_CLIENT_LIBRARIES    - The libraries needed to use westeros client
 #
-#  WESTEROS::WESTEROS, the westeros compositor
+#  WesterosClient::WesterosClient, the westeros compositor
 #
 # Copyright (C) 2015 Metrological.
 #
@@ -48,9 +48,9 @@ find_path(WESTEROS_CLIENT_INCLUDE_DIRS NAMES westeros-compositor.h
         HINTS ${PC_WESTEROS_INCLUDEDIR} ${PC_WESTEROS_INCLUDE_DIRS}
         )
 
-set (WESTEROS_CLIENT_LIBRARIES ${PC_WESTEROS_LIBRARIES} "${WESTEROS_CLIENT_LIB_SERVER}" "${WESTEROS_CLIENT_LIB_SERVER}" "${WESTEROS_CLIENT_LIB_CLIENT}" "${WESTEROS_CLIENT_LIB_CLIENT}")
+set(WESTEROS_CLIENT_LIBRARIES ${PC_WESTEROS_LIBRARIES} "${WESTEROS_CLIENT_LIB_SERVER}" "${WESTEROS_CLIENT_LIB_SERVER}" "${WESTEROS_CLIENT_LIB_CLIENT}" "${WESTEROS_CLIENT_LIB_CLIENT}")
 
-set (WESTEROS_CLIENT_FOUND ${PC_WESTEROS_FOUND})
+set(WESTEROS_CLIENT_FOUND ${PC_WESTEROS_FOUND})
 
 if(WESTEROS_CLIENT_FOUND AND NOT TARGET WesterosClient::WesterosClient)
     set(WESTEROS_CLIENT_LIB_CLIENT_LINK_LIBRARIES "${WESTEROS_CLIENT_LIB}" "${WESTEROS_CLIENT_LIB_SHELL_CLIENT}" "${WESTEROS_CLIENT_LIB_BUFFER_CLIENT}")

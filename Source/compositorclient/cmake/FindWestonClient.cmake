@@ -1,6 +1,6 @@
 # - Try to find Weston.
 # Once done this will define
-#  WESTON_FOUND - System has weston
+#  WESTON_CLIENT_FOUND - System has weston
 #
 # Copyright (C) 2015 Metrological.
 # Copyright (C) 2019 Linaro.
@@ -29,3 +29,4 @@
 find_package(PkgConfig)
 pkg_check_modules(PC_WESTON weston>=6)
 
+set(WESTON_CLIENT_FOUND ${PC_WESTON_FOUND})
