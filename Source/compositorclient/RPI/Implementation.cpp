@@ -928,8 +928,6 @@ Compositor::IDisplay::ISurface* Display::Create(const std::string& name, const u
     Compositor::IDisplay::ISurface* result = &(*retval);
     result->AddRef();
 
-    assert (_ret != false);
-
     return result;
 }
 
