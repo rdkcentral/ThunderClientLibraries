@@ -117,7 +117,7 @@ namespace Implementation {
 
         if (inputLength % AES_128_BLOCK_SIZE != 0) {
             outputbuf.resize(inputLength + (AES_128_BLOCK_SIZE - (inputLength % AES_128_BLOCK_SIZE)));
-            TRACE_L2(_T("SecNetflix_Aescbc adding pad to output buffer %d\n", outputbuf.size()));
+            TRACE_L2(_T("SecNetflix_Aescbc adding pad to output buffer %d\n"), outputbuf.size());
         }
         else {
             outputbuf.resize(inputLength + AES_128_BLOCK_SIZE);
@@ -131,14 +131,14 @@ namespace Implementation {
                 input, inputLength, out_buf, outputbuf.size(), &bytesWritten);
 
             if (result != SEC_RESULT_SUCCESS) {
-                TRACE_L1(_T("SecNetflix_Aescbc FAILED : retVal = %d\n", result));
+                TRACE_L1(_T("SecNetflix_Aescbc FAILED : retVal = %d\n"), result);
             }
         }
         else {
-            TRACE_L1(_T("FindKey did not find key handle = %d\n", keyHandle));
+            TRACE_L1(_T("FindKey did not find key handle = %d\n"), keyHandle);
         }
 
-        TRACE_L2(_T("Encrypted message: encdatalen=%u\n", bytesWritten));
+        TRACE_L2(_T("Encrypted message: encdatalen=%u\n"), bytesWritten);
         memcpy(output, out_buf, bytesWritten);
         retVal = bytesWritten;
 
