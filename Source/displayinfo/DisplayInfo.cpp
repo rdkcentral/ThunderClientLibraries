@@ -32,6 +32,9 @@ private:
     using OperationalStateChangeCallbacks = std::map<displayinfo_operational_state_change_cb, void*>;
 
     //CONSTRUCTORS
+    #ifdef __WINDOWS__
+    #pragma warning(disable: 4355)
+    #endif
     DisplayInfo(const string& callsign)
         : BaseClass()
         , _displayConnection(nullptr)
@@ -42,6 +45,9 @@ private:
     {
         BaseClass::Open(RPC::CommunicationTimeOut, BaseClass::Connector(), callsign);
     }
+    #ifdef __WINDOWS__
+    #pragma warning(default: 4355)
+    #endif
 
 public:
     DisplayInfo() = delete;
@@ -429,7 +435,7 @@ uint32_t displayinfo_vertical_frequency(uint32_t* vertical_freq)
     return errorCode;
 }
 
-EXTERNAL uint32_t displayinfo_hdr(displayinfo_hdr_t* hdr)
+uint32_t displayinfo_hdr(displayinfo_hdr_t* hdr)
 {
     uint32_t errorCode = Core::ERROR_UNAVAILABLE;
 
