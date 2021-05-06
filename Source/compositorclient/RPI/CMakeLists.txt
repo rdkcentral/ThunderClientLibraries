@@ -21,11 +21,7 @@ find_package(EGL REQUIRED)
 
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
-if(PROTOCOLS)
-    find_package(${NAMESPACE}Protocols REQUIRED)
-else()
-    find_package(${NAMESPACE}COM REQUIRED)
-endif()
+find_package(${NAMESPACE}COM REQUIRED)
 
 if(VC6)
     find_package(GBM REQUIRED)
@@ -50,6 +46,7 @@ target_link_libraries(${TARGET}
         CompileSettingsDebug::CompileSettingsDebug
         ${NAMESPACE}Core::${NAMESPACE}Core
         ${NAMESPACE}VirtualInput::${NAMESPACE}VirtualInput
+        ${NAMESPACE}COM::${NAMESPACE}COM
         ${EGL_LIBRARIES}
 )
 
@@ -58,18 +55,6 @@ if(VC6)
         PRIVATE
             libdrm::libdrm
     )
-endif()
-
-if(PROTOCOLS)
-    target_link_libraries(${TARGET}
-            PUBLIC
-              ${NAMESPACE}Protocols::${NAMESPACE}Protocols
-            )
-else()
-    target_link_libraries(${TARGET}
-            PUBLIC
-              ${NAMESPACE}COM::${NAMESPACE}COM
-            )
 endif()
 
 set_target_properties(${TARGET} PROPERTIES
