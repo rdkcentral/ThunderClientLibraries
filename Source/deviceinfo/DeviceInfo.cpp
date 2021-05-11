@@ -15,7 +15,6 @@ class DeviceInfoLink : public WPEFramework::RPC::SmartInterfaceType<WPEFramework
 private:
     using BaseClass = WPEFramework::RPC::SmartInterfaceType<WPEFramework::Exchange::IDeviceCapabilities>;
 
-    friend class WPEFramework::Core::SingletonType<DeviceInfoLink>;
     DeviceInfoLink()
         : BaseClass()
     {
@@ -29,7 +28,8 @@ public:
     }
     static DeviceInfoLink& Instance()
     {
-        return WPEFramework::Core::SingletonType<DeviceInfoLink>::Instance();
+        static DeviceInfoLink instance;
+        return instance;
     }
 
     PluginHost::ISubSystem* SubSystem()
