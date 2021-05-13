@@ -33,12 +33,7 @@ find_package(ProxyStubGenerator REQUIRED)
 
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
-if(PROTOCOLS)
-    find_package(${NAMESPACE}Protocols REQUIRED)
-else()
-    find_package(${NAMESPACE}COM REQUIRED)
-    find_package(${NAMESPACE}WebSocket REQUIRED)
-endif()
+find_package(${NAMESPACE}COM REQUIRED)
 
 find_package(GSTREAMER REQUIRED)
 find_package(GSTREAMER_BASE REQUIRED)
@@ -65,6 +60,7 @@ set(PUBLIC_HEADERS
 target_link_libraries(${TARGET}
         PUBLIC
           ${NAMESPACE}Core::${NAMESPACE}Core
+          ${NAMESPACE}COM::${NAMESPACE}COM
         )
 
 target_include_directories( ${TARGET}
@@ -77,19 +73,6 @@ target_include_directories( ${TARGET}
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/adapter>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         )
-
-if (PROTOCOLS)
-    target_link_libraries(${TARGET}
-            PRIVATE
-              ${NAMESPACE}Protocols::${NAMESPACE}Protocols
-            )
-else()
-    target_link_libraries(${TARGET}
-            PRIVATE
-              ${NAMESPACE}WebSocket::${NAMESPACE}WebSocket
-              ${NAMESPACE}COM::${NAMESPACE}COM
-            )
-endif ()
 
 if("${CDMI_ADAPTER_IMPLEMENTATION}" STREQUAL "broadcom-svp")
     if (OCDM_IMPLEMENTATION_PATH)
