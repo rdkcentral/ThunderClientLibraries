@@ -58,7 +58,7 @@ static const uint8_t testVector4[] = { 0x74, 0x65, 0x73, 0x74, 0x64, 0x61, 0x74,
 
 static uint32_t TestVaultImport(const uint8_t vector[], const uint16_t vectorSize, bool clear)
 {
-    uint8_t* output = malloc(vectorSize);
+    uint8_t* output = static_cast<uint8_t*>(malloc(vectorSize));
 
     if (clear) {
         printf("> Testing vault import with blob of size %i\n", vectorSize);
@@ -126,8 +126,8 @@ TEST(Vault, ImportExport)
 
 static uint32_t TestVaultSet(const uint8_t vector[], const uint16_t vectorSize, bool clear)
 {
-    uint8_t* sealed = malloc(USHRT_MAX);
-    uint8_t* sealed2 = malloc(USHRT_MAX);
+    uint8_t* sealed = static_cast<uint8_t*>(malloc(USHRT_MAX));
+    uint8_t* sealed2 = static_cast<uint8_t*>(malloc(USHRT_MAX));
     uint32_t sealedId = 0;
 
     if (clear) {
@@ -212,7 +212,7 @@ static void TestHash(const char *name, const hash_type type, const uint8_t data[
     struct HashImplementation* hash = hash_create(type);
 
     if (hash != NULL) {
-        uint8_t* output = malloc(expectedLength);
+        uint8_t* output = static_cast<uint8_t*>(malloc(expectedLength));
         memset(output, 0, expectedLength);
         EXPECT_EQ(hash_ingest(hash, length, data), length);
         EXPECT_EQ(hash_calculate(hash, 0, NULL), 0);
@@ -230,7 +230,7 @@ static void TestHash(const char *name, const hash_type type, const uint8_t data[
     struct HashImplementation* hashp = hash_create(type);
 
     if (hashp != NULL) {
-        uint8_t* output = malloc(expectedLength);
+        uint8_t* output = static_cast<uint8_t*>(malloc(expectedLength));
         memset(output, 0, expectedLength);
         EXPECT_EQ(hash_ingest(hashp, length/2, data), length/2);
         EXPECT_EQ(hash_ingest(hashp, (length - length/2), data + length/2), (length - length/2));
@@ -251,7 +251,7 @@ static void TestHMAC(const char *name, const hash_type type, const uint32_t secr
     struct HashImplementation* hash = hash_create_hmac(vault, type, secret);
 
     if (hash != NULL) {
-        uint8_t* output = malloc(128);
+        uint8_t* output = static_cast<uint8_t*>(malloc(128));
         memset(output, 0, 128);
         hash_ingest(hash, length, data);
         EXPECT_EQ(hash_calculate(hash, 0, NULL), 0);
@@ -274,7 +274,7 @@ static void TestHMAC(const char *name, const hash_type type, const uint32_t secr
     struct HashImplementation* hashp = hash_create_hmac(vault, type, secret);
 
     if (hashp != NULL) {
-        uint8_t* output = malloc(128);
+        uint8_t* output = static_cast<uint8_t*>(malloc(128));
         memset(output, 0, 128);
         hash_ingest(hashp, length/2, data);
         hash_ingest(hashp, length - length/2, data + length/2);
@@ -429,7 +429,7 @@ TEST(DH, Generate)
     EXPECT_NE(publicKeySize, 0);
     EXPECT_NE(publicKeySize, USHRT_MAX);
     if (publicKeySize != 0) {
-        uint8_t* publicKeyBuf = malloc(publicKeySize);
+        uint8_t* publicKeyBuf = static_cast<uint8_t*>(malloc(publicKeySize));
         EXPECT_EQ(vault_export(vault, publicKeyId, publicKeySize, publicKeyBuf), publicKeySize);
         DumpBuffer(publicKeyBuf, publicKeySize);
         free(publicKeyBuf);
@@ -453,9 +453,20 @@ TEST(DH, DeriveStandard)
     DH* dh = DHGenerate(testGenerator, testPrime1024, sizeof(testPrime1024));
     assert(dh != NULL);
     if (dh != NULL) {
+#if OPENSSL_VERSION_NUMBER  >= 0x10100000L
+        const BIGNUM* pub_key;
+        DH_get0_key(dh, &pub_key, nullptr);
+        uint32_t peerPublicKeySize = BN_num_bytes(pub_key);
+#else
         uint32_t peerPublicKeySize = BN_num_bytes(dh->pub_key);
+#endif
         uint8_t* peerPublicKeyBuf = (uint8_t*) alloca(peerPublicKeySize);
+
+#if OPENSSL_VERSION_NUMBER  >= 0x10100000L
+        BN_bn2bin(pub_key, peerPublicKeyBuf);
+#else
         BN_bn2bin(dh->pub_key, peerPublicKeyBuf);
+#endif
 
         peerPublicKeyId = vault_import(vault, peerPublicKeySize, peerPublicKeyBuf);
         EXPECT_GT(peerPublicKeyId, 0x80000000U);
@@ -523,10 +534,10 @@ static void TestCryptAES(const char *name, const aes_mode mode, const uint32_t k
     struct CipherImplementation* cipher = cipher_create_aes(vault, mode, key);
 
     if (cipher != NULL) {
-        uint8_t* output = malloc(bufferSize);
+        uint8_t* output = static_cast<uint8_t*>(malloc(bufferSize));
         memset(output, 0, bufferSize);
 
-        uint8_t* input = malloc(bufferSize);
+        uint8_t* input = static_cast<uint8_t*>(malloc(bufferSize));
         memset(input, 0, bufferSize);
 
         DumpBuffer(data, length);

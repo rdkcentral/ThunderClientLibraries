@@ -58,15 +58,34 @@ DH* DHGenerate(const uint32_t generator, const uint8_t modulus[], const uint16_t
 {
     DH* dh = DH_new();
     if (dh != NULL) {
+#if OPENSSL_VERSION_NUMBER  >= 0x10100000L
+        BIGNUM* p = BN_bin2bn(modulus, modulusSize, nullptr);
+        BIGNUM* g = BN_new();
+
+        ASSERT(p != nullptr);
+        ASSERT(g != nullptr);
+
+        BN_set_word(g, generator);
+
+        if (DH_set0_pqg(dh, p, nullptr, g) == 0) {
+            ASSERT(false);
+        }
+#else
         dh->p = BN_bin2bn(modulus, modulusSize, NULL);
         dh->g = BN_new();
         BN_set_word(dh->g, generator);
-
+#endif
         int codes = 0;
         if ((DH_check(dh, &codes) != 0) && (codes == 0)) {
             if (DH_generate_key(dh) != 0) {
                 printf("Prerequisite: generated public key\n");
+#if OPENSSL_VERSION_NUMBER  >= 0x10100000L
+                const BIGNUM* pub_key;
+                DH_get0_key(dh, &pub_key, nullptr);
+                DumpBignum(pub_key);
+#else
                 DumpBignum(dh->pub_key);
+#endif
             }
         } else {
             DH_free(dh);

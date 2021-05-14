@@ -77,9 +77,19 @@ static void TestAuthenticatedDerive(const uint16_t hostPskSize, const uint8_t ho
 
     if (idh != nullptr) {
         // Import host public DH key into vault
+#if OPENSSL_VERSION_NUMBER  >= 0x10100000L
+        const BIGNUM* pub_key;
+        DH_get0_key(hostPrivKey, &pub_key, nullptr);
+        uint16_t pubKeySize = BN_num_bytes(pub_key);
+#else
         uint16_t pubKeySize = BN_num_bytes(hostPrivKey->pub_key);
+#endif
         uint8_t* pubKeySizeBuf = (uint8_t*)alloca(pubKeySize);
+#if OPENSSL_VERSION_NUMBER  >= 0x10100000L
+	pubKeySize = BN_bn2bin(pub_key, pubKeySizeBuf);
+#else
         pubKeySize = BN_bn2bin(hostPrivKey->pub_key, pubKeySizeBuf);
+#endif
         assert(pubKeySize != 0);
         uint32_t hostPubKeyId = vault->Import(pubKeySize, pubKeySizeBuf);
         EXPECT_NE(hostPubKeyId, 0);

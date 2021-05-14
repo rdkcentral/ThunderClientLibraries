@@ -23,7 +23,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../Source)
 set(CMAKE_CXX_STANDARD 11)
 
 add_executable(cgimptests
-        ImplementationTests.c
+        ImplementationTests.cpp
         Helpers.cpp
         Test.c
     )
