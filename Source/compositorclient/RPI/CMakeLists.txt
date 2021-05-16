@@ -18,31 +18,20 @@
 set(TARGET compositorclient)
 
 find_package(EGL REQUIRED)
-
+find_package(LibDRM QUIET)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
+
 if(PROTOCOLS)
     find_package(${NAMESPACE}Protocols REQUIRED)
 else()
     find_package(${NAMESPACE}COM REQUIRED)
 endif()
 
-if(VC6)
-    find_package(GBM REQUIRED)
-    find_package(LibDRM REQUIRED)
+add_library(${TARGET} SHARED Implementation.cpp)
 
-    if(NOT GBM_FOUND)
-        message(FATAL_ERROR "The GBM library and its headers cannot be found.")
-    endif()
-
-    if(NOT LIBDRM_FOUND)
-        message(FATAL_ERROR "The libDRM library and its headers cannot be found.")
-    endif()
-
-    add_library(${TARGET} SHARED ModeSet.cpp Implementation.cpp)
+if(LIBDRM_FOUND)
     target_compile_definitions(${TARGET} PRIVATE VC6)
-else()
-    add_library(${TARGET} SHARED Implementation.cpp)
 endif()
 
 target_link_libraries(${TARGET}
@@ -52,13 +41,6 @@ target_link_libraries(${TARGET}
         ${NAMESPACE}VirtualInput::${NAMESPACE}VirtualInput
         ${EGL_LIBRARIES}
 )
-
-if(VC6)
-    target_link_libraries(${TARGET}
-        PRIVATE
-            libdrm::libdrm
-    )
-endif()
 
 if(PROTOCOLS)
     target_link_libraries(${TARGET}

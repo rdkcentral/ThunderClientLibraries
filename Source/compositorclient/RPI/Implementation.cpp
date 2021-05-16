@@ -19,18 +19,10 @@
 
 #include "Module.h"
 
-#ifdef VC6
 #define __GBM__
-#endif
 
 #include <EGL/egl.h>
 
-#ifdef VC6
-#include "ModeSet.h"
-#else
-#include <EGL/eglext.h>
-#include <bcm_host.h>
-#endif
 
 #include <algorithm>
 
@@ -41,300 +33,6 @@
 #include "../Client.h"
 
 static const char* connectorNameVirtualInput = "/tmp/keyhandler";
-
-namespace {
-
-#ifdef VC6
-
-using namespace WPEFramework;
-
-class Platform {
-private:
-    class Surface : public ModeSet::ICallback {
-    public:
-        Surface() = delete;
-        Surface(const Surface&) = delete;
-        Surface& operator= (const Surface&) = delete;
-     
-        Surface(ModeSet& modeSet, const EGLSurface surface) 
-            : _modeSet(modeSet)
-            , _counter(0) { 
-
-            _data._surface = reinterpret_cast<struct gbm_surface*>(surface);
-            _data._bo = nullptr;
-        }
-        ~Surface()  {
-            _modeSet.DestroyRenderTarget(_data);
-        }
-
-    public:
-        void ScanOut() {
-            // See if we have this surface attached to the FramBuffer (or whatever :-) 
-            _modeSet.Swap(_data);
-        }
-
-    private:
-        void PageFlip(unsigned int frame, unsigned int sec, unsigned int usec) override {
-            if (_counter == 0) {
-                fprintf(stderr, "Succefully flipped the page.\n");
-            }
-            _counter = ((_counter + 1) & 0x7F);
-        }
-        void VBlank(unsigned int frame, unsigned int sec, unsigned int usec) override {
-            // fprintf(stderr, "VBlank\n");
-        }
-
-    private:
-	ModeSet& _modeSet;
-        ModeSet::BufferInfo _data;
-        uint32_t _counter;
-    };
-
-    using SurfaceMap = std::unordered_map<EGLSurface, Surface>;
-
-public:
-    Platform(const Platform&) = delete;
-    Platform& operator=(const Platform&) = delete;
-
-    Platform(const string&) : _platform()
-    {
-    }
-    ~Platform() = default;
-
-public:
-    EGLNativeDisplayType Display() const 
-    {
-        EGLNativeDisplayType result (static_cast<EGLNativeDisplayType>(EGL_DEFAULT_DISPLAY));
-
-        const struct gbm_device* pointer = _platform.UnderlyingHandle();
-
-        if(pointer != nullptr) {
-            result = reinterpret_cast<EGLNativeDisplayType>(const_cast<struct gbm_device*>(pointer));
-        }
-        else {
-            TRACE_L1(_T("The native display (id) might be invalid / unsupported. Using the EGL default display instead!"));
-        }
-
-        return (result);
-    }
-    uint32_t Width() const
-    {
-        return (_platform.Width());
-    }
-    uint32_t Height() const
-    {
-        return (_platform.Height());
-    }
-    EGLSurface CreateSurface (const EGLNativeDisplayType& display, const uint32_t width, const uint32_t height) 
-    {
-        // A Native surface that acts as a native window
-        EGLSurface result = reinterpret_cast<EGLSurface>(_platform.CreateRenderTarget(width, height));
-
-        if (result == 0) {
-            TRACE_L1(_T("The native window (handle) might be invalid / unsupported. Expect undefined behavior!"));
-        }
-        else {
-            _surfaces.emplace(std::piecewise_construct,
-              std::forward_as_tuple(result),
-              std::forward_as_tuple(_platform, result));
-        }
-
-        return (result);
-    }
-    void DestroySurface(const EGLSurface& surface) 
-    {
-        SurfaceMap::iterator index = _surfaces.find(surface);
-        if (index != _surfaces.end()) {
-            _surfaces.erase(index);
-        }
-    }
-    void Opacity(const EGLSurface&, const uint8_t) 
-    {
-        TRACE_L1(_T("Currently not supported"));
-    }
-    void Geometry (const EGLSurface&, const Exchange::IComposition::Rectangle&) 
-    {
-        TRACE_L1(_T("Currently not supported"));
-    }
-    void ZOrder(const EGLSurface&, const uint16_t)
-    {
-        TRACE_L1(_T("Currently not supported"));
-    }
-    void ScanOut () {
-        for (std::pair<EGLSurface const, Surface>& entry : _surfaces) {
-            entry.second.ScanOut();
-        }
-    }
-    int Descriptor() const {
-        return (_platform.Descriptor());
-    }
-
-private:
-    ModeSet _platform;
-    SurfaceMap _surfaces;
-};
-
-#else
-
-class Platform {
-private:
-    struct Surface {
-        EGL_DISPMANX_WINDOW_T surface;
-        VC_RECT_T rectangle;
-        uint16_t layer;
-        uint8_t opacity;
-    };
-
-public:
-    Platform(const Platform&) = delete;
-    Platform& operator=(const Platform&) = delete;
-
-    Platform(const string&)
-    {
-        bcm_host_init();
-    }
-    ~Platform()
-    {
-        bcm_host_deinit();
-    }
-
-public:
-    EGLNativeDisplayType Display() const 
-    {
-        EGLNativeDisplayType result (static_cast<EGLNativeDisplayType>(EGL_DEFAULT_DISPLAY));
-
-        return (result);
-    }
-    uint32_t Width() const
-    {
-        uint32_t width, height;
-        graphics_get_display_size(0, &width, &height);
-        return (width);
-    }
-    uint32_t Height() const
-    {
-        uint32_t width, height;
-        graphics_get_display_size(0, &width, &height);
-        return (height);
-    }
-    EGLSurface CreateSurface (const EGLNativeWindowType&, const uint32_t, const uint32_t) 
-    {
-        EGLSurface result;
-
-        uint32_t displayWidth  = Width();
-        uint32_t displayHeight = Height();
-        Surface* surface = new Surface;
-
-        VC_RECT_T srcRect;
-
-        vc_dispmanx_rect_set(&(surface->rectangle), 0, 0, displayWidth, displayHeight);
-        vc_dispmanx_rect_set(&srcRect, 0, 0, displayWidth << 16, displayHeight << 16);
-        surface->layer = 0;
-        surface->opacity = 255;
-
-        VC_DISPMANX_ALPHA_T alpha = {
-            static_cast<DISPMANX_FLAGS_ALPHA_T>(DISPMANX_FLAGS_ALPHA_FROM_SOURCE | DISPMANX_FLAGS_ALPHA_MIX),
-            surface->opacity,
-            255
-        };
-
-        DISPMANX_DISPLAY_HANDLE_T dispmanDisplay = vc_dispmanx_display_open(0);
-        DISPMANX_UPDATE_HANDLE_T  dispmanUpdate  = vc_dispmanx_update_start(0);
-        DISPMANX_ELEMENT_HANDLE_T dispmanElement = vc_dispmanx_element_add(
-            dispmanUpdate,
-            dispmanDisplay,
-            surface->layer, /* Z order layer, new one is always on top */
-            &(surface->rectangle),
-            0 /*src*/,
-            &srcRect,
-            DISPMANX_PROTECTION_NONE,
-            &alpha /*alpha*/,
-            0 /*clamp*/,
-            DISPMANX_NO_ROTATE);
-        vc_dispmanx_update_submit_sync(dispmanUpdate);
-
-        surface->surface.element = dispmanElement;
-        surface->surface.width   = displayWidth;
-        surface->surface.height  = displayHeight;
-        result                   = static_cast<EGLSurface>(surface);
-
-        return (result);
-    }
-
-    void DestroySurface(const EGLSurface& surface) 
-    {
-        Surface* object = reinterpret_cast<Surface*>(surface);
-        // DISPMANX_DISPLAY_HANDLE_T dispmanDisplay = vc_dispmanx_display_open(0);
-        DISPMANX_UPDATE_HANDLE_T  dispmanUpdate  = vc_dispmanx_update_start(0);
-        vc_dispmanx_element_remove(dispmanUpdate, object->surface.element);
-        vc_dispmanx_update_submit_sync(dispmanUpdate);
-        // vc_dispmanx_display_close(dispmanDisplay);
-        delete object;
-    }
-    
-    void Opacity(const EGLSurface& surface, const uint16_t opacity) 
-    {
-        VC_RECT_T srcRect;
-        Surface* object = reinterpret_cast<Surface*>(surface);
-
-        vc_dispmanx_rect_set(&srcRect, 0, 0, (Width() << 16), (Height() << 16));
-        object->opacity = opacity;
-
-        DISPMANX_UPDATE_HANDLE_T  dispmanUpdate = vc_dispmanx_update_start(0);
-        vc_dispmanx_element_change_attributes(dispmanUpdate,
-            object->surface.element,
-            (1 << 1),
-            object->layer,
-            object->opacity,
-            &object->rectangle,
-            &srcRect,
-            0,
-            DISPMANX_NO_ROTATE);
-        vc_dispmanx_update_submit_sync(dispmanUpdate);
-    }
-
-    void Geometry (const EGLSurface& surface, const WPEFramework::Exchange::IComposition::Rectangle& rectangle) 
-    {
-        VC_RECT_T srcRect;
-        Surface* object = reinterpret_cast<Surface*>(surface);
-
-        vc_dispmanx_rect_set(&srcRect, 0, 0, (Width() << 16), (Height() << 16));
-        vc_dispmanx_rect_set(&(object->rectangle), rectangle.x, rectangle.y, rectangle.width, rectangle.height);
-
-        DISPMANX_UPDATE_HANDLE_T  dispmanUpdate = vc_dispmanx_update_start(0);
-        vc_dispmanx_element_change_attributes(dispmanUpdate,
-            object->surface.element,
-            (1 << 2),
-            object->layer,
-            object->opacity,
-            &object->rectangle,
-            &srcRect,
-            0,
-            DISPMANX_NO_ROTATE);
-        vc_dispmanx_update_submit_sync(dispmanUpdate);
-    }
-
-    void ZOrder(const EGLSurface& surface, const uint16_t layer)
-    {
-        // RPI is unique: layer #0 actually means "deepest", so we need to convert.
-        const uint16_t actualLayer = std::numeric_limits<uint16_t>::max() - layer;
-        Surface* object = reinterpret_cast<Surface*>(surface);
-        DISPMANX_UPDATE_HANDLE_T  dispmanUpdate = vc_dispmanx_update_start(0);
-        object->layer = layer;
-        vc_dispmanx_element_change_layer(dispmanUpdate, object->surface.element, actualLayer);
-        vc_dispmanx_update_submit_sync(dispmanUpdate);
-    }
-    int Descriptor() const {
-        return (-1);
-    }
-    void ScanOut () {
-    }
-
-};
-
-#endif
-
-}
 
 namespace WPEFramework {
 namespace RPI {
@@ -356,102 +54,7 @@ private:
     
     Display(const std::string& displayName);
 
-    class EXTERNAL CompositorClient {
-    private:
-        // -------------------------------------------------------------------
-        // This object should not be copied or assigned. Prevent the copy
-        // constructor and assignment constructor from being used. Compiler
-        // generated assignment and copy methods will be blocked by the
-        // following statments.
-        // Define them but do not implement them, compile error/link error.
-        // -------------------------------------------------------------------
-        CompositorClient(const CompositorClient& a_Copy) = delete;
-        CompositorClient& operator=(const CompositorClient& a_RHS) = delete;
-
-    public:
-        CompositorClient(const TCHAR formatter[], ...)
-        {
-            va_list ap;
-            va_start(ap, formatter);
-            Core::Format(_text, formatter, ap);
-            va_end(ap);
-        }
-        CompositorClient(const string& text)
-            : _text(Core::ToString(text))
-        {
-        }
-        ~CompositorClient() = default;
-
-    public:
-        inline const char* Data() const
-        {
-            return (_text.c_str());
-        }
-        inline uint16_t Length() const
-        {
-            return (static_cast<uint16_t>(_text.length()));
-        }
-
-    private:
-        string _text;
-    };
-
     class SurfaceImplementation : public Compositor::IDisplay::ISurface {
-    private:
-        class RemoteAccess : public Exchange::IComposition::IClient {
-        public:
-            RemoteAccess() = delete;
-            RemoteAccess(const RemoteAccess&) = delete;
-            RemoteAccess& operator= (const RemoteAccess&) = delete;
-
-            RemoteAccess(EGLSurface& surface, const string& name, const uint32_t width, const uint32_t height)
-                : _name(name)
-                , _opacity(Exchange::IComposition::maxOpacity)
-                , _layer(0)
-                , _nativeSurface(surface)
-                , _destination( { 0, 0, width, height } ) 
-            {
-            }
-            ~RemoteAccess() override = default;
-
-        public:
-            inline const EGLSurface& Surface() const
-            {
-                return (_nativeSurface);
-            }
-            inline int32_t Width() const
-            {
-                return _destination.width;
-            }
-            inline int32_t Height() const
-            {
-                return _destination.height;
-            }
-            string Name() const override
-            {
-                return _name;
-            }
-            void Opacity(const uint32_t value) override;
-            uint32_t Geometry(const Exchange::IComposition::Rectangle& rectangle) override;
-            Exchange::IComposition::Rectangle Geometry() const override;
-            uint32_t ZOrder(const uint16_t zorder) override;
-            uint32_t ZOrder() const override;
-
-            BEGIN_INTERFACE_MAP(RemoteAccess)
-                INTERFACE_ENTRY(Exchange::IComposition::IClient)
-            END_INTERFACE_MAP
- 
-        private:
-            const std::string _name;
-
-            uint32_t _opacity;
-            uint32_t _layer;
-
-            EGLSurface _nativeSurface;
-
-            Exchange::IComposition::Rectangle _destination;
-        };
-
     public:
         SurfaceImplementation() = delete;
         SurfaceImplementation(const SurfaceImplementation&) = delete;
@@ -463,40 +66,52 @@ private:
         ~SurfaceImplementation() override;
 
     public:
+        EGLNativeWindowType Native() const override
+        {
+            return ( _remoteClient != nullptr ? reinterpret_cast<EGLNativeWindowType>(_remoteClient->Native()) : reinterpret_cast<EGLNativeWindowType>(-1)); // huppel, what is invalidf handle code?
+        }
         std::string Name() const override {
-            return (_remoteAccess->Name());
+            return ( _remoteClient != nullptr ? _remoteClient->Name() : string());
         }
-        inline EGLNativeWindowType Native() const
-        {
-            return (reinterpret_cast<EGLNativeWindowType>(_remoteAccess->Surface()));
-        }
-        inline int32_t Width() const
-        {
-            return (_remoteAccess->Width());
-        }
-        inline int32_t Height() const
-        {
-            return (_remoteAccess->Height());
-        }
-        inline void Keyboard(Compositor::IDisplay::IKeyboard* keyboard) override
+        void Keyboard(Compositor::IDisplay::IKeyboard* keyboard) override
         {
             assert((_keyboard == nullptr) ^ (keyboard == nullptr));
             _keyboard = keyboard;
         }
-        inline void Wheel(Compositor::IDisplay::IWheel* wheel) override
-        {
-            assert((_wheel == nullptr) ^ (wheel == nullptr));
-            _wheel = wheel;
-        }
-        inline void Pointer(Compositor::IDisplay::IPointer* pointer) override
+        void Pointer(Compositor::IDisplay::IPointer* pointer) override
         {
             assert((_pointer == nullptr) ^ (pointer == nullptr));
             _pointer = pointer;
         }
-        inline void TouchPanel(Compositor::IDisplay::ITouchPanel* touchpanel) override
+        void Wheel(Compositor::IDisplay::IWheel* wheel) override
+        {
+            assert((_wheel == nullptr) ^ (wheel == nullptr));
+            _wheel = wheel;
+        }
+        void TouchPanel(Compositor::IDisplay::ITouchPanel* touchpanel) override
         {
             assert((_touchpanel == nullptr) ^ (touchpanel == nullptr));
             _touchpanel = touchpanel;
+        }
+        int32_t Width() const override
+        {   
+            // huppel is this correct? Check...
+            int32_t width = 0;
+            if(_remoteClient != nullptr) {
+                Exchange::IComposition::Rectangle rect = _remoteClient->Geometry(); 
+                width = rect.width;
+            }
+            return width; 
+        }
+        int32_t Height() const override
+        {
+            // huppel is this correct? Check...
+            int32_t width = 0;
+            if(_remoteClient != nullptr) {
+                Exchange::IComposition::Rectangle rect = _remoteClient->Geometry(); 
+                width = rect.height;
+            }
+            return width; 
         }
         inline void SendKey(
             const uint32_t key,
@@ -531,6 +146,12 @@ private:
             }
         }
 
+        inline void ScanOut() {
+            if( _remoteRenderer != nullptr ) {
+                _remoteRenderer->ScanOut();
+            }
+        }
+
     private:
         Display& _display;
 
@@ -539,7 +160,8 @@ private:
         IPointer* _pointer;
         ITouchPanel* _touchpanel;
 
-        RemoteAccess* _remoteAccess;
+        Exchange::IComposition::IClient* _remoteClient;
+        Exchange::IComposition::IRender* _remoteRenderer;
     };
 
     using InputFunction = std::function<void(SurfaceImplementation*)>;
@@ -617,13 +239,12 @@ private:
         }
     }
 
-
 public:
     typedef std::map<const string, Display*> DisplayMap;
     
     ~Display() override;
 
-    static Display& Instance(const string& displayName){
+    static Display* Instance(const string& displayName){
         Display* result(nullptr);
 
         _displaysMapLock.Lock();
@@ -632,24 +253,25 @@ public:
 
         if (index == _displays.end()) {
             result = new Display(displayName);
-            _displays.insert(std::pair<const std::string, Display*>(displayName, result));
+            if( result->RemoteDisplay() != nullptr ) {
+                _displays.insert(std::pair<const std::string, Display*>(displayName, result));
+                result->AddRef();
+            } else {
+                delete result;
+                result = nullptr;
+            }
         } else {
             result = index->second;
+            result->AddRef();
         }
-        result->AddRef();
         _displaysMapLock.Unlock();
 
-        assert(result != nullptr);
-
-        return (*result);
+        return result;
     } 
 
     void AddRef() const override
     {
-        if (Core::InterlockedIncrement(_refCount) == 1) {
-            const_cast<Display*>(this)->Initialize();
-        }
-        return;
+        Core::InterlockedIncrement(_refCount);
     }
 
     uint32_t Release() const override
@@ -665,48 +287,38 @@ public:
 
             _displaysMapLock.Unlock();
 
-            const_cast<Display*>(this)->Deinitialize();
+            delete this;
 
             return (Core::ERROR_CONNECTION_CLOSED);
         }
         return (Core::ERROR_NONE);
     }
+
     EGLNativeDisplayType Native() const override
     {
-        return (_platform.Display());
+        return (_remoteDisplay != nullptr ? reinterpret_cast<EGLNativeDisplayType>(_remoteDisplay->Native()) : static_cast<EGLNativeDisplayType>(0)); //huppel -1 or is tehre an error value?
     }
-    const std::string& Name() const final override
+    const std::string& Name() const override
     {
         return (_displayName);
     }
     int Process(const uint32_t data) override;
     int FileDescriptor() const override;
     ISurface* SurfaceByName(const std::string& name) override;
-    ISurface* Create(
-        const std::string& name,
-        const uint32_t width, const uint32_t height) override;
-
-    inline uint32_t DisplaySizeWidth() const
-    {
-        return _platform.Width();
-    }
-
-    inline uint32_t DisplaySizeHeight() const
-    {
-        return _platform.Height();
-    }
+    ISurface* Create( const std::string& name, const uint32_t width, const uint32_t height) override;
 
 private:
+    inline Exchange::IComposition::IClient* CreateRemoteSurface(const std::string& name, const uint32_t width, const uint32_t height);
     inline void Register(SurfaceImplementation* surface);
     inline void Unregister(SurfaceImplementation* surface);
-    inline void OfferClientInterface(Exchange::IComposition::IClient* client);
-    inline void RevokeClientInterface(Exchange::IComposition::IClient* client);
 
-    inline static void Publish (InputFunction& action) {
+    inline static void Publish(InputFunction& action) {
         if (action != nullptr) {
             _displaysMapLock.Lock();
             for (std::pair<const string, Display*>& entry : _displays) {
+                entry.second->_adminLock.Lock();
                 std::for_each(begin(entry.second->_surfaces), end(entry.second->_surfaces), action);
+                entry.second->_adminLock.Unlock();
             }
             _displaysMapLock.Unlock();
         }
@@ -714,11 +326,9 @@ private:
 
     inline void Initialize()
     {
-        _adminLock.Lock();
-
         if (Core::WorkerPool::IsAvailable() == true) {
             // If we are in the same process space as where a WorkerPool is registered (Main Process or
-            // hosting ptocess) use, it!
+            // hosting process) use, it!
             Core::ProxyType<RPC::InvokeServer> engine = Core::ProxyType<RPC::InvokeServer>::Create(&Core::WorkerPool::Instance());
             ASSERT(static_cast<Core::IReferenceCounted*>(engine) != nullptr);
 
@@ -738,11 +348,19 @@ private:
             engine->Announcements(_compositerServerRPCConnection->Announcement());
         }
 
+        // Connect to the CompositorServer..
         uint32_t result = _compositerServerRPCConnection->Open(RPC::CommunicationTimeOut);
 
         if (result != Core::ERROR_NONE) {
             TRACE_L1(_T("Could not open connection to Compositor with node %s. Error: %s"), _compositerServerRPCConnection->Source().RemoteId().c_str(), Core::NumberType<uint32_t>(result).Text().c_str());
             _compositerServerRPCConnection.Release();
+        }
+        else {
+            _remoteDisplay = _compositerServerRPCConnection->Aquire<Exchange::IComposition::IDisplay>(2000, _displayName, ~0);
+
+            if (_remoteDisplay == nullptr) {
+                TRACE_L1(_T("Could not create remote display for Display %s!"), Name().c_str());
+            }
         }
 
         _virtualinput = virtualinput_open(_displayName.c_str(), connectorNameVirtualInput, VirtualKeyboardCallback, VirtualMouseCallback, VirtualTouchScreenCallback);
@@ -750,16 +368,13 @@ private:
         if (_virtualinput == nullptr) {
             TRACE_L1(_T("Initialization of virtual input failed for Display %s!"), Name().c_str());
         }
-
-        _adminLock.Unlock();
     }
 
     inline void Deinitialize()
     {
-        _adminLock.Lock();
-
         if (_virtualinput != nullptr) {
             virtualinput_close(_virtualinput);
+            _virtualinput = nullptr;
         }
 
         std::list<SurfaceImplementation*>::iterator index(_surfaces.begin());
@@ -772,23 +387,38 @@ private:
 
             index = _surfaces.erase(index);
         }
+
+        if(_remoteDisplay != nullptr) {
+            _remoteDisplay->Release();
+            _remoteDisplay = nullptr;
+        }
+
         if (_compositerServerRPCConnection.IsValid() == true) {
             _compositerServerRPCConnection.Release();
         }
-
-        _adminLock.Unlock();
     }
+
+    inline const Exchange::IComposition::IDisplay* RemoteDisplay() const {
+        return _remoteDisplay;
+    }
+
+    inline Exchange::IComposition::IDisplay* RemoteDisplay() {
+        return _remoteDisplay;
+    }
+
+private:
 
     static DisplayMap _displays; 
     static Core::CriticalSection _displaysMapLock;
 
-    Platform _platform;
     std::string _displayName;
     mutable Core::CriticalSection _adminLock;
     void* _virtualinput;
     std::list<SurfaceImplementation*> _surfaces;
     Core::ProxyType<RPC::CommunicatorClient> _compositerServerRPCConnection;
     mutable uint32_t _refCount;
+
+    Exchange::IComposition::IDisplay* _remoteDisplay;
 };
 
 Display::DisplayMap Display::_displays;
@@ -803,112 +433,83 @@ Display::SurfaceImplementation::SurfaceImplementation(
     , _wheel(nullptr)
     , _pointer(nullptr)
     , _touchpanel(nullptr)
+    , _remoteClient(nullptr)
+    , _remoteRenderer(nullptr)
 {
-    uint32_t realWidth(width);
-    uint32_t realHeight(height);
+    _remoteClient = _display.CreateRemoteSurface(name, width, height);
 
-    _display.AddRef();
+    if (_remoteClient != nullptr) {
+        _remoteRenderer = _remoteClient->QueryInterface<Exchange::IComposition::IRender>();
 
-    // To support scanout the underlying buffer should be large enough to support the selected mode
-    // A buffer of smaller dimensions than the display will fail. A larger one is possible but will
-    // probably fail in the current setup. Currently, it is best to give both equal dimensions
+        if(_remoteRenderer == nullptr) {
+            TRACE_L1(_T("Could not aquire remote renderer for surface %s."), name.c_str());
+        }
 
-    if ((width != _display.DisplaySizeWidth()) || (height != _display.DisplaySizeHeight())) {
-        TRACE_L1(_T("Requested surface dimensions [%d, %d] might not be honered. Rendering might fail!"), width, height);
-
-        // Truncating
-        if (realWidth  != _display.DisplaySizeWidth())  { realWidth  = _display.DisplaySizeWidth();  }
-        if (realHeight != _display.DisplaySizeHeight()) { realHeight = _display.DisplaySizeHeight(); }
+    } else {
+        TRACE_L1(_T("Could not create remote surface for surface %s."), name.c_str());
     }
 
-    EGLSurface nativeSurface = _display._platform.CreateSurface(_display.Native(), realWidth, realHeight);
-
+    _display.AddRef();
     _display.Register(this);
-
-    _remoteAccess = Core::Service<RemoteAccess>::Create<RemoteAccess>(nativeSurface, name, realWidth, realHeight);
-
-    _display.OfferClientInterface(_remoteAccess);
 }
 
 Display::SurfaceImplementation::~SurfaceImplementation()
 {
-    TRACE_L1(_T("Destructing client named: %s"), _remoteAccess->Name().c_str());
-
     _display.Unregister(this);
 
-    _display._platform.DestroySurface(_remoteAccess->Surface());
+    if(_remoteClient != nullptr) {
 
-    _display.RevokeClientInterface(_remoteAccess);
+        TRACE_L1(_T("Destructing surface %s"), _remoteClient->Name().c_str());
 
-    _remoteAccess->Release();
+        if(_remoteRenderer != nullptr) {
+            _remoteRenderer->Release();
+        }
+
+        _remoteClient->Release();
+    }
 
     _display.Release();
 }
 
-void Display::SurfaceImplementation::RemoteAccess::Opacity(
-    const uint32_t value)
-{
-
-    _opacity = (value > Exchange::IComposition::maxOpacity) ? Exchange::IComposition::maxOpacity : value;
-
-    // _display._platform.Opacity(_nativeSurface, _opacity);
-}
-
-
-uint32_t Display::SurfaceImplementation::RemoteAccess::Geometry(const Exchange::IComposition::Rectangle& rectangle)
-{
-    _destination = rectangle;
-
-    // _display._platform.Geometry(_nativeSurface, _destination);
-    return (Core::ERROR_NONE);
-}
-
-Exchange::IComposition::Rectangle Display::SurfaceImplementation::RemoteAccess::Geometry() const 
-{
-    return (_destination);
-}
-
-uint32_t Display::SurfaceImplementation::RemoteAccess::ZOrder(const uint16_t zorder)
-{
-    _layer = zorder;
-
-    // _display._platform.ZOrder(_nativeSurface, _layer);
-
-    return (Core::ERROR_NONE);
-}
-
-uint32_t Display::SurfaceImplementation::RemoteAccess::ZOrder() const {
-    return (_layer);
-}
-
 Display::Display(const string& name)
-    : _platform(name)
-    , _displayName(name)
+    : _displayName(name)
     , _adminLock()
     , _virtualinput(nullptr)
+    , _surfaces()
     , _compositerServerRPCConnection()
     , _refCount(0)
+    , _remoteDisplay(nullptr)
 {
+    Initialize();
 }
 
 Display::~Display()
 {
+    Deinitialize();
 }
 
 int Display::Process(const uint32_t)
 {
-    _platform.ScanOut ();
+    _adminLock.Lock();
+
+    for( auto& surface : _surfaces ) {
+        surface->ScanOut();
+    }
+    _adminLock.Unlock();
+
     return (0);
 }
 
 int Display::FileDescriptor() const
 {
-    return (_platform.Descriptor());
+    return -1;
 }
 
 Compositor::IDisplay::ISurface* Display::SurfaceByName(const std::string& name)
 {
     IDisplay::ISurface* result = nullptr;
+
+    _adminLock.Lock();
 
     std::list<SurfaceImplementation*>::iterator index(_surfaces.begin());
     while ( (index != _surfaces.end()) && ((*index)->Name() != name) ) { index++; }
@@ -917,6 +518,8 @@ Compositor::IDisplay::ISurface* Display::SurfaceByName(const std::string& name)
         result = *index;
         result->AddRef();
     }
+
+    _adminLock.Unlock();
 
     return result;
 }
@@ -927,9 +530,11 @@ Compositor::IDisplay::ISurface* Display::Create(const std::string& name, const u
     Compositor::IDisplay::ISurface* result = &(*retval);
     result->AddRef();
 
-    assert (_ret != false);
-
     return result;
+}
+
+inline Exchange::IComposition::IClient* Display::CreateRemoteSurface(const std::string& name, const uint32_t width, const uint32_t height) {
+    return (_remoteDisplay != nullptr ? _remoteDisplay->CreateClient(name, width, height) : nullptr);
 }
 
 inline void Display::Register(Display::SurfaceImplementation* surface)
@@ -960,45 +565,10 @@ inline void Display::Unregister(Display::SurfaceImplementation* surface)
     _adminLock.Unlock();
 }
 
-void Display::OfferClientInterface(Exchange::IComposition::IClient* client)
-{
-    ASSERT(client != nullptr);
-
-    if (_compositerServerRPCConnection.IsValid()) {
-        uint32_t result = _compositerServerRPCConnection->Offer(client);
-
-        if (result != Core::ERROR_NONE) {
-            TRACE_L1(_T("Could not offer IClient interface with callsign %s to Compositor. Error: %s"), client->Name().c_str(), Core::NumberType<uint32_t>(result).Text().c_str());
-        }
-    } else {
-#if defined(COMPOSITORSERVERPLUGIN)
-        SYSLOG(Logging::Fatal, (_T("The CompositorServer plugin is included in the build, but not able to reach!")));
-        ASSERT(false && "The CompositorServer plugin is included in the build, but not able to reach!");
-#endif
-    }
-}
-
-void Display::RevokeClientInterface(Exchange::IComposition::IClient* client)
-{
-    ASSERT(client != nullptr);
-
-    if (_compositerServerRPCConnection.IsValid()) {
-        uint32_t result = _compositerServerRPCConnection->Revoke(client);
-
-        if (result != Core::ERROR_NONE) {
-            TRACE_L1(_T("Could not revoke IClient interface with callsign %s to Compositor. Error: %s"), client->Name().c_str(), Core::NumberType<uint32_t>(result).Text().c_str());
-        }
-    }else {
-#if defined(COMPOSITORSERVERPLUGIN)
-        SYSLOG(Logging::Fatal, (_T("The CompositorServer plugin is included in the build, but not able to reach!")));
-        ASSERT(false && "The CompositorServer plugin is included in the build, but not able to reach!");
-#endif
-    }
-}
 } // RPI
 
 Compositor::IDisplay* Compositor::IDisplay::Instance(const string& displayName)
 {
-    return (&(RPI::Display::Instance(displayName)));
+    return RPI::Display::Instance(displayName);
 }
 } // WPEFramework
