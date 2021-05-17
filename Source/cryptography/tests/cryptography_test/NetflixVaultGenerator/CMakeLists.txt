@@ -1,4 +1,4 @@
-# If not stated otherwise in this file or this component's license file the
+# If not stated otherwise in this file or this component's LICENSE file the
 # following copyright and licenses apply:
 #
 # Copyright 2020 RDK Management
@@ -15,12 +15,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.3)
-project(ClientLibraries)
+find_package(OpenSSL REQUIRED)
 
-if (BUILD_REFERENCE)
-    add_definitions (-DBUILD_REFERENCE=${BUILD_REFERENCE})
-endif()
+add_executable(NetflixVaultGenerator
+   main.cpp
+)
 
-add_subdirectory(Source)
-add_subdirectory(Tests)
+target_link_libraries(NetflixVaultGenerator
+   PRIVATE
+   OpenSSL::Crypto
+   dl
+)
+
+install(TARGETS NetflixVaultGenerator DESTINATION bin)
+
