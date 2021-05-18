@@ -88,6 +88,63 @@ EXTERNAL uint32_t deviceinfo_architecure(char buffer[], uint8_t* length);
  */
 EXTERNAL uint32_t deviceinfo_chipset(char buffer[], uint8_t* length);
 
+
+/**
+ * @brief Get the device model name string
+ * 
+ * @param buffer Buffer that will contain the model name string
+ * @param length Size of the @ref buffer
+ *               if the buffer is not big enough returns -LENGHTH of required buffer, otherwise return LENGTH of string
+ *               if instance or buffer is null, returns 0
+ * @return Core::ERROR_NONE if success, appropriate error otherwise.
+ */
+EXTERNAL uint32_t deviceinfo_model_name(char buffer[], uint8_t* length);
+
+/**
+ * @brief Get the device model year string
+ * 
+ * @param buffer Buffer that will contain the model year string
+ * @param length Size of the @ref buffer
+ *               if the buffer is not big enough returns -LENGHTH of required buffer, otherwise return LENGTH of string
+ *               if instance or buffer is null, returns 0
+ * @return Core::ERROR_NONE if success, appropriate error otherwise.
+ */
+EXTERNAL uint32_t deviceinfo_model_year(char buffer[], uint8_t* length);
+
+/**
+ * @brief Get the device system integrator name string
+ * 
+ * @param buffer Buffer that will contain the system integrator name string
+ * @param length Size of the @ref buffer
+ *               if the buffer is not big enough returns -LENGHTH of required buffer, otherwise return LENGTH of string
+ *               if instance or buffer is null, returns 0
+ * @return Core::ERROR_NONE if success, appropriate error otherwise.
+ */
+EXTERNAL uint32_t deviceinfo_system_integrator_name(char buffer[], uint8_t* length);
+
+/**
+ * @brief Get the device friendly name string
+ * 
+ * @param buffer Buffer that will contain the system friendly name string
+ * @param length Size of the @ref buffer
+ *               if the buffer is not big enough returns -LENGHTH of required buffer, otherwise return LENGTH of string
+ *               if instance or buffer is null, returns 0
+ * @return Core::ERROR_NONE if success, appropriate error otherwise.
+ */
+EXTERNAL uint32_t deviceinfo_friendly_name(char buffer[], uint8_t* length);
+
+/**
+ * @brief Get the device platform name string
+ * 
+ * @param buffer Buffer that will contain the platform name string
+ * @param length Size of the @ref buffer
+ *               if the buffer is not big enough returns -LENGHTH of required buffer, otherwise return LENGTH of string
+ *               if instance or buffer is null, returns 0
+ * @return Core::ERROR_NONE if success, appropriate error otherwise.
+ */
+EXTERNAL uint32_t deviceinfo_platform_name(char buffer[], uint8_t* length);
+
+
 /**
  * @brief Get the device firmware version string
  * 

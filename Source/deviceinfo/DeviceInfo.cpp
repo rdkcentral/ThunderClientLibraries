@@ -483,4 +483,151 @@ uint32_t deviceinfo_hdcp(deviceinfo_hdcp_t* supportedHDCP)
     }
     return result;
 }
+
+
+uint32_t deviceinfo_model_name(char buffer[], uint8_t* length)
+{
+    uint32_t result = Core::ERROR_UNAVAILABLE;
+
+    string modelName="";
+
+    Exchange::IDeviceCapabilities* iDeviceCapabilitiesPtr = DeviceInfoLink::Instance().Interface();
+    
+    if (iDeviceCapabilitiesPtr != nullptr) {
+        Exchange::IDeviceMetadata* iDeviceMetaDataPtr = iDeviceCapabilitiesPtr->QueryInterface<Exchange::IDeviceMetadata>();
+        if( iDeviceCapabilitiesPtr != nullptr) {
+            result = iDeviceMetaDataPtr->ModelName(modelName);
+
+            if (modelName.size() <= *length) {
+                strncpy(buffer, modelName.c_str(), *length);
+                *length = static_cast<uint8_t>(strlen(buffer));
+                result = Core::ERROR_NONE;
+            } else {
+                *length = 0;
+                result = Core::ERROR_WRITE_ERROR;
+            }
+        }
+
+        iDeviceCapabilitiesPtr->Release();
+
+    }
+    return result;
+}
+uint32_t deviceinfo_model_year(char buffer[], uint8_t* length)
+{
+    uint32_t result = Core::ERROR_UNAVAILABLE;
+
+    string modelYear="";
+
+    Exchange::IDeviceCapabilities* iDeviceCapabilitiesPtr = DeviceInfoLink::Instance().Interface();
+    
+    if (iDeviceCapabilitiesPtr != nullptr) {
+        Exchange::IDeviceMetadata* iDeviceMetaDataPtr = iDeviceCapabilitiesPtr->QueryInterface<Exchange::IDeviceMetadata>();
+        if( iDeviceCapabilitiesPtr != nullptr) {
+            result = iDeviceMetaDataPtr->ModelYear(modelYear);
+
+            if (modelYear.size() <= *length) {
+                strncpy(buffer, modelYear.c_str(), *length);
+                *length = static_cast<uint8_t>(strlen(buffer));
+                result = Core::ERROR_NONE;
+            } else {
+                *length = 0;
+                result = Core::ERROR_WRITE_ERROR;
+            }
+        }
+
+        iDeviceCapabilitiesPtr->Release();
+
+    }
+    return result;
+}
+
+uint32_t deviceinfo_system_integrator_name(char buffer[], uint8_t* length)
+{
+    uint32_t result = Core::ERROR_UNAVAILABLE;
+
+    string integratorName="";
+
+    Exchange::IDeviceCapabilities* iDeviceCapabilitiesPtr = DeviceInfoLink::Instance().Interface();
+    
+    if (iDeviceCapabilitiesPtr != nullptr) {
+        Exchange::IDeviceMetadata* iDeviceMetaDataPtr = iDeviceCapabilitiesPtr->QueryInterface<Exchange::IDeviceMetadata>();
+        if( iDeviceCapabilitiesPtr != nullptr) {
+            result = iDeviceMetaDataPtr->SystemIntegratorName(integratorName);
+
+            if (integratorName.size() <= *length) {
+                strncpy(buffer, integratorName.c_str(), *length);
+                *length = static_cast<uint8_t>(strlen(buffer));
+                result = Core::ERROR_NONE;
+            } else {
+                *length = 0;
+                result = Core::ERROR_WRITE_ERROR;
+            }
+        }
+
+        iDeviceCapabilitiesPtr->Release();
+
+    }
+    return result;
+}
+
+
+uint32_t deviceinfo_friendly_name(char buffer[], uint8_t* length)
+{
+    uint32_t result = Core::ERROR_UNAVAILABLE;
+
+    string friendlyName="";
+
+    Exchange::IDeviceCapabilities* iDeviceCapabilitiesPtr = DeviceInfoLink::Instance().Interface();
+    
+    if (iDeviceCapabilitiesPtr != nullptr) {
+        Exchange::IDeviceMetadata* iDeviceMetaDataPtr = iDeviceCapabilitiesPtr->QueryInterface<Exchange::IDeviceMetadata>();
+        if( iDeviceCapabilitiesPtr != nullptr) {
+            result = iDeviceMetaDataPtr->FriendlyName(friendlyName);
+
+            if (friendlyName.size() <= *length) {
+                strncpy(buffer, friendlyName.c_str(), *length);
+                *length = static_cast<uint8_t>(strlen(buffer));
+                result = Core::ERROR_NONE;
+            } else {
+                *length = 0;
+                result = Core::ERROR_WRITE_ERROR;
+            }
+        }
+
+        iDeviceCapabilitiesPtr->Release();
+
+    }
+    return result;
+}
+
+
+uint32_t deviceinfo_platform_name(char buffer[], uint8_t* length)
+{
+    uint32_t result = Core::ERROR_UNAVAILABLE;
+
+    string platformName="";
+
+    Exchange::IDeviceCapabilities* iDeviceCapabilitiesPtr = DeviceInfoLink::Instance().Interface();
+    
+    if (iDeviceCapabilitiesPtr != nullptr) {
+        Exchange::IDeviceMetadata* iDeviceMetaDataPtr = iDeviceCapabilitiesPtr->QueryInterface<Exchange::IDeviceMetadata>();
+        if( iDeviceCapabilitiesPtr != nullptr) {
+            result = iDeviceMetaDataPtr->PlatformName(platformName);
+
+            if (platformName.size() <= *length) {
+                strncpy(buffer, platformName.c_str(), *length);
+                *length = static_cast<uint8_t>(strlen(buffer));
+                result = Core::ERROR_NONE;
+            } else {
+                *length = 0;
+                result = Core::ERROR_WRITE_ERROR;
+            }
+        }
+
+        iDeviceCapabilitiesPtr->Release();
+
+    }
+    return result;
+}
 } // extern "C"
