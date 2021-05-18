@@ -23,4 +23,4 @@ if (BUILD_REFERENCE)
 endif()
 
 add_subdirectory(Source)
-add_subdirectory(Tests)
+
