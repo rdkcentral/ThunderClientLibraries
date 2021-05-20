@@ -16,11 +16,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+ 
+#pragma once
 
-#include "Test.h"
+#ifndef MODULE_NAME
+#define MODULE_NAME CryptographyTest
+#endif
 
-int __cnt = 0;
-int __pass = 0;
+#include <plugins/plugins.h>
 
-int TotalTests = 0;
-int TotalTestsPassed = 0;
+#undef EXTERNAL
+#define EXTERNAL
