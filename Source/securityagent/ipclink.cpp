@@ -20,6 +20,8 @@
 #include "IPCSecurityToken.h"
 #include "securityagent.h"
 
+#include <mutex>
+
 using namespace WPEFramework;
 
 static string GetEndPoint()
@@ -37,7 +39,7 @@ static string GetEndPoint()
 
 extern "C" {
 
-Core::ProxyType<IPC::SecurityAgent::TokenData> _tokenId(Core::ProxyType<IPC::SecurityAgent::TokenData>::Create());
+Core::ProxyPoolType<IPC::SecurityAgent::TokenData> _tokens(1);
 
 /*
  * GetToken - function to obtain a token from the SecurityAgent
@@ -55,12 +57,16 @@ Core::ProxyType<IPC::SecurityAgent::TokenData> _tokenId(Core::ProxyType<IPC::Sec
  */
 int GetToken(unsigned short maxLength, unsigned short inLength, unsigned char buffer[])
 {
+    static std::mutex mtx;
+    std::unique_lock<std::mutex> lock(mtx);
+
     Core::IPCChannelClientType<Core::Void, false, true> channel(Core::NodeId(GetEndPoint().c_str()), 2048);
     int result = -1;
 
     if (channel.Open(1000) == Core::ERROR_NONE) { // Wait for 1 Second.
 
         // Prepare the data we have to send....
+        Core::ProxyType<IPC::SecurityAgent::TokenData> _tokenId(_tokens.Element());
         _tokenId->Clear();
         _tokenId->Parameters().Set(inLength, buffer);
 
