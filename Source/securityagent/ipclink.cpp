@@ -39,7 +39,7 @@ static string GetEndPoint()
 
 extern "C" {
 
-Core::ProxyType<IPC::SecurityAgent::TokenData> _tokenId(Core::ProxyType<IPC::SecurityAgent::TokenData>::Create());
+Core::ProxyPoolType<IPC::SecurityAgent::TokenData> _tokens(1);
 
 /*
  * GetToken - function to obtain a token from the SecurityAgent
@@ -66,6 +66,7 @@ int GetToken(unsigned short maxLength, unsigned short inLength, unsigned char bu
     if (channel.Open(1000) == Core::ERROR_NONE) { // Wait for 1 Second.
 
         // Prepare the data we have to send....
+        Core::ProxyType<IPC::SecurityAgent::TokenData> _tokenId(_tokens.Element());
         _tokenId->Clear();
         _tokenId->Parameters().Set(inLength, buffer);
 
