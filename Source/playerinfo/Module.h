@@ -26,7 +26,7 @@
 #include <core/core.h>
 #include <tracing/tracing.h>
 
-#if defined(__WINDOWS__) && defined(SECURITYAGENT_EXPORTS)
+#if defined(__WINDOWS__) && defined(PLAYERINFO_EXPORTS)
 #undef EXTERNAL
 #define EXTERNAL EXTERNAL_EXPORT
 #endif

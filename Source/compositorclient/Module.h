@@ -26,8 +26,12 @@
 #include <core/core.h>
 #include <tracing/tracing.h>
 
-#if defined(__WINDOWS__) && defined(COMPOSITORCLIENT_EXPORTS)
+#if defined(__WINDOWS__)
+#if defined(COMPOSITORCLIENT_EXPORTS)
 #undef EXTERNAL
 #define EXTERNAL EXTERNAL_EXPORT
+#else
+#pragma comment(lib, "compositorclient.lib")
+#endif
 #endif
 

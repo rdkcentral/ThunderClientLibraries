@@ -24,7 +24,7 @@
 
 #undef EXTERNAL
 #ifdef _MSVC_LANG
-#ifdef DISPLAYINFO_EXPORTS
+#ifdef PLAYERINFO_EXPORTS
 #define EXTERNAL __declspec(dllexport)
 #else
 #define EXTERNAL __declspec(dllimport)
