@@ -27,9 +27,13 @@
 #include <core/core.h>
 #include <tracing/tracing.h>
 
-#if defined(__WINDOWS__) && defined(GSTREAMER_CLIENT_EXPORTS)
+#if defined(__WINDOWS__)
+#if defined(GSTREAMER_CLIENT_EXPORTS)
 #undef EXTERNAL
 #define EXTERNAL EXTERNAL_EXPORT
+#else
+#pragma comment(lib, "gstreamerclient.lib")
+#endif
 #endif
 
 #endif // __MODULE_GSTREAMER_CLIENT_H
