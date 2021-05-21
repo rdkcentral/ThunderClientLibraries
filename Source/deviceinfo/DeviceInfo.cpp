@@ -155,18 +155,22 @@ uint32_t deviceinfo_architecure(char buffer[], uint8_t* length)
         if (identifier != nullptr) {
             std::string newValue = Core::ToString(identifier->Architecture());
 
-            if (newValue.size() < *length) {
-                strncpy(buffer, newValue.c_str(), *length);
-                *length = static_cast<uint8_t>(strlen(buffer));
-                result = Core::ERROR_NONE;
-            } else {
-                *length = 0;
-                result = Core::ERROR_WRITE_ERROR;
+            if(*length <= newValue.size()){
+                *length = newValue.size()+1 ;
+                return Core::ERROR_INVALID_INPUT_LENGTH ;
             }
 
+            *length = newValue.size()+1 ;
+            strncpy(buffer, newValue.c_str(), *length);
+            result = Core::ERROR_NONE;
+
             identifier->Release();
+        } else {
+        *length = 0;
         }
         subsys->Release();
+    }  else {
+        *length = 0;
     }
 
     return result;
@@ -184,18 +188,23 @@ uint32_t deviceinfo_chipset(char buffer[], uint8_t* length)
         if (identifier != nullptr) {
             std::string newValue = Core::ToString(identifier->Chipset());
 
-            if (newValue.size() < *length) {
-                strncpy(buffer, newValue.c_str(), *length);
-                *length = static_cast<uint8_t>(strlen(buffer));
-                result = Core::ERROR_NONE;
-            } else {
-                *length = 0;
-                result = Core::ERROR_WRITE_ERROR;
+            if(*length <= newValue.size()){
+                *length = newValue.size()+1 ;
+                return Core::ERROR_INVALID_INPUT_LENGTH ;
             }
 
+            *length = newValue.size()+1 ;
+            strncpy(buffer, newValue.c_str(), *length);
+            result = Core::ERROR_NONE;
+
             identifier->Release();
+
+        }  else {
+        *length = 0;
         }
         subsys->Release();
+    }  else {
+        *length = 0;
     }
 
     return result;
@@ -213,18 +222,22 @@ uint32_t deviceinfo_firmware_version(char buffer[], uint8_t* length)
         if (identifier != nullptr) {
             std::string newValue = Core::ToString(identifier->FirmwareVersion());
 
-            if (newValue.size() < *length) {
-                strncpy(buffer, newValue.c_str(), *length);
-                *length = static_cast<uint8_t>(strlen(buffer));
-                result = Core::ERROR_NONE;
-            } else {
-                *length = 0;
-                result = Core::ERROR_WRITE_ERROR;
+            if(*length <= newValue.size()){
+                *length = newValue.size()+1 ;
+                return Core::ERROR_INVALID_INPUT_LENGTH ;
             }
 
+            *length = newValue.size()+1 ;
+            strncpy(buffer, newValue.c_str(), *length);
+            result = Core::ERROR_NONE;
+
             identifier->Release();
+        } else {
+        *length = 0;
         }
         subsys->Release();
+    } else {
+        *length = 0;
     }
 
     return result;
@@ -245,9 +258,13 @@ uint32_t deviceinfo_id(uint8_t buffer[], uint8_t* length)
             identifier->Release();
 
             result = Core::ERROR_NONE;
+        } else {
+            *length = 0;
         }
 
         subsys->Release();
+    } else {
+        *length = 0;
     }
 
     return result;
@@ -270,18 +287,22 @@ uint32_t deviceinfo_id_str(char buffer[], uint8_t* length)
 
             string id = Core::SystemInfo::Instance().Id(id_buffer, ~0);
 
-            *length = id.size() < *length ? id.size()+1 : 0 ;
-            if (*length > 0) { 
+            if (id.size() < *length) { 
                 strncpy(buffer, id.c_str(), *length);
                 result = Core::ERROR_NONE;
             } else {
-                result = Core::ERROR_WRITE_ERROR;
+                *length = id.size()+1 ;
+                result = Core::ERROR_INVALID_INPUT_LENGTH;
             }
 
             identifier->Release();
+        } else {
+            *length = 0;
         }
 
         subsys->Release();
+    } else {
+        *length = 0;
     }
 
     return result;
@@ -318,8 +339,12 @@ uint32_t deviceinfo_output_resolutions(deviceinfo_output_resolution_t value[], u
             *length = inserted;
             index->Release();
             result = Core::ERROR_NONE;
+        } else {
+            *length = 0;
         }
         accessor->Release();
+    } else {
+        *length = 0;
     }
     return result;
 }
@@ -355,8 +380,12 @@ uint32_t deviceinfo_video_outputs(deviceinfo_video_output_t value[], uint8_t* le
             *length = inserted;
             index->Release();
             result = Core::ERROR_NONE;
+        } else {
+            *length = 0;
         }
         accessor->Release();
+    } else {
+        *length = 0;
     }
     return result;
 }
@@ -392,8 +421,12 @@ uint32_t deviceinfo_audio_outputs(deviceinfo_audio_output_t value[], uint8_t* le
             *length = inserted;
             index->Release();
             result = Core::ERROR_NONE;
+        } else {
+            *length = 0;
         }
         accessor->Release();
+    } else {
+        *length = 0;
     }
     return result;
 }
@@ -419,7 +452,7 @@ uint32_t deviceinfo_maximum_output_resolution(deviceinfo_output_resolution_t* va
                 index++;
             }
         }
-    }
+    } 
     return (result);
 }
 
@@ -512,10 +545,15 @@ uint32_t deviceinfo_model_name(char buffer[], uint8_t* length)
             result = Core::ERROR_NONE;
 
             iDeviceMetaDataPtr->Release();
+        } else {
+        *length = 0;
         }
 
         iDeviceCapabilitiesPtr->Release();
 
+    }
+    else {
+        *length=0;
     }
     return result;
 }
@@ -536,7 +574,7 @@ uint32_t deviceinfo_model_year(char buffer[], uint8_t* length)
                 return result ;
             }
 
-            string year = std::to_string(modelYear) ;
+            string year = Core::ToString(modelYear) ;
 
             if(*length <= year.size()){
                 *length = year.size()+1 ;
@@ -548,13 +586,20 @@ uint32_t deviceinfo_model_year(char buffer[], uint8_t* length)
             result = Core::ERROR_NONE;
 
             iDeviceMetaDataPtr->Release();
+        }  else {
+        *length = 0;
         }
 
         iDeviceCapabilitiesPtr->Release();
 
+    } else {
+        *length=0;
     }
+
     return result;
 }
+
+
 
 uint32_t deviceinfo_system_integrator_name(char buffer[], uint8_t* length)
 {
@@ -583,10 +628,14 @@ uint32_t deviceinfo_system_integrator_name(char buffer[], uint8_t* length)
             result = Core::ERROR_NONE;
 
             iDeviceMetaDataPtr->Release();
+        }  else {
+        *length=0;
         }
 
         iDeviceCapabilitiesPtr->Release();
 
+    } else {
+        *length=0;
     }
     return result;
 }
@@ -619,10 +668,14 @@ uint32_t deviceinfo_friendly_name(char buffer[], uint8_t* length)
             result = Core::ERROR_NONE;
 
             iDeviceMetaDataPtr->Release();
-        }
+        } else {
+        *length=0;
+    }
 
         iDeviceCapabilitiesPtr->Release();
 
+    } else {
+        *length=0;
     }
     return result;
 }
@@ -655,11 +708,15 @@ uint32_t deviceinfo_platform_name(char buffer[], uint8_t* length)
             result = Core::ERROR_NONE;
 
             iDeviceMetaDataPtr->Release();
+        }  else {
+        *length=0;
         }
         
 
         iDeviceCapabilitiesPtr->Release();
 
+    }  else {
+        *length=0;
     }
     return result;
 }

@@ -69,9 +69,10 @@ typedef enum deviceinfo_video_output_type {
 /**
  * @brief Get the device architectue string 
  * 
- * @param buffer Buffer that will contain the architectue string
+ * @param buffer Buffer that will contain the architectue string (including the null characetr at the end)
  * @param length Size of the @ref buffer
- *               if the buffer is not big enough returns -LENGHTH of required buffer, otherwise return LENGTH
+ *               if the buffer is not big enough returns LENGHTH of required buffer, otherwise return LENGTH.
+ *               LENGTH takes into account the null character at the end of the c-string.
  *               if instance or buffer is null, returns 0
  * @return Core::ERROR_NONE if success, appropriate error otherwise.
  */
@@ -83,6 +84,7 @@ EXTERNAL uint32_t deviceinfo_architecure(char buffer[], uint8_t* length);
  * @param buffer Buffer that will contain the chipset name
  * @param length Size of the @ref buffer
  *               if the buffer is not big enough returns -LENGHTH of required buffer, otherwise return LENGTH
+ *               LENGTH takes into account the null character at the end of the c-string.
  *               if instance or buffer is null, returns 0
  * @return Core::ERROR_NONE if success, appropriate error otherwise.
  */
@@ -166,6 +168,7 @@ EXTERNAL uint32_t deviceinfo_platform_name(char buffer[], uint8_t* length);
  * @param buffer Buffer that will contain the firmware version string
  * @param length Size of the @ref buffer
  *               if the buffer is not big enough returns -LENGHTH of required buffer, otherwise return LENGTH of string
+ *               LENGTH takes into account the null character at the end of the c-string.
  *               if instance or buffer is null, returns 0
  * @return Core::ERROR_NONE if success, appropriate error otherwise.
  */
@@ -176,8 +179,7 @@ EXTERNAL uint32_t deviceinfo_firmware_version(char buffer[], uint8_t* length);
  * 
  * @param buffer Buffer that will contain the binary device ID
  * @param length Size of the @ref buffer
- *               if the buffer is not big enough returns -LENGHTH of required buffer, otherwise return LENGTH of string
- *               returns 0 if ID is not available for the device, or instance or buffer is null.
+ *               returns 0 if ID is not available for the device, or instance is null.
  * @return Core::ERROR_NONE if success, appropriate error otherwise.
  * 
  */
@@ -188,9 +190,11 @@ EXTERNAL uint32_t deviceinfo_id(uint8_t buffer[], uint8_t* length);
  * 
  * @param buffer Buffer that will contain the device ID string
  * @param length Size of the @ref buffer
- *               if the buffer is not big enough returns -LENGHTH of required buffer, otherwise return LENGTH of string
- *               returns 0 if ID is not available for the device, or instance or buffer is null.
+ *               if the buffer is not big enough returns LENGHTH of required buffer, otherwise return LENGTH of string
+ *               LENGTH takes into account the null character at the end of the c-string.
+ *               returns 0 if ID is not available for the device, or instance  is null.
  * @return Core::ERROR_NONE if success, appropriate error otherwise.
+ *         Core::ERROR_INVALID_INPUT_LENGTH if the buffer is not big enough for the device ID (including the null characetr at the end)
  * 
  */
 EXTERNAL uint32_t deviceinfo_id_str(char buffer[], uint8_t* length);
@@ -198,9 +202,8 @@ EXTERNAL uint32_t deviceinfo_id_str(char buffer[], uint8_t* length);
 /**
  * @brief Get the device all supported output resolutions
  * 
- * @param buffer Buffer that will contain the firmware version
+ * @param value Buffer that will contain the firmware version
  * @param length Size of the @ref buffer
- *               if the buffer is not big enough returns -LENGHTH of required buffer, otherwise return LENGTH of string
  *               if instance or buffer is null, returns 0
  * @return Core::ERROR_NONE if success, appropriate error otherwise.
  */
@@ -209,10 +212,9 @@ EXTERNAL uint32_t deviceinfo_output_resolutions(deviceinfo_output_resolution_t v
 /**
  * @brief Get the device all supported audio outputs
  * 
- * @param buffer Buffer that will contain the firmware version
+ * @param value Buffer that will contain the audio outputs
  * @param length Size of the @ref buffer
- *               if the buffer is not big enough returns -LENGHTH of required buffer, otherwise return LENGTH of string
- *               if instance or buffer is null, returns 0
+ *               if instance is null, returns 0
  * @return Core::ERROR_NONE if success, appropriate error otherwise.
  */
 EXTERNAL uint32_t deviceinfo_audio_outputs(deviceinfo_audio_output_t value[], uint8_t* length);
@@ -220,10 +222,9 @@ EXTERNAL uint32_t deviceinfo_audio_outputs(deviceinfo_audio_output_t value[], ui
 /**
  * @brief Get the device all supported video outputs
  * 
- * @param buffer Buffer that will contain the firmware version
- * @param length Size of the @ref buffer
- *               if the buffer is not big enough returns -LENGHTH of required buffer, otherwise return LENGTH of string
- *               if instance or buffer is null, returns 0
+ * @param value Buffer that will contain the video output
+ * @param length Size of the @ref value
+ *               if instance  is null, returns 0
  * @return Core::ERROR_NONE if success, appropriate error otherwise.
  */
 EXTERNAL uint32_t deviceinfo_video_outputs(deviceinfo_video_output_t value[], uint8_t* length);
@@ -231,10 +232,9 @@ EXTERNAL uint32_t deviceinfo_video_outputs(deviceinfo_video_output_t value[], ui
 /**
  * @brief Get the device maximum supported output resolution
  * 
- * @param buffer Buffer that will contain the firmware version
- * @param length Size of the @ref buffer
- *               if the buffer is not big enough returns -LENGHTH of required buffer, otherwise return LENGTH of string
- *               if instance or buffer is null, returns 0
+ * @param buffer value that will contain the device maximum output resolution
+ * @param value  Value of the output resolution
+ *               Only read it if the returned value is Core::ERROR_NONE
  * @return Core::ERROR_NONE if success, appropriate error otherwise.
  */
 EXTERNAL uint32_t deviceinfo_maximum_output_resolution(deviceinfo_output_resolution_t* value);
