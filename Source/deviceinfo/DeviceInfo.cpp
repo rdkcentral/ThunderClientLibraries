@@ -155,7 +155,7 @@ uint32_t deviceinfo_architecure(char buffer[], uint8_t* length)
         if (identifier != nullptr) {
             std::string newValue = Core::ToString(identifier->Architecture());
 
-            if (newValue.size() <= *length) {
+            if (newValue.size() < *length) {
                 strncpy(buffer, newValue.c_str(), *length);
                 *length = static_cast<uint8_t>(strlen(buffer));
                 result = Core::ERROR_NONE;
@@ -184,7 +184,7 @@ uint32_t deviceinfo_chipset(char buffer[], uint8_t* length)
         if (identifier != nullptr) {
             std::string newValue = Core::ToString(identifier->Chipset());
 
-            if (newValue.size() <= *length) {
+            if (newValue.size() < *length) {
                 strncpy(buffer, newValue.c_str(), *length);
                 *length = static_cast<uint8_t>(strlen(buffer));
                 result = Core::ERROR_NONE;
@@ -213,7 +213,7 @@ uint32_t deviceinfo_firmware_version(char buffer[], uint8_t* length)
         if (identifier != nullptr) {
             std::string newValue = Core::ToString(identifier->FirmwareVersion());
 
-            if (newValue.size() <= *length) {
+            if (newValue.size() < *length) {
                 strncpy(buffer, newValue.c_str(), *length);
                 *length = static_cast<uint8_t>(strlen(buffer));
                 result = Core::ERROR_NONE;
@@ -270,9 +270,9 @@ uint32_t deviceinfo_id_str(char buffer[], uint8_t* length)
 
             string id = Core::SystemInfo::Instance().Id(id_buffer, ~0);
 
-            if (*length >= id.size()) {
-                memcpy(buffer, id.c_str(), id.size() + 1);
-                *length = static_cast<uint8_t>(id.size());
+            *length = id.size() < *length ? id.size()+1 : 0 ;
+            if (*length > 0) { 
+                strncpy(buffer, id.c_str(), *length);
                 result = Core::ERROR_NONE;
             } else {
                 result = Core::ERROR_WRITE_ERROR;
@@ -489,7 +489,7 @@ uint32_t deviceinfo_model_name(char buffer[], uint8_t* length)
 {
     uint32_t result = Core::ERROR_UNAVAILABLE;
 
-    string modelName="";
+    string modelName;
 
     Exchange::IDeviceCapabilities* iDeviceCapabilitiesPtr = DeviceInfoLink::Instance().Interface();
     
@@ -497,15 +497,21 @@ uint32_t deviceinfo_model_name(char buffer[], uint8_t* length)
         Exchange::IDeviceMetadata* iDeviceMetaDataPtr = iDeviceCapabilitiesPtr->QueryInterface<Exchange::IDeviceMetadata>();
         if( iDeviceCapabilitiesPtr != nullptr) {
             result = iDeviceMetaDataPtr->ModelName(modelName);
-
-            if (modelName.size() <= *length) {
-                strncpy(buffer, modelName.c_str(), *length);
-                *length = static_cast<uint8_t>(strlen(buffer));
-                result = Core::ERROR_NONE;
-            } else {
-                *length = 0;
-                result = Core::ERROR_WRITE_ERROR;
+            if (result != Core::ERROR_NONE ) {
+                *length = 0 ;
+                return result ;
             }
+
+            if(*length <= modelName.size()){
+                *length = modelName.size()+1 ;
+                return Core::ERROR_INVALID_INPUT_LENGTH ;
+            }
+
+            *length = modelName.size()+1 ;
+            strncpy(buffer, modelName.c_str(), *length);
+            result = Core::ERROR_NONE;
+
+            iDeviceMetaDataPtr->Release();
         }
 
         iDeviceCapabilitiesPtr->Release();
@@ -517,7 +523,7 @@ uint32_t deviceinfo_model_year(char buffer[], uint8_t* length)
 {
     uint32_t result = Core::ERROR_UNAVAILABLE;
 
-    string modelYear="";
+    uint16_t modelYear = 0;
 
     Exchange::IDeviceCapabilities* iDeviceCapabilitiesPtr = DeviceInfoLink::Instance().Interface();
     
@@ -525,15 +531,23 @@ uint32_t deviceinfo_model_year(char buffer[], uint8_t* length)
         Exchange::IDeviceMetadata* iDeviceMetaDataPtr = iDeviceCapabilitiesPtr->QueryInterface<Exchange::IDeviceMetadata>();
         if( iDeviceCapabilitiesPtr != nullptr) {
             result = iDeviceMetaDataPtr->ModelYear(modelYear);
-
-            if (modelYear.size() <= *length) {
-                strncpy(buffer, modelYear.c_str(), *length);
-                *length = static_cast<uint8_t>(strlen(buffer));
-                result = Core::ERROR_NONE;
-            } else {
-                *length = 0;
-                result = Core::ERROR_WRITE_ERROR;
+            if (result != Core::ERROR_NONE ) {
+                *length = 0 ;
+                return result ;
             }
+
+            string year = std::to_string(modelYear) ;
+
+            if(*length <= year.size()){
+                *length = year.size()+1 ;
+                return Core::ERROR_INVALID_INPUT_LENGTH ;
+            }
+
+            *length = year.size()+1 ;
+            strncpy(buffer, year.c_str(), *length);
+            result = Core::ERROR_NONE;
+
+            iDeviceMetaDataPtr->Release();
         }
 
         iDeviceCapabilitiesPtr->Release();
@@ -546,7 +560,7 @@ uint32_t deviceinfo_system_integrator_name(char buffer[], uint8_t* length)
 {
     uint32_t result = Core::ERROR_UNAVAILABLE;
 
-    string integratorName="";
+    string integratorName;
 
     Exchange::IDeviceCapabilities* iDeviceCapabilitiesPtr = DeviceInfoLink::Instance().Interface();
     
@@ -554,15 +568,21 @@ uint32_t deviceinfo_system_integrator_name(char buffer[], uint8_t* length)
         Exchange::IDeviceMetadata* iDeviceMetaDataPtr = iDeviceCapabilitiesPtr->QueryInterface<Exchange::IDeviceMetadata>();
         if( iDeviceCapabilitiesPtr != nullptr) {
             result = iDeviceMetaDataPtr->SystemIntegratorName(integratorName);
-
-            if (integratorName.size() <= *length) {
-                strncpy(buffer, integratorName.c_str(), *length);
-                *length = static_cast<uint8_t>(strlen(buffer));
-                result = Core::ERROR_NONE;
-            } else {
-                *length = 0;
-                result = Core::ERROR_WRITE_ERROR;
+            if (result != Core::ERROR_NONE ) {
+                *length = 0 ;
+                return result ;
             }
+
+            if(*length <= integratorName.size()){
+                *length = integratorName.size()+1 ;
+                return Core::ERROR_INVALID_INPUT_LENGTH ;
+            }
+
+            *length = integratorName.size()+1 ;
+            strncpy(buffer, integratorName.c_str(), *length);
+            result = Core::ERROR_NONE;
+
+            iDeviceMetaDataPtr->Release();
         }
 
         iDeviceCapabilitiesPtr->Release();
@@ -576,7 +596,7 @@ uint32_t deviceinfo_friendly_name(char buffer[], uint8_t* length)
 {
     uint32_t result = Core::ERROR_UNAVAILABLE;
 
-    string friendlyName="";
+    string friendlyName;
 
     Exchange::IDeviceCapabilities* iDeviceCapabilitiesPtr = DeviceInfoLink::Instance().Interface();
     
@@ -584,15 +604,21 @@ uint32_t deviceinfo_friendly_name(char buffer[], uint8_t* length)
         Exchange::IDeviceMetadata* iDeviceMetaDataPtr = iDeviceCapabilitiesPtr->QueryInterface<Exchange::IDeviceMetadata>();
         if( iDeviceCapabilitiesPtr != nullptr) {
             result = iDeviceMetaDataPtr->FriendlyName(friendlyName);
-
-            if (friendlyName.size() <= *length) {
-                strncpy(buffer, friendlyName.c_str(), *length);
-                *length = static_cast<uint8_t>(strlen(buffer));
-                result = Core::ERROR_NONE;
-            } else {
-                *length = 0;
-                result = Core::ERROR_WRITE_ERROR;
+            if (result != Core::ERROR_NONE ) {
+                *length = 0 ;
+                return result ;
             }
+
+            if(*length <= friendlyName.size()){
+                *length = friendlyName.size()+1 ;
+                return Core::ERROR_INVALID_INPUT_LENGTH ;
+            }
+
+            *length = friendlyName.size()+1 ;
+            strncpy(buffer, friendlyName.c_str(), *length);
+            result = Core::ERROR_NONE;
+
+            iDeviceMetaDataPtr->Release();
         }
 
         iDeviceCapabilitiesPtr->Release();
@@ -606,7 +632,7 @@ uint32_t deviceinfo_platform_name(char buffer[], uint8_t* length)
 {
     uint32_t result = Core::ERROR_UNAVAILABLE;
 
-    string platformName="";
+    string platformName;
 
     Exchange::IDeviceCapabilities* iDeviceCapabilitiesPtr = DeviceInfoLink::Instance().Interface();
     
@@ -614,16 +640,23 @@ uint32_t deviceinfo_platform_name(char buffer[], uint8_t* length)
         Exchange::IDeviceMetadata* iDeviceMetaDataPtr = iDeviceCapabilitiesPtr->QueryInterface<Exchange::IDeviceMetadata>();
         if( iDeviceCapabilitiesPtr != nullptr) {
             result = iDeviceMetaDataPtr->PlatformName(platformName);
-
-            if (platformName.size() <= *length) {
-                strncpy(buffer, platformName.c_str(), *length);
-                *length = static_cast<uint8_t>(strlen(buffer));
-                result = Core::ERROR_NONE;
-            } else {
-                *length = 0;
-                result = Core::ERROR_WRITE_ERROR;
+            if (result != Core::ERROR_NONE ) {
+                *length = 0 ;
+                return result ;
             }
+
+            if(*length <= platformName.size()){
+                *length = platformName.size()+1 ;
+                return Core::ERROR_INVALID_INPUT_LENGTH ;
+            }
+
+            *length = platformName.size()+1 ;
+            strncpy(buffer, platformName.c_str(), *length);
+            result = Core::ERROR_NONE;
+
+            iDeviceMetaDataPtr->Release();
         }
+        
 
         iDeviceCapabilitiesPtr->Release();
 

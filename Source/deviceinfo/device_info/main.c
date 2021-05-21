@@ -79,7 +79,7 @@ int main()
             } else if (result == 0) {
                 Trace("No ID available for this device, or instance or buffer is null");
             } else {
-                Trace("Buffer too small (or invlid parameters), should be at least of size %d ", -result);
+                Trace("Buffer too small");
             }
             break;
         }
@@ -94,7 +94,7 @@ int main()
             } else if (result == 0) {
                 Trace("No ID available for this device, or instance or buffer is null");
             } else {
-                Trace("Buffer too small (or invlid parameters), should be at least of size %d ", -result);
+                Trace("Buffer too small");
             }
 
             break;
@@ -111,7 +111,7 @@ int main()
             } else if (result == 0) {
                 Trace("Instance or buffer is null");
             } else {
-                Trace("Buffer too small, should be at least of size %d ", -result);
+                Trace("Buffer too small");
             }
 
             break;
@@ -128,7 +128,7 @@ int main()
             } else if (result == 0) {
                 Trace("Instance or buffer is null");
             } else {
-                Trace("Buffer too small, should be at least of size %d ", -result);
+                Trace("Buffer too small");
             }
             break;
         }
@@ -144,7 +144,7 @@ int main()
             } else if (result == 0) {
                 Trace("Instance or buffer is null");
             } else {
-                Trace("Buffer too small, should be at least of size %d ", -result);
+                Trace("Buffer too small");
             }
             break;
         }
@@ -197,13 +197,14 @@ int main()
             memset(buffer, 0, sizeof(buffer));
 
             result = deviceinfo_model_name(buffer, &bufferLength);
-            if (bufferLength > 0) {
+            if (result == 0) {
                 Trace("model name: %s", buffer);
                 memset(buffer, 0, sizeof(buffer));
-            } else if (result == 0) {
-                Trace("Instance or buffer is null");
+            } else if (result == 16) {
+                Trace("Buffer too small, should be at least of size %d ",bufferLength);
+                
             } else {
-                Trace("Buffer too small, should be at least of size %d ", -result);
+                Trace("Instance or buffer is null.Error code = %d ", result);
             }
             break;
         }
@@ -213,13 +214,14 @@ int main()
             memset(buffer, 0, sizeof(buffer));
 
             result = deviceinfo_model_year(buffer, &bufferLength);
-            if (bufferLength > 0) {
+            if (result == 0) {
                 Trace("model year: %s", buffer);
                 memset(buffer, 0, sizeof(buffer));
-            } else if (result == 0) {
-                Trace("Instance or buffer is null");
+            } else if (result == 16) {
+                Trace("Buffer too small, should be at least of size %d ",bufferLength);
+                
             } else {
-                Trace("Buffer too small, should be at least of size %d ", -result);
+                Trace("Instance or buffer is null.Error code = %d ", result);
             }
             break;
         }
@@ -229,13 +231,14 @@ int main()
             memset(buffer, 0, sizeof(buffer));
 
             result = deviceinfo_system_integrator_name(buffer, &bufferLength);
-            if (bufferLength > 0) {
-                Trace("system integrator name : %s", buffer);
+            if (result == 0) {
+                Trace("system integrator name: %s", buffer);
                 memset(buffer, 0, sizeof(buffer));
-            } else if (result == 0) {
-                Trace("Instance or buffer is null");
+            } else if (result == 16) {
+                Trace("Buffer too small, should be at least of size %d ",bufferLength);
+                
             } else {
-                Trace("Buffer too small, should be at least of size %d ", -result);
+                Trace("Instance or buffer is null.Error code = %d ", result);
             }
             break;
         }
@@ -245,13 +248,14 @@ int main()
             memset(buffer, 0, sizeof(buffer));
 
             result = deviceinfo_friendly_name(buffer, &bufferLength);
-            if (bufferLength > 0) {
-                Trace("friendly name : %s", buffer);
+              if (result == 0) {
+                Trace("friendly name: %s", buffer);
                 memset(buffer, 0, sizeof(buffer));
-            } else if (result == 0) {
-                Trace("Instance or buffer is null");
+            } else if (result == 16) {
+                Trace("Buffer too small, should be at least of size %d ",bufferLength);
+                
             } else {
-                Trace("Buffer too small, should be at least of size %d ", -result);
+                Trace("Instance or buffer is null.Error code = %d ", result);
             }
             break;
         }
@@ -261,13 +265,14 @@ int main()
             memset(buffer, 0, sizeof(buffer));
 
             result = deviceinfo_platform_name(buffer, &bufferLength);
-            if (bufferLength > 0) {
-                Trace("platform name : %s", buffer);
+             if (result == 0) {
+                Trace("platform name: %s", buffer);
                 memset(buffer, 0, sizeof(buffer));
-            } else if (result == 0) {
-                Trace("Instance or buffer is null");
+            } else if (result == 16) {
+                Trace("Buffer too small, should be at least of size %d ",bufferLength);
+                
             } else {
-                Trace("Buffer too small, should be at least of size %d ", -result);
+                Trace("Instance or buffer is null.Error code = %d ", result);
             }
             break;
         }
