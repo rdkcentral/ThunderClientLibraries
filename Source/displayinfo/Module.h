@@ -2,7 +2,7 @@
  * If not stated otherwise in this file or this component's LICENSE file the
  * following copyright and licenses apply:
  *
- * Copyright 2020 RDK Management
+ * Copyright 2021 RDK Management
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,22 +16,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #pragma once
 
 #ifndef MODULE_NAME
-#define MODULE_NAME Composition_Client
+#define MODULE_NAME DisplayInfo
 #endif
 
+#include <com/com.h>
 #include <core/core.h>
 #include <tracing/tracing.h>
 
-#if defined(__WINDOWS__)
-#if defined(COMPOSITORCLIENT_EXPORTS)
+#if defined(__WINDOWS__) && defined(SECURITYAGENT_EXPORTS)
 #undef EXTERNAL
 #define EXTERNAL EXTERNAL_EXPORT
-#else
-#pragma comment(lib, "compositorclient.lib")
 #endif
-#endif
-
