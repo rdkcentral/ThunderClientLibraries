@@ -16,11 +16,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+ 
+#include "Module.h"
 
-#include "Test.h"
-
-int __cnt = 0;
-int __pass = 0;
-
-int TotalTests = 0;
-int TotalTestsPassed = 0;
+MODULE_NAME_DECLARATION(BUILD_REFERENCE)

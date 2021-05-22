@@ -2,7 +2,7 @@
  * If not stated otherwise in this file or this component's LICENSE file the
  * following copyright and licenses apply:
  *
- * Copyright 2020 RDK Management
+ * Copyright 2020 Metrological
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,12 +19,11 @@
 
 #include <climits>
 
+#include "Helpers.h"
+#include "Test.h"
+
 #include <cryptography.h>
 #include <core/core.h>
-
-#include "Test.h"
-#include "Helpers.h"
-
 
 static WPEFramework::Cryptography::ICryptography* cg;
 static WPEFramework::Cryptography::IVault *vault = nullptr;
