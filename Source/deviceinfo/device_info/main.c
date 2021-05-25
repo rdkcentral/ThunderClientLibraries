@@ -70,17 +70,16 @@ int main()
             memset(buffer, 0, sizeof(buffer));
 
             result = deviceinfo_id(buffer, &bufferLength);
-            if (bufferLength > 0) {
+            if (result==0 && bufferLength > 0) {
                 char id[125];
                 uint32_t idSize = sizeof(id);
                 toHexString(buffer, bufferLength, id, &idSize);
 
                 Trace("ID[%d]: %s", bufferLength, id);
-            } else if (result == 0) {
+            } else  {
                 Trace("No ID available for this device, or instance or buffer is null");
-            } else {
-                Trace("Buffer too small");
             }
+
             break;
         }
         case 'I': {
@@ -89,12 +88,12 @@ int main()
             memset(bufferstr, 0, sizeof(bufferstr));
             result = deviceinfo_id_str(bufferstr, &bufferLength);
 
-            if (bufferLength > 0) {
+            if (result==0) {
                 Trace("ID[%d]: %s", bufferLength, bufferstr);
-            } else if (result == 0) {
-                Trace("No ID available for this device, or instance or buffer is null");
+            } else if (result == 16) {
+                Trace("Buffer too small, should be at least of size %d ",bufferLength);
             } else {
-                Trace("Buffer too small");
+                Trace("Instance or buffer is null.Error code = %d ", result);
             }
 
             break;
@@ -105,13 +104,13 @@ int main()
             memset(buffer, 0, sizeof(buffer));
 
             result = deviceinfo_chipset(buffer, &bufferLength);
-            if (bufferLength > 0) {
+            if (result==0) {
                 Trace("Chipset: %s", buffer);
                 memset(buffer, 0, sizeof(buffer));
-            } else if (result == 0) {
-                Trace("Instance or buffer is null");
+            } else if (result == 16) {
+                Trace("Buffer too small, should be at least of size %d ",bufferLength);
             } else {
-                Trace("Buffer too small");
+                Trace("Instance or buffer is null.Error code = %d ", result);
             }
 
             break;
@@ -122,29 +121,29 @@ int main()
             memset(buffer, 0, sizeof(buffer));
 
             result = deviceinfo_firmware_version(buffer, &bufferLength);
-            if (bufferLength > 0) {
+            if (result==0) {
                 Trace("Firmware Version: %s", buffer);
                 memset(buffer, 0, sizeof(buffer));
-            } else if (result == 0) {
-                Trace("Instance or buffer is null");
+            } else if (result == 16) {
+                Trace("Buffer too small, should be at least of size %d ",bufferLength);
             } else {
-                Trace("Buffer too small");
+                Trace("Instance or buffer is null.Error code = %d ", result);
             }
             break;
         }
         case 'A': {
-            char buffer[25];
+            char buffer[150];
             uint8_t bufferLength = sizeof(buffer);
             memset(buffer, 0, sizeof(buffer));
 
             result = deviceinfo_architecure(buffer, &bufferLength);
-            if (bufferLength > 0) {
+            if (result==0) {
                 Trace("Architecure: %s", buffer);
                 memset(buffer, 0, sizeof(buffer));
-            } else if (result == 0) {
-                Trace("Instance or buffer is null");
+           } else if (result == 16) {
+                Trace("Buffer too small, should be at least of size %d ",bufferLength);
             } else {
-                Trace("Buffer too small");
+                Trace("Instance or buffer is null.Error code = %d ", result);
             }
             break;
         }
@@ -219,7 +218,6 @@ int main()
                 memset(buffer, 0, sizeof(buffer));
             } else if (result == 16) {
                 Trace("Buffer too small, should be at least of size %d ",bufferLength);
-                
             } else {
                 Trace("Instance or buffer is null.Error code = %d ", result);
             }
