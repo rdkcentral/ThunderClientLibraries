@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+#include "../../Module.h"
 #include <cipher_implementation.h>
 #include <core/core.h>
 #include <cryptalgo/cryptalgo.h>
@@ -24,7 +25,6 @@
 #include <sec_security.h>
 #include <sec_security_utils.h>
 #include "Cipher.h"
-#include "../../Module.h"
 
 #define AES_128_KEY_SIZE         (16)
 #define AES_128_BLOCK_SIZE       (16)
