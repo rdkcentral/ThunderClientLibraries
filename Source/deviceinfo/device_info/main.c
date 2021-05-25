@@ -67,7 +67,7 @@ int main()
         case 'B': {
             uint8_t buffer[150];
             uint8_t bufferLength = sizeof(buffer);
-            memset(buffer, 0, sizeof(buffer));
+            memset(buffer, 0, bufferLength);
 
             result = deviceinfo_id(buffer, &bufferLength);
             if (result==0 && bufferLength > 0) {
@@ -85,7 +85,7 @@ int main()
         case 'I': {
             char bufferstr[150];
             uint8_t bufferLength = sizeof(bufferstr);
-            memset(bufferstr, 0, sizeof(bufferstr));
+            memset(bufferstr, 0, bufferLength);
             result = deviceinfo_id_str(bufferstr, &bufferLength);
 
             if (result==0) {
@@ -101,12 +101,12 @@ int main()
         case 'C': {
             char buffer[150];
             uint8_t bufferLength = sizeof(buffer);
-            memset(buffer, 0, sizeof(buffer));
+            memset(buffer, 0, bufferLength);
 
             result = deviceinfo_chipset(buffer, &bufferLength);
             if (result==0) {
                 Trace("Chipset: %s", buffer);
-                memset(buffer, 0, sizeof(buffer));
+                memset(buffer, 0, bufferLength);
             } else if (result == 16) {
                 Trace("Buffer too small, should be at least of size %d ",bufferLength);
             } else {
@@ -118,12 +118,12 @@ int main()
         case 'F': {
             char buffer[150];
             uint8_t bufferLength = sizeof(buffer);
-            memset(buffer, 0, sizeof(buffer));
+            memset(buffer, 0, bufferLength);
 
             result = deviceinfo_firmware_version(buffer, &bufferLength);
             if (result==0) {
                 Trace("Firmware Version: %s", buffer);
-                memset(buffer, 0, sizeof(buffer));
+                memset(buffer, 0, bufferLength);
             } else if (result == 16) {
                 Trace("Buffer too small, should be at least of size %d ",bufferLength);
             } else {
@@ -134,12 +134,12 @@ int main()
         case 'A': {
             char buffer[150];
             uint8_t bufferLength = sizeof(buffer);
-            memset(buffer, 0, sizeof(buffer));
+            memset(buffer, 0, bufferLength);
 
             result = deviceinfo_architecure(buffer, &bufferLength);
             if (result==0) {
                 Trace("Architecure: %s", buffer);
-                memset(buffer, 0, sizeof(buffer));
+                memset(buffer, 0, bufferLength);
            } else if (result == 16) {
                 Trace("Buffer too small, should be at least of size %d ",bufferLength);
             } else {
@@ -193,12 +193,12 @@ int main()
         case 'M': {
             char buffer[25];
             uint8_t bufferLength = sizeof(buffer);
-            memset(buffer, 0, sizeof(buffer));
+            memset(buffer, 0, bufferLength);
 
             result = deviceinfo_model_name(buffer, &bufferLength);
             if (result == 0) {
                 Trace("model name: %s", buffer);
-                memset(buffer, 0, sizeof(buffer));
+                memset(buffer, 0, bufferLength);
             } else if (result == 16) {
                 Trace("Buffer too small, should be at least of size %d ",bufferLength);
                 
@@ -210,12 +210,12 @@ int main()
         case 'Y': {
             char buffer[25];
             uint8_t bufferLength = sizeof(buffer);
-            memset(buffer, 0, sizeof(buffer));
+            memset(buffer, 0, bufferLength);
 
             result = deviceinfo_model_year(buffer, &bufferLength);
             if (result == 0) {
                 Trace("model year: %s", buffer);
-                memset(buffer, 0, sizeof(buffer));
+                memset(buffer, 0, bufferLength);
             } else if (result == 16) {
                 Trace("Buffer too small, should be at least of size %d ",bufferLength);
             } else {
@@ -226,12 +226,12 @@ int main()
         case 'X': {
             char buffer[25];
             uint8_t bufferLength = sizeof(buffer);
-            memset(buffer, 0, sizeof(buffer));
+            memset(buffer, 0, bufferLength);
 
             result = deviceinfo_system_integrator_name(buffer, &bufferLength);
             if (result == 0) {
                 Trace("system integrator name: %s", buffer);
-                memset(buffer, 0, sizeof(buffer));
+                memset(buffer, 0, bufferLength);
             } else if (result == 16) {
                 Trace("Buffer too small, should be at least of size %d ",bufferLength);
                 
@@ -243,12 +243,12 @@ int main()
         case 'D': {
             char buffer[25];
             uint8_t bufferLength = sizeof(buffer);
-            memset(buffer, 0, sizeof(buffer));
+            memset(buffer, 0, bufferLength);
 
             result = deviceinfo_friendly_name(buffer, &bufferLength);
               if (result == 0) {
                 Trace("friendly name: %s", buffer);
-                memset(buffer, 0, sizeof(buffer));
+                memset(buffer, 0, bufferLength);
             } else if (result == 16) {
                 Trace("Buffer too small, should be at least of size %d ",bufferLength);
                 
@@ -260,12 +260,12 @@ int main()
         case 'P': {
             char buffer[25];
             uint8_t bufferLength = sizeof(buffer);
-            memset(buffer, 0, sizeof(buffer));
+            memset(buffer, 0, bufferLength);
 
             result = deviceinfo_platform_name(buffer, &bufferLength);
              if (result == 0) {
                 Trace("platform name: %s", buffer);
-                memset(buffer, 0, sizeof(buffer));
+                memset(buffer, 0, bufferLength);
             } else if (result == 16) {
                 Trace("Buffer too small, should be at least of size %d ",bufferLength);
                 
