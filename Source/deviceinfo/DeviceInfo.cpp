@@ -205,7 +205,7 @@ private:
 
                 *length = modelName.size()+1 ;
                 strncpy(buffer, modelName.c_str(), *length);
-                result = Core::ERROR_NONE;
+                return Core::ERROR_NONE;
 
         } else {
             *length=0;
@@ -236,7 +236,7 @@ private:
 
             *length = year.size()+1 ;
             strncpy(buffer, year.c_str(), *length);
-            result = Core::ERROR_NONE;
+            return Core::ERROR_NONE;
 
         }  else {
             *length = 0;
@@ -297,7 +297,7 @@ private:
 
             *length = friendlyName.size()+1 ;
             strncpy(buffer, friendlyName.c_str(), *length);
-            result = Core::ERROR_NONE;
+            return Core::ERROR_NONE;
 
         } else {
             *length=0;
@@ -327,7 +327,7 @@ private:
 
                 *length = platformName.size()+1 ;
                 strncpy(buffer, platformName.c_str(), *length);
-                result = Core::ERROR_NONE;
+                return Core::ERROR_NONE;
 
         }  else {
             *length=0;
@@ -351,7 +351,7 @@ private:
 
             *length = newValue.size()+1 ;
             strncpy(buffer, newValue.c_str(), *length);
-            result = Core::ERROR_NONE;
+            return Core::ERROR_NONE;
 
         } else {
             *length = 0;
@@ -374,7 +374,7 @@ private:
 
             *length = newValue.size()+1 ;
             strncpy(buffer, newValue.c_str(), *length);
-            result = Core::ERROR_NONE;
+            return Core::ERROR_NONE;
 
         }  else {
             *length = 0;
@@ -397,7 +397,7 @@ private:
 
             *length = newValue.size()+1 ;
             strncpy(buffer, newValue.c_str(), *length);
-            result = Core::ERROR_NONE;
+            return Core::ERROR_NONE;
 
         } else {
             *length = 0;
@@ -413,7 +413,7 @@ private:
         if (_identifierInterface != nullptr) {
             *length = _identifierInterface->Identifier((*length) - 1, buffer);
 
-            result = Core::ERROR_NONE;
+            return Core::ERROR_NONE;
         } else {
             *length = 0;
         }
@@ -435,10 +435,10 @@ private:
 
             if (id.size() < *length) { 
                 strncpy(buffer, id.c_str(), *length);
-                result = Core::ERROR_NONE;
+                return Core::ERROR_NONE;
             } else {
                 *length = id.size()+1 ;
-                result = Core::ERROR_INVALID_INPUT_LENGTH;
+                return Core::ERROR_INVALID_INPUT_LENGTH;
             }
 
         } else {
@@ -476,7 +476,7 @@ private:
                 }
                 *length = inserted;
                 index->Release();
-                result = Core::ERROR_NONE;
+                return Core::ERROR_NONE;
             } else {
                 *length = 0;
             }
@@ -515,7 +515,7 @@ private:
                 }
                 *length = inserted;
                 index->Release();
-                result = Core::ERROR_NONE;
+                return Core::ERROR_NONE;
             } else {
                 *length = 0;
             }
@@ -553,7 +553,7 @@ private:
                 }
                 *length = inserted;
                 index->Release();
-                result = Core::ERROR_NONE;
+                return Core::ERROR_NONE;
             } else {
                 *length = 0;
             }
@@ -593,7 +593,7 @@ private:
         uint32_t result = Core::ERROR_UNAVAILABLE;
 
         if (_deviceCapabilitiesInterface != nullptr) {
-            result = _deviceCapabilitiesInterface->HDR(*supportsHDR);
+            return _deviceCapabilitiesInterface->HDR(*supportsHDR);
         }
         return result;
     }
@@ -603,7 +603,7 @@ private:
         uint32_t result = Core::ERROR_UNAVAILABLE;
 
         if (_deviceCapabilitiesInterface != nullptr) {
-            result = _deviceCapabilitiesInterface->Atmos(*supportsAtmos);
+            return _deviceCapabilitiesInterface->Atmos(*supportsAtmos);
         }
         return result;
     }
@@ -613,7 +613,7 @@ private:
         uint32_t result = Core::ERROR_UNAVAILABLE;
 
         if (_deviceCapabilitiesInterface != nullptr) {
-            result = _deviceCapabilitiesInterface->CEC(*supportsCEC);
+            return _deviceCapabilitiesInterface->CEC(*supportsCEC);
         }
         return result;
     }
