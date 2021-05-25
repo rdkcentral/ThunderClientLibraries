@@ -19,9 +19,7 @@
 
 #pragma once
 
-#include <core/core.h>
-#include <string>
-#include <cstdint>
+#include "Module.h"
 
 namespace WPEFramework {
 
