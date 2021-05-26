@@ -15,7 +15,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(TARGET securityagent)
+project(securityagent)
+
+cmake_minimum_required(VERSION 3.3)
+
+find_package(WPEFramework)
+
+project_version(1.0.0)
+
+set(TARGET ${PROJECT_NAME})
+
+message("Setup ${TARGET} v${PROJECT_VERSION}")
+
+#find_package(CompileSettingsDebug CONFIG REQUIRED)
+find_package(${NAMESPACE}Core REQUIRED)
+find_package(${NAMESPACE}COM REQUIRED)
 
 # Construct a library object
 add_library(${TARGET} STATIC
@@ -32,6 +46,11 @@ set(PUBLIC_HEADERS
 target_link_libraries(${TARGET}
         PUBLIC
           ${NAMESPACE}Core::${NAMESPACE}Core
+        )
+
+target_link_libraries(${TARGET}
+        PUBLIC
+          ${NAMESPACE}COM::${NAMESPACE}COM
         )
 
 # target_link_libraries(${TARGET}
