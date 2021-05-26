@@ -29,6 +29,7 @@ message("Setup ${TARGET} v${PROJECT_VERSION}")
 
 #find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
+find_package(${NAMESPACE}COM REQUIRED)
 
 # Construct a library object
 add_library(${TARGET} SHARED
@@ -45,6 +46,11 @@ set(PUBLIC_HEADERS
 target_link_libraries(${TARGET}
         PUBLIC
           ${NAMESPACE}Core::${NAMESPACE}Core
+        )
+
+target_link_libraries(${TARGET}
+        PUBLIC
+          ${NAMESPACE}COM::${NAMESPACE}COM
         )
 
 # target_link_libraries(${TARGET}
