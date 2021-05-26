@@ -28,11 +28,7 @@
 #include <plugins/plugins.h>
 #include <tracing/tracing.h>
 
-#if defined(__WINDOWS__)
-#if defined(DEVICEINFO_EXPORTS)
+#if defined(__WINDOWS__) && defined(DEVICEINFO_EXPORTS)
 #undef EXTERNAL
 #define EXTERNAL EXTERNAL_EXPORT
-#else
-#pragma comment(lib, "deviceinfo.lib")
-#endif
 #endif
