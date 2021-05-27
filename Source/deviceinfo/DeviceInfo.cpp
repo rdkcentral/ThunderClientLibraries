@@ -192,24 +192,24 @@ private:
         string modelName;
         
         if (_deviceMetaDataInterface !=nullptr ) {
-                result = _deviceMetaDataInterface->ModelName(modelName);
-                if (result != Core::ERROR_NONE ) {
-                    *length = 0 ;
-                    return result ;
+            result = _deviceMetaDataInterface->ModelName(modelName);
+            if (result == Core::ERROR_NONE ) {
+                auto size = modelName.size();
+                if(*length <= size){
+                    *length = size+1 ;
+                    result = Core::ERROR_INVALID_INPUT_LENGTH ;
+                } else {
+                    *length = size+1 ;
+                    strncpy(buffer, modelName.c_str(), *length);
                 }
-
-                if(*length <= modelName.size()){
-                    *length = modelName.size()+1 ;
-                    return Core::ERROR_INVALID_INPUT_LENGTH ;
-                }
-
-                *length = modelName.size()+1 ;
-                strncpy(buffer, modelName.c_str(), *length);
-                return Core::ERROR_NONE;
+            } else {
+                *length = 0; 
+            }
 
         } else {
             *length=0;
         }
+
         return result;
     }
 
@@ -220,28 +220,24 @@ private:
 
         uint16_t modelYear = 0;
 
-        if( _deviceMetaDataInterface != nullptr) {
+        if (_deviceMetaDataInterface !=nullptr ) {
             result = _deviceMetaDataInterface->ModelYear(modelYear);
-            if (result != Core::ERROR_NONE ) {
-                *length = 0 ;
-                return result ;
+            if (result == Core::ERROR_NONE ) {
+                string year = Core::ToString(modelYear) ;
+                auto size = year.size();
+                if(*length <= size){
+                    *length = size+1 ;
+                    result = Core::ERROR_INVALID_INPUT_LENGTH ;
+                } else {
+                    *length = size+1 ;
+                    strncpy(buffer, year.c_str(), *length);
+                }
+            } else {
+                *length = 0; 
             }
 
-            string year = Core::ToString(modelYear) ;
-
-            auto size = year.size();
-
-            if(*length <= size){
-                *length = size +1;
-                return Core::ERROR_INVALID_INPUT_LENGTH ;
-            }
-
-            *length = size +1;
-            strncpy(buffer, year.c_str(), *length);
-            return Core::ERROR_NONE;
-
-        }  else {
-            *length = 0;
+        } else {
+            *length=0;
         }
 
         return result;
@@ -255,24 +251,23 @@ private:
 
         string integratorName;
         
-        if (_deviceMetaDataInterface != nullptr) {
-                result = _deviceMetaDataInterface->SystemIntegratorName(integratorName);
-                if (result != Core::ERROR_NONE ) {
-                    *length = 0 ;
-                    return result ;
-                }
+        if (_deviceMetaDataInterface !=nullptr ) {
+            result = _deviceMetaDataInterface->SystemIntegratorName(integratorName);
+            if (result == Core::ERROR_NONE ) {
                 auto size = integratorName.size();
                 if(*length <= size){
                     *length = size+1 ;
-                    return Core::ERROR_INVALID_INPUT_LENGTH ;
+                    result = Core::ERROR_INVALID_INPUT_LENGTH ;
+                } else {
+                    *length = size+1 ;
+                    strncpy(buffer, integratorName.c_str(), *length);
                 }
+            } else {
+                *length = 0; 
+            }
 
-                *length = size+1 ;
-                strncpy(buffer, integratorName.c_str(), *length);
-                result = Core::ERROR_NONE;
-
-        }  else {
-            *length = 0;
+        } else {
+            *length=0;
         }
 
         return result;
@@ -285,21 +280,21 @@ private:
 
         string friendlyName;
         
-        if (_deviceMetaDataInterface != nullptr) {
+        if (_deviceMetaDataInterface !=nullptr ) {
             result = _deviceMetaDataInterface->FriendlyName(friendlyName);
-            if (result != Core::ERROR_NONE ) {
-                *length = 0 ;
-                return result ;
+            if (result == Core::ERROR_NONE ) {
+                string year = Core::ToString(friendlyName) ;
+                auto size = friendlyName.size();
+                if(*length <= size){
+                    *length = size+1 ;
+                    result = Core::ERROR_INVALID_INPUT_LENGTH ;
+                } else {
+                    *length = size+1 ;
+                    strncpy(buffer, friendlyName.c_str(), *length);
+                }
+            } else {
+                *length = 0; 
             }
-            auto size = friendlyName.size();
-            if(*length <= size){
-                *length = size+1 ;
-                return Core::ERROR_INVALID_INPUT_LENGTH ;
-            }
-
-            *length = size+1 ;
-            strncpy(buffer, friendlyName.c_str(), *length);
-            return Core::ERROR_NONE;
 
         } else {
             *length=0;
@@ -315,23 +310,23 @@ private:
 
         string platformName;
         
-        if (_deviceMetaDataInterface != nullptr) {
-                result = _deviceMetaDataInterface->PlatformName(platformName);
-                if (result != Core::ERROR_NONE ) {
-                    *length = 0 ;
-                    return result ;
-                }
+        if (_deviceMetaDataInterface !=nullptr ) {
+            result = _deviceMetaDataInterface->PlatformName(platformName);
+            if (result == Core::ERROR_NONE ) {
+                string year = Core::ToString(platformName) ;
                 auto size = platformName.size();
                 if(*length <= size){
                     *length = size+1 ;
-                    return Core::ERROR_INVALID_INPUT_LENGTH ;
+                    result = Core::ERROR_INVALID_INPUT_LENGTH ;
+                } else {
+                    *length = size+1 ;
+                    strncpy(buffer, platformName.c_str(), *length);
                 }
+            } else {
+                *length = 0; 
+            }
 
-                *length = size+1 ;
-                strncpy(buffer, platformName.c_str(), *length);
-                return Core::ERROR_NONE;
-
-        }  else {
+        } else {
             *length=0;
         }
             
@@ -348,12 +343,12 @@ private:
             auto size = newValue.size();
             if(*length <= size){
                 *length = size+1 ;
-                return Core::ERROR_INVALID_INPUT_LENGTH ;
+                result = Core::ERROR_INVALID_INPUT_LENGTH ;
+            } else {
+                *length = size+1 ;
+                strncpy(buffer, newValue.c_str(), *length);
+                result = Core::ERROR_NONE;
             }
-
-            *length = size+1 ;
-            strncpy(buffer, newValue.c_str(), *length);
-            return Core::ERROR_NONE;
 
         } else {
             *length = 0;
@@ -371,14 +366,14 @@ private:
             auto size = newValue.size();
             if(*length <= size){
                 *length = size+1 ;
-                return Core::ERROR_INVALID_INPUT_LENGTH ;
+                result = Core::ERROR_INVALID_INPUT_LENGTH ;
+            } else {
+                *length = size+1 ;
+                strncpy(buffer, newValue.c_str(), *length);
+                result = Core::ERROR_NONE;
             }
 
-            *length = size+1 ;
-            strncpy(buffer, newValue.c_str(), *length);
-            return Core::ERROR_NONE;
-
-        }  else {
+        } else {
             *length = 0;
         }
             
@@ -394,12 +389,12 @@ private:
             auto size = newValue.size();
             if(*length <= size){
                 *length = size+1 ;
-                return Core::ERROR_INVALID_INPUT_LENGTH ;
+                result = Core::ERROR_INVALID_INPUT_LENGTH ;
+            } else {
+                *length = size+1 ;
+                strncpy(buffer, newValue.c_str(), *length);
+                result = Core::ERROR_NONE;
             }
-
-            *length = size+1 ;
-            strncpy(buffer, newValue.c_str(), *length);
-            return Core::ERROR_NONE;
 
         } else {
             *length = 0;
@@ -415,7 +410,7 @@ private:
         if (_identifierInterface != nullptr) {
             *length = _identifierInterface->Identifier((*length) - 1, buffer);
 
-            return Core::ERROR_NONE;
+            result = Core::ERROR_NONE;
         } else {
             *length = 0;
         }
@@ -437,10 +432,10 @@ private:
 
             if (id.size() < *length) { 
                 strncpy(buffer, id.c_str(), *length);
-                return Core::ERROR_NONE;
+                result = Core::ERROR_NONE;
             } else {
                 *length = id.size()+1 ;
-                return Core::ERROR_INVALID_INPUT_LENGTH;
+                result = Core::ERROR_INVALID_INPUT_LENGTH;
             }
 
         } else {
@@ -478,7 +473,7 @@ private:
                 }
                 *length = inserted;
                 index->Release();
-                return Core::ERROR_NONE;
+                result = Core::ERROR_NONE;
             } else {
                 *length = 0;
             }
@@ -517,7 +512,7 @@ private:
                 }
                 *length = inserted;
                 index->Release();
-                return Core::ERROR_NONE;
+                result = Core::ERROR_NONE;
             } else {
                 *length = 0;
             }
@@ -555,7 +550,7 @@ private:
                 }
                 *length = inserted;
                 index->Release();
-                return Core::ERROR_NONE;
+                result = Core::ERROR_NONE;
             } else {
                 *length = 0;
             }
@@ -595,7 +590,7 @@ private:
         uint32_t result = Core::ERROR_UNAVAILABLE;
 
         if (_deviceCapabilitiesInterface != nullptr) {
-            return _deviceCapabilitiesInterface->HDR(*supportsHDR);
+            result =  _deviceCapabilitiesInterface->HDR(*supportsHDR);
         }
         return result;
     }
@@ -605,7 +600,7 @@ private:
         uint32_t result = Core::ERROR_UNAVAILABLE;
 
         if (_deviceCapabilitiesInterface != nullptr) {
-            return _deviceCapabilitiesInterface->Atmos(*supportsAtmos);
+            result = _deviceCapabilitiesInterface->Atmos(*supportsAtmos);
         }
         return result;
     }
@@ -615,7 +610,7 @@ private:
         uint32_t result = Core::ERROR_UNAVAILABLE;
 
         if (_deviceCapabilitiesInterface != nullptr) {
-            return _deviceCapabilitiesInterface->CEC(*supportsCEC);
+            result = _deviceCapabilitiesInterface->CEC(*supportsCEC);
         }
         return result;
     }
