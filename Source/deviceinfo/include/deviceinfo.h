@@ -69,24 +69,28 @@ typedef enum deviceinfo_video_output_type {
 /**
  * @brief Get the device architectue string 
  * 
- * @param buffer Buffer that will contain the architectue string (including the null characetr at the end)
+ * @param buffer Buffer that will contain the architectue string (including the null characters at the end)
  * @param length Size of the @ref buffer
- *               if the buffer is not big enough returns LENGHTH of required buffer, otherwise return LENGTH.
- *               LENGTH takes into account the null character at the end of the c-string.
+ *               if the buffer is not big enough, Core::ERROR_INVALID_INPUT_LENGTH will be returned and LENGTH will be set to the needed size(including the null character at the end)
+ *               When the return value is Core::ERROR_NONE, LENGTH will contain the size of the device architecture(including the null character at the end)
  *               if instance or buffer is null, returns 0
  * @return Core::ERROR_NONE if success, appropriate error otherwise.
+ *         Core::ERROR_INVALID_INPUT_LENGTH if the buffer is not big enough(including the null characetr at the end)
+ *         apropriate error otherwise.
  */
 EXTERNAL uint32_t deviceinfo_architecure(char buffer[], uint8_t* length);
 
 /**
  * @brief Get the device chipset name 
  * 
- * @param buffer Buffer that will contain the chipset name
+ * @param buffer Buffer that will contain the device chipset string (including the null characters at the end)
  * @param length Size of the @ref buffer
- *               if the buffer is not big enough returns -LENGHTH of required buffer, otherwise return LENGTH
- *               LENGTH takes into account the null character at the end of the c-string.
+ *               if the buffer is not big enough, Core::ERROR_INVALID_INPUT_LENGTH will be returned and LENGTH will be set to the needed size(including the null character at the end)
+ *               When the return value is Core::ERROR_NONE, LENGTH will contain the size of the device chipset(including the null character at the end)
  *               if instance or buffer is null, returns 0
  * @return Core::ERROR_NONE if success, appropriate error otherwise.
+ *         Core::ERROR_INVALID_INPUT_LENGTH if the buffer is not big enough(including the null characetr at the end)
+ *         apropriate error otherwise.
  */
 EXTERNAL uint32_t deviceinfo_chipset(char buffer[], uint8_t* length);
 
@@ -94,13 +98,13 @@ EXTERNAL uint32_t deviceinfo_chipset(char buffer[], uint8_t* length);
 /**
  * @brief Get the device model name string
  * 
- * @param buffer Buffer that will contain the model name string
+ * @param buffer Buffer that will contain the model name string (including the null characters at the end)
  * @param length Size of the @ref buffer
- *               if the buffer is not big enough returns LENGTH of required buffer(including the null characetr at the end),
- *               otherwise return LENGTH of the model name(also including the null characetr at the end)
- *               if instance or buffer is null or error in extracting the model name,LENGTH will be set 0
- * @return Core::ERROR_NONE if success, 
- *         Core::ERROR_INVALID_INPUT_LENGTH if the buffer is not big enough for the model name (including the null characetr at the end)
+ *               if the buffer is not big enough, Core::ERROR_INVALID_INPUT_LENGTH will be returned and LENGTH will be set to the needed size(including the null character at the end)
+ *               When the return value is Core::ERROR_NONE, LENGTH will contain the size of the model Name(including the null character at the end)
+ *               if instance or buffer is null, returns 0
+ * @return Core::ERROR_NONE if success, appropriate error otherwise.
+ *         Core::ERROR_INVALID_INPUT_LENGTH if the buffer is not big enough(including the null characetr at the end)
  *         apropriate error otherwise.
  */
 EXTERNAL uint32_t deviceinfo_model_name(char buffer[], uint8_t* length);
@@ -108,13 +112,13 @@ EXTERNAL uint32_t deviceinfo_model_name(char buffer[], uint8_t* length);
 /**
  * @brief Get the device model year string
  * 
- * @param buffer Buffer that will contain the model year string
+ * @param buffer Buffer that will contain the model year string (including the null characters at the end)
  * @param length Size of the @ref buffer
- *               if the buffer is not big enough returns LENGTH of required buffer(including the null characetr at the end),
- *               otherwise return LENGTH of the model year(also including the null characetr at the end)
- *               if instance or buffer is null or error in extracting the model year,LENGTH will be set 0
- * @return Core::ERROR_NONE if success, 
- *         Core::ERROR_INVALID_INPUT_LENGTH if the buffer is not big enough for the model year (including the null characetr at the end)
+ *               if the buffer is not big enough, Core::ERROR_INVALID_INPUT_LENGTH will be returned and LENGTH will be set to the needed size(including the null character at the end)
+ *               When the return value is Core::ERROR_NONE, LENGTH will contain the size of the model year(including the null character at the end)
+ *               if instance or buffer is null, returns 0
+ * @return Core::ERROR_NONE if success, appropriate error otherwise.
+ *         Core::ERROR_INVALID_INPUT_LENGTH if the buffer is not big enough(including the null characetr at the end)
  *         apropriate error otherwise.
  */
 EXTERNAL uint32_t deviceinfo_model_year(char buffer[], uint8_t* length);
@@ -122,13 +126,13 @@ EXTERNAL uint32_t deviceinfo_model_year(char buffer[], uint8_t* length);
 /**
  * @brief Get the system integrator name string
  * 
- * @param buffer Buffer that will contain the system integrator name string
+ * @param buffer Buffer that will contain the integrator name string (including the null characters at the end)
  * @param length Size of the @ref buffer
- *               if the buffer is not big enough returns LENGTH of required buffer(including the null characetr at the end),
- *               otherwise return LENGTH of the system integrator name(also including the null characetr at the end)
- *               if instance or buffer is null or error in extracting the system integrator name,LENGTH will be set 0
- * @return Core::ERROR_NONE if success, 
- *         Core::ERROR_INVALID_INPUT_LENGTH if the buffer is not big enough for the system integrator name (including the null characetr at the end)
+ *               if the buffer is not big enough, Core::ERROR_INVALID_INPUT_LENGTH will be returned and LENGTH will be set to the needed size(including the null character at the end)
+ *               When the return value is Core::ERROR_NONE, LENGTH will contain the size of the model integrator name(including the null character at the end)
+ *               if instance or buffer is null, returns 0
+ * @return Core::ERROR_NONE if success, appropriate error otherwise.
+ *         Core::ERROR_INVALID_INPUT_LENGTH if the buffer is not big enough(including the null characetr at the end)
  *         apropriate error otherwise.
  */
 EXTERNAL uint32_t deviceinfo_system_integrator_name(char buffer[], uint8_t* length);
@@ -136,13 +140,13 @@ EXTERNAL uint32_t deviceinfo_system_integrator_name(char buffer[], uint8_t* leng
 /**
  * @brief Get the device friendly name string
  * 
- * @param buffer Buffer that will contain the device friendly name string
+ * @param buffer Buffer that will contain the device friendly name string (including the null characters at the end)
  * @param length Size of the @ref buffer
- *               if the buffer is not big enough returns LENGTH of required buffer(including the null characetr at the end),
- *               otherwise return LENGTH of the device friendly name(also including the null characetr at the end)
- *               if instance or buffer is null or error in extracting the device friendly name,LENGTH will be set 0
- * @return Core::ERROR_NONE if success, 
- *         Core::ERROR_INVALID_INPUT_LENGTH if the buffer is not big enough for the device friendly name (including the null characetr at the end)
+ *               if the buffer is not big enough, Core::ERROR_INVALID_INPUT_LENGTH will be returned and LENGTH will be set to the needed size(including the null character at the end)
+ *               When the return value is Core::ERROR_NONE, LENGTH will contain the size of the device friendly name(including the null character at the end)
+ *               if instance or buffer is null, returns 0
+ * @return Core::ERROR_NONE if success, appropriate error otherwise.
+ *         Core::ERROR_INVALID_INPUT_LENGTH if the buffer is not big enough(including the null characetr at the end)
  *         apropriate error otherwise.
  */
 EXTERNAL uint32_t deviceinfo_friendly_name(char buffer[], uint8_t* length);
@@ -150,13 +154,13 @@ EXTERNAL uint32_t deviceinfo_friendly_name(char buffer[], uint8_t* length);
 /**
  * @brief Get the platform name string
  * 
- * @param buffer Buffer that will contain the platform name string
+ * @param buffer Buffer that will contain the platform name string (including the null characters at the end)
  * @param length Size of the @ref buffer
- *               if the buffer is not big enough returns LENGTH of required buffer(including the null characetr at the end),
- *               otherwise return LENGTH of the platform name(also including the null characetr at the end)
- *               if instance or buffer is null or error in extracting the platform name,LENGTH will be set 0
- * @return Core::ERROR_NONE if success, 
- *         Core::ERROR_INVALID_INPUT_LENGTH if the buffer is not big enough for the platform name (including the null characetr at the end)
+ *               if the buffer is not big enough, Core::ERROR_INVALID_INPUT_LENGTH will be returned and LENGTH will be set to the needed size(including the null character at the end)
+ *               When the return value is Core::ERROR_NONE, LENGTH will contain the size of the platform name(including the null character at the end)
+ *               if instance or buffer is null, returns 0
+ * @return Core::ERROR_NONE if success, appropriate error otherwise.
+ *         Core::ERROR_INVALID_INPUT_LENGTH if the buffer is not big enough(including the null characetr at the end)
  *         apropriate error otherwise.
  */
 EXTERNAL uint32_t deviceinfo_platform_name(char buffer[], uint8_t* length);
@@ -165,12 +169,14 @@ EXTERNAL uint32_t deviceinfo_platform_name(char buffer[], uint8_t* length);
 /**
  * @brief Get the device firmware version string
  * 
- * @param buffer Buffer that will contain the firmware version string
+ * @param buffer Buffer that will contain the firmware version string (including the null characters at the end)
  * @param length Size of the @ref buffer
- *               if the buffer is not big enough returns -LENGHTH of required buffer, otherwise return LENGTH of string
- *               LENGTH takes into account the null character at the end of the c-string.
+ *               if the buffer is not big enough, Core::ERROR_INVALID_INPUT_LENGTH will be returned and LENGTH will be set to the needed size(including the null character at the end)
+ *               When the return value is Core::ERROR_NONE, LENGTH will contain the size of the firmware version(including the null character at the end)
  *               if instance or buffer is null, returns 0
  * @return Core::ERROR_NONE if success, appropriate error otherwise.
+ *         Core::ERROR_INVALID_INPUT_LENGTH if the buffer is not big enough(including the null characetr at the end)
+ *         apropriate error otherwise.
  */
 EXTERNAL uint32_t deviceinfo_firmware_version(char buffer[], uint8_t* length);
 
@@ -188,13 +194,14 @@ EXTERNAL uint32_t deviceinfo_id(uint8_t buffer[], uint8_t* length);
 /**
  * @brief Get the device ID as a string 
  * 
- * @param buffer Buffer that will contain the device ID string
+ * @param buffer Buffer that will contain the device ID string (including the null characters at the end)
  * @param length Size of the @ref buffer
- *               if the buffer is not big enough returns LENGHTH of required buffer, otherwise return LENGTH of string
- *               LENGTH takes into account the null character at the end of the c-string.
- *               returns 0 if ID is not available for the device, or instance  is null.
+ *               if the buffer is not big enough, Core::ERROR_INVALID_INPUT_LENGTH will be returned and LENGTH will be set to the needed size(including the null character at the end)
+ *               When the return value is Core::ERROR_NONE, LENGTH will contain the size of the device ID string(including the null character at the end)
+ *               if instance or buffer is null, returns 0
  * @return Core::ERROR_NONE if success, appropriate error otherwise.
- *         Core::ERROR_INVALID_INPUT_LENGTH if the buffer is not big enough for the device ID (including the null characetr at the end)
+ *         Core::ERROR_INVALID_INPUT_LENGTH if the buffer is not big enough(including the null characetr at the end)
+ *         apropriate error otherwise.
  * 
  */
 EXTERNAL uint32_t deviceinfo_id_str(char buffer[], uint8_t* length);
@@ -232,7 +239,6 @@ EXTERNAL uint32_t deviceinfo_video_outputs(deviceinfo_video_output_t value[], ui
 /**
  * @brief Get the device maximum supported output resolution
  * 
- * @param buffer value that will contain the device maximum output resolution
  * @param value  Value of the output resolution
  *               Only read it if the returned value is Core::ERROR_NONE
  * @return Core::ERROR_NONE if success, appropriate error otherwise.

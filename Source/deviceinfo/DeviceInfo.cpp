@@ -109,8 +109,26 @@ private:
     friend class WPEFramework::Core::SingletonType<DeviceInfoLink>;
     DeviceInfoLink()
         : BaseClass()
+        ,_subsysInterface(nullptr)
+        ,_identifierInterface(nullptr)
+        ,_deviceCapabilitiesInterface(nullptr)
+        ,_deviceMetaDataInterface(nullptr)
+
     {
         BaseClass::Open(RPC::CommunicationTimeOut, BaseClass::Connector(), Callsign());
+
+        PluginHost::IShell* ControllerInterface = BaseClass::ControllerInterface();
+
+        ASSERT (ControllerInterface!= nullptr);
+
+        _subsysInterface = ControllerInterface->SubSystems();
+
+        ASSERT (_subsysInterface!= nullptr);
+
+        if (_subsysInterface != nullptr) {
+            _identifierInterface = _subsysInterface->Get<PluginHost::ISubSystem::IIdentifier>();
+        }
+        ASSERT (_identifierInterface!= nullptr);
     }
 
 public:
@@ -123,48 +141,19 @@ public:
         return WPEFramework::Core::SingletonType<DeviceInfoLink>::Instance();
     }
 
-    PluginHost::ISubSystem* SubSystem()
-    {
-        PluginHost::ISubSystem* subsystem = nullptr;
-
-        PluginHost::IShell* shell = Aquire<PluginHost::IShell>(RPC::CommunicationTimeOut, BaseClass::Connector(), _T(""), ~0);
-
-        if (shell != nullptr) {
-            subsystem = shell->SubSystems();
-            shell->Release();
-        }
-
-        return subsystem;
-    }
-
 private:
     void Operational(const bool upAndRunning) override
     {
         if (upAndRunning) {
-            if (_subsysInterface == nullptr) {
-                _subsysInterface = SubSystem();
-
-                if (_subsysInterface != nullptr && _identifierInterface == nullptr) {
-                    _identifierInterface = _subsysInterface->Get<PluginHost::ISubSystem::IIdentifier>();
-                }
-
-                if (_deviceCapabilitiesInterface ==nullptr) {
-                    _deviceCapabilitiesInterface = BaseClass::Interface();
-                }
-
-                if (_deviceMetaDataInterface == nullptr &&  _deviceCapabilitiesInterface != nullptr) {
-                     _deviceMetaDataInterface = _deviceCapabilitiesInterface->QueryInterface<Exchange::IDeviceMetadata>();
-                }
+            if (_deviceCapabilitiesInterface ==nullptr) {
+                _deviceCapabilitiesInterface = BaseClass::Interface();
             }
+
+            if (_deviceMetaDataInterface == nullptr &&  _deviceCapabilitiesInterface != nullptr) {
+                _deviceMetaDataInterface = _deviceCapabilitiesInterface->QueryInterface<Exchange::IDeviceMetadata>();
+            }
+            
         } else {
-            if (_subsysInterface != nullptr) {
-                _subsysInterface->Release();
-                _subsysInterface = nullptr;
-            }
-            if (_identifierInterface != nullptr) {
-                _identifierInterface->Release();
-                _identifierInterface = nullptr;
-            }
             if (_deviceCapabilitiesInterface != nullptr) {
                 _deviceCapabilitiesInterface->Release();
                 _deviceCapabilitiesInterface = nullptr;
@@ -189,9 +178,8 @@ private:
     {
         uint32_t result = Core::ERROR_UNAVAILABLE;
 
-        string modelName;
-        
         if (_deviceMetaDataInterface !=nullptr ) {
+            string modelName;
             result = _deviceMetaDataInterface->ModelName(modelName);
             if (result == Core::ERROR_NONE ) {
                 auto size = modelName.size();
@@ -218,9 +206,8 @@ private:
     {
         uint32_t result = Core::ERROR_UNAVAILABLE;
 
-        uint16_t modelYear = 0;
-
         if (_deviceMetaDataInterface !=nullptr ) {
+            uint16_t modelYear = 0;
             result = _deviceMetaDataInterface->ModelYear(modelYear);
             if (result == Core::ERROR_NONE ) {
                 string year = Core::ToString(modelYear) ;
@@ -248,10 +235,9 @@ private:
     uint32_t Deviceinfo_system_integrator_name(char buffer[], uint8_t* length)
     {
         uint32_t result = Core::ERROR_UNAVAILABLE;
-
-        string integratorName;
         
         if (_deviceMetaDataInterface !=nullptr ) {
+            string integratorName;
             result = _deviceMetaDataInterface->SystemIntegratorName(integratorName);
             if (result == Core::ERROR_NONE ) {
                 auto size = integratorName.size();
@@ -277,10 +263,9 @@ private:
     uint32_t Deviceinfo_friendly_name(char buffer[], uint8_t* length)
     {
         uint32_t result = Core::ERROR_UNAVAILABLE;
-
-        string friendlyName;
         
         if (_deviceMetaDataInterface !=nullptr ) {
+            string friendlyName;
             result = _deviceMetaDataInterface->FriendlyName(friendlyName);
             if (result == Core::ERROR_NONE ) {
                 string year = Core::ToString(friendlyName) ;
@@ -307,10 +292,9 @@ private:
     uint32_t Deviceinfo_platform_name(char buffer[], uint8_t* length)
     {
         uint32_t result = Core::ERROR_UNAVAILABLE;
-
-        string platformName;
         
         if (_deviceMetaDataInterface !=nullptr ) {
+            string platformName;
             result = _deviceMetaDataInterface->PlatformName(platformName);
             if (result == Core::ERROR_NONE ) {
                 string year = Core::ToString(platformName) ;
