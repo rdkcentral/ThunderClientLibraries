@@ -134,6 +134,14 @@ private:
 public:
     ~DeviceInfoLink() override
     {
+        if (_subsysInterface != nullptr) {
+            _subsysInterface->Release();
+            _subsysInterface = nullptr;
+        }
+        if (_identifierInterface != nullptr) {
+            _identifierInterface->Release();
+            _identifierInterface = nullptr;
+        }
         BaseClass::Close(WPEFramework::Core::infinite);
     }
     static DeviceInfoLink& Instance()
