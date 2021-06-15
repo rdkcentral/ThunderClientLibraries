@@ -20,6 +20,9 @@
 #pragma once
 
 #include "Module.h"
+#include <core/core.h>
+#include <string>
+#include <cstdint>
 
 #include <cryptography_vault_ids.h>
 

@@ -17,6 +17,7 @@
  */
 
 
+#include "../../Module.h"
 #include <cipher_implementation.h>
 #include <core/core.h>
 #include <cryptalgo/cryptalgo.h>
@@ -26,7 +27,6 @@
 #include <sec_security_utils.h>
 
 #include "Vault.h"
-#include "../../Module.h"
 
 
 struct CipherImplementation {
