@@ -34,6 +34,7 @@ find_package(${NAMESPACE}Core REQUIRED)
 add_library(${TARGET} SHARED
         ipclink.cpp
         Module.cpp
+        filelock.cpp
         )
 
 set(PUBLIC_HEADERS

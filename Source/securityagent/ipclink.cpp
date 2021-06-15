@@ -20,7 +20,8 @@
 #include "IPCSecurityToken.h"
 #include "securityagent.h"
 
-#include <mutex>
+// temporary solution for multiprocess
+#include "filelock.h"
 
 using namespace WPEFramework;
 
@@ -57,8 +58,8 @@ Core::ProxyPoolType<IPC::SecurityAgent::TokenData> _tokens(1);
  */
 int GetToken(unsigned short maxLength, unsigned short inLength, unsigned char buffer[])
 {
-    static std::mutex mtx;
-    std::unique_lock<std::mutex> lock(mtx);
+    FileLock fileLock("/tmp/.securityagent.lock");
+    FileLock::Lock lock(&fileLock);
 
     Core::IPCChannelClientType<Core::Void, false, true> channel(Core::NodeId(GetEndPoint().c_str()), 2048);
     int result = -1;
