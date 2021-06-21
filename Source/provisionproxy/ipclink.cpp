@@ -17,14 +17,10 @@
  * limitations under the License.
  */
 
-#define MODULE_NAME ProvisionProxy
-
 #include <core/core.h>
 #include <provision/DRMInfo.h>
 
 #include "IPCProvision.h"
-
-MODULE_NAME_DECLARATION(BUILD_REFERENCE)
 
 using namespace WPEFramework;
 
