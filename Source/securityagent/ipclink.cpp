@@ -66,7 +66,7 @@ int GetToken(unsigned short maxLength, unsigned short inLength, unsigned char bu
             uint32_t error = securityAgentInterface->CreateToken(inLength, buffer, token);
 
             if (error == Core::ERROR_NONE) {
-                result = token.length();
+                result = static_cast<uint32_t>(token.length());
 
                 if (result <= maxLength) {
                     std::copy(std::begin(token), std::end(token), buffer);

@@ -192,12 +192,11 @@ private:
             if (result == Core::ERROR_NONE ) {
                 auto size = modelName.size();
                 if(*length <= size){
-                    *length = size+1 ;
                     result = Core::ERROR_INVALID_INPUT_LENGTH ;
                 } else {
-                    *length = size+1 ;
                     strncpy(buffer, modelName.c_str(), *length);
                 }
+                *length = static_cast<uint8_t>(size + 1);
             } else {
                 *length = 0; 
             }
@@ -221,12 +220,11 @@ private:
                 string year = Core::ToString(modelYear) ;
                 auto size = year.size();
                 if(*length <= size){
-                    *length = size+1 ;
                     result = Core::ERROR_INVALID_INPUT_LENGTH ;
                 } else {
-                    *length = size+1 ;
                     strncpy(buffer, year.c_str(), *length);
                 }
+                *length = static_cast<uint8_t>(size + 1);
             } else {
                 *length = 0; 
             }
@@ -250,12 +248,11 @@ private:
             if (result == Core::ERROR_NONE ) {
                 auto size = integratorName.size();
                 if(*length <= size){
-                    *length = size+1 ;
                     result = Core::ERROR_INVALID_INPUT_LENGTH ;
                 } else {
-                    *length = size+1 ;
                     strncpy(buffer, integratorName.c_str(), *length);
                 }
+                *length = static_cast<uint8_t>(size + 1);
             } else {
                 *length = 0; 
             }
@@ -279,12 +276,11 @@ private:
                 string year = Core::ToString(friendlyName) ;
                 auto size = friendlyName.size();
                 if(*length <= size){
-                    *length = size+1 ;
                     result = Core::ERROR_INVALID_INPUT_LENGTH ;
                 } else {
-                    *length = size+1 ;
                     strncpy(buffer, friendlyName.c_str(), *length);
                 }
+                *length = static_cast<uint8_t>(size + 1);
             } else {
                 *length = 0; 
             }
@@ -308,12 +304,11 @@ private:
                 string year = Core::ToString(platformName) ;
                 auto size = platformName.size();
                 if(*length <= size){
-                    *length = size+1 ;
                     result = Core::ERROR_INVALID_INPUT_LENGTH ;
                 } else {
-                    *length = size+1 ;
                     strncpy(buffer, platformName.c_str(), *length);
                 }
+                *length = static_cast<uint8_t>(size + 1);
             } else {
                 *length = 0; 
             }
@@ -334,14 +329,12 @@ private:
             std::string newValue = Core::ToString(_identifierInterface->Architecture());
             auto size = newValue.size();
             if(*length <= size){
-                *length = size+1 ;
                 result = Core::ERROR_INVALID_INPUT_LENGTH ;
             } else {
-                *length = size+1 ;
                 strncpy(buffer, newValue.c_str(), *length);
                 result = Core::ERROR_NONE;
             }
-
+            *length = static_cast<uint8_t>(size + 1);
         } else {
             *length = 0;
         }
@@ -357,14 +350,12 @@ private:
             std::string newValue = Core::ToString(_identifierInterface->Chipset());
             auto size = newValue.size();
             if(*length <= size){
-                *length = size+1 ;
                 result = Core::ERROR_INVALID_INPUT_LENGTH ;
             } else {
-                *length = size+1 ;
                 strncpy(buffer, newValue.c_str(), *length);
                 result = Core::ERROR_NONE;
             }
-
+            *length = static_cast<uint8_t>(size + 1);
         } else {
             *length = 0;
         }
@@ -380,14 +371,12 @@ private:
             std::string newValue = Core::ToString(_identifierInterface->FirmwareVersion());
             auto size = newValue.size();
             if(*length <= size){
-                *length = size+1 ;
                 result = Core::ERROR_INVALID_INPUT_LENGTH ;
             } else {
-                *length = size+1 ;
                 strncpy(buffer, newValue.c_str(), *length);
                 result = Core::ERROR_NONE;
             }
-
+            *length = static_cast<uint8_t>(size + 1);
         } else {
             *length = 0;
         }
@@ -426,9 +415,9 @@ private:
                 strncpy(buffer, id.c_str(), *length);
                 result = Core::ERROR_NONE;
             } else {
-                *length = id.size()+1 ;
                 result = Core::ERROR_INVALID_INPUT_LENGTH;
             }
+            *length = static_cast<uint8_t>(id.size() + 1);
 
         } else {
             *length = 0;
