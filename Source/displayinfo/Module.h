@@ -25,8 +25,4 @@
 #include <com/com.h>
 #include <core/core.h>
 #include <tracing/tracing.h>
-
-#if defined(__WINDOWS__) && defined(SECURITYAGENT_EXPORTS)
-#undef EXTERNAL
-#define EXTERNAL EXTERNAL_EXPORT
-#endif
+#include <websocket/websocket.h>

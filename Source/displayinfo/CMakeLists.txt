@@ -30,11 +30,7 @@ message("Setup ${TARGET} v${PROJECT_VERSION}")
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
 find_package(${NAMESPACE}Tracing REQUIRED)
-if(PROTOCOLS)
-    find_package(${NAMESPACE}Protocols REQUIRED)
-else()
-    find_package(${NAMESPACE}COM REQUIRED)
-endif()
+find_package(${NAMESPACE}COM REQUIRED)
 
 set(PUBLIC_HEADERS 
         "include/displayinfo.h"
@@ -49,20 +45,9 @@ target_link_libraries(${TARGET}
         PUBLIC
           ${NAMESPACE}Core::${NAMESPACE}Core
           ${NAMESPACE}Tracing::${NAMESPACE}Tracing
+          ${NAMESPACE}COM::${NAMESPACE}COM
           CompileSettingsDebug::CompileSettingsDebug
         )
-
-if(PROTOCOLS)
-target_link_libraries(${TARGET}
-        PUBLIC
-          ${NAMESPACE}Protocols::${NAMESPACE}Protocols
-        )
-else()
-target_link_libraries(${TARGET}
-        PUBLIC
-          ${NAMESPACE}COM::${NAMESPACE}COM
-        )
-endif()
 
 set_target_properties(${TARGET} PROPERTIES
         CXX_STANDARD 11

@@ -5,54 +5,8 @@
 
 using namespace WPEFramework;
 namespace {
-static string Callsign()
-{
-    static constexpr const TCHAR Default[] = _T("DeviceInfo");
-    return (Default);
-}
 
-class DeviceInfoLink : public WPEFramework::RPC::SmartInterfaceType<WPEFramework::Exchange::IDeviceCapabilities> {
-private:
-    using BaseClass = WPEFramework::RPC::SmartInterfaceType<WPEFramework::Exchange::IDeviceCapabilities>;
 
-    friend class WPEFramework::Core::SingletonType<DeviceInfoLink>;
-    DeviceInfoLink()
-        : BaseClass()
-    {
-        BaseClass::Open(RPC::CommunicationTimeOut, BaseClass::Connector(), Callsign());
-    }
-
-public:
-    ~DeviceInfoLink() override
-    {
-        BaseClass::Close(WPEFramework::Core::infinite);
-    }
-    static DeviceInfoLink& Instance()
-    {
-        return WPEFramework::Core::SingletonType<DeviceInfoLink>::Instance();
-    }
-
-    PluginHost::ISubSystem* SubSystem()
-    {
-        PluginHost::ISubSystem* subsystem = nullptr;
-
-        PluginHost::IShell* shell = Aquire<PluginHost::IShell>(RPC::CommunicationTimeOut, BaseClass::Connector(), _T(""), ~0);
-
-        if (shell != nullptr) {
-            subsystem = shell->SubSystems();
-            shell->Release();
-        }
-
-        return subsystem;
-    }
-
-private:
-    void Operational(const bool upAndRunning) override
-    {
-        if (upAndRunning == false) {
-        }
-    }
-};
 
 deviceinfo_hdcp_type Convert(const Exchange::IDeviceCapabilities::CopyProtection from)
 {
@@ -140,347 +94,623 @@ deviceinfo_audio_output_type Convert(const Exchange::IDeviceCapabilities::AudioO
     return (index < (sizeof(lut) / sizeof(LUT)) ? lut[index].rhs : DEVICEINFO_AUDIO_OTHER);
 }
 
-} // nameless namespace
 
-extern "C" {
-uint32_t deviceinfo_architecure(char buffer[], uint8_t* length)
+
+static string Callsign()
 {
-    uint32_t result = Core::ERROR_UNAVAILABLE;
+    static constexpr const TCHAR Default[] = _T("DeviceInfo");
+    return (Default);
+}
 
-    PluginHost::ISubSystem* subsys = DeviceInfoLink::Instance().SubSystem();
+class DeviceInfoLink : public WPEFramework::RPC::SmartInterfaceType<WPEFramework::Exchange::IDeviceCapabilities> {
+private:
+    using BaseClass = WPEFramework::RPC::SmartInterfaceType<WPEFramework::Exchange::IDeviceCapabilities>;
 
-    if (subsys != nullptr) {
-        const PluginHost::ISubSystem::IIdentifier* identifier(subsys->Get<PluginHost::ISubSystem::IIdentifier>());
+    friend class WPEFramework::Core::SingletonType<DeviceInfoLink>;
+    DeviceInfoLink()
+        : BaseClass()
+        ,_subsysInterface(nullptr)
+        ,_identifierInterface(nullptr)
+        ,_deviceCapabilitiesInterface(nullptr)
+        ,_deviceMetaDataInterface(nullptr)
 
-        if (identifier != nullptr) {
-            std::string newValue = Core::ToString(identifier->Architecture());
+    {
+        BaseClass::Open(RPC::CommunicationTimeOut, BaseClass::Connector(), Callsign());
 
-            if (newValue.size() <= *length) {
+        PluginHost::IShell* ControllerInterface = BaseClass::ControllerInterface();
+
+        ASSERT (ControllerInterface!= nullptr);
+
+        _subsysInterface = ControllerInterface->SubSystems();
+
+        ASSERT (_subsysInterface!= nullptr);
+
+        if (_subsysInterface != nullptr) {
+            _identifierInterface = _subsysInterface->Get<PluginHost::ISubSystem::IIdentifier>();
+        }
+        ASSERT (_identifierInterface!= nullptr);
+    }
+
+public:
+    ~DeviceInfoLink() override
+    {
+        if (_subsysInterface != nullptr) {
+            _subsysInterface->Release();
+            _subsysInterface = nullptr;
+        }
+        if (_identifierInterface != nullptr) {
+            _identifierInterface->Release();
+            _identifierInterface = nullptr;
+        }
+        BaseClass::Close(WPEFramework::Core::infinite);
+    }
+    static DeviceInfoLink& Instance()
+    {
+        return WPEFramework::Core::SingletonType<DeviceInfoLink>::Instance();
+    }
+
+private:
+    void Operational(const bool upAndRunning) override
+    {
+        if (upAndRunning) {
+            if (_deviceCapabilitiesInterface ==nullptr) {
+                _deviceCapabilitiesInterface = BaseClass::Interface();
+            }
+
+            if (_deviceMetaDataInterface == nullptr &&  _deviceCapabilitiesInterface != nullptr) {
+                _deviceMetaDataInterface = _deviceCapabilitiesInterface->QueryInterface<Exchange::IDeviceMetadata>();
+            }
+            
+        } else {
+            if (_deviceCapabilitiesInterface != nullptr) {
+                _deviceCapabilitiesInterface->Release();
+                _deviceCapabilitiesInterface = nullptr;
+            }
+            if (_deviceMetaDataInterface != nullptr) {
+                _deviceMetaDataInterface->Release();
+                _deviceMetaDataInterface = nullptr;
+            }
+        }
+
+        
+    }
+    PluginHost::ISubSystem*  _subsysInterface;
+    const PluginHost::ISubSystem::IIdentifier* _identifierInterface;
+    Exchange::IDeviceCapabilities* _deviceCapabilitiesInterface; 
+    Exchange::IDeviceMetadata* _deviceMetaDataInterface ;
+
+
+
+    public:
+    uint32_t Deviceinfo_model_name(char buffer[], uint8_t* length)
+    {
+        uint32_t result = Core::ERROR_UNAVAILABLE;
+
+        if (_deviceMetaDataInterface !=nullptr ) {
+            string modelName;
+            result = _deviceMetaDataInterface->ModelName(modelName);
+            if (result == Core::ERROR_NONE ) {
+                auto size = modelName.size();
+                if(*length <= size){
+                    result = Core::ERROR_INVALID_INPUT_LENGTH ;
+                } else {
+                    strncpy(buffer, modelName.c_str(), *length);
+                }
+                *length = static_cast<uint8_t>(size + 1);
+            } else {
+                *length = 0; 
+            }
+
+        } else {
+            *length=0;
+        }
+
+        return result;
+    }
+
+
+    uint32_t Deviceinfo_model_year(char buffer[], uint8_t* length)
+    {
+        uint32_t result = Core::ERROR_UNAVAILABLE;
+
+        if (_deviceMetaDataInterface !=nullptr ) {
+            uint16_t modelYear = 0;
+            result = _deviceMetaDataInterface->ModelYear(modelYear);
+            if (result == Core::ERROR_NONE ) {
+                string year = Core::ToString(modelYear) ;
+                auto size = year.size();
+                if(*length <= size){
+                    result = Core::ERROR_INVALID_INPUT_LENGTH ;
+                } else {
+                    strncpy(buffer, year.c_str(), *length);
+                }
+                *length = static_cast<uint8_t>(size + 1);
+            } else {
+                *length = 0; 
+            }
+
+        } else {
+            *length=0;
+        }
+
+        return result;
+    }
+
+
+
+    uint32_t Deviceinfo_system_integrator_name(char buffer[], uint8_t* length)
+    {
+        uint32_t result = Core::ERROR_UNAVAILABLE;
+        
+        if (_deviceMetaDataInterface !=nullptr ) {
+            string integratorName;
+            result = _deviceMetaDataInterface->SystemIntegratorName(integratorName);
+            if (result == Core::ERROR_NONE ) {
+                auto size = integratorName.size();
+                if(*length <= size){
+                    result = Core::ERROR_INVALID_INPUT_LENGTH ;
+                } else {
+                    strncpy(buffer, integratorName.c_str(), *length);
+                }
+                *length = static_cast<uint8_t>(size + 1);
+            } else {
+                *length = 0; 
+            }
+
+        } else {
+            *length=0;
+        }
+
+        return result;
+    }
+
+
+    uint32_t Deviceinfo_friendly_name(char buffer[], uint8_t* length)
+    {
+        uint32_t result = Core::ERROR_UNAVAILABLE;
+        
+        if (_deviceMetaDataInterface !=nullptr ) {
+            string friendlyName;
+            result = _deviceMetaDataInterface->FriendlyName(friendlyName);
+            if (result == Core::ERROR_NONE ) {
+                string year = Core::ToString(friendlyName) ;
+                auto size = friendlyName.size();
+                if(*length <= size){
+                    result = Core::ERROR_INVALID_INPUT_LENGTH ;
+                } else {
+                    strncpy(buffer, friendlyName.c_str(), *length);
+                }
+                *length = static_cast<uint8_t>(size + 1);
+            } else {
+                *length = 0; 
+            }
+
+        } else {
+            *length=0;
+        }
+
+        return result;
+    }
+
+
+    uint32_t Deviceinfo_platform_name(char buffer[], uint8_t* length)
+    {
+        uint32_t result = Core::ERROR_UNAVAILABLE;
+        
+        if (_deviceMetaDataInterface !=nullptr ) {
+            string platformName;
+            result = _deviceMetaDataInterface->PlatformName(platformName);
+            if (result == Core::ERROR_NONE ) {
+                string year = Core::ToString(platformName) ;
+                auto size = platformName.size();
+                if(*length <= size){
+                    result = Core::ERROR_INVALID_INPUT_LENGTH ;
+                } else {
+                    strncpy(buffer, platformName.c_str(), *length);
+                }
+                *length = static_cast<uint8_t>(size + 1);
+            } else {
+                *length = 0; 
+            }
+
+        } else {
+            *length=0;
+        }
+            
+        return result;
+    }
+
+
+    uint32_t Deviceinfo_architecure(char buffer[], uint8_t* length)
+    {
+        uint32_t result = Core::ERROR_UNAVAILABLE;
+
+        if (_identifierInterface != nullptr) {
+            std::string newValue = Core::ToString(_identifierInterface->Architecture());
+            auto size = newValue.size();
+            if(*length <= size){
+                result = Core::ERROR_INVALID_INPUT_LENGTH ;
+            } else {
                 strncpy(buffer, newValue.c_str(), *length);
-                *length = static_cast<uint8_t>(strlen(buffer));
+                result = Core::ERROR_NONE;
+            }
+            *length = static_cast<uint8_t>(size + 1);
+        } else {
+            *length = 0;
+        }
+
+        return result;
+    }
+
+    uint32_t Deviceinfo_chipset(char buffer[], uint8_t* length)
+    {
+        uint32_t result = Core::ERROR_UNAVAILABLE;
+
+        if (_identifierInterface != nullptr) {
+            std::string newValue = Core::ToString(_identifierInterface->Chipset());
+            auto size = newValue.size();
+            if(*length <= size){
+                result = Core::ERROR_INVALID_INPUT_LENGTH ;
+            } else {
+                strncpy(buffer, newValue.c_str(), *length);
+                result = Core::ERROR_NONE;
+            }
+            *length = static_cast<uint8_t>(size + 1);
+        } else {
+            *length = 0;
+        }
+            
+        return result;
+    }
+
+    uint32_t Deviceinfo_firmware_version(char buffer[], uint8_t* length)
+    {
+        uint32_t result = Core::ERROR_UNAVAILABLE;
+
+        if (_identifierInterface != nullptr) {
+            std::string newValue = Core::ToString(_identifierInterface->FirmwareVersion());
+            auto size = newValue.size();
+            if(*length <= size){
+                result = Core::ERROR_INVALID_INPUT_LENGTH ;
+            } else {
+                strncpy(buffer, newValue.c_str(), *length);
+                result = Core::ERROR_NONE;
+            }
+            *length = static_cast<uint8_t>(size + 1);
+        } else {
+            *length = 0;
+        }
+
+        return result;
+    }
+
+    uint32_t Deviceinfo_id(uint8_t buffer[], uint8_t* length)
+    {
+        uint32_t result = Core::ERROR_UNAVAILABLE;
+
+        if (_identifierInterface != nullptr) {
+            *length = _identifierInterface->Identifier((*length) - 1, buffer);
+
+            result = Core::ERROR_NONE;
+        } else {
+            *length = 0;
+        }
+
+        return result;
+    }
+
+    uint32_t Deviceinfo_id_str(char buffer[], uint8_t* length)
+    {
+        uint32_t result = Core::ERROR_UNAVAILABLE;
+
+        if (_identifierInterface != nullptr) {
+
+            uint8_t id_buffer[64] = {};
+
+            id_buffer[0] = _identifierInterface->Identifier(sizeof(id_buffer) - 1, &(id_buffer[1]));
+
+            string id = Core::SystemInfo::Instance().Id(id_buffer, ~0);
+
+            if (id.size() < *length) { 
+                strncpy(buffer, id.c_str(), *length);
+                result = Core::ERROR_NONE;
+            } else {
+                result = Core::ERROR_INVALID_INPUT_LENGTH;
+            }
+            *length = static_cast<uint8_t>(id.size() + 1);
+
+        } else {
+            *length = 0;
+        }
+
+        return result;
+    }
+
+    uint32_t Deviceinfo_output_resolutions(deviceinfo_output_resolution_t value[], uint8_t* length)
+    {
+        uint32_t result = Core::ERROR_UNAVAILABLE;
+
+        if (_deviceCapabilitiesInterface != nullptr) {
+            Exchange::IDeviceCapabilities::IOutputResolutionIterator* index = nullptr;
+
+            _deviceCapabilitiesInterface->Resolutions(index);
+            if (index != nullptr) {
+                Exchange::IDeviceCapabilities::OutputResolution field;
+
+                uint8_t inserted = 0;
+
+                while ((inserted < *length) && (index->Next(field) == true)) {
+                    deviceinfo_output_resolution_type converted = Convert(field);
+                    uint8_t loop = 0;
+
+                    while ((loop < inserted) && (value[loop] != converted)) {
+                        loop++;
+                    }
+
+                    if (loop == inserted) {
+                        value[inserted] = converted;
+                        inserted++;
+                    }
+                }
+                *length = inserted;
+                index->Release();
                 result = Core::ERROR_NONE;
             } else {
                 *length = 0;
-                result = Core::ERROR_WRITE_ERROR;
             }
-
-            identifier->Release();
+        } else {
+            *length = 0;
         }
-        subsys->Release();
+
+        return result;
     }
 
-    return result;
+    uint32_t Deviceinfo_video_outputs(deviceinfo_video_output_t value[], uint8_t* length)
+    {
+        uint32_t result = Core::ERROR_UNAVAILABLE;
+
+        if (_deviceCapabilitiesInterface != nullptr) {
+            Exchange::IDeviceCapabilities::IVideoOutputIterator* index = nullptr;
+
+            _deviceCapabilitiesInterface->VideoOutputs(index);
+            if (index != nullptr) {
+                Exchange::IDeviceCapabilities::VideoOutput field;
+
+                uint8_t inserted = 0;
+
+                while ((inserted < *length) && (index->Next(field) == true)) {
+                    deviceinfo_video_output_type converted = Convert(field);
+                    uint8_t loop = 0;
+
+                    while ((loop < inserted) && (value[loop] != converted)) {
+                        loop++;
+                    }
+
+                    if (loop == inserted) {
+                        value[inserted] = converted;
+                        inserted++;
+                    }
+                }
+                *length = inserted;
+                index->Release();
+                result = Core::ERROR_NONE;
+            } else {
+                *length = 0;
+            }
+        } else {
+            *length = 0;
+        }
+        return result;
+    }
+
+    uint32_t Deviceinfo_audio_outputs(deviceinfo_audio_output_t value[], uint8_t* length)
+    {
+        uint32_t result = Core::ERROR_UNAVAILABLE;
+
+        if (_deviceCapabilitiesInterface != nullptr) {
+            Exchange::IDeviceCapabilities::IAudioOutputIterator* index = nullptr;
+
+            _deviceCapabilitiesInterface->AudioOutputs(index);
+            if (index != nullptr) {
+                Exchange::IDeviceCapabilities::AudioOutput field;
+
+                uint8_t inserted = 0;
+
+                while ((inserted < *length) && (index->Next(field) == true)) {
+                    deviceinfo_audio_output_type converted = Convert(field);
+                    uint8_t loop = 0;
+
+                    while ((loop < inserted) && (value[loop] != converted)) {
+                        loop++;
+                    }
+
+                    if (loop == inserted) {
+                        value[inserted] = converted;
+                        inserted++;
+                    }
+                }
+                *length = inserted;
+                index->Release();
+                result = Core::ERROR_NONE;
+            } else {
+                *length = 0;
+            }
+        } else {
+            *length = 0;
+        }
+        return result;
+    }
+
+    uint32_t Deviceinfo_maximum_output_resolution(deviceinfo_output_resolution_t* value)
+    {
+        deviceinfo_output_resolution_type resolutions[32];
+        uint8_t maxLength = sizeof(resolutions) / sizeof(deviceinfo_output_resolution_type);
+
+        uint32_t result = Deviceinfo_output_resolutions(resolutions, &maxLength);
+
+        if (result == Core::ERROR_NONE) {
+            if (maxLength == 0) {
+                result = Core::ERROR_INVALID_INPUT_LENGTH;
+            } else {
+                uint8_t index = 0;
+                *value = DEVICEINFO_RESOLUTION_480I;
+
+                while (index < maxLength) {
+                    if (resolutions[index] > *value) {
+                        *value = resolutions[index];
+                    }
+                    index++;
+                }
+            }
+        } 
+        return (result);
+    }
+
+    uint32_t Deviceinfo_hdr(bool* supportsHDR)
+    {
+        uint32_t result = Core::ERROR_UNAVAILABLE;
+
+        if (_deviceCapabilitiesInterface != nullptr) {
+            result =  _deviceCapabilitiesInterface->HDR(*supportsHDR);
+        }
+        return result;
+    }
+
+    uint32_t Deviceinfo_atmos(bool* supportsAtmos)
+    {
+        uint32_t result = Core::ERROR_UNAVAILABLE;
+
+        if (_deviceCapabilitiesInterface != nullptr) {
+            result = _deviceCapabilitiesInterface->Atmos(*supportsAtmos);
+        }
+        return result;
+    }
+
+    uint32_t Deviceinfo_cec(bool* supportsCEC)
+    {
+        uint32_t result = Core::ERROR_UNAVAILABLE;
+
+        if (_deviceCapabilitiesInterface != nullptr) {
+            result = _deviceCapabilitiesInterface->CEC(*supportsCEC);
+        }
+        return result;
+    }
+
+    uint32_t Deviceinfo_hdcp(deviceinfo_hdcp_t* supportedHDCP)
+    {
+        uint32_t result = Core::ERROR_UNAVAILABLE;
+
+        if (_deviceCapabilitiesInterface != nullptr) {
+            Exchange::IDeviceCapabilities::CopyProtection cp;
+            result = _deviceCapabilitiesInterface->HDCP(cp);
+
+            *supportedHDCP = Convert(cp);
+        }
+        return result;
+    }
+
+};
+
+}// nameless namespace
+
+
+extern "C" {
+
+uint32_t deviceinfo_architecure(char buffer[], uint8_t* length)
+{
+    return DeviceInfoLink::Instance().Deviceinfo_architecure(buffer,length);
 }
 
 uint32_t deviceinfo_chipset(char buffer[], uint8_t* length)
 {
-    uint32_t result = Core::ERROR_UNAVAILABLE;
-
-    PluginHost::ISubSystem* subsys = DeviceInfoLink::Instance().SubSystem();
-
-    if (subsys != nullptr) {
-        const PluginHost::ISubSystem::IIdentifier* identifier(subsys->Get<PluginHost::ISubSystem::IIdentifier>());
-
-        if (identifier != nullptr) {
-            std::string newValue = Core::ToString(identifier->Chipset());
-
-            if (newValue.size() <= *length) {
-                strncpy(buffer, newValue.c_str(), *length);
-                *length = static_cast<uint8_t>(strlen(buffer));
-                result = Core::ERROR_NONE;
-            } else {
-                *length = 0;
-                result = Core::ERROR_WRITE_ERROR;
-            }
-
-            identifier->Release();
-        }
-        subsys->Release();
-    }
-
-    return result;
+    return DeviceInfoLink::Instance().Deviceinfo_chipset(buffer,length);
 }
 
 uint32_t deviceinfo_firmware_version(char buffer[], uint8_t* length)
 {
-    uint32_t result = Core::ERROR_UNAVAILABLE;
-
-    PluginHost::ISubSystem* subsys = DeviceInfoLink::Instance().SubSystem();
-
-    if (subsys != nullptr) {
-        const PluginHost::ISubSystem::IIdentifier* identifier(subsys->Get<PluginHost::ISubSystem::IIdentifier>());
-
-        if (identifier != nullptr) {
-            std::string newValue = Core::ToString(identifier->FirmwareVersion());
-
-            if (newValue.size() <= *length) {
-                strncpy(buffer, newValue.c_str(), *length);
-                *length = static_cast<uint8_t>(strlen(buffer));
-                result = Core::ERROR_NONE;
-            } else {
-                *length = 0;
-                result = Core::ERROR_WRITE_ERROR;
-            }
-
-            identifier->Release();
-        }
-        subsys->Release();
-    }
-
-    return result;
+    return DeviceInfoLink::Instance().Deviceinfo_firmware_version(buffer,length);
 }
 
 uint32_t deviceinfo_id(uint8_t buffer[], uint8_t* length)
 {
-    uint32_t result = Core::ERROR_UNAVAILABLE;
-
-    PluginHost::ISubSystem* subsys = DeviceInfoLink::Instance().SubSystem();
-
-    if (subsys != nullptr) {
-        const PluginHost::ISubSystem::IIdentifier* identifier(subsys->Get<PluginHost::ISubSystem::IIdentifier>());
-
-        if (identifier != nullptr) {
-            *length = identifier->Identifier((*length) - 1, buffer);
-
-            identifier->Release();
-
-            result = Core::ERROR_NONE;
-        }
-
-        subsys->Release();
-    }
-
-    return result;
+    return DeviceInfoLink::Instance().Deviceinfo_id(buffer,length);
 }
 
 uint32_t deviceinfo_id_str(char buffer[], uint8_t* length)
 {
-    uint32_t result = Core::ERROR_UNAVAILABLE;
-
-    PluginHost::ISubSystem* subsys = DeviceInfoLink::Instance().SubSystem();
-
-    if (subsys != nullptr) {
-        const PluginHost::ISubSystem::IIdentifier* identifier(subsys->Get<PluginHost::ISubSystem::IIdentifier>());
-
-        if (identifier != nullptr) {
-
-            uint8_t id_buffer[64] = {};
-
-            id_buffer[0] = identifier->Identifier(sizeof(id_buffer) - 1, &(id_buffer[1]));
-
-            string id = Core::SystemInfo::Instance().Id(id_buffer, ~0);
-
-            if (*length >= id.size()) {
-                memcpy(buffer, id.c_str(), id.size() + 1);
-                *length = static_cast<uint8_t>(id.size());
-                result = Core::ERROR_NONE;
-            } else {
-                result = Core::ERROR_WRITE_ERROR;
-            }
-
-            identifier->Release();
-        }
-
-        subsys->Release();
-    }
-
-    return result;
+    return DeviceInfoLink::Instance().Deviceinfo_id_str(buffer,length);
 }
 
 uint32_t deviceinfo_output_resolutions(deviceinfo_output_resolution_t value[], uint8_t* length)
 {
-    uint32_t result = Core::ERROR_UNAVAILABLE;
-
-    Exchange::IDeviceCapabilities* accessor = DeviceInfoLink::Instance().Interface();
-
-    if (accessor != nullptr) {
-        Exchange::IDeviceCapabilities::IOutputResolutionIterator* index = nullptr;
-
-        accessor->Resolutions(index);
-        if (index != nullptr) {
-            Exchange::IDeviceCapabilities::OutputResolution field;
-
-            uint8_t inserted = 0;
-
-            while ((inserted < *length) && (index->Next(field) == true)) {
-                deviceinfo_output_resolution_type converted = Convert(field);
-                uint8_t loop = 0;
-
-                while ((loop < inserted) && (value[loop] != converted)) {
-                    loop++;
-                }
-
-                if (loop == inserted) {
-                    value[inserted] = converted;
-                    inserted++;
-                }
-            }
-            *length = inserted;
-            index->Release();
-            result = Core::ERROR_NONE;
-        }
-        accessor->Release();
-    }
-    return result;
+    return DeviceInfoLink::Instance().Deviceinfo_output_resolutions(value,length);
 }
 
 uint32_t deviceinfo_video_outputs(deviceinfo_video_output_t value[], uint8_t* length)
 {
-    uint32_t result = Core::ERROR_UNAVAILABLE;
-
-    Exchange::IDeviceCapabilities* accessor = DeviceInfoLink::Instance().Interface();
-
-    if (accessor != nullptr) {
-        Exchange::IDeviceCapabilities::IVideoOutputIterator* index = nullptr;
-
-        accessor->VideoOutputs(index);
-        if (index != nullptr) {
-            Exchange::IDeviceCapabilities::VideoOutput field;
-
-            uint8_t inserted = 0;
-
-            while ((inserted < *length) && (index->Next(field) == true)) {
-                deviceinfo_video_output_type converted = Convert(field);
-                uint8_t loop = 0;
-
-                while ((loop < inserted) && (value[loop] != converted)) {
-                    loop++;
-                }
-
-                if (loop == inserted) {
-                    value[inserted] = converted;
-                    inserted++;
-                }
-            }
-            *length = inserted;
-            index->Release();
-            result = Core::ERROR_NONE;
-        }
-        accessor->Release();
-    }
-    return result;
+    return DeviceInfoLink::Instance().Deviceinfo_video_outputs(value,length);
+    
 }
 
 uint32_t deviceinfo_audio_outputs(deviceinfo_audio_output_t value[], uint8_t* length)
 {
-    uint32_t result = Core::ERROR_UNAVAILABLE;
-
-    Exchange::IDeviceCapabilities* accessor = DeviceInfoLink::Instance().Interface();
-
-    if (accessor != nullptr) {
-        Exchange::IDeviceCapabilities::IAudioOutputIterator* index = nullptr;
-
-        accessor->AudioOutputs(index);
-        if (index != nullptr) {
-            Exchange::IDeviceCapabilities::AudioOutput field;
-
-            uint8_t inserted = 0;
-
-            while ((inserted < *length) && (index->Next(field) == true)) {
-                deviceinfo_audio_output_type converted = Convert(field);
-                uint8_t loop = 0;
-
-                while ((loop < inserted) && (value[loop] != converted)) {
-                    loop++;
-                }
-
-                if (loop == inserted) {
-                    value[inserted] = converted;
-                    inserted++;
-                }
-            }
-            *length = inserted;
-            index->Release();
-            result = Core::ERROR_NONE;
-        }
-        accessor->Release();
-    }
-    return result;
+    return DeviceInfoLink::Instance().Deviceinfo_audio_outputs(value,length);
 }
 
 uint32_t deviceinfo_maximum_output_resolution(deviceinfo_output_resolution_t* value)
 {
-    deviceinfo_output_resolution_type resolutions[32];
-    uint8_t maxLength = sizeof(resolutions) / sizeof(deviceinfo_output_resolution_type);
-
-    uint32_t result = deviceinfo_output_resolutions(resolutions, &maxLength);
-
-    if (result == Core::ERROR_NONE) {
-        if (maxLength == 0) {
-            result = Core::ERROR_INVALID_INPUT_LENGTH;
-        } else {
-            uint8_t index = 0;
-            *value = DEVICEINFO_RESOLUTION_480I;
-
-            while (index < maxLength) {
-                if (resolutions[index] > *value) {
-                    *value = resolutions[index];
-                }
-                index++;
-            }
-        }
-    }
-    return (result);
+    return DeviceInfoLink::Instance().Deviceinfo_maximum_output_resolution(value);
 }
 
 uint32_t deviceinfo_hdr(bool* supportsHDR)
 {
-    uint32_t result = Core::ERROR_UNAVAILABLE;
-
-    Exchange::IDeviceCapabilities* accessor = DeviceInfoLink::Instance().Interface();
-
-    if (accessor != nullptr) {
-        result = accessor->HDR(*supportsHDR);
-
-        accessor->Release();
-    }
-
-    return result;
+    return DeviceInfoLink::Instance().Deviceinfo_hdr(supportsHDR);
 }
 
 uint32_t deviceinfo_atmos(bool* supportsAtmos)
 {
-    uint32_t result = Core::ERROR_UNAVAILABLE;
-
-    Exchange::IDeviceCapabilities* accessor = DeviceInfoLink::Instance().Interface();
-
-    if (accessor != nullptr) {
-        result = accessor->Atmos(*supportsAtmos);
-
-        accessor->Release();
-    }
-
-    return result;
+    return DeviceInfoLink::Instance().Deviceinfo_atmos(supportsAtmos);
 }
 
 uint32_t deviceinfo_cec(bool* supportsCEC)
 {
-    uint32_t result = Core::ERROR_UNAVAILABLE;
-
-    Exchange::IDeviceCapabilities* accessor = DeviceInfoLink::Instance().Interface();
-    if (accessor != nullptr) {
-        result = accessor->CEC(*supportsCEC);
-
-        accessor->Release();
-    }
-
-    return result;
+    return DeviceInfoLink::Instance().Deviceinfo_cec(supportsCEC);
 }
 
 uint32_t deviceinfo_hdcp(deviceinfo_hdcp_t* supportedHDCP)
 {
-    uint32_t result = Core::ERROR_UNAVAILABLE;
+    return DeviceInfoLink::Instance().Deviceinfo_hdcp(supportedHDCP);
 
-    Exchange::IDeviceCapabilities* accessor = DeviceInfoLink::Instance().Interface();
+}
 
-    if (accessor != nullptr) {
-        Exchange::IDeviceCapabilities::CopyProtection cp;
-        result = accessor->HDCP(cp);
 
-        *supportedHDCP = Convert(cp);
+uint32_t deviceinfo_model_name(char buffer[], uint8_t* length)
+{
+    return DeviceInfoLink::Instance().Deviceinfo_model_name(buffer,length);
+}
 
-        accessor->Release();
-    }
-    return result;
+uint32_t deviceinfo_model_year(char buffer[], uint8_t* length)
+{
+    return DeviceInfoLink::Instance().Deviceinfo_model_year(buffer,length);
+}
+
+
+
+uint32_t deviceinfo_system_integrator_name(char buffer[], uint8_t* length)
+{
+    return DeviceInfoLink::Instance().Deviceinfo_system_integrator_name(buffer,length);
+}
+
+
+uint32_t deviceinfo_friendly_name(char buffer[], uint8_t* length)
+{
+    return DeviceInfoLink::Instance().Deviceinfo_friendly_name(buffer,length);
+}
+
+
+
+uint32_t deviceinfo_platform_name(char buffer[], uint8_t* length)
+{
+    return DeviceInfoLink::Instance().Deviceinfo_platform_name(buffer,length);
 }
 } // extern "C"

@@ -1,9 +1,9 @@
-# - Try to find Broadcom Nexus client.
+# - Try to find Weston.
 # Once done this will define
-#  NXCLIENT_FOUND     - System has a Nexus client
-#  NXCLIENT::NXCLIENT - The Nexus client library
+#  WESTON_CLIENT_FOUND - System has weston
 #
-# Copyright (C) 2019 Metrological B.V
+# Copyright (C) 2015 Metrological.
+# Copyright (C) 2019 Linaro.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,26 +26,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-find_path(LIBNXCLIENT_INCLUDE nexus_config.h
-        PATH_SUFFIXES refsw)
+find_package(PkgConfig)
+pkg_check_modules(PC_WESTON weston>=6)
 
-find_library(LIBNXCLIENT_LIBRARY nxclient)
-
-if(EXISTS "${LIBNXCLIENT_LIBRARY}")
-    include(FindPackageHandleStandardArgs)
-
-    set(NXCLIENT_FOUND TRUE)
-
-    find_package_handle_standard_args(LIBNXCLIENT DEFAULT_MSG NXCLIENT_FOUND LIBNXCLIENT_INCLUDE LIBNXCLIENT_LIBRARY)
-    mark_as_advanced(LIBNXCLIENT_LIBRARY)
-
-    if(NOT TARGET NXCLIENT::NXCLIENT)
-        add_library(NXCLIENT::NXCLIENT UNKNOWN IMPORTED)
-        
-        set_target_properties(NXCLIENT::NXCLIENT PROPERTIES
-                IMPORTED_LINK_INTERFACE_LANGUAGES "C"
-                IMPORTED_LOCATION "${LIBNXCLIENT_LIBRARY}"
-                INTERFACE_INCLUDE_DIRECTORIES "${LIBNXCLIENT_INCLUDE}"
-                )
-    endif()
-endif()
+set(WESTON_CLIENT_FOUND ${PC_WESTON_FOUND})

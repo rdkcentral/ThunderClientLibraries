@@ -33,11 +33,7 @@ option(GSTREAMER_CLIENT_IMPLEMENTATION "Defines which implementation is used." "
 
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
-if(PROTOCOLS)
-    find_package(${NAMESPACE}Protocols REQUIRED)
-else()
-    find_package(${NAMESPACE}COM REQUIRED)
-endif()
+find_package(${NAMESPACE}COM REQUIRED)
 
 if (NOT "${GSTREAMER_CLIENT_IMPLEMENTATION}" STREQUAL "None")
 

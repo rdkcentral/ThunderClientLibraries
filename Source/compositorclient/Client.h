@@ -29,7 +29,7 @@
 
 #ifndef EXTERNAL
 #ifdef _MSVC_LANG
-#ifdef DISPLAYINFO_EXPORTS
+#ifdef COMPOSITORCLIENT_EXPORTS
 #define EXTERNAL __declspec(dllexport)
 #else
 #define EXTERNAL __declspec(dllimport)

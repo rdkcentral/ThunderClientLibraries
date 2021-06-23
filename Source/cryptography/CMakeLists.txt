@@ -162,7 +162,4 @@ if(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY)
         TARGETS ${TARGET}Software 
     )
 endif(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY)
-
-if("${BUILD_TYPE}" STREQUAL "Debug")
-    add_subdirectory(tests)
-endif()
+add_subdirectory(tests)

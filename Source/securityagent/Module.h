@@ -24,6 +24,9 @@
 #endif
 
 #include <core/core.h>
+#include <com/com.h>
+#include <plugins/plugins.h>
+
 
 #if defined(__WINDOWS__) && defined(SECURITYAGENT_EXPORTS)
 #undef EXTERNAL
