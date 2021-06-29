@@ -282,16 +282,16 @@ static const struct wl_registry_listener globalRegistryListener = {
         }
         else if (::strcmp(interface, "wl_seat") == 0) {
             // A shell, is probably associated with a client, so I guess we now need to find a client..
-            struct wl_seat* result = static_cast<struct wl_seat*>(wl_registry_bind(registry, name, &wl_seat_interface, 4));
-            wl_seat_add_listener(result, &seatListener, data);
-            context._seat = result;
+            // Save details and bind once xdg_wm_base configured
+            context._seat_registry = registry;
+            context._seat_name = name;
         } else if (::strcmp(interface, "wl_shell") == 0) {
             // A shell, is probably associated with a client, so I guess we now need to find a client..
+            // Save details and bind once xdg_wm_base configured
             context._shell = static_cast<struct wl_shell*>(wl_registry_bind(registry, name, &wl_shell_interface, 1));
         } else if (::strcmp(interface, "wl_output") == 0) {
-            struct wl_output* result = static_cast<struct wl_output*>(wl_registry_bind(registry, name, &wl_output_interface, 2));
-            wl_output_add_listener(result, &outputListener, data);
-            context._output = result;
+            context._output_registry = registry;
+            context._output_name = name;
         } else if (strcmp(interface, "xdg_wm_base") == 0) {
             struct xdg_wm_base* result = static_cast<struct xdg_wm_base*>(wl_registry_bind(registry, name, &xdg_wm_base_interface, 1));
 
@@ -309,6 +309,20 @@ static void
 handle_surface_configure(void *data, struct xdg_surface *surface,
              uint32_t serial)
 {
+    Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
+
+    if (context._seat == nullptr) {
+        struct wl_seat* result = static_cast<struct wl_seat*>(wl_registry_bind(context._seat_registry, context._seat_name, &wl_seat_interface, 4));
+        wl_seat_add_listener(result, &seatListener, data);
+        context._seat = result;
+    }
+
+    if (context._output == nullptr) {
+        struct wl_output* result = static_cast<struct wl_output*>(wl_registry_bind(context._output_registry, context._output_name, &wl_output_interface, 2));
+        wl_output_add_listener(result, &outputListener, data);
+        context._output = result;
+    }
+
     xdg_surface_ack_configure(surface, serial);
 }
 
@@ -756,7 +770,6 @@ namespace Wayland {
 
                 sem_init(&_trigger, 0, 0);
                 sem_init(&_redraw, 0, 0);
-
                 Trace("creating communication thread\n");
                 if (pthread_create(&_tid, nullptr, Processor, this) != 0) {
                     Trace("[Wayland] Error creating communication thread\n");
@@ -952,7 +965,6 @@ namespace Wayland {
         IDisplay::ISurface* result = nullptr;
 
         Trace("Display::Create\n");
-
         _adminLock.Lock();
 
         SurfaceImplementation* surface = new SurfaceImplementation(*this, name, width, height);
@@ -972,7 +984,7 @@ namespace Wayland {
             wl_surface_commit(surface->_surface);
 
         }
-
+        wl_display_dispatch(_display);
         // Wait till we are fully registered.
         _waylandSurfaces.insert(std::pair<struct wl_surface*, SurfaceImplementation*>(surface->_surface, surface));
 

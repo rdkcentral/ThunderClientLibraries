@@ -303,9 +303,13 @@ namespace Wayland {
         Display(const std::string& displayName)
             : _display(nullptr)
             , _registry(nullptr)
+            , _seat_name(0)
             , _seat(nullptr)
-            , _simpleShell(nullptr)
+            , _seat_registry(nullptr)
+            , _output_name(0)
             , _output(nullptr)
+            , _output_registry(nullptr)
+            , _simpleShell(nullptr)
             , _keyboard(nullptr)
             , _pointer(nullptr)
             , _touch(nullptr)
@@ -593,24 +597,24 @@ namespace Wayland {
         virtual int FileDescriptor() const override;
         virtual int Process(const uint32_t data) override;
         virtual ISurface* Create(const std::string& name, const uint32_t width, const uint32_t height) override;
-	virtual ISurface* SurfaceByName(const std::string& name) override
-	{
-	    //iterate through waylandsurface map return wl_surface with matching name
-	    _adminLock.Lock();
+        virtual ISurface* SurfaceByName(const std::string& name) override
+        {
+            //iterate through waylandsurface map return wl_surface with matching name
+            _adminLock.Lock();
 
-	    WaylandSurfaceMap::iterator entry(_waylandSurfaces.begin());
+            WaylandSurfaceMap::iterator entry(_waylandSurfaces.begin());
 
-	    while (entry != _waylandSurfaces.end()) {
-	      if (entry->second->Name().compare(name) == 0) {
-	        _adminLock.Unlock();
-	        //return iSurface to upper layers
-	        return entry->second;
-	      }
-	      entry++;
-	    }
-	    _adminLock.Unlock();
-	    return nullptr;
-	}
+            while (entry != _waylandSurfaces.end()) {
+                if (entry->second->Name().compare(name) == 0) {
+                    _adminLock.Unlock();
+                    //return iSurface to upper layers
+                    return entry->second;
+                }
+                entry++;
+            }
+            _adminLock.Unlock();
+            return nullptr;
+        }
         inline bool IsOperational() const
         {
             return (_display != nullptr);
@@ -800,9 +804,13 @@ namespace Wayland {
         struct wl_display* _display;
         struct wl_registry* _registry;
         struct wl_compositor* _compositor;
+        uint32_t _seat_name;
         struct wl_seat* _seat;
-        struct wl_simple_shell* _simpleShell;
+        struct wl_registry* _seat_registry;
+        uint32_t _output_name;
         struct wl_output* _output;
+        struct wl_registry* _output_registry;
+        struct wl_simple_shell* _simpleShell;
         struct wl_keyboard* _keyboard;
         struct wl_pointer* _pointer;
         struct wl_touch* _touch;
