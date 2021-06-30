@@ -49,7 +49,6 @@ add_library(${TARGET} SHARED
         )
 
 set(PUBLIC_HEADERS
-        DataExchange.h
         IOCDM.h
         open_cdm.h
         adapter/open_cdm_adapter.h

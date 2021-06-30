@@ -17,7 +17,6 @@
 
 #include "Module.h"
 #include "open_cdm.h"
-#include "DataExchange.h"
 #include "IOCDM.h"
 #include "open_cdm_impl.h"
 

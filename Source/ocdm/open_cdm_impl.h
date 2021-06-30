@@ -19,7 +19,7 @@
  
 #pragma once
 
-#include "DataExchange.h"
+
 #include "IOCDM.h"
 #include "Module.h"
 #include "open_cdm.h"
@@ -374,7 +374,7 @@ private:
         OpenCDMSession& _parent;
     };
 
-    class DataExchange : public OCDM::DataExchange {
+    class DataExchange : public WPEFramework::Exchange::DataExchange {
     private:
         DataExchange() = delete;
         DataExchange(const DataExchange&) = delete;
@@ -382,7 +382,7 @@ private:
 
     public:
         DataExchange(const string& bufferName)
-            : OCDM::DataExchange(bufferName)
+            : WPEFramework::Exchange::DataExchange(bufferName)
             , _busy(false)
         {
 
@@ -395,7 +395,7 @@ private:
                 TRACE_L1("Destructed a DataExchange while still in progress. %p", this);
             }
             TRACE_L1("Destructing buffer client side: %p - %s", this,
-                OCDM::DataExchange::Name().c_str());
+                 WPEFramework::Exchange::DataExchange::Name().c_str());
         }
 
     public:
