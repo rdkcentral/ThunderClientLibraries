@@ -37,11 +37,6 @@ namespace Implementation {
     static constexpr const TCHAR* Callsign = "Svalbard";
     static constexpr const TCHAR* CryptographyConnector = "/tmp/svalbard";
 
-    struct IRPCLink {
-        virtual ~IRPCLink() = default;
-        virtual void Clear() = 0;
-    };
-
     class CryptographyLink : public RPC::SmartInterfaceType<PluginHost::IPlugin> {
     private:
         using BaseClass = RPC::SmartInterfaceType<PluginHost::IPlugin>;
@@ -69,10 +64,9 @@ namespace Implementation {
         Cryptography::ICryptography* Cryptography(const std::string& connectionPoint);
 
         template <typename TYPE, typename... Args>
-        Core::ProxyType<Core::Service<TYPE>> Register(Args&&... args)
+        Core::ProxyType<Core::IUnknown> Register(Args&&... args)
         {
-            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
-            return _interfaces.template Instance<Core::Service<TYPE>>(std::forward<Args>(args)...);
+            return (_interfaces.template Instance<TYPE>(std::forward<Args>(args)...));
         }
 
     private:
@@ -86,10 +80,10 @@ namespace Implementation {
 
     private:
         mutable Core::CriticalSection _adminLock;
-        Core::ProxyListType<IRPCLink> _interfaces;
+        Core::ProxyListType<Core::IUnknown> _interfaces;
     };
 
-    class RPCDiffieHellmanImpl : public IRPCLink, public Cryptography::IDiffieHellman {
+    class RPCDiffieHellmanImpl : public Cryptography::IDiffieHellman {
     public:
         RPCDiffieHellmanImpl(Cryptography::IDiffieHellman* iface)
             : _accessor(iface)
@@ -98,10 +92,7 @@ namespace Implementation {
                 _accessor->AddRef();
             }
         }
-        ~RPCDiffieHellmanImpl()
-        {
-            Clear();
-        }
+        ~RPCDiffieHellmanImpl() override = default;
 
         BEGIN_INTERFACE_MAP(RPCDiffieHellmanImpl)
         INTERFACE_ENTRY(Cryptography::IDiffieHellman)
@@ -122,10 +113,10 @@ namespace Implementation {
             return (_accessor != nullptr) ? _accessor->Derive(privateKey, peerPublicKeyId, secretId) : 0;
         }
 
-        void Clear() override
+        void Unlink()
         {
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
             if (_accessor != nullptr) {
-                Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
                 _accessor->Release();
                 _accessor = nullptr;
             }
@@ -136,7 +127,7 @@ namespace Implementation {
         Cryptography::IDiffieHellman* _accessor;
     };
 
-    class RPCCipherImpl : public IRPCLink, public Cryptography::ICipher {
+    class RPCCipherImpl : public Cryptography::ICipher {
     public:
         RPCCipherImpl(Cryptography::ICipher* iface)
             : _accessor(iface)
@@ -145,10 +136,7 @@ namespace Implementation {
                 _accessor->AddRef();
             }
         }
-        ~RPCCipherImpl()
-        {
-            Clear();
-        }
+        ~RPCCipherImpl() override = default;
 
         BEGIN_INTERFACE_MAP(RPCCipherImpl)
         INTERFACE_ENTRY(Cryptography::ICipher)
@@ -171,10 +159,10 @@ namespace Implementation {
             return (_accessor != nullptr) ? _accessor->Decrypt(ivLength, iv, inputLength, input, maxOutputLength, output) : 0;
         }
 
-        void Clear() override
+        void Unlink()
         {
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
             if (_accessor != nullptr) {
-                Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
                 _accessor->Release();
                 _accessor = nullptr;
             }
@@ -185,7 +173,7 @@ namespace Implementation {
         Cryptography::ICipher* _accessor;
     };
 
-    class RPCHashImpl : public IRPCLink, public Cryptography::IHash {
+    class RPCHashImpl : public Cryptography::IHash {
     public:
         RPCHashImpl(Cryptography::IHash* hash)
             : _accessor(hash)
@@ -194,10 +182,7 @@ namespace Implementation {
                 _accessor->AddRef();
             }
         }
-        ~RPCHashImpl()
-        {
-            Clear();
-        }
+        ~RPCHashImpl() override = default;
 
         BEGIN_INTERFACE_MAP(RPCHashImpl)
         INTERFACE_ENTRY(Cryptography::IHash)
@@ -205,7 +190,7 @@ namespace Implementation {
 
     public:
         /* Ingest data into the hash calculator (multiple calls possible) */
-        virtual uint32_t Ingest(const uint32_t length, const uint8_t data[] /* @length:length */) override
+        uint32_t Ingest(const uint32_t length, const uint8_t data[] /* @length:length */) override
         {
             Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
             return (_accessor != nullptr ? _accessor->Ingest(length, data) : 0);
@@ -218,10 +203,10 @@ namespace Implementation {
             return (_accessor != nullptr ? _accessor->Calculate(maxLength, data) : 0);
         }
 
-        void Clear() override
+        void Unlink()
         {
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
             if (_accessor != nullptr) {
-                Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
                 _accessor->Release();
                 _accessor = nullptr;
             }
@@ -232,7 +217,7 @@ namespace Implementation {
         Cryptography::IHash* _accessor;
     };
 
-    class RPCVaultImpl : virtual public IRPCLink, public Cryptography::IVault {
+    class RPCVaultImpl : public Cryptography::IVault {
     public:
         RPCVaultImpl(Cryptography::IVault* vault)
             : _accessor(vault)
@@ -241,10 +226,7 @@ namespace Implementation {
                 _accessor->AddRef();
             }
         }
-        ~RPCVaultImpl()
-        {
-            Clear();
-        }
+        ~RPCVaultImpl() override = default;
 
         BEGIN_INTERFACE_MAP(RPCVaultImpl)
         INTERFACE_ENTRY(Cryptography::IVault)
@@ -310,7 +292,7 @@ namespace Implementation {
                 iface = _accessor->HMAC(hashType, keyId);
 
                 if (iface != nullptr) {
-                    Core::ProxyType<Core::Service<RPCHashImpl>> object = CryptographyLink::Instance().Register<RPCHashImpl>(iface);
+                    Core::ProxyType<Core::IUnknown> object = CryptographyLink::Instance().Register<RPCHashImpl>(iface);
 
                     ASSERT(object.IsValid() == true);
 
@@ -335,7 +317,7 @@ namespace Implementation {
                 iface = _accessor->AES(aesMode, keyId);
 
                 if (iface != nullptr) {
-                    Core::ProxyType<Core::Service<RPCCipherImpl>> object = CryptographyLink::Instance().Register<RPCCipherImpl>(iface);
+                    Core::ProxyType<Core::IUnknown> object = CryptographyLink::Instance().Register<RPCCipherImpl>(iface);
 
                     ASSERT(object.IsValid() == true);
 
@@ -360,7 +342,7 @@ namespace Implementation {
                 iface = _accessor->DiffieHellman();
 
                 if (iface != nullptr) {
-                    Core::ProxyType<Core::Service<RPCDiffieHellmanImpl>> object = CryptographyLink::Instance().Register<RPCDiffieHellmanImpl>(iface);
+                    Core::ProxyType<Core::IUnknown> object = CryptographyLink::Instance().Register<RPCDiffieHellmanImpl>(iface);
 
                     ASSERT(object.IsValid() == true);
 
@@ -373,10 +355,10 @@ namespace Implementation {
             return iface;
         }
 
-        void Clear() override
+        void Unlink()
         {
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
             if (_accessor != nullptr) {
-                Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
                 _accessor->Release();
                 _accessor = nullptr;
             }
@@ -387,7 +369,7 @@ namespace Implementation {
         Cryptography::IVault* _accessor;
     };
 
-    class RPCCryptographyImpl : public IRPCLink, public Cryptography::ICryptography {
+    class RPCCryptographyImpl : public Cryptography::ICryptography {
     public:
         RPCCryptographyImpl() = delete;
         RPCCryptographyImpl(const RPCCryptographyImpl&) = delete;
@@ -398,10 +380,7 @@ namespace Implementation {
         {
             _accessor->AddRef();
         }
-        ~RPCCryptographyImpl()
-        {
-            Clear();
-        };
+        ~RPCCryptographyImpl() override = default;
 
         BEGIN_INTERFACE_MAP(RPCCryptographyImpl)
         INTERFACE_ENTRY(Cryptography::ICryptography)
@@ -420,7 +399,7 @@ namespace Implementation {
                 iface = _accessor->Hash(hashType);
 
                 if (iface != nullptr) {
-                    Core::ProxyType<Core::Service<RPCHashImpl>> object = CryptographyLink::Instance().Register<RPCHashImpl>(iface);
+                    Core::ProxyType<Core::IUnknown> object = CryptographyLink::Instance().Register<RPCHashImpl>(iface);
 
                     ASSERT(object.IsValid() == true);
 
@@ -445,7 +424,7 @@ namespace Implementation {
                 iface = _accessor->Vault(id);
 
                 if (iface != nullptr) {
-                    Core::ProxyType<Core::Service<RPCVaultImpl>> object = CryptographyLink::Instance().Register<RPCVaultImpl>(iface);
+                    Core::ProxyType<Core::IUnknown> object = CryptographyLink::Instance().Register<RPCVaultImpl>(iface);
 
                     ASSERT(object.IsValid() == true);
 
@@ -458,7 +437,7 @@ namespace Implementation {
             return iface;
         }
 
-        void Clear() override
+        void Unlink()
         {
             Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
             if (_accessor != nullptr) {
@@ -479,7 +458,7 @@ namespace Implementation {
         // Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
 
         if (iface != nullptr) {
-            Core::ProxyType<Core::Service<RPCCryptographyImpl>> object = Register<RPCCryptographyImpl>(iface);
+            Core::ProxyType<Core::IUnknown> object = Register<RPCCryptographyImpl>(iface);
 
             ASSERT(object.IsValid() == true);
 
@@ -491,7 +470,7 @@ namespace Implementation {
         return iface;
     }
 
-    class HashImpl : virtual public WPEFramework::Cryptography::IHash {
+    class HashImpl : public WPEFramework::Cryptography::IHash {
     public:
         HashImpl() = delete;
         HashImpl(const HashImpl&) = delete;
@@ -528,7 +507,7 @@ namespace Implementation {
         HashImplementation* _implementation;
     }; // class HashImpl
 
-    class VaultImpl : virtual public WPEFramework::Cryptography::IVault,virtual public WPEFramework::Cryptography::IPersistent {
+    class VaultImpl : public WPEFramework::Cryptography::IVault, public WPEFramework::Cryptography::IPersistent {
     public:
         VaultImpl() = delete;
         VaultImpl(const VaultImpl&) = delete;
@@ -540,7 +519,7 @@ namespace Implementation {
             ASSERT(_implementation != nullptr);
         }
 
-        ~VaultImpl() = default;
+        ~VaultImpl() override = default;
 
     public:
         uint16_t Size(const uint32_t id) const override
@@ -626,7 +605,7 @@ namespace Implementation {
             VaultImpl* _vault;
         }; // class HMACImpl
 
-        class CipherImpl : virtual public WPEFramework::Cryptography::ICipher {
+        class CipherImpl : public WPEFramework::Cryptography::ICipher {
         public:
             CipherImpl() = delete;
             CipherImpl(const CipherImpl&) = delete;
@@ -672,7 +651,7 @@ namespace Implementation {
             CipherImplementation* _implementation;
         }; // class CipherImpl
 
-        class DiffieHellmanImpl : virtual public WPEFramework::Cryptography::IDiffieHellman {
+        class DiffieHellmanImpl : public WPEFramework::Cryptography::IDiffieHellman {
         public:
             DiffieHellmanImpl() = delete;
             DiffieHellmanImpl(const DiffieHellmanImpl&) = delete;
@@ -766,12 +745,12 @@ namespace Implementation {
         VaultImplementation* _implementation;
     }; // class VaultImpl
 
-    class CryptographyImpl : virtual public WPEFramework::Cryptography::ICryptography {
+    class CryptographyImpl : public WPEFramework::Cryptography::ICryptography {
     public:
         CryptographyImpl(const CryptographyImpl&) = delete;
         CryptographyImpl& operator=(const CryptographyImpl&) = delete;
         CryptographyImpl() = default;
-        ~CryptographyImpl() = default;
+        ~CryptographyImpl() override = default;
 
     public:
         WPEFramework::Cryptography::IHash* Hash(const WPEFramework::Cryptography::hashtype hashType) override
