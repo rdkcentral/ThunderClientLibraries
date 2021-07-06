@@ -35,6 +35,9 @@ find_package(${NAMESPACE}COM REQUIRED)
 set(PUBLIC_HEADERS "deviceinfo.h")
 
 add_library(${TARGET}  SHARED 
+    DeviceInfoLink.cpp
+    DeviceInfoSimpleAdapter.cpp
+    DeviceInfoMemCachedAdapter.cpp
     DeviceInfo.cpp
 )
 
