@@ -383,7 +383,7 @@ private:
 
     public:
         DataExchange(const string& bufferName)
-            : WPEFramework::Exchange::DataExchange(bufferName)
+            : Exchange::DataExchange(bufferName)
             , _busy(false)
         {
 
@@ -396,7 +396,7 @@ private:
                 TRACE_L1("Destructed a DataExchange while still in progress. %p", this);
             }
             TRACE_L1("Destructing buffer client side: %p - %s", this,
-                 WPEFramework::Exchange::DataExchange::Name().c_str());
+                 Exchange::DataExchange::Name().c_str());
         }
 
     public:
@@ -419,7 +419,7 @@ private:
 
             _busy = true;
 
-            if (RequestProduce(WPEFramework::Core::infinite) == WPEFramework::Core::ERROR_NONE) {
+            if (RequestProduce(Core::infinite) == Core::ERROR_NONE) {
 
                 SetIV(static_cast<uint8_t>(ivDataLength), ivData);
                 SetSubSampleData(0, nullptr);
@@ -432,7 +432,7 @@ private:
 
                 // Now we should wait till it is decrypted, that happens if the
                 // Producer, can run again.
-                if (RequestProduce(WPEFramework::Core::infinite) == WPEFramework::Core::ERROR_NONE) {
+                if (RequestProduce(Core::infinite) == Core::ERROR_NONE) {
 
                     // For nowe we just copy the clear data..
                     Read(encryptedDataLength, encryptedData);
@@ -796,7 +796,7 @@ private:
     Exchange::ISession* _session;
     Exchange::ISessionExt* _sessionExt;
     uint32_t _refCount;
-    WPEFramework::Core::Sink<Sink> _sink;
+    Core::Sink<Sink> _sink;
     std::string _URL;
     OpenCDMSessionCallbacks* _callback;
     void* _userData; 
