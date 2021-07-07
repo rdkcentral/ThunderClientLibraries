@@ -17,8 +17,7 @@
 
 #include "Module.h"
 #include "open_cdm.h"
-#include "DataExchange.h"
-#include "IOCDM.h"
+#include <interfaces/IOCDM.h>
 #include "open_cdm_impl.h"
 
 MODULE_NAME_DECLARATION(BUILD_REFERENCE)
@@ -28,7 +27,7 @@ using namespace WPEFramework;
 Core::CriticalSection _systemLock;
 const char EmptyString[] = { '\0' };
 
-/* static */ const OCDM::KeyId OCDM::KeyId::InvalidKey;
+/* static */ const Exchange::KeyId Exchange::KeyId::InvalidKey;
 
 #ifdef _MSVC_LANG
 extern "C" {
@@ -69,27 +68,27 @@ OpenCDMError StringToAllocatedBuffer(const std::string& source, char* destinatio
 
 } // namespace
 
-KeyStatus CDMState(const OCDM::ISession::KeyStatus state)
+KeyStatus CDMState(const Exchange::ISession::KeyStatus state)
 {
 
     switch (state) {
-    case OCDM::ISession::StatusPending:
+    case Exchange::ISession::StatusPending:
         return KeyStatus::StatusPending;
-    case OCDM::ISession::Usable:
+    case Exchange::ISession::Usable:
         return KeyStatus::Usable;
-    case OCDM::ISession::InternalError:
+    case Exchange::ISession::InternalError:
         return KeyStatus::InternalError;
-    case OCDM::ISession::Released:
+    case Exchange::ISession::Released:
         return KeyStatus::Released;
-    case OCDM::ISession::Expired:
+    case Exchange::ISession::Expired:
         return KeyStatus::Expired;
-    case OCDM::ISession::OutputRestricted:
+    case Exchange::ISession::OutputRestricted:
         return KeyStatus::OutputRestricted;
-    case OCDM::ISession::OutputRestrictedHDCP22:
+    case Exchange::ISession::OutputRestrictedHDCP22:
         return KeyStatus::OutputRestrictedHDCP22;
-    case OCDM::ISession::OutputDownscaled:
+    case Exchange::ISession::OutputDownscaled:
         return KeyStatus::OutputDownscaled;
-    case OCDM::ISession::HWError:
+    case Exchange::ISession::HWError:
         return KeyStatus::HWError;
     default:
         assert(false);
@@ -190,7 +189,7 @@ struct OpenCDMSession* opencdm_get_system_session(struct OpenCDMSystem* system, 
     struct OpenCDMSession* result = nullptr;
 
     std::string sessionId;
-    if ((accessor != nullptr) && (accessor->WaitForKey(length, keyId, waitTime, OCDM::ISession::Usable, sessionId, system) == true)) {
+    if ((accessor != nullptr) && (accessor->WaitForKey(length, keyId, waitTime, Exchange::ISession::Usable, sessionId, system) == true)) {
         result = accessor->Session(sessionId);
     }
 
@@ -503,7 +502,7 @@ OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
 
 bool OpenCDMAccessor::WaitForKey(const uint8_t keyLength, const uint8_t keyId[],
         const uint32_t waitTime,
-        const OCDM::ISession::KeyStatus status,
+        const Exchange::ISession::KeyStatus status,
         std::string& sessionId, OpenCDMSystem* system) const
     {
         bool result = false;
@@ -526,7 +525,7 @@ bool OpenCDMAccessor::WaitForKey(const uint8_t keyLength, const uint8_t keyId[],
             }
 
             if (result == false) {
-                OCDM::KeyId paramKey(keyId, keyLength);
+                Exchange::KeyId paramKey(keyId, keyLength);
                 _interested++;
 
                 _adminLock.Unlock();

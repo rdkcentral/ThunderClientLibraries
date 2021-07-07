@@ -15,8 +15,7 @@
  * limitations under the License.
  */
 
-#ifndef __OCDM_WRAPPER_H_
-#define __OCDM_WRAPPER_H_
+#pragma once
 
 // WPEWebkit implementation is using the following header file to integrate
 // their solution with
@@ -518,4 +517,4 @@ EXTERNAL OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
 }
 #endif
 
-#endif // __OCDM_WRAPPER_H_
+
