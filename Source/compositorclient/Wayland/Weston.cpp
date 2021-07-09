@@ -759,6 +759,7 @@ namespace Wayland {
         assert(_display != nullptr);
 
         if (_display != nullptr) {
+            sem_init(&_trigger, 0, 0);
             _registry = wl_display_get_registry(_display);
 
             assert(_registry != nullptr);
@@ -768,7 +769,6 @@ namespace Wayland {
                 wl_registry_add_listener(_registry, &globalRegistryListener, this);
                 wl_display_roundtrip(_display);
 
-                sem_init(&_trigger, 0, 0);
                 sem_init(&_redraw, 0, 0);
                 Trace("creating communication thread\n");
                 if (pthread_create(&_tid, nullptr, Processor, this) != 0) {
@@ -950,7 +950,9 @@ namespace Wayland {
 
         Trigger();
 
-        pthread_join(_tid, nullptr);
+        if (_tid) {
+            pthread_join(_tid, nullptr);
+        }
     }
 
     void Display::LoadSurfaces()

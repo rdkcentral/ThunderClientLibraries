@@ -316,7 +316,7 @@ namespace Wayland {
             , _shell(nullptr)
             , _trigger()
             , _redraw()
-            , _tid()
+            , _tid(0)
             , _displayName(displayName)
             , _displayId()
             , _keyboardReceiver(nullptr)
