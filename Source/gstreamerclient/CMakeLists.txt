@@ -29,19 +29,25 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 message("Setup ${TARGET} v${PROJECT_VERSION}")
 
-option(GSTREAMER_CLIENT_IMPLEMENTATION "Defines which implementation is used." "None")
+set(GSTREAMERCLIENT_IMPLEMENTATION "None" CACHE STRING "Defines which implementation is used.")
+
+# Legacy option support
+if(GSTREAMER_CLIENT_IMPLEMENTATION)
+	set(GSTREAMERCLIENT_IMPLEMENTATION "${GSTREAMER_CLIENT_IMPLEMENTATION}" CACHE STRING "Defines which implementation is used." FORCE)
+	unset(GSTREAMER_CLIENT_IMPLEMENTATION CACHE)
+endif()
 
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
 find_package(${NAMESPACE}COM REQUIRED)
 
-if (NOT "${GSTREAMER_CLIENT_IMPLEMENTATION}" STREQUAL "None")
+if (NOT "${GSTREAMERCLIENT_IMPLEMENTATION}" STREQUAL "None")
 
-	message("GstreamerClient impl. for ${GSTREAMER_CLIENT_IMPLEMENTATION}")
+	message("GstreamerClient impl. for ${GSTREAMERCLIENT_IMPLEMENTATION}")
 	find_package(GSTREAMER REQUIRED)
 	find_package(GSTREAMER_BASE REQUIRED)
 
-    if("${GSTREAMER_CLIENT_IMPLEMENTATION}" STREQUAL "Nexus")
+    if("${GSTREAMERCLIENT_IMPLEMENTATION}" STREQUAL "Nexus")
         if (GSTREAMERCLIENT_IMPLEMENTATION_PATH)
             add_subdirectory(${GSTREAMERCLIENT_IMPLEMENTATION_PATH})
         else()
@@ -56,7 +62,7 @@ if (NOT "${GSTREAMER_CLIENT_IMPLEMENTATION}" STREQUAL "None")
             add_subdirectory(Nexus)
         endif()
     else()
-        add_subdirectory (${GSTREAMER_CLIENT_IMPLEMENTATION})
+        add_subdirectory (${GSTREAMERCLIENT_IMPLEMENTATION})
     endif()
 endif()
 
