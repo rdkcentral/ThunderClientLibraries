@@ -29,7 +29,7 @@ message("Setup ${TARGET} v${PROJECT_VERSION}")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-option(PLUGIN_COMPOSITOR_IMPLEMENTATION "Defines which implementation is used." "None")
+set(PLUGIN_COMPOSITOR_IMPLEMENTATION "None" CACHE STRING "Defines which implementation is used")
 
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
