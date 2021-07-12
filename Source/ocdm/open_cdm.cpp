@@ -27,17 +27,6 @@ using namespace WPEFramework;
 Core::CriticalSection _systemLock;
 const char EmptyString[] = { '\0' };
 
-/* static */ const Exchange::KeyId Exchange::KeyId::InvalidKey;
-
-#ifdef _MSVC_LANG
-extern "C" {
-	void ForceLinkingOfOpenCDM() 
-	{
-        printf("Forcefully linked in the OCDM library for the ProxyStubs in this library!!\n");
-	}
-}
-#endif
-
 namespace 
 {
 
