@@ -68,7 +68,7 @@ OpenCDMError opencdm_system_get_version(struct OpenCDMSystem* system,
 
     strcpy(versionStr, versionStdStr.c_str());
 
-    return ERROR_NONE;
+    return OpenCDMError::ERROR_NONE;
 }
 
 OpenCDMError opencdm_system_ext_get_ldl_session_limit(OpenCDMSystem* system,
@@ -81,7 +81,7 @@ OpenCDMError opencdm_system_ext_get_ldl_session_limit(OpenCDMSystem* system,
 
     std::string keySystem = system->keySystem();
     *ldlLimit = accessor->GetLdlSessionLimit(keySystem);
-    return ERROR_NONE;
+    return OpenCDMError::ERROR_NONE;
 }
 
 uint32_t opencdm_system_ext_is_secure_stop_enabled(
@@ -174,9 +174,9 @@ OpenCDMError opencdm_system_get_drm_time(struct OpenCDMSystem* system,
 
     if (system != nullptr) {
         *time = accessor->GetDrmSystemTime(system->keySystem());
-        result = ERROR_NONE;
+        result = OpenCDMError::ERROR_NONE;
     }
-    return (result);
+    return result;
 }
 
 uint32_t
@@ -202,7 +202,7 @@ OpenCDMError opencdm_destruct_session_ext(OpenCDMSession* opencdmSession)
         opencdmSession->Release();
     }
 
-    return (result);
+    return result;
 }
 
 OpenCDMError
@@ -254,6 +254,8 @@ OpenCDMError opencdm_session_clean_decrypt_context(struct OpenCDMSession* mOpenC
     return (OpenCDMError)mOpenCDMSession->CleanDecryptContext();
 }
 
+
+
 OpenCDMError opencdm_delete_key_store(struct OpenCDMSystem* system)
 {
     ASSERT(system != nullptr);
@@ -267,7 +269,7 @@ OpenCDMError opencdm_delete_key_store(struct OpenCDMSystem* system)
         std::string keySystem = system->keySystem();
         result = (OpenCDMError)accessor->DeleteKeyStore(keySystem);
     }
-    return (result);
+    return result;
 }
 
 OpenCDMError opencdm_delete_secure_store(struct OpenCDMSystem* system)
@@ -283,7 +285,7 @@ OpenCDMError opencdm_delete_secure_store(struct OpenCDMSystem* system)
         std::string keySystem = system->keySystem();
         result = (OpenCDMError)accessor->DeleteSecureStore(keySystem);
     }
-    return (result);
+    return result;
 }
 
 OpenCDMError opencdm_get_key_store_hash_ext(struct OpenCDMSystem* system,
@@ -302,7 +304,7 @@ OpenCDMError opencdm_get_key_store_hash_ext(struct OpenCDMSystem* system,
         result = (OpenCDMError)accessor->GetKeyStoreHash(keySystem, keyStoreHash,
             keyStoreHashLength);
     }
-    return (result);
+    return result;
 }
 
 OpenCDMError opencdm_get_secure_store_hash_ext(struct OpenCDMSystem* system,
@@ -321,7 +323,7 @@ OpenCDMError opencdm_get_secure_store_hash_ext(struct OpenCDMSystem* system,
         result = (OpenCDMError)accessor->GetSecureStoreHash(
             keySystem, secureStoreHash, secureStoreHashLength);
     }
-    return (result);
+    return result;
 }
 
 /**
@@ -362,5 +364,30 @@ opencdm_construct_session(struct OpenCDMSystem* system,
     }
 
     TRACE_L1("Created a Session, result %p, %d", *session, result);
-    return (result);
+    return result;
+}
+
+OpenCDMError opencdm_system_ext_get_properties(struct PlayLevels* system, const char* propertiesJSONText) 
+{
+    ASSERT(system != nullptr);
+    OpenCDMError result(ERROR_INVALID_ACCESSOR);
+
+    if (system != nullptr) {
+        string properties= std::string(propertiesJSONText);
+        PlayLevels::PlayLevelsJSON playlevelJson;
+        playlevelJson.FromString(properties);
+
+        system->compressedDigitalVideoLevel_ = playlevelJson.m_CompressedVideo.Value();
+        system->uncompressedDigitalVideoLevel_ = playlevelJson.m_UncompressedVideo.Value();
+        system->analogVideoLevel_ = playlevelJson.m_AnalogVideo.Value();
+        system->compressedDigitalAudioLevel_ = playlevelJson.m_CompressedAudio.Value();
+        system->uncompressedDigitalAudioLevel_ = playlevelJson.m_UncompressedAudio.Value();
+        system->maxResDecodeWidth_ = playlevelJson.m_maxDecodeWidth.Value();
+        system->maxResDecodeHeight_ = playlevelJson.m_maxDecodeHeigth.Value();
+
+        result = OpenCDMError::ERROR_NONE;
+    }
+
+     return result;
+    
 }

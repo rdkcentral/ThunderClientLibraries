@@ -15,10 +15,10 @@
  * limitations under the License.
  */
 
-#ifndef __OPEN_OCDM_EXT_H_
-#define __OPEN_OCDM_EXT_H_
+#pragma once
 
 #include "open_cdm.h"
+#include "playLevel.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -221,8 +221,21 @@ OpenCDMError opencdm_system_teardown(struct OpenCDMSystem* system);
  */
 OpenCDMError
 opencdm_session_clean_decrypt_context(struct OpenCDMSession* mOpenCDMSession);
+
+/**
+ * Exposes PlayLevels struct from a json text file
+ * \param system exposed PlayLevels structure
+ * \param propertiesJSONText jsonFile containing the playlevels details
+ * \return Zero if successful, non-zero otherwise.
+ */
+OpenCDMError opencdm_system_ext_get_properties(struct PlayLevels* system, const char propertiesJSONText);
+
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
 
-#endif // __OPEN_OCDM_EXT_H_
+
+
+
+
