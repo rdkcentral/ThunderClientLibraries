@@ -120,35 +120,35 @@ namespace Wayland {
             virtual ~SurfaceImplementation();
 
         public:
-            virtual void AddRef() const override
+            void AddRef() const override
             {
                 _refcount++;
                 return;
             }
-            virtual uint32_t Release() const override
+            uint32_t Release() const override
             {
                 if (--_refcount == 0) {
                     delete const_cast<SurfaceImplementation*>(this);
                 }
                 return (0);
             }
-            virtual EGLNativeWindowType Native() const override
+            EGLNativeWindowType Native() const override
             {
                 return (reinterpret_cast<EGLNativeWindowType>(_native));
             }
-            virtual std::string Name() const override
+            std::string Name() const override
             {
                 return _name;
             }
-            virtual int32_t Height() const override
+            int32_t Height() const override
             {
                 return (_height);
             }
-            virtual int32_t Width() const override
+            int32_t Width() const override
             {
                 return (_width);
             }
-            virtual void Keyboard(IKeyboard* keyboard) override
+            void Keyboard(IKeyboard* keyboard) override
             {
                 assert((_keyboard == nullptr) ^ (keyboard == nullptr));
                 _keyboard = keyboard;
@@ -230,8 +230,6 @@ namespace Wayland {
 
             struct xdg_surface *_xdg_surface;
             struct xdg_toplevel *_xdg_toplevel;
-
-            bool _wait_for_configure;
 
         private:
             friend Display;
@@ -584,18 +582,18 @@ namespace Wayland {
         virtual uint32_t Release() const;
 
         // Methods
-        virtual EGLNativeDisplayType Native() const override
+        EGLNativeDisplayType Native() const override
         {
             return (reinterpret_cast<EGLNativeDisplayType>(_display));
         }
-        virtual const std::string& Name() const override
+        const std::string& Name() const override
         {
             return (_displayName);
         }
-        virtual int FileDescriptor() const override;
-        virtual int Process(const uint32_t data) override;
-        virtual ISurface* Create(const std::string& name, const uint32_t width, const uint32_t height) override;
-        virtual ISurface* SurfaceByName(const std::string& name) override
+        int FileDescriptor() const override;
+        int Process(const uint32_t data) override;
+        ISurface* Create(const std::string& name, const uint32_t width, const uint32_t height) override;
+        ISurface* SurfaceByName(const std::string& name) override
         {
             //iterate through waylandsurface map return wl_surface with matching name
             _adminLock.Lock();
@@ -613,25 +611,7 @@ namespace Wayland {
             _adminLock.Unlock();
             return nullptr;
         }
-        bool ResetSurfaceConfigureByXdgId(const struct xdg_surface* id)
-        {
-           bool status = false;
-            _adminLock.Lock();
 
-            WaylandSurfaceMap::iterator entry(_waylandSurfaces.begin());
-
-            while (entry != _waylandSurfaces.end()) {
-                if (id == entry->second->_xdg_surface) {
-                    entry->second->_wait_for_configure = false;
-                    status = true;
-
-                    break;
-                }
-                entry++;
-            }
-            _adminLock.Unlock();
-            return status;
-        }
         inline bool IsOperational() const
         {
             return (_display != nullptr);
