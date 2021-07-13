@@ -15,21 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-project(securityagent)
-
-cmake_minimum_required(VERSION 3.3)
-
-find_package(WPEFramework)
-
-project_version(1.0.0)
-
-set(TARGET ${PROJECT_NAME})
-
-message("Setup ${TARGET} v${PROJECT_VERSION}")
-
-#find_package(CompileSettingsDebug CONFIG REQUIRED)
-find_package(${NAMESPACE}Core REQUIRED)
-find_package(${NAMESPACE}COM REQUIRED)
+set(TARGET securityagent)
 
 # Construct a library object
 add_library(${TARGET} SHARED
@@ -48,10 +34,17 @@ target_link_libraries(${TARGET}
           ${NAMESPACE}Core::${NAMESPACE}Core
         )
 
+if(PROTOCOLS)
+target_link_libraries(${TARGET}
+        PUBLIC
+          ${NAMESPACE}Protocols::${NAMESPACE}Protocols
+        )
+else()
 target_link_libraries(${TARGET}
         PUBLIC
           ${NAMESPACE}COM::${NAMESPACE}COM
         )
+endif()
 
 # target_link_libraries(${TARGET}
 #        PRIVATE
@@ -89,3 +82,5 @@ InstallCMakeConfig(
 InstallPackageConfig(
         TARGETS ${TARGET} 
         DESCRIPTION "communications channel abstraction to get a SecurityToken over a process boundary." )
+
+add_subdirectory(sec_agent)
