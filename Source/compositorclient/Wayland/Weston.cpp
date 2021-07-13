@@ -58,30 +58,30 @@ using namespace WPEFramework;
 
 static const struct wl_shell_surface_listener g_ShellSurfaceListener = {
     //handle_ping,
-    [](void* data, struct wl_shell_surface* shell_surface, uint32_t serial) {
+    [](void*, struct wl_shell_surface* shell_surface, uint32_t serial) {
         wl_shell_surface_pong(shell_surface, serial);
     },
     //handle_configure,
-    [](void* data, struct wl_shell_surface* shell_surface, uint32_t edges, int32_t width, int32_t height) {
+    [](void*, struct wl_shell_surface*, uint32_t, int32_t width, int32_t height) {
         Trace("handle_configure: width=%d height=%d \n", width, height);
         //  Wayland::Display::Sur *wayland = static_cast<Wayland *>(data);
         // wl_egl_window_resize(wayland->eglWindow, width, height, 0, 0);
     },
     //handle_popup_done
-    [](void* data, struct wl_shell_surface* shell_surface) {
+    [](void*, struct wl_shell_surface*) {
     }
 };
 
 struct wl_shm_listener shmListener = {
     // shmFormat
-    [](void* data, struct wl_shm* wl_shm, uint32_t format) {
+    [](void*, struct wl_shm*, uint32_t format) {
         Trace("shm format: %X\n", format);
     }
 };
 
 static const struct wl_output_listener outputListener = {
     // outputGeometry
-    [](void* data, struct wl_output* output, int32_t x, int32_t y, int32_t physical_width, int32_t physical_height, int32_t subpixel, const char* make, const char* model, int32_t transform) {
+    [](void* data, struct wl_output*, int32_t x, int32_t y, int32_t physical_width, int32_t physical_height, int32_t subpixel, const char* make, const char* model, int32_t transform) {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
         Trace("wl_output_listener.outputGeometry x=%d y=%d physical_width=%d physical_height=%d, make=%s: model=%s transform=%d subpixel%d\n",
             x, y, physical_width, physical_height, make, model, transform, subpixel);
@@ -92,7 +92,7 @@ static const struct wl_output_listener outputListener = {
         rect.Height = physical_height;
     },
     // outputMode
-    [](void* data, struct wl_output* output, uint32_t flags, int32_t width, int32_t height, int32_t refresh) {
+    [](void* data, struct wl_output*, uint32_t flags, int32_t width, int32_t height, int32_t) {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
 
         const Wayland::Display::Rectangle& rect(context.Physical());
@@ -105,16 +105,16 @@ static const struct wl_output_listener outputListener = {
         }
     },
     // outputDone
-    [](void* data, struct wl_output* output) {
+    [](void*, struct wl_output*) {
     },
     // outputScale
-    [](void* data, struct wl_output* output, int32_t factor) {
+    [](void*, struct wl_output*, int32_t) {
     }
 };
 
 static const struct wl_keyboard_listener keyboardListener = {
     // keyboardKeymap
-    [](void* data, struct wl_keyboard* keyboard, uint32_t format, int32_t fd, uint32_t size) {
+    [](void* data, struct wl_keyboard*, uint32_t format, int32_t fd, uint32_t size) {
         if (format != WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
             close(fd);
         } else {
@@ -132,19 +132,19 @@ static const struct wl_keyboard_listener keyboardListener = {
         Trace("wl_keyboard_listener.keyboardKeymap [%d,%d]\n", format, size);
     },
     // keyboardEnter,
-    [](void* data, struct wl_keyboard* keyboard, uint32_t serial, struct wl_surface* surface, struct wl_array* keys) {
+    [](void* data, struct wl_keyboard*, uint32_t serial, struct wl_surface* surface, struct wl_array*) {
         Trace("wl_keyboard_listener.keyboardEnter serial=%d\n", serial);
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
         context.FocusKeyboard(surface, true);
     },
     // keyboardLeave,
-    [](void* data, struct wl_keyboard* keyboard, uint32_t serial, struct wl_surface* surface) {
+    [](void* data, struct wl_keyboard*, uint32_t serial, struct wl_surface* surface) {
         Trace("wl_keyboard_listener.keyboardLeave serial=%d\n", serial);
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
         context.FocusKeyboard(surface, false);
     },
     // keyboardKey
-    [](void* data, struct wl_keyboard* keyboard, uint32_t serial, uint32_t time, uint32_t key, uint32_t state) {
+    [](void* data, struct wl_keyboard*, uint32_t, uint32_t time, uint32_t key, uint32_t state) {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
 
         // Have no idea if this is true, just lets see...
@@ -166,13 +166,13 @@ static const struct wl_keyboard_listener keyboardListener = {
         Trace("wl_keyboard_listener.keyboardKey [0x%02X, %s, 0x%02X ]\n", key, state == WL_KEYBOARD_KEY_STATE_PRESSED ? "Pressed" : "Released", context._keyModifiers);
     },
     // keyboardModifiers
-    [](void* data, struct wl_keyboard* keyboard, uint32_t serial, uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked, uint32_t group) {
+    [](void* data, struct wl_keyboard*, uint32_t, uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked, uint32_t group) {
         Trace("wl_keyboard_listener.keyboardModifiers [%d,%d,%d]\n", mods_depressed, mods_latched, mods_locked);
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
         context.Modifiers(mods_depressed, mods_latched, mods_locked, group);
     },
     // keyboardRepeatInfo
-    [](void* data, struct wl_keyboard* keyboard, int32_t rate, int32_t delay) {
+    [](void* data, struct wl_keyboard*, int32_t rate, int32_t delay) {
         Trace("wl_keyboard_listener.keyboardRepeatInfo [%d,%d]\n", rate, delay);
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
         context.Repeat(rate, delay);
@@ -181,7 +181,7 @@ static const struct wl_keyboard_listener keyboardListener = {
 
 static const struct wl_pointer_listener pointerListener = {
     // pointerEnter
-    [](void* data, struct wl_pointer* pointer, uint32_t serial, struct wl_surface* surface, wl_fixed_t sx, wl_fixed_t sy) {
+    [](void* data, struct wl_pointer*, uint32_t, struct wl_surface* surface, wl_fixed_t sx, wl_fixed_t sy) {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
         int x, y;
 
@@ -192,13 +192,13 @@ static const struct wl_pointer_listener pointerListener = {
         context.FocusPointer(surface, true);
     },
     // pointerLeave
-    [](void* data, struct wl_pointer* pointer, uint32_t serial, struct wl_surface* surface) {
+    [](void* data, struct wl_pointer*, uint32_t, struct wl_surface* surface) {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
         Trace("wl_pointer_listener.pointerLeave [%p]\n", surface);
         context.FocusPointer(surface, false);
     },
     // pointerMotion
-    [](void* data, struct wl_pointer* pointer, uint32_t time, wl_fixed_t sx, wl_fixed_t sy) {
+    [](void* data, struct wl_pointer*, uint32_t, wl_fixed_t sx, wl_fixed_t sy) {
         int x, y;
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
 
@@ -209,7 +209,7 @@ static const struct wl_pointer_listener pointerListener = {
         context.SendPointerPosition(x, y);
     },
     // pointerButton
-    [](void* data, struct wl_pointer* pointer, uint32_t serial, uint32_t time, uint32_t button, uint32_t state) {
+    [](void* data, struct wl_pointer*, uint32_t, uint32_t, uint32_t button, uint32_t state) {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
         Trace("wl_pointer_listener.pointerButton [%u,%u]\n", button, state);
 
@@ -222,10 +222,22 @@ static const struct wl_pointer_listener pointerListener = {
         context.SendPointerButton(button, static_cast<Wayland::Display::IPointer::state>(state));
     },
     // pointerAxis
-    [](void* data, struct wl_pointer* pointer, uint32_t time, uint32_t axis, wl_fixed_t value) {
+    [](void*, struct wl_pointer*, uint32_t, uint32_t axis, wl_fixed_t value) {
         int v;
         v = wl_fixed_to_int(value);
         Trace("wl_pointer_listener.pointerAxis [%u,%d]\n", axis, v);
+    },
+    // frame
+    [](void*, struct wl_pointer*) {
+    },
+    // axisSource
+    [] (void*, struct wl_pointer*, uint32_t) {
+    },
+    // axisStop
+    [] (void*, struct wl_pointer*, uint32_t, uint32_t) {
+    },
+    // axisDiscrete
+    [] (void*, struct wl_pointer*, uint32_t, int32_t){
     }
 };
 
@@ -252,13 +264,13 @@ static const struct wl_seat_listener seatListener = {
         }
     },
     // seatName
-    [](void* data, struct wl_seat* seat, const char* name) {
+    [](void*, struct wl_seat* seat, const char* name) {
         Trace("wl_seat_listener.seatName[%p,%s]\n", seat, name);
     }
 };
 
 static void
-xdg_wm_base_ping(void *data, struct xdg_wm_base *shell, uint32_t serial)
+xdg_wm_base_ping(void*, struct xdg_wm_base *shell, uint32_t serial)
 {
     xdg_wm_base_pong(shell, serial);
 }
@@ -281,17 +293,18 @@ static const struct wl_registry_listener globalRegistryListener = {
             context._compositor = static_cast<struct wl_compositor*>(wl_registry_bind(registry, name, &wl_compositor_interface, 1));
         }
         else if (::strcmp(interface, "wl_seat") == 0) {
-            // A shell, is probably associated with a client, so I guess we now need to find a client..
-            // Save details and bind once xdg_wm_base configured
-            context._seat_registry = registry;
-            context._seat_name = name;
+            struct wl_seat* result = static_cast<struct wl_seat*>(wl_registry_bind(registry, name, &wl_seat_interface, 4));
+            wl_seat_add_listener(result, &seatListener, data);
+            context._seat = result;
+
         } else if (::strcmp(interface, "wl_shell") == 0) {
             // A shell, is probably associated with a client, so I guess we now need to find a client..
             // Save details and bind once xdg_wm_base configured
             context._shell = static_cast<struct wl_shell*>(wl_registry_bind(registry, name, &wl_shell_interface, 1));
         } else if (::strcmp(interface, "wl_output") == 0) {
-            context._output_registry = registry;
-            context._output_name = name;
+            struct wl_output* result = static_cast<struct wl_output*>(wl_registry_bind(registry, name, &wl_output_interface, 2));
+             wl_output_add_listener(result, &outputListener, data);
+             context._output = result;
         } else if (strcmp(interface, "xdg_wm_base") == 0) {
             struct xdg_wm_base* result = static_cast<struct xdg_wm_base*>(wl_registry_bind(registry, name, &xdg_wm_base_interface, 1));
 
@@ -306,24 +319,13 @@ static const struct wl_registry_listener globalRegistryListener = {
 };
 
 static void
-handle_surface_configure(void *data, struct xdg_surface *surface,
+handle_surface_configure(void *data, struct xdg_surface *id,
              uint32_t serial)
 {
     Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
+    context.ResetSurfaceConfigureByXdgId(id);
 
-    if (context._seat == nullptr) {
-        struct wl_seat* result = static_cast<struct wl_seat*>(wl_registry_bind(context._seat_registry, context._seat_name, &wl_seat_interface, 4));
-        wl_seat_add_listener(result, &seatListener, data);
-        context._seat = result;
-    }
-
-    if (context._output == nullptr) {
-        struct wl_output* result = static_cast<struct wl_output*>(wl_registry_bind(context._output_registry, context._output_name, &wl_output_interface, 2));
-        wl_output_add_listener(result, &outputListener, data);
-        context._output = result;
-    }
-
-    xdg_surface_ack_configure(surface, serial);
+    xdg_surface_ack_configure(id, serial);
 }
 
 static const struct xdg_surface_listener xdg_surface_listener = {
@@ -332,9 +334,8 @@ static const struct xdg_surface_listener xdg_surface_listener = {
 
 
 static void
-handle_toplevel_configure(void *data, struct xdg_toplevel *toplevel,
-              int32_t width, int32_t height,
-              struct wl_array *states)
+handle_toplevel_configure(void*, struct xdg_toplevel*,
+              int32_t, int32_t, struct wl_array*)
 {
     // TODO
     // Wayland::Display *display = (Wayland::Display *)data;
@@ -342,7 +343,7 @@ handle_toplevel_configure(void *data, struct xdg_toplevel *toplevel,
 }
 
 static void
-handle_toplevel_close(void *data, struct xdg_toplevel *xdg_toplevel)
+handle_toplevel_close(void*, struct xdg_toplevel*)
 {
     //running = 0;
 }
@@ -407,6 +408,7 @@ namespace Wayland {
 
     Display::SurfaceImplementation::SurfaceImplementation(Display& display, const std::string& name, const uint32_t width, const uint32_t height)
         : _surface(nullptr)
+        , _wait_for_configure(false)
         , _refcount(1)
         , _level(0)
         , _name(name)
@@ -458,6 +460,7 @@ namespace Wayland {
 
     Display::SurfaceImplementation::SurfaceImplementation(Display& display, const uint32_t id, struct wl_surface* surface)
         : _surface(surface)
+        , _wait_for_configure(false)
         , _refcount(1)
         , _level(2)
         , _name()
@@ -480,6 +483,7 @@ namespace Wayland {
 
     Display::SurfaceImplementation::SurfaceImplementation(Display& display, const uint32_t id, const char* name)
         : _surface(nullptr)
+        , _wait_for_configure(false)
         , _refcount(1)
         , _level(2)
         , _name(name)
@@ -500,6 +504,19 @@ namespace Wayland {
     {
     }
 
+    Display::SurfaceImplementation::~SurfaceImplementation()
+    {
+         if (_xdg_toplevel != nullptr) {
+             xdg_toplevel_destroy(_xdg_toplevel);
+             _xdg_toplevel = nullptr;
+         }
+
+         if (_xdg_surface != nullptr) {
+             xdg_surface_destroy(_xdg_surface);
+             _xdg_surface = nullptr;
+         }
+    }
+
     void Display::SurfaceImplementation::Callback(wl_callback_listener* listener, void* data)
     {
 
@@ -517,22 +534,22 @@ namespace Wayland {
         }
     }
 
-    void Display::SurfaceImplementation::Resize(const int dx, const int dy, const int width, const int height)
+    void Display::SurfaceImplementation::Resize(const int, const int, const int, const int)
     {
         Trace("WARNING: Display::SurfaceImplementation::Resize is not implemented\n");
     }
 
-    void Display::SurfaceImplementation::Visibility(const bool visible)
+    void Display::SurfaceImplementation::Visibility(const bool)
     {
         Trace("WARNING: Display::SurfaceImplementation::Visibility is not implemented\n");
     }
 
-    void Display::SurfaceImplementation::Opacity(const uint32_t opacity)
+    void Display::SurfaceImplementation::Opacity(const uint32_t)
     {
         Trace("WARNING: Display::SurfaceImplementation::Opacity is not implemented\n");
     }
 
-    void Display::SurfaceImplementation::ZOrder(const uint32_t order)
+    void Display::SurfaceImplementation::ZOrder(const uint32_t)
     {
         Trace("WARNING: Display::SurfaceImplementation::ZOrder is not implemented\n");
     }
@@ -674,7 +691,7 @@ namespace Wayland {
         return (_eglSurfaceWindow != EGL_NO_SURFACE);
     }
 
-    Display::ImageImplementation::ImageImplementation(Display& display, const uint32_t texture, const uint32_t width, const uint32_t height)
+    Display::ImageImplementation::ImageImplementation(Display& display, const uint32_t texture, const uint32_t, const uint32_t)
         : _refcount(1)
         , _display(&display)
     {
@@ -866,7 +883,6 @@ namespace Wayland {
             }
         }
     }
-
     void Display::Deinitialize()
     {
         Trace("Display::Deinitialize\n");
@@ -908,6 +924,7 @@ namespace Wayland {
             eglTerminate(_eglDisplay);
             eglReleaseThread();
         }
+
         if (_output != nullptr) {
             wl_output_destroy(_output);
             _output = nullptr;
@@ -917,6 +934,7 @@ namespace Wayland {
             xdg_wm_base_destroy(_wm_base);
             _wm_base = nullptr;
         }
+
 
         if (_shell != nullptr) {
             wl_shell_destroy(_shell);
@@ -933,6 +951,11 @@ namespace Wayland {
             _keyboard = nullptr;
         }
 
+        if (_display != nullptr) {
+            wl_display_disconnect(_display);
+            _display = nullptr;
+        }
+
         if (_compositor != nullptr) {
             wl_compositor_destroy(_compositor);
             _compositor = nullptr;
@@ -942,10 +965,7 @@ namespace Wayland {
             wl_registry_destroy(_registry);
             _registry = nullptr;
         }
-        if (_display != nullptr) {
-            wl_display_disconnect(_display);
-            _display = nullptr;
-        }
+
         _adminLock.Unlock();
 
         Trigger();
@@ -980,19 +1000,22 @@ namespace Wayland {
             assert(surface->_xdg_toplevel != NULL);
             xdg_toplevel_add_listener(surface->_xdg_toplevel, &xdg_toplevel_listener, this);
 
+            surface->_wait_for_configure = true;
+
+            wl_surface_commit(surface->_surface);
             xdg_toplevel_set_title(surface->_xdg_toplevel, "compositor_client");
 
-            surface->_wait_for_configure = true;
-            wl_surface_commit(surface->_surface);
-
         }
-        wl_display_dispatch(_display);
         // Wait till we are fully registered.
         _waylandSurfaces.insert(std::pair<struct wl_surface*, SurfaceImplementation*>(surface->_surface, surface));
 
         result = surface;
 
         _adminLock.Unlock();
+
+        while (surface->_wait_for_configure) {
+            wl_display_dispatch(_display);
+        }
 
         return (result);
     }
@@ -1154,7 +1177,7 @@ namespace Wayland {
         return (*result);
     }
 
-    static void signalHandler(int signum)
+    static void signalHandler(int)
     {
     }
 

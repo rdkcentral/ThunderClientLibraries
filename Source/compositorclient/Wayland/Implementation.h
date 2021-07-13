@@ -117,9 +117,7 @@ namespace Wayland {
             SurfaceImplementation(Display& compositor, const std::string& name, const uint32_t width, const uint32_t height);
             SurfaceImplementation(Display& compositor, const uint32_t id, const char* name);
             SurfaceImplementation(Display& compositor, const uint32_t id, struct wl_surface* surface);
-            virtual ~SurfaceImplementation()
-            {
-            }
+            virtual ~SurfaceImplementation();
 
         public:
             virtual void AddRef() const override
@@ -176,7 +174,7 @@ namespace Wayland {
             {
                 return (_ZOrder);
             }
-            inline void Position(const uint32_t X, const uint32_t Y, const uint32_t height, const uint32_t width)
+            inline void Position(const uint32_t, const uint32_t, const uint32_t height, const uint32_t width)
             {
                 _adminLock.Lock();
                 if (_display != nullptr) {
@@ -615,6 +613,25 @@ namespace Wayland {
             _adminLock.Unlock();
             return nullptr;
         }
+        bool ResetSurfaceConfigureByXdgId(const struct xdg_surface* id)
+        {
+           bool status = false;
+            _adminLock.Lock();
+
+            WaylandSurfaceMap::iterator entry(_waylandSurfaces.begin());
+
+            while (entry != _waylandSurfaces.end()) {
+                if (id == entry->second->_xdg_surface) {
+                    entry->second->_wait_for_configure = false;
+                    status = true;
+
+                    break;
+                }
+                entry++;
+            }
+            _adminLock.Unlock();
+            return status;
+        }
         inline bool IsOperational() const
         {
             return (_display != nullptr);
@@ -703,11 +720,9 @@ namespace Wayland {
                 if (state == false) {
                     if (_keyboardReceiver == index->second) {
                         _keyboardReceiver = nullptr;
-                        printf("%s:%d disable keyboard input\n", __FILE__, __LINE__);
                     }
                 } else {
                     _keyboardReceiver = index->second;
-                    printf("%s:%d PID=%d enabled keyboard input _keyboardReceiver=%p\n", __FILE__, __LINE__, getpid(), _keyboardReceiver);
                 }
             }
             _adminLock.Unlock();
@@ -745,7 +760,7 @@ namespace Wayland {
 
             _adminLock.Unlock();
         }
-        void Key(const uint32_t key, const IKeyboard::state action, const uint32_t time)
+        void Key(const uint32_t key, const IKeyboard::state action, const uint32_t)
         {
             _adminLock.Lock();
 
