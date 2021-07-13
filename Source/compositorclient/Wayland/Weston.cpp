@@ -322,9 +322,6 @@ static void
 handle_surface_configure(void *data, struct xdg_surface *id,
              uint32_t serial)
 {
-    Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
-    context.ResetSurfaceConfigureByXdgId(id);
-
     xdg_surface_ack_configure(id, serial);
 }
 
@@ -408,7 +405,6 @@ namespace Wayland {
 
     Display::SurfaceImplementation::SurfaceImplementation(Display& display, const std::string& name, const uint32_t width, const uint32_t height)
         : _surface(nullptr)
-        , _wait_for_configure(false)
         , _refcount(1)
         , _level(0)
         , _name(name)
@@ -460,7 +456,6 @@ namespace Wayland {
 
     Display::SurfaceImplementation::SurfaceImplementation(Display& display, const uint32_t id, struct wl_surface* surface)
         : _surface(surface)
-        , _wait_for_configure(false)
         , _refcount(1)
         , _level(2)
         , _name()
@@ -483,7 +478,6 @@ namespace Wayland {
 
     Display::SurfaceImplementation::SurfaceImplementation(Display& display, const uint32_t id, const char* name)
         : _surface(nullptr)
-        , _wait_for_configure(false)
         , _refcount(1)
         , _level(2)
         , _name(name)
@@ -1000,8 +994,6 @@ namespace Wayland {
             assert(surface->_xdg_toplevel != NULL);
             xdg_toplevel_add_listener(surface->_xdg_toplevel, &xdg_toplevel_listener, this);
 
-            surface->_wait_for_configure = true;
-
             wl_surface_commit(surface->_surface);
             xdg_toplevel_set_title(surface->_xdg_toplevel, "compositor_client");
 
@@ -1013,9 +1005,7 @@ namespace Wayland {
 
         _adminLock.Unlock();
 
-        while (surface->_wait_for_configure) {
-            wl_display_dispatch(_display);
-        }
+        wl_display_roundtrip(_display);
 
         return (result);
     }
