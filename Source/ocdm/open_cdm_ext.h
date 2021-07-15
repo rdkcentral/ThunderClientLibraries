@@ -228,7 +228,7 @@ opencdm_session_clean_decrypt_context(struct OpenCDMSession* mOpenCDMSession);
  * \param propertiesJSONText jsonFile containing the playlevels details
  * \return Zero if successful, non-zero otherwise.
  */
-OpenCDMError opencdm_system_ext_get_properties(struct PlayLevels* system, const char propertiesJSONText);
+OpenCDMError opencdm_system_ext_get_properties(struct PlayLevels* system, const char* propertiesJSONText);
 
 
 #ifdef __cplusplus
