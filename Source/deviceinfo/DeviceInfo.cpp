@@ -1,4 +1,5 @@
 #include "Module.h"
+#include <vector>
 
 #include "deviceinfo.h"
 #include <interfaces/IDeviceInfo.h>
@@ -132,6 +133,8 @@ private:
     }
 
 public:
+    DeviceInfoLink(const DeviceInfoLink&) = delete;
+    DeviceInfoLink& operator=(const DeviceInfoLink&) = delete;
     ~DeviceInfoLink() override
     {
         if (_subsysInterface != nullptr) {
@@ -159,7 +162,6 @@ private:
 
             if (_deviceMetaDataInterface == nullptr &&  _deviceCapabilitiesInterface != nullptr) {
                 _deviceMetaDataInterface = _deviceCapabilitiesInterface->QueryInterface<Exchange::IDeviceMetadata>();
-                // std::cout<<"_deviceMetaDataInterface: "<<_deviceMetaDataInterface<<"\n";
             }
             
         } else {
@@ -611,87 +613,56 @@ private:
     }
 
 };
+
 class MemoryCachedDeviceInfo
 {
-private:
-    friend class WPEFramework::Core::SingletonType<MemoryCachedDeviceInfo>;
-    std::string _architecture;
-    std::string _chipsetName;
-    std::string _modelName;
-    std::string _modelYear;
-    std::string _systemIntegraterName;
-    std::string _friendlyName;
-    std::string _platformName;
-    std::string _firmwareVersion;
-    uint8_t* _id;
-    uint8_t _idLength{0};
-    std::string _idStr;
-    /*
-    * hdr_atmos_cec variable stores value in this format
-    * ZX1X2X3 ZY1Y2Y3
-    * Z - Unused
-    * X1 - hdr value
-    * X2 - atmos value
-    * X3 - cec value
-    * Y1 - hdr cached
-    * Y2 - atmos cached
-    * Y3 - cec cached
-    */
-    uint8_t _hdr_atmos_cec{0};
-    deviceinfo_hdcp_t _supportedHdcp{DEVICEINFO_HDCP_LENGTH};
-    deviceinfo_output_resolution_t _maxOutputResolution{DEVICEINFO_RESOLUTION_LENGTH};
-    deviceinfo_output_resolution_t _outputResolution[DEVICEINFO_RESOLUTION_LENGTH];
-    uint8_t _outputResolutionLength{0};
-    deviceinfo_video_output_t _videoOutput[DEVICEINFO_VIDEO_LENGTH]{0};
-    uint8_t _videoOutputLength{0};
-    deviceinfo_audio_output_t _audioOutput[DEVICEINFO_AUDIO_LENGTH]{0};
-    uint8_t _audioOutputLength{0};
-    DeviceInfoLink& _deviceInfoLink;
-
 public:
+    MemoryCachedDeviceInfo& operator=(const MemoryCachedDeviceInfo&) = delete;
+    MemoryCachedDeviceInfo(const MemoryCachedDeviceInfo&) = delete;
     static MemoryCachedDeviceInfo& Instance()
     {
         return WPEFramework::Core::SingletonType<MemoryCachedDeviceInfo>::Instance();
     }
 private:
     MemoryCachedDeviceInfo():
-        _architecture(""),
-        _chipsetName(""),
-        _modelName(""),
-        _modelYear(""),
-        _systemIntegraterName(""),
-        _friendlyName(""),
-        _platformName(""),
-        _firmwareVersion(""),
-        _id(nullptr),
-        _idStr(""),
+        _hdr_atmos_cec(0),
+        _outputResolution(),
+        _audioOutput(),
+        _videoOutput(),
         _deviceInfoLink(DeviceInfoLink::Instance())
     {
+        _architecture.Clear();
+        _chipsetName.Clear();
+        _modelName.Clear();
+        _modelYear.Clear();
+        _systemIntegraterName.Clear();
+        _friendlyName.Clear();
+        _platformName.Clear();
+        _firmwareVersion.Clear();
+        _idStr.Clear();
+        _supportedHdcp.Clear();
+        _maxOutputResolution.Clear();
     }
 
     ~MemoryCachedDeviceInfo()
     {
-        if(_id != nullptr)
-        {
-            delete []_id;
-        }
     }
 
 public:
     uint32_t Deviceinfo_architecure(char buffer[], uint8_t* length)
     {
         uint32_t result = Core::ERROR_NONE;
-        if(!_architecture.empty())
+        if(_architecture.IsSet())
         {
-            strncpy(buffer, _architecture.c_str(), _architecture.length());
-            *length = _architecture.length();
+            strncpy(buffer, _architecture.Value().c_str(), _architecture.Value().length());
+            *length = _architecture.Value().length();
         }
         else
         {
             result = _deviceInfoLink.Deviceinfo_architecure(buffer,length);
             if(result == Core::ERROR_NONE)
             {
-                _architecture.assign(buffer, *length);
+                _architecture = buffer;
             }
         }
         return result;
@@ -701,17 +672,17 @@ public:
     uint32_t Deviceinfo_chipset(char buffer[], uint8_t* length)
     {
         uint32_t result = Core::ERROR_NONE;
-        if(!_chipsetName.empty())
+        if(_chipsetName.IsSet())
         {
-            strncpy(buffer, _chipsetName.c_str(), _chipsetName.length());
-            *length = _chipsetName.length();
+            strncpy(buffer, _chipsetName.Value().c_str(), _chipsetName.Value().length());
+            *length = _chipsetName.Value().length();
         }
         else
         {
             result = _deviceInfoLink.Deviceinfo_chipset(buffer,length);
             if(result == Core::ERROR_NONE)
             {
-                _chipsetName.assign(buffer, *length);
+                _chipsetName = buffer;
             }
         }
         return result;
@@ -721,17 +692,17 @@ public:
     uint32_t Deviceinfo_firmware_version(char buffer[], uint8_t* length)
     {
         uint32_t result = Core::ERROR_NONE;
-        if(!_firmwareVersion.empty())
+        if(_firmwareVersion.IsSet())
         {
-            strncpy(buffer, _firmwareVersion.c_str(), _firmwareVersion.length());
-            *length = _firmwareVersion.length();
+            strncpy(buffer, _firmwareVersion.Value().c_str(), _firmwareVersion.Value().length());
+            *length = _firmwareVersion.Value().length();
         }
         else
         {
             result = _deviceInfoLink.Deviceinfo_firmware_version(buffer,length);
             if(result == Core::ERROR_NONE)
             {
-                _firmwareVersion.assign(buffer, *length);
+                _firmwareVersion = buffer;
             }
         }
         return result;
@@ -741,19 +712,18 @@ public:
     uint32_t Deviceinfo_id(uint8_t buffer[], uint8_t* length)
     {
         uint32_t result = Core::ERROR_NONE;
-        if(_idLength > 0)
+        if(_id.size()>0)
         {
-            memcpy(buffer, _id, _idLength);
-            *length = _idLength;
+            std::copy(_id.begin(), _id.end(), buffer);
+            *length = _id.size();
+
         }
         else
         {
             result = _deviceInfoLink.Deviceinfo_id(buffer,length);
             if(result == Core::ERROR_NONE)
             {
-                _id = new uint8_t(*length);
-                memcpy(_id, buffer, *length);
-                _idLength = *length;
+                _id.insert(_id.begin(), buffer, buffer + (*length));
             }
         }
         return result;
@@ -762,17 +732,17 @@ public:
     uint32_t Deviceinfo_id_str(char buffer[], uint8_t* length)
     {
         uint32_t result = Core::ERROR_NONE;
-        if(!_idStr.empty())
+        if(_idStr.IsSet())
         {
-            strncpy(buffer, _idStr.c_str(), _idStr.length());
-            *length = _idStr.length();
+            strncpy(buffer, _idStr.Value().c_str(), _idStr.Value().length());
+            *length = _idStr.Value().length();
         }
         else
         {
             result = _deviceInfoLink.Deviceinfo_id_str(buffer,length);
             if(result == Core::ERROR_NONE)
             {
-                _idStr.assign(buffer, *length);
+                _idStr = buffer;
             }
         }
         return result;
@@ -838,9 +808,9 @@ public:
     uint32_t Deviceinfo_hdcp(deviceinfo_hdcp_t* supportsHDCP)
     {
         uint32_t result = Core::ERROR_NONE;
-        if(_supportedHdcp != DEVICEINFO_HDCP_LENGTH)
+        if(_supportedHdcp.IsSet())
         {
-            *supportsHDCP = _supportedHdcp;
+            *supportsHDCP = _supportedHdcp.Value();
         }
         else
         {
@@ -857,17 +827,17 @@ public:
     uint32_t Deviceinfo_model_name(char buffer[], uint8_t* length)
     {
         uint32_t result = Core::ERROR_NONE;
-        if(!_modelName.empty())
+        if(_modelName.IsSet())
         {
-            strncpy(buffer, _modelName.c_str(), _modelName.length());
-            *length = _modelName.length();
+            strncpy(buffer, _modelName.Value().c_str(), _modelName.Value().length());
+            *length = _modelName.Value().length();
         }
         else
         {
             result = _deviceInfoLink.Deviceinfo_model_name(buffer,length);
             if(result == Core::ERROR_NONE)
             {
-                _modelName.assign(buffer, *length);
+                _modelName = buffer;
             }
         }
         return result;
@@ -877,17 +847,17 @@ public:
     uint32_t Deviceinfo_model_year(char buffer[], uint8_t* length)
     {
         uint32_t result = Core::ERROR_NONE;
-        if(!_modelYear.empty())
+        if(_modelYear.IsSet())
         {
-            strncpy(buffer, _modelYear.c_str(), _modelYear.length());
-            *length = _modelYear.length();
+            strncpy(buffer, _modelYear.Value().c_str(), _modelYear.Value().length());
+            *length = _modelYear.Value().length();
         }
         else
         {
             result = _deviceInfoLink.Deviceinfo_model_year(buffer,length);
             if(result == Core::ERROR_NONE)
             {
-                _modelYear.assign(buffer, *length);
+                _modelYear = buffer;
             }
         }
         return result;
@@ -897,17 +867,17 @@ public:
     uint32_t Deviceinfo_system_integrator_name(char buffer[], uint8_t* length)
     {
         int32_t result = Core::ERROR_NONE;
-        if(!_systemIntegraterName.empty())
+        if(_systemIntegraterName.IsSet())
         {
-            strncpy(buffer, _systemIntegraterName.c_str(), _systemIntegraterName.length());
-            *length = _systemIntegraterName.length();
+            strncpy(buffer, _systemIntegraterName.Value().c_str(), _systemIntegraterName.Value().length());
+            *length = _systemIntegraterName.Value().length();
         }
         else
         {
             result = _deviceInfoLink.Deviceinfo_system_integrator_name(buffer,length);
             if(result == Core::ERROR_NONE)
             {
-                _systemIntegraterName.assign(buffer, *length);
+                _systemIntegraterName = buffer;
             }
         }
         return result;
@@ -917,17 +887,17 @@ public:
     uint32_t Deviceinfo_friendly_name(char buffer[], uint8_t* length)
     {
         int32_t result = Core::ERROR_NONE;
-        if(!_friendlyName.empty())
+        if(_friendlyName.IsSet())
         {
-            strncpy(buffer, _friendlyName.c_str(), _friendlyName.length());
-            *length = _friendlyName.length();
+            strncpy(buffer, _friendlyName.Value().c_str(), _friendlyName.Value().length());
+            *length = _friendlyName.Value().length();
         }
         else
         {
             result = _deviceInfoLink.Deviceinfo_friendly_name(buffer,length);
             if(result == Core::ERROR_NONE)
             {
-                _friendlyName.assign(buffer, *length);
+                _friendlyName = buffer;
             }
         }
         return result;
@@ -937,17 +907,17 @@ public:
     uint32_t Deviceinfo_platform_name(char buffer[], uint8_t* length)
     {
         int32_t result = Core::ERROR_NONE;
-        if(!_platformName.empty())
+        if(_platformName.IsSet())
         {
-            strncpy(buffer, _platformName.c_str(), _platformName.length());
-            *length = _platformName.length();
+            strncpy(buffer, _platformName.Value().c_str(), _platformName.Value().length());
+            *length = _platformName.Value().length();
         }
         else
         {
             result = _deviceInfoLink.Deviceinfo_platform_name(buffer,length);
             if(result == Core::ERROR_NONE)
             {
-                _platformName.assign(buffer, *length);
+                _platformName = buffer;
             }
         }
         return result;
@@ -957,7 +927,7 @@ public:
     uint32_t Deviceinfo_maximum_output_resolution(deviceinfo_output_resolution_t* value)
     {
         int32_t result = Core::ERROR_NONE;
-        if(_maxOutputResolution != DEVICEINFO_RESOLUTION_LENGTH)
+        if(_maxOutputResolution.IsSet())
         {
             *value = _maxOutputResolution;
         }
@@ -975,18 +945,18 @@ public:
     uint32_t Deviceinfo_output_resolutions(deviceinfo_output_resolution_t value[], uint8_t* length)
     {
         int32_t result = Core::ERROR_NONE;
-        if(_outputResolutionLength > 0 )
+        if(_outputResolution.size() > 0)
         {
-            arrayCopy(value, _outputResolution, _outputResolutionLength);
-            *length = _outputResolutionLength;
+            std::copy(_outputResolution.begin(), _outputResolution.end(), value);
+            *length = _outputResolution.size();
         }
         else
         {
             result = _deviceInfoLink.Deviceinfo_output_resolutions(value, length);
             if(result == Core::ERROR_NONE)
             {
-                arrayCopy(_outputResolution, value, *length);
-                _outputResolutionLength = *length;
+                // copyToVectorFromArray(_outputResolution, value, *length);
+                _outputResolution.insert(_outputResolution.begin(), value, value + (*length));
             }
         }
         return result;
@@ -996,18 +966,17 @@ public:
     uint32_t Deviceinfo_video_outputs(deviceinfo_video_output_t value[], uint8_t* length)
     {
         int32_t result = Core::ERROR_NONE;
-        if(_videoOutputLength > 0 )
+        if(_videoOutput.size() > 0)
         {
-            arrayCopy(value, _videoOutput, _videoOutputLength);
-            *length = _videoOutputLength;
+            std::copy(_videoOutput.begin(), _videoOutput.end(), value);
+            *length = _videoOutput.size();
         }
         else
         {
             result = _deviceInfoLink.Deviceinfo_video_outputs(value, length);
             if(result == Core::ERROR_NONE)
             {
-                arrayCopy(_videoOutput, value, *length);
-                _videoOutputLength = *length;
+                _videoOutput.insert(_videoOutput.begin(), value, value + (*length));
             }
         }
         return result;
@@ -1017,32 +986,31 @@ public:
     uint32_t Deviceinfo_audio_outputs(deviceinfo_audio_output_t value[], uint8_t* length)
     {
         int32_t result = Core::ERROR_NONE;
-        if(_audioOutputLength > 0 )
+        if(_audioOutput.size() > 0)
         {
-            arrayCopy(value, _audioOutput, _audioOutputLength);
-            *length = _audioOutputLength;
+            std::copy(_audioOutput.begin(), _audioOutput.end(), value);
+            *length = _audioOutput.size();
         }
         else
         {
             result = _deviceInfoLink.Deviceinfo_audio_outputs(value, length);
             if(result == Core::ERROR_NONE)
             {
-                arrayCopy(_audioOutput, value, *length);
-                _audioOutputLength = *length;
+                _audioOutput.insert( _audioOutput.begin(), value, value + (*length));
             }
         }
         return result;
     }
 
 private:
-    template <typename T>
-    void arrayCopy(T* destination, T* source, uint8_t length)
-    {
-        for(int index = 0; index < length; index++)
-        {
-            destination[index] = source[index];
-        }
-    }
+    // template <typename T1>
+    // void copyToVectorFromArray(std::vector<T1>& vecArg, T1 arrArg[], int length)
+    // {
+    //     for (int index = 0; index< length; index++)
+    //     {
+    //         vecArg.push_back(arrArg[index]);
+    //     }
+    // }
 
     void setHdrSupport(const bool& hdr)
     {
@@ -1091,7 +1059,36 @@ private:
     {
         return _hdr_atmos_cec & 0x04;
     }
-
+private:
+    friend class WPEFramework::Core::SingletonType<MemoryCachedDeviceInfo>;
+    Core::OptionalType<std::string> _architecture;
+    Core::OptionalType<std::string> _chipsetName;
+    Core::OptionalType<std::string> _modelName;
+    Core::OptionalType<std::string> _modelYear;
+    Core::OptionalType<std::string> _systemIntegraterName;
+    Core::OptionalType<std::string> _friendlyName;
+    Core::OptionalType<std::string> _platformName;
+    Core::OptionalType<std::string> _firmwareVersion;
+    std::vector<uint8_t> _id;
+    Core::OptionalType<std::string> _idStr;
+    /*
+    * hdr_atmos_cec variable stores value in this format
+    * ZX1X2X3 ZY1Y2Y3
+    * Z - Unused
+    * X1 - hdr value
+    * X2 - atmos value
+    * X3 - cec value
+    * Y1 - hdr cached
+    * Y2 - atmos cached
+    * Y3 - cec cached
+    */
+    uint8_t _hdr_atmos_cec;
+    Core::OptionalType<deviceinfo_hdcp_t> _supportedHdcp;
+    Core::OptionalType<deviceinfo_output_resolution_t> _maxOutputResolution;
+    std::vector<deviceinfo_output_resolution_t> _outputResolution;
+    std::vector<deviceinfo_audio_output_t> _audioOutput;
+    std::vector<deviceinfo_video_output_t> _videoOutput;
+    DeviceInfoLink& _deviceInfoLink;
 };
 
 }// nameless namespace
