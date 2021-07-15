@@ -19,9 +19,21 @@
 
 #include "Module.h"
 
+// TODO: This flag should be included in the preprocessor flags
 #define __GBM__
 
+#include "Headless.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <gbm.h>
+#include <xf86drm.h>
 #include <EGL/egl.h>
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #include <algorithm>
@@ -61,14 +73,15 @@ private:
         SurfaceImplementation& operator=(const SurfaceImplementation&) = delete;
 
         SurfaceImplementation(
-            Display& compositor, const std::string& name,
+            Display& display, const std::string& name,
             const uint32_t width, const uint32_t height);
         ~SurfaceImplementation() override;
 
     public:
         EGLNativeWindowType Native() const override
         {
-            return ( _remoteClient != nullptr ? reinterpret_cast<EGLNativeWindowType>(_remoteClient->Native()) : reinterpret_cast<EGLNativeWindowType>(-1)); // huppel, what is invalidf handle code?
+            static_assert ( (std::is_convertible < decltype (_nativeSurface._surf), EGLNativeWindowType >:: value ) != false);
+            return static_cast < EGLNativeWindowType > ( _nativeSurface._surf );
         }
         std::string Name() const override {
             return ( _remoteClient != nullptr ? _remoteClient->Name() : string());
@@ -94,24 +107,26 @@ private:
             _touchpanel = touchpanel;
         }
         int32_t Width() const override
-        {   
-            // huppel is this correct? Check...
-            int32_t width = 0;
-            if(_remoteClient != nullptr) {
-                Exchange::IComposition::Rectangle rect = _remoteClient->Geometry(); 
-                width = rect.width;
-            }
-            return width; 
+        {
+            using width_t = decltype (_nativeSurface._width);
+
+            static_assert ( ( std::numeric_limits < width_t > :: is_exact &&
+                0 >= std::numeric_limits < int32_t > :: min () &&
+                std::numeric_limits < std::make_signed < width_t >::type > :: max () <= std::numeric_limits < int32_t > :: max () ) !=
+                false);
+
+            return ( _nativeSurface._surf != nullptr && _nativeSurface._width <= static_cast < width_t > (std::numeric_limits < int32_t >::max ()) ? _nativeSurface._width : 0 );
         }
         int32_t Height() const override
         {
-            // huppel is this correct? Check...
-            int32_t width = 0;
-            if(_remoteClient != nullptr) {
-                Exchange::IComposition::Rectangle rect = _remoteClient->Geometry(); 
-                width = rect.height;
-            }
-            return width; 
+            using height_t = decltype (_nativeSurface._height);
+
+            static_assert ( ( std::numeric_limits < height_t > :: is_exact &&
+                0 >= std::numeric_limits < int32_t > :: min () &&
+                std::numeric_limits < std::make_signed < height_t >::type > :: max () <= std::numeric_limits < int32_t > :: max () ) !=
+                false);
+
+            return ( _nativeSurface._surf != nullptr && _nativeSurface._height <= static_cast < height_t > (std::numeric_limits < int32_t >::max ()) ? _nativeSurface._height : 0 );
         }
         inline void SendKey(
             const uint32_t key,
@@ -162,6 +177,12 @@ private:
 
         Exchange::IComposition::IClient* _remoteClient;
         Exchange::IComposition::IRender* _remoteRenderer;
+
+        struct {
+            struct gbm_surface * _surf;
+            uint32_t _width;
+            uint32_t _height;
+        } _nativeSurface;
     };
 
     using InputFunction = std::function<void(SurfaceImplementation*)>;
@@ -296,7 +317,8 @@ public:
 
     EGLNativeDisplayType Native() const override
     {
-        return (_remoteDisplay != nullptr ? reinterpret_cast<EGLNativeDisplayType>(_remoteDisplay->Native()) : static_cast<EGLNativeDisplayType>(0)); //huppel -1 or is tehre an error value?
+        static_assert ( (std::is_convertible < decltype (_nativeDisplay._device), EGLNativeDisplayType >:: value ) != false);
+        return static_cast < EGLNativeDisplayType > ( _nativeDisplay._device );
     }
     const std::string& Name() const override
     {
@@ -419,6 +441,11 @@ private:
     mutable uint32_t _refCount;
 
     Exchange::IComposition::IDisplay* _remoteDisplay;
+
+    struct {
+        struct gbm_device * _device;
+        int _fd;
+    } _nativeDisplay;
 };
 
 Display::DisplayMap Display::_displays;
@@ -435,7 +462,18 @@ Display::SurfaceImplementation::SurfaceImplementation(
     , _touchpanel(nullptr)
     , _remoteClient(nullptr)
     , _remoteRenderer(nullptr)
+    , _nativeSurface {nullptr, 0, 0}
 {
+    _nativeSurface._surf = gbm_surface_create(_display.Native (), width, height, RenderDevice::SupportedBufferType (), GBM_BO_USE_RENDERING /* used for rendering */);
+
+    if (_nativeSurface._surf == nullptr) {
+        TRACE_L1 (_T ("Failed to create a native (underlying) surface"));
+    }
+    else {
+        _nativeSurface._height = height;
+        _nativeSurface._width = width;
+    }
+
     _remoteClient = _display.CreateRemoteSurface(name, width, height);
 
     if (_remoteClient != nullptr) {
@@ -468,6 +506,12 @@ Display::SurfaceImplementation::~SurfaceImplementation()
         _remoteClient->Release();
     }
 
+    if (_nativeSurface._surf != nullptr) {
+        gbm_surface_destroy (_nativeSurface._surf);
+    }
+
+    _nativeSurface = {nullptr, 0, 0};
+
     _display.Release();
 }
 
@@ -479,12 +523,47 @@ Display::Display(const string& name)
     , _compositerServerRPCConnection()
     , _refCount(0)
     , _remoteDisplay(nullptr)
+    , _nativeDisplay {nullptr, -1}
 {
     Initialize();
+
+    std::vector < std::string > _nodes;
+
+    RenderDevice::GetNodes (static_cast <uint32_t> (DRM_NODE_RENDER), _nodes);
+
+    for (auto _begin = _nodes.begin (), _it = _begin, _end = _nodes.end (); _it != _end; _it++) {
+        decltype (_nativeDisplay._fd) & _fd = _nativeDisplay._fd;
+        decltype (_nativeDisplay._device) & _device = _nativeDisplay._device;
+
+        _fd = open(_it->c_str(), O_RDWR);
+
+        if (_fd >= 0) {
+            _device = gbm_create_device (_fd);
+
+            if (_device != nullptr) {
+                TRACE (Trace::Information, (_T ("Opened RenderDevice: %s"), _it->c_str ()));
+            }
+            break;
+        }
+    }
 }
 
 Display::~Display()
 {
+    decltype (_nativeDisplay._fd) & _fd = _nativeDisplay._fd;
+    decltype (_nativeDisplay._device) & _device = _nativeDisplay._device;
+
+    if (_device != nullptr) {
+        gbm_device_destroy (_device);
+    }
+
+    if (_fd >= 0) {
+        close (_fd);
+    }
+
+    _device = nullptr;
+    _fd = -1;
+
     Deinitialize();
 }
 
@@ -524,9 +603,79 @@ Compositor::IDisplay::ISurface* Display::SurfaceByName(const std::string& name)
     return result;
 }
 
+static uint32_t WidthFromResolution (Exchange::IComposition::ScreenResolution const resolution) {
+    // Asumme an invalid width equals 0
+    uint32_t _width = 0;
+
+    switch (resolution) {
+        case Exchange::IComposition::ScreenResolution_480p      :   // 720x480
+                                                                    _width = 720; break;
+        case Exchange::IComposition::ScreenResolution_720p      :   // 1280x720 progressive
+        case Exchange::IComposition::ScreenResolution_720p50Hz  :   // 1280x720 @ 50 Hz
+                                                                    _width = 720; break;
+        case Exchange::IComposition::ScreenResolution_1080p24Hz :   // 1920x1080 progressive @ 24 Hz
+        case Exchange::IComposition::ScreenResolution_1080i50Hz :   // 1920x1080 interlaced  @ 50 Hz
+        case Exchange::IComposition::ScreenResolution_1080p50Hz :   // 1920x1080 progressive @ 50 Hz
+        case Exchange::IComposition::ScreenResolution_1080p60Hz :   // 1920x1080 progressive @ 60 Hz
+                                                                    _width = 1920; break;
+        case Exchange::IComposition::ScreenResolution_2160p50Hz :   // 4K, 3840x2160 progressive @ 50 Hz
+        case Exchange::IComposition::ScreenResolution_2160p60Hz :   // 4K, 3840x2160 progressive @ 60 Hz
+                                                                    _width = 3840; break;
+        case Exchange::IComposition::ScreenResolution_480i      :   // Unknown according to the standards (?)
+        case Exchange::IComposition::ScreenResolution_Unknown   :
+        default                                                 :   _width = 0;
+    }
+
+    return _width;
+}
+
+static uint32_t HeightFromResolution(const Exchange::IComposition::ScreenResolution resolution) {
+    // Asumme an invalid height equals 0
+    uint32_t _height = 0;
+
+    switch (resolution) {
+        // For descriptions see WidthFromResolution
+        case Exchange::IComposition::ScreenResolution_480i      : // 720x480
+        case Exchange::IComposition::ScreenResolution_480p      : // 720x480 progressive
+                                                                    _height = 480; break;
+        case Exchange::IComposition::ScreenResolution_720p      : // 1280x720 progressive
+        case Exchange::IComposition::ScreenResolution_720p50Hz  : // 1280x720 progressive @ 50 Hz
+                                                                    _height = 720; break;
+        case Exchange::IComposition::ScreenResolution_1080p24Hz : // 1920x1080 progressive @ 24 Hz
+        case Exchange::IComposition::ScreenResolution_1080i50Hz : // 1920x1080 interlaced @ 50 Hz
+        case Exchange::IComposition::ScreenResolution_1080p50Hz : // 1920x1080 progressive @ 50 Hz
+        case Exchange::IComposition::ScreenResolution_1080p60Hz : // 1920x1080 progressive @ 60 Hz
+                                                                    _height = 1080; break;
+        case Exchange::IComposition::ScreenResolution_2160p50Hz : // 4K, 3840x2160 progressive @ 50 Hz
+        case Exchange::IComposition::ScreenResolution_2160p60Hz : // 4K, 3840x2160 progressive @ 60 Hz
+                                                                    _height = 2160; break;
+        case Exchange::IComposition::ScreenResolution_Unknown   :
+        default                                                 :   _height = 0;
+    }
+
+    return _height;
+}
+
 Compositor::IDisplay::ISurface* Display::Create(const std::string& name, const uint32_t width, const uint32_t height)
 {
-    Core::ProxyType<SurfaceImplementation> retval = (Core::ProxyType<SurfaceImplementation>::Create(*this, name, width, height));
+    uint32_t _realHeight = height;
+    uint32_t _realWidth = width;
+
+    if (_remoteDisplay != nullptr) {
+        Exchange::IComposition::ScreenResolution _resolution = _remoteDisplay->Resolution ();
+
+        _realHeight = HeightFromResolution (_resolution);
+        _realWidth = WidthFromResolution (_resolution);
+
+        if (_realWidth != width || _realHeight != height) {
+            TRACE (Trace::Information, (_T ("Requested surface dimensions (%d x %d) differ from true (real) display dimensions (%d x %d). Continuing with the latter!"), width, height, _realWidth, _realHeight));
+        }
+    }
+    else {
+        TRACE (Trace::Information, (_T ("No remote display exist. Unable to query its dimensions. Expect the unexpected!")));
+    }
+
+    Core::ProxyType<SurfaceImplementation> retval = (Core::ProxyType<SurfaceImplementation>::Create(*this, name, _realWidth, _realHeight));
     Compositor::IDisplay::ISurface* result = &(*retval);
     result->AddRef();
 

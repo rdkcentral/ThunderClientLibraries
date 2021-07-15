@@ -35,7 +35,7 @@ if(VC6)
         message(FATAL_ERROR "The libDRM library and its headers cannot be found.")
     endif()
 
-    add_library(${TARGET} SHARED ModeSet.cpp Implementation.cpp)
+    add_library(${TARGET} SHARED Headless.cpp Implementation.cpp)
     target_compile_definitions(${TARGET} PRIVATE VC6)
 else()
     add_library(${TARGET} SHARED Implementation.cpp)
