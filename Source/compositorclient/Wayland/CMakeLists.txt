@@ -31,11 +31,19 @@ find_package(${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}Client REQUIRED)
 find_package(NXCLIENT)
 
 if ("${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}" STREQUAL "Westeros")
-add_library(${TARGET} SHARED ${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}.cpp)
+    add_library(${TARGET} SHARED ${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}.cpp)
 endif ()
 
 if ("${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}" STREQUAL "Weston")
-add_library(${TARGET} SHARED  ${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}.cpp xdg-shell-client-protocol.c)
+    add_library(${TARGET} SHARED  ${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}.cpp xdg-shell-client-protocol.c)
+
+    find_package(GLESv2 REQUIRED)
+    if (GLESV2_FOUND)
+        target_link_libraries(${TARGET}
+            PRIVATE
+                GLESV2::GLESV2
+        )
+    endif (GLESV2_FOUND)
 endif ()
 
 target_link_libraries(${TARGET}

@@ -431,7 +431,6 @@ namespace Wayland {
         , _ZOrder(0)
         , _display(&display)
         , _native(nullptr)
-        , _frameCallback(nullptr)
         , _eglSurfaceWindow(EGL_NO_SURFACE)
         , _keyboard(nullptr)
         , _pointer(nullptr)
@@ -487,7 +486,6 @@ namespace Wayland {
         , _ZOrder(0)
         , _display(&display)
         , _native(nullptr)
-        , _frameCallback(nullptr)
         , _shellSurface(nullptr)
         , _eglSurfaceWindow(EGL_NO_SURFACE)
         , _keyboard(nullptr)
@@ -509,7 +507,6 @@ namespace Wayland {
         , _ZOrder(0)
         , _display(&display)
         , _native(nullptr)
-        , _frameCallback(nullptr)
         , _shellSurface(nullptr)
         , _eglSurfaceWindow(EGL_NO_SURFACE)
         , _keyboard(nullptr)
@@ -518,21 +515,8 @@ namespace Wayland {
     {
     }
 
-    void Display::SurfaceImplementation::Callback(wl_callback_listener* listener, void* data)
+    Display::SurfaceImplementation::~SurfaceImplementation()
     {
-
-        assert((listener == nullptr) ^ (_frameCallback == nullptr));
-
-        if (listener != nullptr) {
-
-            _frameCallback = wl_surface_frame(_surface);
-            wl_callback_add_listener(_frameCallback, listener, data);
-
-            eglSwapBuffers(_display->_eglDisplay, _eglSurfaceWindow);
-        } else {
-            wl_callback_destroy(_frameCallback);
-            _frameCallback = nullptr;
-        }
     }
 
     void Display::SurfaceImplementation::Resize(const int dx, const int dy, const int width, const int height)
@@ -628,10 +612,6 @@ namespace Wayland {
     void Display::SurfaceImplementation::Unlink()
     {
         if (_display != nullptr) {
-
-            if (_frameCallback != nullptr) {
-                wl_callback_destroy(_frameCallback);
-            }
 
             if (_eglSurfaceWindow != EGL_NO_SURFACE) {
 
@@ -747,7 +727,7 @@ namespace Wayland {
     {
         if (_display != nullptr) {
             _eglDestroyImagePtr(_display->_eglDisplay, _eglImage);
-	}
+        }
     }
 
     static void* Processor(void* data)

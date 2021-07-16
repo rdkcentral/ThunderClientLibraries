@@ -319,7 +319,7 @@ static const struct wl_registry_listener globalRegistryListener = {
 };
 
 static void
-handle_surface_configure(void *data, struct xdg_surface *id,
+handle_surface_configure(void*, struct xdg_surface* id,
              uint32_t serial)
 {
     xdg_surface_ack_configure(id, serial);
@@ -332,11 +332,8 @@ static const struct xdg_surface_listener xdg_surface_listener = {
 
 static void
 handle_toplevel_configure(void*, struct xdg_toplevel*,
-              int32_t, int32_t, struct wl_array*)
+                          int32_t, int32_t, struct wl_array*)
 {
-    // TODO
-    // Wayland::Display *display = (Wayland::Display *)data;
-    // display->Dimensions(id, 1, 0, 0, width, height, 1, 0);
 }
 
 static void
@@ -418,7 +415,7 @@ namespace Wayland {
         , _ZOrder(0)
         , _display(&display)
         , _native(nullptr)
-        , _frameCallback(nullptr)
+        , _shellSurface(nullptr)
         , _eglSurfaceWindow(EGL_NO_SURFACE)
         , _keyboard(nullptr)
         , _pointer(nullptr)
@@ -432,17 +429,7 @@ namespace Wayland {
 
         if (_surface != nullptr) {
 
-            struct wl_region* region;
-            region = wl_compositor_create_region(display._compositor);
-
-            wl_region_add(region, 0, 0, width, height);
-
-            // Found in WPEwayland implementation:
-            wl_surface_set_opaque_region(_surface, region);
-
-            wl_region_destroy(region);
-
-            Trace("Creating a surface of size: %d x %d _surface=%p\n", width, height, _surface);
+            Trace("### Creating a surface of size: %d x %d _surface=%p\n", width, height, _surface);
 
             _native = wl_egl_window_create(_surface, width, height);
 
@@ -467,7 +454,6 @@ namespace Wayland {
         , _ZOrder(0)
         , _display(&display)
         , _native(nullptr)
-        , _frameCallback(nullptr)
         , _shellSurface(nullptr)
         , _eglSurfaceWindow(EGL_NO_SURFACE)
         , _keyboard(nullptr)
@@ -489,7 +475,6 @@ namespace Wayland {
         , _ZOrder(0)
         , _display(&display)
         , _native(nullptr)
-        , _frameCallback(nullptr)
         , _shellSurface(nullptr)
         , _eglSurfaceWindow(EGL_NO_SURFACE)
         , _keyboard(nullptr)
@@ -500,37 +485,24 @@ namespace Wayland {
 
     Display::SurfaceImplementation::~SurfaceImplementation()
     {
-         if (_xdg_toplevel != nullptr) {
-             xdg_toplevel_destroy(_xdg_toplevel);
-             _xdg_toplevel = nullptr;
-         }
+        if (_xdg_toplevel != nullptr) {
+            xdg_toplevel_destroy(_xdg_toplevel);
+            _xdg_toplevel = nullptr;
+        }
 
-         if (_xdg_surface != nullptr) {
-             xdg_surface_destroy(_xdg_surface);
-             _xdg_surface = nullptr;
-         }
-    }
-
-    void Display::SurfaceImplementation::Callback(wl_callback_listener* listener, void* data)
-    {
-
-        assert((listener == nullptr) ^ (_frameCallback == nullptr));
-
-        if (listener != nullptr) {
-
-            _frameCallback = wl_surface_frame(_surface);
-            wl_callback_add_listener(_frameCallback, listener, data);
-
-            eglSwapBuffers(_display->_eglDisplay, _eglSurfaceWindow);
-        } else {
-            wl_callback_destroy(_frameCallback);
-            _frameCallback = nullptr;
+        if (_xdg_surface != nullptr) {
+            if (_display != nullptr) {
+                // Unlink the surface and remove from th
+                _display->Destructed(reinterpret_cast<uint32_t>(_xdg_surface));
+            }
+            xdg_surface_destroy(_xdg_surface);
+            _xdg_surface = nullptr;
         }
     }
 
-    void Display::SurfaceImplementation::Resize(const int, const int, const int, const int)
+    void Display::SurfaceImplementation::Resize(const int x, const int y, const int w, const int h)
     {
-        Trace("WARNING: Display::SurfaceImplementation::Resize is not implemented\n");
+        xdg_surface_set_window_geometry(_xdg_surface, x, y, w, h);
     }
 
     void Display::SurfaceImplementation::Visibility(const bool)
@@ -554,35 +526,9 @@ namespace Wayland {
     }
 
     void Display::SurfaceImplementation::Dimensions(
-        const uint32_t visible,
-        const int32_t x, const int32_t y, const int32_t width, const int32_t height,
-        const uint32_t opacity,
-        const uint32_t zorder)
+        const uint32_t, const int32_t, const int32_t, const int32_t,
+        const int32_t, const uint32_t, const uint32_t)
     {
-        Trace("Updated surfaceId=%d width=%d  height=%d x=%d, y=%d visible=%d opacity=%d zorder=%d\n", _id, width, height, x, y, visible, opacity, zorder);
-
-        _visible = visible;
-        _opacity = opacity;
-        _ZOrder = zorder;
-        // This is the response form the status, but if we created the window, we need to check
-        // and set according to the request.
-        if (_native != nullptr) {
-            if ((_width != width) || (_height != height) || (_x != x) || (_y != y)) {
-                Trace("Resizing surface %d from [%d x %d] to [%d x %d]\n", _id, _width, _height, width, height);
-                wl_egl_window_resize(_native, _width, _height, x, y);
-            }
-        } else {
-            // Update this surface
-            Trace("Update surface %d from [%d x %d] to [%d x %d]\n", _id, _width, _height, width, height);
-            _x = x;
-            _y = y;
-            _width = width;
-            _height = height;
-        }
-
-        wl_display_flush(_display->_display);
-
-        Trace("Current surfaceId=%d width=%d  height=%d x=%d, y=%d, visible=%d opacity=%d zorder=%d\n", _id, _width, _height, _x, _y, _visible, _opacity, _ZOrder);
     }
 
     void Display::SurfaceImplementation::Redraw()
@@ -599,10 +545,6 @@ namespace Wayland {
     void Display::SurfaceImplementation::Unlink()
     {
         if (_display != nullptr) {
-
-            if (_frameCallback != nullptr) {
-                wl_callback_destroy(_frameCallback);
-            }
 
             if (_eglSurfaceWindow != EGL_NO_SURFACE) {
 
@@ -893,21 +835,12 @@ namespace Wayland {
             WaylandSurfaceMap::iterator entry(_waylandSurfaces.find(index->second->_surface));
 
             if (entry != _waylandSurfaces.end()) {
-                entry->second->Release();
                 _waylandSurfaces.erase(entry);
             }
 
             index->second->Unlink();
             index->second->Release();
             index++;
-        }
-
-        WaylandSurfaceMap::iterator entry(_waylandSurfaces.begin());
-
-        while (entry != _waylandSurfaces.end()) {
-
-            entry->second->Release();
-            entry++;
         }
 
         _waylandSurfaces.clear();
@@ -929,7 +862,6 @@ namespace Wayland {
             _wm_base = nullptr;
         }
 
-
         if (_shell != nullptr) {
             wl_shell_destroy(_shell);
             _shell = nullptr;
@@ -945,11 +877,6 @@ namespace Wayland {
             _keyboard = nullptr;
         }
 
-        if (_display != nullptr) {
-            wl_display_disconnect(_display);
-            _display = nullptr;
-        }
-
         if (_compositor != nullptr) {
             wl_compositor_destroy(_compositor);
             _compositor = nullptr;
@@ -958,6 +885,12 @@ namespace Wayland {
         if (_registry != nullptr) {
             wl_registry_destroy(_registry);
             _registry = nullptr;
+        }
+
+        if (_display != nullptr) {
+            wl_display_flush(_display);
+            wl_display_disconnect(_display);
+            _display = nullptr;
         }
 
         _adminLock.Unlock();
@@ -972,15 +905,13 @@ namespace Wayland {
     void Display::LoadSurfaces()
     {
         Trace("Display::LoadSurfaces\n");
-
-        _collect |= true;
     }
 
     Compositor::IDisplay::ISurface* Display::Create(const std::string& name, const uint32_t width, const uint32_t height)
     {
         IDisplay::ISurface* result = nullptr;
 
-        Trace("Display::Create\n");
+        Trace("Display::Create: name = %s\n", name.c_str());
         _adminLock.Lock();
 
         SurfaceImplementation* surface = new SurfaceImplementation(*this, name, width, height);
@@ -993,18 +924,17 @@ namespace Wayland {
             surface->_xdg_toplevel = xdg_surface_get_toplevel(surface->_xdg_surface);
             assert(surface->_xdg_toplevel != NULL);
             xdg_toplevel_add_listener(surface->_xdg_toplevel, &xdg_toplevel_listener, this);
+            xdg_toplevel_set_title(surface->_xdg_toplevel, name.c_str());
 
+            _waylandSurfaces.insert(std::pair<struct wl_surface*, SurfaceImplementation*>(surface->_surface, surface));
+            _surfaces.insert(std::pair<uint32_t, SurfaceImplementation*>(reinterpret_cast<uint32_t>(surface->_xdg_surface), surface));
             wl_surface_commit(surface->_surface);
-            xdg_toplevel_set_title(surface->_xdg_toplevel, "compositor_client");
-
+            result = surface;
         }
-        // Wait till we are fully registered.
-        _waylandSurfaces.insert(std::pair<struct wl_surface*, SurfaceImplementation*>(surface->_surface, surface));
-
-        result = surface;
 
         _adminLock.Unlock();
 
+        // Wait till we are fully registered.
         wl_display_roundtrip(_display);
 
         return (result);
@@ -1017,84 +947,19 @@ namespace Wayland {
         return (Image(*new ImageImplementation(*this, texture, width, height)));
     }
 
-    void Display::Constructed(const uint32_t id, wl_surface* surface)
-    {
-        Trace("Display::Constructed (with surface)\n");
-
-        _adminLock.Lock();
-
-        WaylandSurfaceMap::iterator index = _waylandSurfaces.find(surface);
-
-        if (index != _waylandSurfaces.end()) {
-            xdg_toplevel_set_title(index->second->_xdg_toplevel, index->second->Name().c_str());
-
-            // Do not forget to update the actual surface, it is now alive..
-            index->second->_id = id;
-            index->second->AddRef();
-            _surfaces.insert(std::pair<uint32_t, Display::SurfaceImplementation*>(id, index->second));
-        } else if (_collect == true) {
-            // Seems this is a surface, we did not create.
-            Display::SurfaceImplementation* entry(new Display::SurfaceImplementation(*this, id, surface));
-            entry->AddRef();
-            _surfaces.insert(std::pair<uint32_t, Display::SurfaceImplementation*>(id, entry));
-            _waylandSurfaces.insert(std::pair<wl_surface*, Display::SurfaceImplementation*>(surface, entry));
-        }
-
-        if (_clientHandler != nullptr) {
-            _clientHandler->Attached(id);
-        }
-
-        _adminLock.Unlock();
-    }
-
-    void Display::Constructed(const uint32_t id, const char* name)
-    {
-        Trace("Constructed (with name)\n");
-        _adminLock.Lock();
-
-        SurfaceMap::iterator index = _surfaces.find(id);
-
-        if (index != _surfaces.end()) {
-            index->second->Name(name);
-        }
-
-        if (_collect == true) {
-            Display::SurfaceImplementation* entry = new Display::SurfaceImplementation(*this, id, name);
-
-            // manual increase the refcount for the _waylandSurfaces map.
-            entry->AddRef();
-
-            // Somewhere, someone, created a surface, register it.
-            _surfaces.insert(std::pair<uint32_t, Display::SurfaceImplementation*>(id, entry));
-        }
-
-        if (_clientHandler != nullptr) {
-            _clientHandler->Attached(id);
-        }
-        _adminLock.Unlock();
-    }
-
     void Display::Dimensions(
-        const uint32_t id,
-        const uint32_t visible,
-        const int32_t x, const int32_t y, const int32_t width, const int32_t height,
-        const uint32_t opacity,
-        const uint32_t zorder)
+        const uint32_t, const uint32_t,
+        const int32_t, const int32_t, const int32_t, const int32_t,
+        const uint32_t, const uint32_t)
     {
-        Trace("Updated Dimensions surfaceId=%d width=%d  height=%d x=%d, y=%d visible=%d opacity=%d zorder=%d\n", id, width, height, x, y, visible, opacity, zorder);
-        _adminLock.Lock();
+    }
 
-        SurfaceMap::iterator index = _surfaces.find(id);
+    void Display::Constructed(const uint32_t, wl_surface*)
+    {
+    }
 
-        if (index != _surfaces.end()) {
-            Trace("Updated Dimensions surfaceId=%d name=%s width=%d  height=%d x=%d, y=%d visible=%d opacity=%d zorder=%d\n", id, index->second->Name().c_str(), width, height, x, y, visible, opacity, zorder);
-            index->second->Dimensions(visible, x, y, width, height, opacity, zorder);
-        } else {
-            // TODO: Seems this is a surface, we did not create. maybe we need to collect it in future.
-            //Trace("Unidentified surface: id=%d.\n");
-        }
-
-        _adminLock.Unlock();
+    void Display::Constructed(const uint32_t, const char*)
+    {
     }
 
     void Display::Destructed(const uint32_t id)
@@ -1103,32 +968,24 @@ namespace Wayland {
 
         _adminLock.Lock();
 
-        if (_collect != true) {
-            SurfaceMap::iterator index = _surfaces.find(id);
+        SurfaceMap::iterator index = _surfaces.find(id);
 
-            if (index != _surfaces.end()) {
-                // See if it is in the surfaces map, we need to take it out here as well..
-                WaylandSurfaceMap::iterator entry(_waylandSurfaces.find(index->second->_surface));
+        if (index != _surfaces.end()) {
+            // See if it is in the surfaces map, we need to take it out here as well..
+            WaylandSurfaceMap::iterator entry(_waylandSurfaces.find(index->second->_surface));
 
-                // assert(entry != _waylandSurfaces.end());
+            assert(entry != _waylandSurfaces.end());
 
-                if (entry != _waylandSurfaces.end()) {
-                    entry->second->Release();
-                    _waylandSurfaces.erase(entry);
-                }
-
-                if (_keyboardReceiver == index->second) {
-                    _keyboardReceiver = nullptr;
-                }
-
-                index->second->Unlink();
-                index->second->Release();
-                _surfaces.erase(index);
+            if (entry != _waylandSurfaces.end()) {
+                _waylandSurfaces.erase(entry);
             }
 
-        }
-        if (_clientHandler != nullptr) {
-            _clientHandler->Detached(id);
+            if (_keyboardReceiver == index->second) {
+                _keyboardReceiver = nullptr;
+            }
+
+            _surfaces.erase(index);
+            index->second->Unlink();
         }
         _adminLock.Unlock();
     }
