@@ -130,9 +130,21 @@ namespace Compositor {
             virtual void TouchPanel(ITouchPanel*) { }
             virtual int32_t Width() const = 0;
             virtual int32_t Height() const = 0;
+            virtual uint32_t Id() const { return 0; }
+            virtual void Unlink() { }
+            virtual void Position(const uint32_t, const uint32_t, const uint32_t, const uint32_t) {}
+            virtual void Resize(const int, const int, const int, const int) { }
+            virtual void Dimensions(const uint32_t, const int32_t, const int32_t,
+                                    const int32_t, const int32_t, const uint32_t, const uint32_t) { }
+            virtual void Callback(wl_callback_listener*, void*) { }
+            virtual void Visibility(const bool) { }
+            virtual void Opacity(const uint32_t) { }
+            virtual void ZOrder(const uint32_t) { }
+            virtual void BringToFront() { }
+            virtual bool UpScale() const { return false; }
         };
 
-        static IDisplay* Instance(const std::string& displayName);
+        static IDisplay* Instance(const std::string&);
 
         // If CLIENT_IDENTIFIER variable is set its value is tokenized using comma as the separator
         // and the first token is used to override the passed in name. The second - if present - is

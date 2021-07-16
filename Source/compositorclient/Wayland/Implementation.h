@@ -158,7 +158,7 @@ namespace Wayland {
                     _keyboard->KeyMap(mapping.c_str(), mapping.length());
                 }
             }
-            inline uint32_t Id() const
+            inline uint32_t Id() const override
             {
                 return (_id);
             }
@@ -174,7 +174,7 @@ namespace Wayland {
             {
                 return (_ZOrder);
             }
-            inline void Position(const uint32_t, const uint32_t, const uint32_t height, const uint32_t width)
+            inline void Position(const uint32_t, const uint32_t, const uint32_t height, const uint32_t width) override
             {
                 _adminLock.Lock();
                 if (_display != nullptr) {
@@ -191,7 +191,7 @@ namespace Wayland {
                     _name = name;
                 }
             }
-            void Pointer(IPointer* pointer)
+            void Pointer(IPointer* pointer) override
             {
                 assert((_pointer == nullptr) ^ (pointer == nullptr));
                 _pointer = pointer;
@@ -203,21 +203,21 @@ namespace Wayland {
                 }
             }
             bool Connect(const EGLSurface& surface);
-            void Unlink();
-            void Resize(const int x, const int y, const int width, const int height);
+            void Unlink() override;
+            void Resize(const int x, const int y, const int width, const int height) override;
             void Dimensions(
                 const uint32_t visible,
                 const int32_t x, const int32_t y, const int32_t width, const int32_t height,
                 const uint32_t opacity,
-                const uint32_t zorder);
-            void Callback(wl_callback_listener* listener, void* data);
-            void Visibility(const bool visible);
-            void Opacity(const uint32_t opacity);
-            void ZOrder(const uint32_t order);
-            void BringToFront();
+                const uint32_t zorder) override;
+            void Callback(wl_callback_listener* listener, void* data) override;
+            void Visibility(const bool visible) override;
+            void Opacity(const uint32_t opacity) override;
+            void ZOrder(const uint32_t order) override;
+            void BringToFront() override;
 
         private:
-            inline const bool UpScale() const
+            inline bool UpScale() const override
             {
                 return _upScale;
             }
@@ -361,8 +361,8 @@ namespace Wayland {
                 : _implementation(nullptr)
             {
             }
-            inline Surface(SurfaceImplementation& impl)
-                : _implementation(&impl)
+            inline Surface(Compositor::IDisplay::ISurface* impl)
+                : _implementation(impl)
             {
                 _implementation->AddRef();
             }
@@ -432,7 +432,7 @@ namespace Wayland {
                 assert(IsValid() == true);
                 return (_implementation->ZOrder(order));
             }
-            inline const bool UpScale()
+            inline bool UpScale()
             {
                 assert(IsValid() == true);
                 return (_implementation->UpScale());
@@ -494,7 +494,7 @@ namespace Wayland {
             }
 
         private:
-            SurfaceImplementation* _implementation;
+            Compositor::IDisplay::ISurface* _implementation;
         };
 
         class Image {
@@ -646,7 +646,7 @@ namespace Wayland {
             SurfaceMap::iterator index(_surfaces.find(id));
 
             if (index != _surfaces.end()) {
-                surface = Surface(*(index->second));
+                surface = Surface(index->second);
             } else {
                 surface.Release();
             }
@@ -686,7 +686,7 @@ namespace Wayland {
 
         void InitializeEGL();
         void Constructed(const uint32_t id, wl_surface* surface);
-        void Constructed(const uint32_t id, const char* name);
+        void Constructed(const uint32_t id, const char* name = nullptr);
         void Destructed(const uint32_t id);
         void Dimensions(
             const uint32_t id, const uint32_t visible, const int32_t x, const int32_t y, const int32_t width,

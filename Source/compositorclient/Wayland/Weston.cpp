@@ -322,6 +322,9 @@ static void
 handle_surface_configure(void *data, struct xdg_surface *id,
              uint32_t serial)
 {
+    Wayland::Display *display = (Wayland::Display *)data;
+
+    display->Constructed(reinterpret_cast<uint32_t>(id));
     xdg_surface_ack_configure(id, serial);
 }
 
@@ -500,6 +503,7 @@ namespace Wayland {
 
     Display::SurfaceImplementation::~SurfaceImplementation()
     {
+	 _display->Destructed(reinterpret_cast<uint32_t>(_xdg_surface));
          if (_xdg_toplevel != nullptr) {
              xdg_toplevel_destroy(_xdg_toplevel);
              _xdg_toplevel = nullptr;
@@ -509,6 +513,7 @@ namespace Wayland {
              xdg_surface_destroy(_xdg_surface);
              _xdg_surface = nullptr;
          }
+
     }
 
     void Display::SurfaceImplementation::Callback(wl_callback_listener* listener, void* data)
@@ -995,16 +1000,16 @@ namespace Wayland {
             xdg_toplevel_add_listener(surface->_xdg_toplevel, &xdg_toplevel_listener, this);
 
             wl_surface_commit(surface->_surface);
-            xdg_toplevel_set_title(surface->_xdg_toplevel, "compositor_client");
+            xdg_toplevel_set_title(surface->_xdg_toplevel, name.c_str());
 
+            _waylandSurfaces.insert(std::pair<struct wl_surface*, SurfaceImplementation*>(surface->_surface, surface));
+	    _surfaces.insert(std::pair<uint32_t, SurfaceImplementation*>(reinterpret_cast<uint32_t>(surface->_xdg_surface), surface));
+            result = surface;
         }
-        // Wait till we are fully registered.
-        _waylandSurfaces.insert(std::pair<struct wl_surface*, SurfaceImplementation*>(surface->_surface, surface));
-
-        result = surface;
 
         _adminLock.Unlock();
 
+        // Wait till we are fully registered.
         wl_display_roundtrip(_display);
 
         return (result);
@@ -1047,7 +1052,7 @@ namespace Wayland {
         _adminLock.Unlock();
     }
 
-    void Display::Constructed(const uint32_t id, const char* name)
+    void Display::Constructed(const uint32_t id, const char*)
     {
         Trace("Constructed (with name)\n");
         _adminLock.Lock();
@@ -1055,22 +1060,13 @@ namespace Wayland {
         SurfaceMap::iterator index = _surfaces.find(id);
 
         if (index != _surfaces.end()) {
-            index->second->Name(name);
-        }
+            index->second->_id = id;
+            index->second->AddRef();
 
-        if (_collect == true) {
-            Display::SurfaceImplementation* entry = new Display::SurfaceImplementation(*this, id, name);
-
-            // manual increase the refcount for the _waylandSurfaces map.
-            entry->AddRef();
-
-            // Somewhere, someone, created a surface, register it.
-            _surfaces.insert(std::pair<uint32_t, Display::SurfaceImplementation*>(id, entry));
-        }
-
-        if (_clientHandler != nullptr) {
-            _clientHandler->Attached(id);
-        }
+            if (_clientHandler != nullptr) {
+                _clientHandler->Attached(id);
+            }
+	}
         _adminLock.Unlock();
     }
 
