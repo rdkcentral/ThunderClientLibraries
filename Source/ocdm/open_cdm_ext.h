@@ -18,7 +18,7 @@
 #pragma once
 
 #include "open_cdm.h"
-#include "playLevel.h"
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -222,6 +222,17 @@ OpenCDMError opencdm_system_teardown(struct OpenCDMSystem* system);
 OpenCDMError
 opencdm_session_clean_decrypt_context(struct OpenCDMSession* mOpenCDMSession);
 
+
+/** Playback protection levels struct. */
+struct PlayLevels {
+    uint16_t _compressedDigitalVideoLevel_;   //!< Compressed digital video output protection level.
+    uint16_t _uncompressedDigitalVideoLevel_; //!< Uncompressed digital video output protection level.
+    uint16_t _analogVideoLevel_;              //!< Analog video output protection level.
+    uint16_t _compressedDigitalAudioLevel_;   //!< Compressed digital audio output protection level.
+    uint16_t _uncompressedDigitalAudioLevel_; //!< Uncompressed digital audio output protection level.
+    uint32_t _maxResDecodeWidth_;             //!< Max res decode width in pixels.
+    uint32_t _maxResDecodeHeight_;            //!< Max res decode height in pixels.
+};
 /**
  * Exposes PlayLevels struct from a json text file
  * \param system exposed PlayLevels structure

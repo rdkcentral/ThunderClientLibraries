@@ -369,21 +369,59 @@ opencdm_construct_session(struct OpenCDMSystem* system,
 
 OpenCDMError opencdm_system_ext_get_properties(struct PlayLevels* system, const char* propertiesJSONText) 
 {
+    using namespace Core ;
+    class PlayLevelsJSON : public JSON::Container {
+    private:
+        PlayLevelsJSON(const PlayLevelsJSON&) = delete;
+        PlayLevelsJSON& operator=(const PlayLevelsJSON&) = delete;
+
+    public:
+        PlayLevelsJSON()
+            : WPEFramework::Core::JSON::Container()
+            , _compressedVideo()
+            , _uncompressedVideo()
+            , _analogVideo()
+            , _compressedAudio()
+            , _uncompressedAudio()
+            , _maxDecodeWidth()
+            , _maxDecodeHeigth()
+        {
+            Add(_T("compressed-video"), &_compressedVideo);
+            Add(_T("uncompressed-video"), &_uncompressedVideo);
+            Add(_T("analog-video"), &_analogVideo);
+            Add(_T("compressed-audio"), &_compressedAudio);
+            Add(_T("uncompressed-audio"), &_uncompressedAudio);
+            Add(_T("max-decode-width"), &_maxDecodeWidth);
+            Add(_T("max-decode-height"), &_maxDecodeHeigth);
+        }
+
+    public:
+        JSON::DecUInt16 _compressedVideo;
+        JSON::DecUInt16 _uncompressedVideo;
+        JSON::DecUInt16 _analogVideo;
+        JSON::DecUInt16 _compressedAudio;
+        JSON::DecUInt16 _uncompressedAudio;
+        JSON::DecUInt32 _maxDecodeWidth;
+        JSON::DecUInt32 _maxDecodeHeigth;
+    };
+
     ASSERT(system != nullptr);
+    ASSERT(propertiesJSONText != nullptr);
+
     OpenCDMError result(ERROR_INVALID_ACCESSOR);
 
-    if (system != nullptr) {
+    if ((system != nullptr) && (propertiesJSONText!= nullptr)) {
         string properties= std::string(propertiesJSONText);
-        PlayLevels::PlayLevelsJSON playlevelJson;
+        PlayLevelsJSON playlevelJson;
         playlevelJson.FromString(properties);
 
-        system->compressedDigitalVideoLevel_ = playlevelJson.m_CompressedVideo.Value();
-        system->uncompressedDigitalVideoLevel_ = playlevelJson.m_UncompressedVideo.Value();
-        system->analogVideoLevel_ = playlevelJson.m_AnalogVideo.Value();
-        system->compressedDigitalAudioLevel_ = playlevelJson.m_CompressedAudio.Value();
-        system->uncompressedDigitalAudioLevel_ = playlevelJson.m_UncompressedAudio.Value();
-        system->maxResDecodeWidth_ = playlevelJson.m_maxDecodeWidth.Value();
-        system->maxResDecodeHeight_ = playlevelJson.m_maxDecodeHeigth.Value();
+        system->_compressedDigitalVideoLevel_ = playlevelJson._compressedVideo.Value();
+        system->_uncompressedDigitalVideoLevel_ = playlevelJson._uncompressedVideo.Value();
+        system->_analogVideoLevel_ = playlevelJson._analogVideo.Value();
+        system->_compressedDigitalAudioLevel_ = playlevelJson._compressedAudio.Value();
+        system->_uncompressedDigitalAudioLevel_ = playlevelJson._uncompressedAudio.Value();
+        system->_maxResDecodeWidth_ = playlevelJson._maxDecodeWidth.Value();
+        system->_maxResDecodeHeight_ = playlevelJson._maxDecodeHeigth.Value();
 
         result = OpenCDMError::ERROR_NONE;
     }
