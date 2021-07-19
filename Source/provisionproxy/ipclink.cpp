@@ -119,13 +119,15 @@ int GetDRMId(const char label[], const unsigned short maxIdLength, char outId[])
     if ((client.IsValid() == true) && (client->IsOpen() == false)) {
         Exchange::IProvisioning* provisioningInterface = client->Open<Exchange::IProvisioning>("Provisioning");
         if (provisioningInterface != nullptr) {
-            string drmId;
-            uint32_t error = provisioningInterface->DRMId(string(label), drmId);
+            uint8_t buffer[10 * 1024]; //should fit ;) 
+            uint16_t size = sizeof(buffer);
+
+            uint32_t error = provisioningInterface->DRMId(label, size, buffer);
 
             if (error == Core::ERROR_NONE) {
 
                 // This is a huge encrypted blob, convert it to an uencrypted required info
-                result = ClearBlob(drmId.size(), drmId.c_str() , maxIdLength, outId);
+                result = ClearBlob(size, reinterpret_cast<const char*>(buffer) , maxIdLength, outId);
                 if (result > 0) {
                     printf("%s:%d [%s] Received Provision Info for '%s' with length [%d].\n", __FILE__, __LINE__, __func__, label, result);
                 } else {
@@ -136,7 +138,7 @@ int GetDRMId(const char label[], const unsigned short maxIdLength, char outId[])
                 printf("%s:%d [%s] Failed to extract %s provisioning. Error code %d.\n", __FILE__, __LINE__, __func__, label, error);
             }
 
-            drmId.clear();
+            std::fill_n(buffer, sizeof(buffer), 0);
             provisioningInterface->Release();
         }
         client.Release();
