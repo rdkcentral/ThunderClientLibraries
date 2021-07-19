@@ -955,7 +955,6 @@ public:
             result = _deviceInfoLink.Deviceinfo_output_resolutions(value, length);
             if(result == Core::ERROR_NONE)
             {
-                // copyToVectorFromArray(_outputResolution, value, *length);
                 _outputResolution.insert(_outputResolution.begin(), value, value + (*length));
             }
         }
@@ -1003,14 +1002,6 @@ public:
     }
 
 private:
-    // template <typename T1>
-    // void copyToVectorFromArray(std::vector<T1>& vecArg, T1 arrArg[], int length)
-    // {
-    //     for (int index = 0; index< length; index++)
-    //     {
-    //         vecArg.push_back(arrArg[index]);
-    //     }
-    // }
 
     void setHdrSupport(const bool& hdr)
     {
