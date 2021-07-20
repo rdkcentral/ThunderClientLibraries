@@ -2,7 +2,7 @@
  * If not stated otherwise in this file or this component's LICENSE file the
  * following copyright and licenses apply:
  *
- * Copyright 2020 RDK Management
+ * Copyright 2020 Metrological
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -218,7 +218,7 @@ void DiffieHellmanDeriveSecret(DH* privateKey, const BIGNUM* peerPublicKey, BIGN
 
     int flags = 0;
     if ((DH_check_pub_key(privateKey, peerPublicKey, &flags) == 0) || (flags != 0)) {
-        TRACE_L1(_T("Peer public key is invalid"))
+        TRACE_L1(_T("Peer public key is invalid"));
     } else {
         uint16_t secretSize = DH_size(privateKey);
         ASSERT(secretSize != 0);

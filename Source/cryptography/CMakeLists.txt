@@ -1,7 +1,7 @@
 # If not stated otherwise in this file or this component's license file the
 # following copyright and licenses apply:
 #
-# Copyright 2020 RDK Management
+# Copyright 2020 Metrological
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -138,4 +138,5 @@ if(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY)
     InstallCMakeConfig(
         TARGETS ${TARGET}Software 
     )
-endif(INCLUDE_SOFTWARE_LIB)
+endif(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY)
+add_subdirectory(tests)
