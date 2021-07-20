@@ -225,13 +225,13 @@ opencdm_session_clean_decrypt_context(struct OpenCDMSession* mOpenCDMSession);
 
 /** Playback protection levels struct. */
 struct PlayLevels {
-    uint16_t _compressedDigitalVideoLevel_;   //!< Compressed digital video output protection level.
-    uint16_t _uncompressedDigitalVideoLevel_; //!< Uncompressed digital video output protection level.
-    uint16_t _analogVideoLevel_;              //!< Analog video output protection level.
-    uint16_t _compressedDigitalAudioLevel_;   //!< Compressed digital audio output protection level.
-    uint16_t _uncompressedDigitalAudioLevel_; //!< Uncompressed digital audio output protection level.
-    uint32_t _maxResDecodeWidth_;             //!< Max res decode width in pixels.
-    uint32_t _maxResDecodeHeight_;            //!< Max res decode height in pixels.
+    uint16_t _compressedDigitalVideoLevel;   //!< Compressed digital video output protection level.
+    uint16_t _uncompressedDigitalVideoLevel; //!< Uncompressed digital video output protection level.
+    uint16_t _analogVideoLevel;              //!< Analog video output protection level.
+    uint16_t _compressedDigitalAudioLevel;   //!< Compressed digital audio output protection level.
+    uint16_t _uncompressedDigitalAudioLevel; //!< Uncompressed digital audio output protection level.
+    uint32_t _maxResDecodeWidth;             //!< Max res decode width in pixels.
+    uint32_t _maxResDecodeHeight;            //!< Max res decode height in pixels.
 };
 /**
  * Exposes PlayLevels struct from a json text file

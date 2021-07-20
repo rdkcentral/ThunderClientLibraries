@@ -415,13 +415,13 @@ OpenCDMError opencdm_system_ext_get_properties(struct PlayLevels* system, const 
         PlayLevelsJSON playlevelJson;
         playlevelJson.FromString(properties);
 
-        system->_compressedDigitalVideoLevel_ = playlevelJson._compressedVideo.Value();
-        system->_uncompressedDigitalVideoLevel_ = playlevelJson._uncompressedVideo.Value();
-        system->_analogVideoLevel_ = playlevelJson._analogVideo.Value();
-        system->_compressedDigitalAudioLevel_ = playlevelJson._compressedAudio.Value();
-        system->_uncompressedDigitalAudioLevel_ = playlevelJson._uncompressedAudio.Value();
-        system->_maxResDecodeWidth_ = playlevelJson._maxDecodeWidth.Value();
-        system->_maxResDecodeHeight_ = playlevelJson._maxDecodeHeigth.Value();
+        system->_compressedDigitalVideoLevel = playlevelJson._compressedVideo.Value();
+        system->_uncompressedDigitalVideoLevel = playlevelJson._uncompressedVideo.Value();
+        system->_analogVideoLevel = playlevelJson._analogVideo.Value();
+        system->_compressedDigitalAudioLevel = playlevelJson._compressedAudio.Value();
+        system->_uncompressedDigitalAudioLevel = playlevelJson._uncompressedAudio.Value();
+        system->_maxResDecodeWidth = playlevelJson._maxDecodeWidth.Value();
+        system->_maxResDecodeHeight = playlevelJson._maxDecodeHeigth.Value();
 
         result = OpenCDMError::ERROR_NONE;
     }
