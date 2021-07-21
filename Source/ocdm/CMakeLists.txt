@@ -47,7 +47,6 @@ add_library(${TARGET} SHARED
 
 set(PUBLIC_HEADERS
         open_cdm.h
-        playLevel.h
         adapter/open_cdm_adapter.h
         open_cdm_ext.h
         Module.h
