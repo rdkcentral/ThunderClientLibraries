@@ -24,6 +24,8 @@
 #define MODULE_NAME ProvisionProxy
 
 #include <core/core.h>
+#include <com/com.h>
+#include <interfaces/IProvisioning.h>
 #include <provision/DRMInfo.h>
 
 #include "IPCProvision.h"
@@ -42,11 +44,6 @@ static string GetEndPoint()
 }
 
 extern "C" {
-
-Core::IPCChannelClientType<Core::Void, false, true> _channel(Core::NodeId(GetEndPoint().c_str()), 2048);
-Core::ProxyType<IPC::Provisioning::DrmIdData> _drmId(Core::ProxyType<IPC::Provisioning::DrmIdData>::Create());
-Core::ProxyType<IPC::Provisioning::DeviceIdData> _deviceId(Core::ProxyType<IPC::Provisioning::DeviceIdData>::Create());
-
 /*
  * GetDeviceId - function to obtain the unique Device ID
  *
@@ -63,34 +60,39 @@ Core::ProxyType<IPC::Provisioning::DeviceIdData> _deviceId(Core::ProxyType<IPC::
  */
 int GetDeviceId(unsigned short MaxIdLength, char Id[])
 {
+    auto engine = Core::ProxyType<RPC::InvokeServerType<1, 0, 4>>::Create();
+    auto client = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(GetEndPoint().c_str()), Core::ProxyType<Core::IIPCServer>(engine));
+
     int result = -1;
 
-    if (_channel.Open(1000) == Core::ERROR_NONE) { // Wait for 1 Second.
+    if ((client.IsValid() == true) && (client->IsOpen() == false)) {
+        Exchange::IProvisioning* provisioningInterface = client->Open<Exchange::IProvisioning>("Provisioning");
+        if (provisioningInterface != nullptr) {
+            string deviceId;
+            uint32_t error = provisioningInterface->DeviceId(deviceId);
+            if (error == Core::ERROR_NONE) {
+                printf("%s:%d [%s] Received deviceId '%s'.\n", __FILE__, __LINE__, __func__, deviceId.c_str());
+                result = deviceId.size();
+                if (result <= MaxIdLength) {
+                    std::copy(deviceId.begin(), deviceId.end(), Id);
+                } else {
+                    printf("%s:%d [%s] Received deviceId is too long [%d].\n", __FILE__, __LINE__, __func__, result);
+                    result = -result;
+                }
 
-        Core::ProxyType<Core::IIPC> message(Core::proxy_cast<Core::IIPC>(_deviceId));
-        uint32_t error = _channel.Invoke(message, IPC::CommunicationTimeOut);
-
-        result = -static_cast<int>(error);
-
-        if (error == Core::ERROR_NONE) {
-            result = _deviceId->Response().Length();
-
-            if (result <= MaxIdLength) {
-                ::memcpy(Id, _deviceId->Response().Value(), result);
-                printf("%s:%d [%s] Received deviceId '%s'.\n", __FILE__, __LINE__, __func__, string(Id, result).c_str());
             } else {
-                printf("%s:%d [%s] Received deviceId '%s' is too long.\n", __FILE__, __LINE__, __func__,
-                    _deviceId->Response().Value());
+                result = error;
                 result = -result;
             }
+
+            provisioningInterface->Release();
         }
+        client.Release();
     } else {
         printf("%s:%d [%s] Could not open link. error=%d\n", __FILE__, __LINE__, __func__, result);
     }
 
-    _channel.Close(1000); // give it 1S again to close...
-
-    return (result);
+    return result;
 }
 
 /*
@@ -109,42 +111,44 @@ int GetDeviceId(unsigned short MaxIdLength, char Id[])
  *
  */
 
-int GetDRMId(const char label[], const unsigned short MaxIdLength, char Id[])
-{
+int GetDRMId(const char label[], const unsigned short maxIdLength, char outId[])
+{   
+    auto engine = Core::ProxyType<RPC::InvokeServerType<1, 0, 4>>::Create();
+    auto client = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(GetEndPoint().c_str()), Core::ProxyType<Core::IIPCServer>(engine));
+
     int result = -1;
 
-    if (_channel.Open(1000) == Core::ERROR_NONE) { // Wait for 1 Second.
+    if ((client.IsValid() == true) && (client->IsOpen() == false)) {
+        Exchange::IProvisioning* provisioningInterface = client->Open<Exchange::IProvisioning>("Provisioning");
+        if (provisioningInterface != nullptr) {
+            uint8_t buffer[10 * 1024]; //should fit ;) 
+            uint16_t size = sizeof(buffer);
 
-        _drmId->Clear();
-        _drmId->Parameters() = string(label);
-        Core::ProxyType<Core::IIPC> message(Core::proxy_cast<Core::IIPC>(_drmId));
+            uint32_t error = provisioningInterface->DRMId(label, size, buffer);
 
-        uint32_t error = _channel.Invoke(message, IPC::CommunicationTimeOut);
-        result = -static_cast<int>(error);
+            if (error == Core::ERROR_NONE) {
 
-        if (error == Core::ERROR_NONE) {
+                // This is a huge encrypted blob, convert it to an uencrypted required info
+                result = ClearBlob(size, reinterpret_cast<const char*>(buffer) , maxIdLength, outId);
+                if (result > 0) {
+                    printf("%s:%d [%s] Received Provision Info for '%s' with length [%d].\n", __FILE__, __LINE__, __func__, label, result);
+                } else {
+                    printf("%s:%d [%s] Provisioning for %s too big. Length: %d - %d.\n", __FILE__, __LINE__, __func__, label, -result, maxIdLength);
+                }
 
-            // This is a huge encrypted blob, convert it to an uencrypted required info
-            result = ClearBlob(_drmId->Response().Length(), reinterpret_cast<const char*>(_drmId->Response().Frame()), MaxIdLength, Id);
-
-            if (result > 0) {
-                printf("%s:%d [%s] Received Provision Info for '%s' with length [%d].\n", __FILE__, __LINE__, __func__, label, result);
             } else {
-                printf("%s:%d [%s] Provisioning for %s too big. Length: %d - %d.\n", __FILE__, __LINE__, __func__, label, -result, MaxIdLength);
+                printf("%s:%d [%s] Failed to extract %s provisioning. Error code %d.\n", __FILE__, __LINE__, __func__, label, error);
             }
 
-            // Security, we want to get ride of the data.
-            _drmId->Response().Clear();
-        } else {
-            printf("%s:%d [%s] Failed to extract %s provisioning. Error code %d.\n", __FILE__, __LINE__, __func__, label, error);
+            std::fill_n(buffer, sizeof(buffer), 0);
+            provisioningInterface->Release();
         }
+        client.Release();
     } else {
-        printf("%s:%d [%s] Could not open the provisioning link for %s.\n", __FILE__, __LINE__, __func__, label);
+        printf("%s:%d [%s] Could not open link. error=%d\n", __FILE__, __LINE__, __func__, result);
     }
 
-    _channel.Close(1000); // give it 1S again to close...
-
-    return (result);
+    return result;
 }
 
 } // extern "C"

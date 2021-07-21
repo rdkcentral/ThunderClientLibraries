@@ -1,7 +1,7 @@
 # If not stated otherwise in this file or this component's license file the
 # following copyright and licenses apply:
 #
-# Copyright 2020 RDK Management
+# Copyright 2020 Metrological
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ message("Setup ${TARGET} v${PROJECT_VERSION}")
 
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
+find_package(${NAMESPACE}COM REQUIRED)
 find_package(libprovision REQUIRED)
 
 # Construct a library object
@@ -45,6 +46,11 @@ target_link_libraries(${TARGET}
         PUBLIC
           ${NAMESPACE}Core::${NAMESPACE}Core
           libprovision::libprovision
+        )
+
+target_link_libraries(${TARGET}
+        PUBLIC
+          ${NAMESPACE}COM::${NAMESPACE}COM
         )
 
 target_link_libraries(${TARGET}
@@ -89,3 +95,6 @@ InstallCMakeConfig(
 InstallPackageConfig(
         TARGETS ${TARGET} 
         DESCRIPTION "Link the binairy encryption library and the communications channel to the encrypted provisioning store together." )
+
+
+add_subdirectory(provision_proxy)
