@@ -15,10 +15,10 @@
  * limitations under the License.
  */
 
-#ifndef __OPEN_OCDM_EXT_H_
-#define __OPEN_OCDM_EXT_H_
+#pragma once
 
 #include "open_cdm.h"
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -221,8 +221,32 @@ OpenCDMError opencdm_system_teardown(struct OpenCDMSystem* system);
  */
 OpenCDMError
 opencdm_session_clean_decrypt_context(struct OpenCDMSession* mOpenCDMSession);
+
+
+/** Playback protection levels struct. */
+struct PlayLevels {
+    uint16_t _compressedDigitalVideoLevel;   //!< Compressed digital video output protection level.
+    uint16_t _uncompressedDigitalVideoLevel; //!< Uncompressed digital video output protection level.
+    uint16_t _analogVideoLevel;              //!< Analog video output protection level.
+    uint16_t _compressedDigitalAudioLevel;   //!< Compressed digital audio output protection level.
+    uint16_t _uncompressedDigitalAudioLevel; //!< Uncompressed digital audio output protection level.
+    uint32_t _maxResDecodeWidth;             //!< Max res decode width in pixels.
+    uint32_t _maxResDecodeHeight;            //!< Max res decode height in pixels.
+};
+/**
+ * Exposes PlayLevels struct from a json text file
+ * \param system exposed PlayLevels structure
+ * \param propertiesJSONText jsonFile containing the playlevels details
+ * \return Zero if successful, non-zero otherwise.
+ */
+OpenCDMError opencdm_system_ext_get_properties(struct PlayLevels* system, const char* propertiesJSONText);
+
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
 
-#endif // __OPEN_OCDM_EXT_H_
+
+
+
+
