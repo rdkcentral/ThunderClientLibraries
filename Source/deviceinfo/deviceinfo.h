@@ -24,7 +24,8 @@ typedef enum deviceinfo_hdcp_type {
     DEVICEINFO_HDCP_14,
     DEVICEINFO_HDCP_20,
     DEVICEINFO_HDCP_21,
-    DEVICEINFO_HDCP_22
+    DEVICEINFO_HDCP_22,
+    DEVICEINFO_HDCP_LENGTH
 } deviceinfo_hdcp_t;
 
 typedef enum deviceinfo_output_resolution_type {

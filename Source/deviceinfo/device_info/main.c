@@ -157,7 +157,10 @@ int main()
             bool atmos = false;
             bool hdr = false;
             bool cec = false;
-            uint8_t maxLength = 0;
+            uint8_t vidMaxLen = 0;
+            uint8_t audMaxLen = 0;
+            uint8_t resMaxLen = 0;
+            uint8_t index = 0;
 
             deviceinfo_hdcp_t hdcp = DEVICEINFO_HDCP_UNAVAILABLE;
 
@@ -172,21 +175,38 @@ int main()
 
             memset(resolutions, 0, sizeof(resolutions));
 
-            maxLength = sizeof(resolutions) / sizeof(deviceinfo_output_resolution_t);
-            deviceinfo_output_resolutions(resolutions, &maxLength);
+            resMaxLen = sizeof(resolutions) / sizeof(deviceinfo_output_resolution_t);
+            deviceinfo_output_resolutions(resolutions, &resMaxLen);
 
-            maxLength = sizeof(video_outputs) / sizeof(deviceinfo_video_output_t);
-            deviceinfo_video_outputs(video_outputs, &maxLength);
+            audMaxLen = sizeof(video_outputs) / sizeof(deviceinfo_video_output_t);
+            deviceinfo_video_outputs(video_outputs, &audMaxLen);
 
-            maxLength = sizeof(audio_outputs) / sizeof(deviceinfo_audio_output_t);
-            deviceinfo_audio_outputs(audio_outputs, &maxLength);
+            vidMaxLen = sizeof(audio_outputs) / sizeof(deviceinfo_audio_output_t);
+            deviceinfo_audio_outputs(audio_outputs, &vidMaxLen);
 
             deviceinfo_cec(&cec);
             deviceinfo_hdr(&hdr);
             deviceinfo_atmos(&atmos);
             deviceinfo_hdcp(&hdcp);
 
-            Trace("Summary: atmos: %s hdr: %s, cec: %s hdcp: %d", atmos ? "available" : "unavailable", hdr ? "available" : "unavailable", cec ? "available" : "unavailable", hdcp);
+            Trace("Summary:\n atmos: %s \nhdr: %s, \ncec: %s \nhdcp: %d", atmos ? "available" : "unavailable", hdr ? "available" : "unavailable", cec ? "available" : "unavailable", hdcp);
+            Trace("\nvideo outputs: [");
+            for(index = 0; index < vidMaxLen; index++)
+            {
+                Trace("\b%d ", video_outputs[index]);
+            }
+
+            Trace("\b]\naudio outputs: [");
+            for(index = 0; index < audMaxLen; index++)
+            {
+                Trace("\b%d ", audio_outputs[index]);
+            }
+            Trace("\b]\nres outputs: [");
+            for(index = 0; index < resMaxLen ; index++)
+            {
+                Trace("%d ", resolutions[index]);
+            }
+            Trace("\b");
 
             break;
         }
