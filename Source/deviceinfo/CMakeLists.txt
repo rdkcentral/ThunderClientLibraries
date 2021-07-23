@@ -32,7 +32,7 @@ find_package(${NAMESPACE}Tracing REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}COM REQUIRED)
 
-set(PUBLIC_HEADERS "include/deviceinfo.h")
+set(PUBLIC_HEADERS "deviceinfo.h")
 
 add_library(${TARGET}  SHARED 
     DeviceInfo.cpp
@@ -58,7 +58,6 @@ set_target_properties(${TARGET} PROPERTIES
 target_include_directories( ${TARGET}
         PUBLIC
           $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
           $<INSTALL_INTERFACE:include>
         )
 

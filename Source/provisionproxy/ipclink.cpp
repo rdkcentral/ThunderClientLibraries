@@ -2,7 +2,7 @@
  * If not stated otherwise in this file or this component's LICENSE file the
  * following copyright and licenses apply:
  *
- * Copyright 2020 RDK Management
+ * Copyright 2020 Metrological
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,14 +17,16 @@
  * limitations under the License.
  */
 
+// As this is an archive, it will not be the actal name that is used since the actual namee will be cdeclared (using the
+// defined name there) in the module that will turn this into a application/SO. However, we need to please Thunder
+// that a module name is defined before we can include the Thunder unit libraries. That is what we doe here :-)
+// NOTE: Do not declare the MODULE_NAME here as you will get a clash with the using application/SO.
 #define MODULE_NAME ProvisionProxy
 
 #include <core/core.h>
 #include <provision/DRMInfo.h>
 
 #include "IPCProvision.h"
-
-MODULE_NAME_DECLARATION(BUILD_REFERENCE)
 
 using namespace WPEFramework;
 

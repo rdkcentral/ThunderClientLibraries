@@ -36,6 +36,10 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-as-needed")
 option(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY "Include explicitly a software based cryptography library" OFF)
 
 find_package(ProxyStubGenerator REQUIRED)
+
+find_package(CompileSettingsDebug CONFIG REQUIRED)
+find_package(${NAMESPACE}Core REQUIRED)
+find_package(${NAMESPACE}Tracing REQUIRED)
 find_package(${NAMESPACE}Plugins REQUIRED)
 
 ProxyStubGenerator(

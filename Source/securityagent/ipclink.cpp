@@ -2,7 +2,7 @@
  * If not stated otherwise in this file or this component's LICENSE file the
  * following copyright and licenses apply:
  *
- * Copyright 2020 RDK Management
+ * Copyright 2020 Metrological
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,7 +66,7 @@ int GetToken(unsigned short maxLength, unsigned short inLength, unsigned char bu
             uint32_t error = securityAgentInterface->CreateToken(inLength, buffer, token);
 
             if (error == Core::ERROR_NONE) {
-                result = token.length();
+                result = static_cast<uint32_t>(token.length());
 
                 if (result <= maxLength) {
                     std::copy(std::begin(token), std::end(token), buffer);
