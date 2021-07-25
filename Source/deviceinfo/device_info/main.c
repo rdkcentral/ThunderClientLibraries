@@ -305,5 +305,7 @@ int main()
 
     Trace("Done");
 
+    deviceinfo_dispose();
+
     return 0;
 }

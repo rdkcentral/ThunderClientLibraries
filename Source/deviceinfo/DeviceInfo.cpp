@@ -1064,4 +1064,10 @@ uint32_t deviceinfo_platform_name(char buffer[], uint8_t* length)
     return DeviceInfoLink::Instance().Deviceinfo_platform_name(buffer,length);
 }
 
+
+void deviceinfo_dispose() {
+    Core::Singleton::Dispose();
+}
+
 } // extern "C"
+

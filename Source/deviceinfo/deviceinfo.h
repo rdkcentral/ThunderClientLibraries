@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #undef EXTERNAL
-#ifdef _MSVC_LANG
+#if defined(WIN32) || defined(_WINDOWS) || defined (__CYGWIN__) || defined(_WIN64)
 #ifdef DEVICEINFO_EXPORTS
 #define EXTERNAL __declspec(dllexport)
 #else
@@ -277,6 +277,12 @@ EXTERNAL uint32_t deviceinfo_cec(bool* supportsCEC);
  * @return Core::ERROR_NONE if success, appropriate error otherwise.
  */
 EXTERNAL uint32_t deviceinfo_hdcp(deviceinfo_hdcp_t* supportedHDCP);
+
+/**
+ * @brief Close the cached open connection if it exists.
+ *
+ */
+EXTERNAL void deviceinfo_dispose();
 
 #ifdef __cplusplus
 } // extern "C"

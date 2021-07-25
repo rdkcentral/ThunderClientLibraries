@@ -191,7 +191,7 @@
     <ClCompile Include="DeviceInfo.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\deviceinfo.h" />
+    <ClInclude Include="deviceinfo.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
