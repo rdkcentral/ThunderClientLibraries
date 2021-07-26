@@ -174,12 +174,6 @@ private:
 
         
     }
-    PluginHost::ISubSystem*  _subsysInterface;
-    const PluginHost::ISubSystem::IIdentifier* _identifierInterface;
-    Exchange::IDeviceCapabilities* _deviceCapabilitiesInterface; 
-    Exchange::IDeviceMetadata* _deviceMetaDataInterface ;
-
-
 
     public:
     uint32_t Deviceinfo_model_name(char buffer[], uint8_t* length)
@@ -207,7 +201,6 @@ private:
 
         return result;
     }
-
 
     uint32_t Deviceinfo_model_year(char buffer[], uint8_t* length)
     {
@@ -608,6 +601,11 @@ private:
         }
         return result;
     }
+
+    PluginHost::ISubSystem*  _subsysInterface;
+    const PluginHost::ISubSystem::IIdentifier* _identifierInterface;
+    Exchange::IDeviceCapabilities* _deviceCapabilitiesInterface; 
+    Exchange::IDeviceMetadata* _deviceMetaDataInterface ;
 
 };
 
