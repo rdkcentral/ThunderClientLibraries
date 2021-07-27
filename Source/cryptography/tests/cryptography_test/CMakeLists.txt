@@ -18,7 +18,7 @@
 option(BUILD_NETFLIX_VAULT_GENERATOR "Build Netflix Vault generator" OFF)
 
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../Source)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/../../../../Source)
 
 set(CMAKE_CXX_STANDARD 11)
 
@@ -31,8 +31,8 @@ add_executable(cgimptests
 
 find_package(OpenSSL)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../Source/cryptography)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../Source/cryptography/implementation)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/../../../cryptography)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/../../../cryptography/implementation)
 include_directories($<INSTALL_INTERFACE:include/${NAMESPACE}>)
 
 target_link_libraries(cgimptests
@@ -52,8 +52,8 @@ add_executable(cgfacetests
 
 find_package(OpenSSL)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../Source/cryptography)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../Source/cryptography/implementation)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/../../../cryptography)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/../../../cryptography/implementation)
 include_directories($<INSTALL_INTERFACE:include/${NAMESPACE}>)
 
 set_target_properties(cgfacetests PROPERTIES
@@ -75,8 +75,8 @@ add_executable(cgnfsecuritytests
         Test.c
     )
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../Source/cryptography)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../Source/cryptography/implementation)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/../../../cryptography)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/../../../cryptography/implementation)
 include_directories($<INSTALL_INTERFACE:include/${NAMESPACE}>)
 
 set_target_properties(cgnfsecuritytests PROPERTIES
