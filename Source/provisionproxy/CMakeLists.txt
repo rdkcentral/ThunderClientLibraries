@@ -96,5 +96,3 @@ InstallPackageConfig(
         TARGETS ${TARGET} 
         DESCRIPTION "Link the binairy encryption library and the communications channel to the encrypted provisioning store together." )
 
-
-add_subdirectory(provision_proxy)
