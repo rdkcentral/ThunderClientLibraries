@@ -32,6 +32,7 @@ private:
     using BaseClass = RPC::SmartInterfaceType<Exchange::IPlayerProperties>;
     using DolbyModeAudioUpdateCallbacks = std::map<playerinfo_dolby_audio_updated_cb, void*>;
     using OperationalStateChangeCallbacks = std::map<playerinfo_operational_state_change_cb, void*>;
+    friend class WPEFramework::Core::SingletonType<PlayerInfo>;
 
     //CONSTRUCTORS
     PlayerInfo(const string& callsign)
@@ -131,9 +132,7 @@ public:
 
     static PlayerInfo& Instance()
     {
-        static PlayerInfo instance("PlayerInfo");
-
-        return instance;
+        return WPEFramework::Core::SingletonType<PlayerInfo>::Instance("PlayerInfo");
     }
 
 public:
@@ -613,5 +612,9 @@ uint32_t playerinfo_get_dolby_mode(playerinfo_dolby_mode_t* mode)
         }
     }
     return result;
+}
+
+void playerinfo_dispose() {
+    Core::Singleton::Dispose();
 }
 }

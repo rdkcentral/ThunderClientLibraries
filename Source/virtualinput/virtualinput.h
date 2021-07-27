@@ -79,6 +79,11 @@ typedef void (*FNTouchEvent)(enum touchactiontype type, unsigned short index,  u
 EXTERNAL void* virtualinput_open(const char listenerName[], const char connector[], FNKeyEvent keyCallback, FNMouseEvent mouseCallback, FNTouchEvent touchCallback);
 EXTERNAL void  virtualinput_close(void* handle);
 
+/**
+ * @brief Close the cached open connection if it exists.
+ *
+ */
+EXTERNAL void virtualinput_dispose();
 #ifdef __cplusplus
 }
 #endif
