@@ -35,7 +35,7 @@ extern "C" {
 }
 #endif
 
-
+#include <mutex>
 #include <algorithm>
 
 #include <core/core.h>
@@ -43,6 +43,31 @@ extern "C" {
 #include <interfaces/IComposition.h>
 #include <virtualinput/virtualinput.h>
 #include "../Client.h"
+
+template <class T>
+struct _remove_const {
+    typedef T type;
+};
+
+template <class T>
+struct _remove_const <T const> {
+    typedef T type;
+};
+
+template <class T>
+struct _remove_const <T *> {
+    typedef T * type;
+};
+
+template <class T>
+struct _remove_const <T const *>{
+    typedef T * type;
+};
+
+// Suppress compiler warnings of unused (parameters)
+// Omitting the name is sufficient but a search on this keyword provides easy access to the location
+template <typename T>
+void silence (T &&) {}
 
 static const char* connectorNameVirtualInput = "/tmp/keyhandler";
 
@@ -66,7 +91,362 @@ private:
     
     Display(const std::string& displayName);
 
+        class DMATransfer {
+
+            private : 
+
+                // Actual socket for communication
+                int _transfer;
+
+                struct sockaddr_un _addr;
+
+                bool _valid;
+
+                using valid_t = decltype (_valid);
+
+                using timeout_t = _remove_const < decltype ( Core::infinite ) > :: type;
+
+            public :
+
+                DMATransfer () : _transfer { -1 }, _addr { AF_UNIX, "/tmp/Compositor/DMA" }, _valid { Initialize () } {}
+                ~DMATransfer () {
+                    /* bool */ Deinitialize ();
+                }
+
+                DMATransfer (DMATransfer const &) = delete;
+                DMATransfer & operator = (DMATransfer const &) = delete;
+
+                valid_t Valid () const { return _valid; }
+
+                valid_t Receive (std::string & msg, int & fd) {
+                    valid_t _ret = Valid ();
+
+                    if (_ret != true) {
+                        TRACE (Trace::Information, (_T ("Unable to receive (DMA) data.")));
+                    }
+                    else {
+                        _ret = _Receive (msg, fd);
+                    }
+
+                    return _ret;
+                }
+
+                valid_t Send (std::string const & msg, int fd) {
+                    valid_t _ret = Valid ();
+
+                    if (_ret != true) {
+                        TRACE (Trace::Information, (_T ("Unable to send (DMA) data.")));
+                    }
+                    else {
+                        _ret = _Send (msg, fd);
+                    }
+
+                    return _ret;
+                }
+
+                valid_t Connect () {
+                    valid_t _ret = false;
+
+                    timeout_t _timeout = Core::infinite;
+
+                    _ret = _Connect (_timeout);
+
+                    return _ret;
+                }
+
+                valid_t Disconnect () {
+                     valid_t _ret = false;
+
+                    timeout_t _timeout = Core::infinite;
+
+                    _ret = _Disconnect (_timeout);
+
+                    return _ret;
+                }
+
+            private :
+
+                valid_t  Initialize () {
+                    valid_t _ret = false;
+
+                    _transfer = socket (_addr.sun_family /* domain */, SOCK_STREAM /* type */, 0 /* protocol */);
+                    _ret = _transfer != -1;
+
+                    return _ret;
+                }
+
+                valid_t Deinitialize () {
+                    valid_t _ret = false;
+
+                    _ret = Disconnect ();
+
+                    return _ret;
+                }
+
+                valid_t _Connect (timeout_t timeout) {
+                    silence (timeout);
+
+                    valid_t _ret = _transfer > -1;
+
+                    _ret = _ret && connect (_transfer, reinterpret_cast < struct sockaddr const * > (&_addr), sizeof (_addr)) == 0;
+
+                    decltype (EISCONN) _err = errno;
+
+                    // Already connected is not an error
+                    _ret = _ret != false || _err == EISCONN;
+
+                    return _ret;
+                }
+
+                valid_t _Disconnect (timeout_t timeout) {
+                    silence (timeout);
+
+                    valid_t _ret = _transfer > -1;
+
+                    _ret = _ret && close (_transfer) == 0;
+
+                    _transfer = -1;
+
+                    return _ret;
+                }
+
+                valid_t _Send (std::string const & msg, int fd) {
+                    valid_t _ret = false;
+
+                    // Logical const
+                    static_assert ((std::is_same <char *, _remove_const  < decltype ( & msg [0] ) > :: type >:: value) != false);
+                    char * _buf  = const_cast <char *> ( & msg [0] );
+
+                    size_t const _bufsize = msg.size ();
+
+                    if (_bufsize > 0) {
+
+                        // Scatter array for vector I/O
+                        struct iovec _iov;
+
+                        // Starting address
+                        _iov.iov_base = reinterpret_cast <void *> (_buf);
+                        // Number of bytes to transfer
+                        _iov.iov_len = _bufsize;
+
+                        // Actual message
+                        struct msghdr _msgh {};
+
+                        // Optional address
+                        _msgh.msg_name = nullptr;
+                        // Size of address
+                        _msgh.msg_namelen = 0;
+                        // Scatter array
+                        _msgh.msg_iov = &_iov;
+                        // Elements in msg_iov
+                        _msgh.msg_iovlen = 1;
+
+                        // Ancillary data
+                        // The macro returns the number of bytes an ancillary element with payload of the passed in data length, eg size of ancillary data to be sent
+                        char _control [CMSG_SPACE (sizeof ( decltype ( fd) ))];
+
+                        if (fd > -1) {
+                            // Contruct ancillary data to be added to the transfer via the control message
+
+                            // Ancillary data, pointer
+                            _msgh.msg_control = _control;
+
+                            // Ancillery data buffer length
+                            _msgh.msg_controllen = sizeof ( _control );
+
+                            // Ancillary data should be access via cmsg macros
+                            // https://linux.die.net/man/2/recvmsg
+                            // https://linux.die.net/man/3/cmsg
+                            // https://linux.die.net/man/2/setsockopt
+                            // https://www.man7.org/linux/man-pages/man7/unix.7.html
+
+                            // Control message
+
+                            // Pointer to the first cmsghdr in the ancillary data buffer associated with the passed msgh
+                            struct cmsghdr * _cmsgh = CMSG_FIRSTHDR ( &_msgh );
+
+                            if (_cmsgh != nullptr) {
+                                // Originating protocol
+                                // To manipulate options at the sockets API level
+                                _cmsgh->cmsg_level = SOL_SOCKET;
+
+                                // Protocol specific type
+                                // Option at the API level, send or receive a set of open file descriptors from another process
+                                _cmsgh->cmsg_type = SCM_RIGHTS;
+
+                                // The value to store in the cmsg_len member of the cmsghdr structure, taking into account any necessary alignmen, eg byte count of control message including header
+                                _cmsgh->cmsg_len = CMSG_LEN (sizeof ( decltype ( fd ) ));
+
+                                // Initialize the payload
+                                // Pointer to the data portion of a cmsghdr, ie unsigned char []
+                                * reinterpret_cast < decltype (fd) * > ( CMSG_DATA ( _cmsgh ) ) = fd;
+
+                                _ret = true;
+                            }
+                            else {
+                                // Error
+                            }
+                        }
+                        else {
+                            // No extra payload, ie  file descriptor(s), to include
+                            _msgh.msg_control = nullptr;
+                            _msgh.msg_controllen = 0;
+
+                            _ret = true;
+                        }
+
+                        if (_ret != false) {
+                            // Configuration succeeded
+
+                            // https://linux.die.net/man/2/sendmsg
+                            // https://linux.die.net/man/2/write
+                            // Zero flags is equivalent to write
+
+                            ssize_t _size = -1;
+                            socklen_t _len = sizeof (_size);
+
+                            // Only send data if the buffer is large enough to contain all data
+                            if (getsockopt (_transfer, SOL_SOCKET, SO_SNDBUF, &_size, &_len) == 0) {
+                                // Most options use type int, ssize_t was just a placeholder
+                                static_assert (sizeof (int) <= sizeof (ssize_t));
+                                TRACE (Trace::Information, (_T ("The sending buffer capacity equals %d bytes."), static_cast < int > (_size)));
+
+// TOOD: do not send if the sending buffer is too small
+                                _size = sendmsg (_transfer, &_msgh, 0);
+                            }
+                            else {
+                                // Unable to determine buffer capacity
+                            }
+
+                            _ret = _size != -1;
+
+                            if (_ret != false) {
+                                TRACE (Trace::Information, (_T ("Send %d bytes out of %d."), _size, _msgh.msg_iov->iov_len /* just a single element */ + _msgh.msg_controllen));
+                            }
+                            else {
+                                TRACE (Trace::Error, (_T ("Failed to send data.")));
+                            }
+                        }
+
+                    }
+                    else {
+                        TRACE (Trace::Error, (_T ("A data message to be send cannot be empty!")));
+                    }
+
+                    return _ret;
+                }
+
+                valid_t _Receive (std::string & msg, int & fd) {
+                    bool _ret = false;
+
+                    msg.clear ();
+                    fd = -1;
+
+                    ssize_t _size = -1;
+                    socklen_t _len = sizeof (_size);
+
+                    if (getsockopt (_transfer, SOL_SOCKET, SO_RCVBUF, &_size, &_len) == 0) {
+                        TRACE (Trace::Information, (_T ("The receiving buffer maximum capacity equals %d [bytes]."), _size));
+
+                        // Most options use type int, ssize_t was just a placeholder
+                        static_assert (sizeof (int) <= sizeof (ssize_t));
+                        msg.reserve (static_cast < int > (_size));
+                    }
+                    else {
+                        // Unable to determine buffer capacity
+                        TRACE (Trace::Information, (_T ("Unable to determine buffer maximum cpacity. Using %d [bytes] instead."), msg.capacity ()));
+                    }
+
+                    size_t const _bufsize = msg.capacity ();
+
+                    if (_bufsize > 0) {
+                        static_assert ((std::is_same <char *, _remove_const  < decltype ( & msg [0] ) > :: type >:: value) != false);
+                        char _buf [_bufsize];
+
+                        using fd_t = std::remove_reference < decltype (fd) > :: type;
+
+                        // Scatter array for vector I/O
+                        struct iovec _iov;
+
+                        // Starting address
+                        _iov.iov_base = reinterpret_cast <void *> ( &_buf [0] );
+                        // Number of bytes to transfer
+                        _iov.iov_len = _bufsize;
+
+                        // Actual message
+                        struct msghdr _msgh {};
+
+                        // Optional address
+                        _msgh.msg_name = nullptr;
+                        // Size of address
+                        _msgh.msg_namelen = 0;
+                        // Elements in msg_iov
+                        _msgh.msg_iovlen = 1;
+                        // Scatter array
+                        _msgh.msg_iov = &_iov;
+
+                        // Ancillary data
+                        // The macro returns the number of bytes an ancillary element with payload of the passed in data length, eg size of ancillary data to be sent
+                        char _control [CMSG_SPACE (sizeof ( fd_t ))];
+
+                        // Ancillary data, pointer
+                        _msgh.msg_control = _control;
+
+                        // Ancillary data buffer length
+                        _msgh.msg_controllen = sizeof (_control);
+
+                        // No flags set
+// TODO: do not receive if the receiving buffer is too small
+                        _size = recvmsg (_transfer, &_msgh, 0);
+
+                        _ret = _size > 0;
+
+                        switch (_size) {
+                            case -1 :   // Error
+                                        {
+                                            // TRACE (Trace::Error, (_T ("Error receiving remote (DMA) data.")));
+                                            break;
+                                        }
+                            case 0  :   // Peer has done an orderly shutdown, before any data was received
+                                        {
+                                            // TRACE (Trace::Error, (_T ("Error receiving remote (DMA) data. Client may have become unavailable.")));
+                                            break;
+                                        }
+                            default :   // Data
+                                        {
+                                            // Extract the file descriptor information
+                                            TRACE (Trace::Information, (_T ("Received %d bytes."), _size));
+
+                                            // Pointer to the first cmsghdr in the ancillary data buffer associated with the passed msgh
+                                            struct cmsghdr * _cmsgh = CMSG_FIRSTHDR ( &_msgh );
+
+                                            // Check for the expected properties the client should have set
+                                            if (_cmsgh != nullptr 
+                                                && _cmsgh->cmsg_level == SOL_SOCKET 
+                                                && _cmsgh->cmsg_type == SCM_RIGHTS) {
+
+                                                // The macro returns a pointer to the data portion of a cmsghdr.
+                                                fd = * reinterpret_cast < fd_t * > ( CMSG_DATA ( _cmsgh ) );
+                                            }
+                                            else {
+                                                TRACE (Trace::Information, (_T ("No (valid) ancillary data received.")));
+                                            }
+
+                                            msg.assign (_buf, _size);
+                                        }
+                        }
+                    }
+                    else {
+                        // Error
+                        TRACE (Trace::Error, (_T ("A receiving data buffer (message) cannot be empty!")));
+                    }
+
+                    return _ret;
+                }
+        };
+
     class SurfaceImplementation : public Compositor::IDisplay::ISurface {
+
     public:
         SurfaceImplementation() = delete;
         SurfaceImplementation(const SurfaceImplementation&) = delete;
@@ -161,9 +541,13 @@ private:
             }
         }
 
-        inline void ScanOut() {
-            if( _remoteRenderer != nullptr ) {
-                _remoteRenderer->ScanOut();
+        inline void ScanOut () {
+            // A remote ClientSurface has been created and the IRender interface is supported so the compositor is able to support scan out for this client
+            if ( _remoteRenderer != nullptr && _remoteClient != nullptr) {
+                _remoteRenderer->ScanOut ();
+            }
+            else {
+                TRACE (Trace::Error, (_T ("Remote scan out is not (yet) supported. Has a remote surface been created? Is the IRender interface available?")));
             }
         }
 
@@ -183,6 +567,11 @@ private:
             uint32_t _width;
             uint32_t _height;
         } _nativeSurface;
+
+        struct {
+            int _fd;
+            struct gbm_bo * _bo;
+        } _prime;
     };
 
     using InputFunction = std::function<void(SurfaceImplementation*)>;
@@ -329,6 +718,28 @@ public:
     ISurface* SurfaceByName(const std::string& name) override;
     ISurface* Create( const std::string& name, const uint32_t width, const uint32_t height) override;
 
+
+    bool FDFor (Exchange::IComposition::IClient const & client, int & fd) {
+        std::lock_guard < decltype (_surfaceLock) > const _lock (_surfaceLock);
+
+        bool _ret = false;
+        fd = -1;
+
+        if (_dma != nullptr) {
+            std::string _msg = client.Name ();
+
+            // Announce ourself to indicate the data exchange is a request for (file descriptor) data
+            // Then, after receiving the data DMA is no longer needed for this client
+            _ret = _dma->Connect () && _dma->Send (_msg, fd) && _dma->Receive (_msg, fd) && _dma->Disconnect ();
+        }
+
+        if (_ret != true) {
+            TRACE (Trace::Error, (_T ("Unable to receive (DMA) data for %s."), client.Name ().c_str ()));
+        }
+
+        return _ret;
+    }
+
 private:
     inline Exchange::IComposition::IClient* CreateRemoteSurface(const std::string& name, const uint32_t width, const uint32_t height);
     inline void Register(SurfaceImplementation* surface);
@@ -446,6 +857,9 @@ private:
         struct gbm_device * _device;
         int _fd;
     } _nativeDisplay;
+
+    DMATransfer * _dma;
+    std::mutex _surfaceLock;
 };
 
 Display::DisplayMap Display::_displays;
@@ -462,7 +876,7 @@ Display::SurfaceImplementation::SurfaceImplementation(
     , _touchpanel(nullptr)
     , _remoteClient(nullptr)
     , _remoteRenderer(nullptr)
-    , _nativeSurface {nullptr, 0, 0}
+    , _nativeSurface { nullptr, 0, 0 }
 {
     _nativeSurface._surf = gbm_surface_create(_display.Native (), width, height, RenderDevice::SupportedBufferType (), GBM_BO_USE_RENDERING /* used for rendering */);
 
@@ -482,7 +896,22 @@ Display::SurfaceImplementation::SurfaceImplementation(
         if(_remoteRenderer == nullptr) {
             TRACE_L1(_T("Could not aquire remote renderer for surface %s."), name.c_str());
         }
+        else {
 
+            if (_display.FDFor (*_remoteClient, _prime._fd) != true) {
+                TRACE (Trace::Error, (_T ( "Failed to setup a share for rendering results!")));
+
+                _remoteRenderer->Release ();
+                _remoteClient->Release ();
+
+                delete _remoteRenderer;
+                delete _remoteClient;
+
+                _remoteRenderer = nullptr;
+                _remoteClient = nullptr;
+            }
+
+        }
     } else {
         TRACE_L1(_T("Could not create remote surface for surface %s."), name.c_str());
     }
@@ -524,6 +953,7 @@ Display::Display(const string& name)
     , _refCount(0)
     , _remoteDisplay(nullptr)
     , _nativeDisplay {nullptr, -1}
+    , _dma { nullptr }
 {
     Initialize();
 
@@ -542,14 +972,31 @@ Display::Display(const string& name)
 
             if (_device != nullptr) {
                 TRACE (Trace::Information, (_T ("Opened RenderDevice: %s"), _it->c_str ()));
+
+                _dma = new DMATransfer ();
+
+                if (_dma == nullptr || _dma->Valid () != true) {
+                    TRACE (Trace::Error, (_T ("DMA transfers are not supported.")));
+
+                    delete _dma;
+                    _dma = nullptr;
+                }
+                else {
+                    break;
+                }
             }
-            break;
+
+            /* int */ close (_fd);
         }
     }
 }
 
 Display::~Display()
 {
+    if (_dma != nullptr) {
+        delete _dma;
+    }
+
     decltype (_nativeDisplay._fd) & _fd = _nativeDisplay._fd;
     decltype (_nativeDisplay._device) & _device = _nativeDisplay._device;
 
@@ -561,6 +1008,7 @@ Display::~Display()
         close (_fd);
     }
 
+    _dma = nullptr;
     _device = nullptr;
     _fd = -1;
 
