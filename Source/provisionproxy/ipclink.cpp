@@ -72,7 +72,7 @@ int GetDeviceId(unsigned short MaxIdLength, char Id[])
             uint32_t error = provisioningInterface->DeviceId(deviceId);
             if (error == Core::ERROR_NONE) {
                 printf("%s:%d [%s] Received deviceId '%s'.\n", __FILE__, __LINE__, __func__, deviceId.c_str());
-                result = deviceId.size();
+                result = static_cast<int>(deviceId.size());
                 if (result <= MaxIdLength) {
                     std::copy(deviceId.begin(), deviceId.end(), Id);
                 } else {
