@@ -109,6 +109,22 @@ typedef enum {
     PersistentLicense
 } LicenseType;
 
+// ISO/IEC 23001-7 defines two Common Encryption Schemes with Full Sample and Subsample modes
+typedef enum {
+    Clear = 0,
+    AesCtr_Cenc,    // AES-CTR mode and Sub-Sample encryption
+    AesCbc_Cbc1,    // AES-CBC mode and Sub-Sample encryption
+    AesCtr_Cens,    // AES-CTR mode and Sub-Sample + patterned encryption
+    AesCbc_Cbcs     // AES-CBC mode and Sub-Sample + patterned encryption + Constant IV
+} EncryptionScheme;
+
+//CENC3.0 pattern is a number of encrypted blocks followed a number of clear blocks after which the pattern repeats.
+typedef struct {
+    uint32_t encrypted_blocks;
+    uint32_t clear_blocks;
+} EncryptionPattern;
+
+
 /**
  * Key status.
  */
@@ -488,6 +504,8 @@ EXTERNAL OpenCDMError opencdm_session_close(struct OpenCDMSession* session);
  * \param encrypted Buffer containing encrypted data. If applicable, decrypted
  * data will be stored here after this call returns.
  * \param encryptedLength Length of encrypted data buffer (in bytes).
+ * \param encScheme CENC Schemes as defined in EncryptionScheme enum
+ * \param pattern Encryption pattern containing number of Encrypted and Clear blocks.
  * \param IV Initial vector (IV) used during decryption. Can be NULL, in that
  * case and IV of all zeroes is assumed.
  * \param IVLength Length of IV buffer (in bytes).
@@ -501,6 +519,8 @@ EXTERNAL OpenCDMError opencdm_session_close(struct OpenCDMSession* session);
 EXTERNAL OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
     uint8_t encrypted[],
     const uint32_t encryptedLength,
+    const EncryptionScheme encScheme,
+    const EncryptionPattern pattern, 
     const uint8_t* IV, uint16_t IVLength,
     const uint8_t* keyId, const uint16_t keyIdLength,
     uint32_t initWithLast15 = 0);
@@ -508,6 +528,8 @@ EXTERNAL OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
 EXTERNAL OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
     uint8_t encrypted[],
     const uint32_t encryptedLength,
+    const EncryptionScheme encScheme,
+    const EncryptionPattern pattern,
     const uint8_t* IV, uint16_t IVLength,
     const uint8_t* keyId, const uint16_t keyIdLength,
     uint32_t initWithLast15);
