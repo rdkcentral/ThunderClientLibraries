@@ -175,7 +175,7 @@ private:
         
     }
 
-    public:
+public:
     uint32_t Deviceinfo_model_name(char buffer[], uint8_t* length)
     {
         uint32_t result = Core::ERROR_UNAVAILABLE;
@@ -602,6 +602,7 @@ private:
         return result;
     }
 
+private:
     PluginHost::ISubSystem*  _subsysInterface;
     const PluginHost::ISubSystem::IIdentifier* _identifierInterface;
     Exchange::IDeviceCapabilities* _deviceCapabilitiesInterface; 
