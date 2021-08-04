@@ -1,7 +1,7 @@
 # If not stated otherwise in this file or this component's license file the
 # following copyright and licenses apply:
 #
-# Copyright 2020 RDK Management
+# Copyright 2020 Metrological
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ find_package(${NAMESPACE}Plugins REQUIRED)
 
 ProxyStubGenerator(
     NAMESPACE "WPEFramework::Cryptography" 
-    INPUT "${CMAKE_CURRENT_SOURCE_DIR}" 
+    INPUT "${CMAKE_CURRENT_LIST_DIR}"
     OUTDIR "${CMAKE_CURRENT_BINARY_DIR}/generated/proxystubs"
 )
 
@@ -69,17 +69,17 @@ target_link_libraries(${TARGET}
 
 target_include_directories(${TARGET}
     PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/implementation>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/implementation>
         $<INSTALL_INTERFACE:include/${NAMESPACE}/cryptography>
 )
 
 set(PUBLIC_HEADERS
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/ICryptography.h>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Module.h>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/INetflixSecurity.h>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/cryptography.h>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/cryptography_vault_ids.h>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/ICryptography.h>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/Module.h>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/INetflixSecurity.h>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/cryptography.h>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/cryptography_vault_ids.h>
 )
 
 set_target_properties(${TARGET} PROPERTIES
@@ -134,8 +134,8 @@ if(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY)
 
     target_include_directories(${TARGET}Software 
         PRIVATE
-            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/implementation>
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/implementation>
         PUBLIC
             $<INSTALL_INTERFACE:include/${NAMESPACE}/cryptography>
     )
