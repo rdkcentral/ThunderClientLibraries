@@ -297,6 +297,7 @@ private:
                 }
             }
         }
+        _lock.Unlock();
         if (result == Core::ERROR_NONE ) {
             auto size = modelName.size();
             if(*length <= size){
@@ -308,7 +309,6 @@ private:
         } else {
             *length = 0;
         }
-        _lock.Unlock();
         return result;
     }
 
@@ -336,6 +336,7 @@ private:
                 }
             }
         }
+        _lock.Unlock();
         if (result == Core::ERROR_NONE ) {
             string year = Core::ToString(modelYear) ;
             auto size = year.size();
@@ -348,7 +349,6 @@ private:
         } else {
             *length = 0;
         }
-        _lock.Unlock();
         return result;
     }
 
@@ -377,6 +377,7 @@ private:
                 }
             }
         }
+        _lock.Unlock();
         if (result == Core::ERROR_NONE ) {
             auto size = integratorName.size();
             if(*length <= size){
@@ -388,7 +389,6 @@ private:
         } else {
             *length = 0;
         }
-        _lock.Unlock();
         return result;
     }
 
@@ -416,6 +416,7 @@ private:
                 }
             }
         }
+        _lock.Unlock();
         if (result == Core::ERROR_NONE ) {
             string year = Core::ToString(friendlyName) ;
             auto size = friendlyName.size();
@@ -428,7 +429,6 @@ private:
         } else {
             *length = 0;
         }
-        _lock.Unlock();
         return result;
     }
 
@@ -454,6 +454,7 @@ private:
                 }
             }
         }
+        _lock.Unlock();
         if (result == Core::ERROR_NONE ) {
             string year = Core::ToString(platformName) ;
             auto size = platformName.size();
@@ -466,7 +467,6 @@ private:
         } else {
             *length = 0; 
         }
-        _lock.Unlock();
         return result;
     }
 
@@ -490,6 +490,7 @@ private:
                 result = Core::ERROR_NONE;
             }
         }
+        _lock.Unlock();
         if (result == Core::ERROR_NONE)
         {
             auto size = newValue.size();
@@ -505,7 +506,6 @@ private:
         {
             *length = 0;
         }
-        _lock.Unlock();
         return result;
     }
 
@@ -528,6 +528,7 @@ private:
                 result = Core::ERROR_NONE;
             }
         }
+        _lock.Unlock();
         if (result == Core::ERROR_NONE)
         {
             auto size = newValue.size();
@@ -541,7 +542,6 @@ private:
         } else {
             *length = 0;
         }
-        _lock.Unlock();
         return result;
     }
 
@@ -549,8 +549,6 @@ private:
     {
         ASSERT(length != nullptr);
         uint32_t result = Core::ERROR_UNAVAILABLE;
-        _lock.Lock();
-
         std::string newValue;
         _lock.Lock();
         if (_firmwareVersion.IsSet() == true)
@@ -566,6 +564,7 @@ private:
                 result = Core::ERROR_NONE;
             }
         }
+        _lock.Unlock();
         if (result == Core::ERROR_NONE)
         {
             auto size = newValue.size();
@@ -579,7 +578,6 @@ private:
         } else {
             *length = 0;
         }
-        _lock.Unlock();
         return result;
     }
 
@@ -619,8 +617,8 @@ private:
     {
         ASSERT(length != nullptr);
         uint32_t result = Core::ERROR_UNAVAILABLE;
-        _lock.Lock();
         string id;
+        _lock.Lock();
         if ( _idStr.IsSet() == true)
         {
             id = _idStr;
@@ -636,6 +634,7 @@ private:
                 result = Core::ERROR_NONE;
             }
         }
+        _lock.Unlock();
         if (result == Core::ERROR_NONE)
         {
             if (id.size() < *length) { 
@@ -650,7 +649,6 @@ private:
             *length = 0;
         }
 
-        _lock.Unlock();
         return result;
     }
 
