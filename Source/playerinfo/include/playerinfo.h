@@ -282,6 +282,12 @@ EXTERNAL uint32_t playerinfo_set_dolby_mode(const playerinfo_dolby_mode_t mode);
  */
 EXTERNAL uint32_t playerinfo_get_dolby_mode(playerinfo_dolby_mode_t* mode);
 
+/**
+ * @brief Close the cached open connection if it exists.
+ *
+ */
+EXTERNAL void playerinfo_dispose();
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

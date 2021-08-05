@@ -56,6 +56,12 @@ extern "C" {
 	 */
 	int EXTERNAL GetToken(unsigned short maxLength, unsigned short inLength, unsigned char buffer[]);
 
+	/**
+	 * @brief Close the cached open connection if it exists.
+	 *
+	 */
+	void EXTERNAL securityagent_dispose();
+
 #ifdef __cplusplus
 }
 #endif

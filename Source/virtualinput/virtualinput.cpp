@@ -236,6 +236,10 @@ void virtualinput_close(void* handle)
     delete reinterpret_cast<VirtualInput::Controller*>(handle);
 }
 
+void virtualinput_dispose() {
+    Core::Singleton::Dispose();
+}
+
 #ifdef __cplusplus
 }
 #endif

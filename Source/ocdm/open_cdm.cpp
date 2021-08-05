@@ -489,6 +489,10 @@ OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
 }
 
 
+void opencdm_dispose() {
+    Core::Singleton::Dispose();
+}
+
 bool OpenCDMAccessor::WaitForKey(const uint8_t keyLength, const uint8_t keyId[],
         const uint32_t waitTime,
         const Exchange::ISession::KeyStatus status,

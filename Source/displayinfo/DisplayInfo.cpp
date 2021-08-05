@@ -30,6 +30,7 @@ private:
     using BaseClass = RPC::SmartInterfaceType<Exchange::IConnectionProperties>;
     using DisplayOutputUpdatedCallbacks = std::map<displayinfo_display_output_change_cb, void*>;
     using OperationalStateChangeCallbacks = std::map<displayinfo_operational_state_change_cb, void*>;
+    friend class WPEFramework::Core::SingletonType<DisplayInfo>;
 
     //CONSTRUCTORS
     #ifdef __WINDOWS__
@@ -144,8 +145,7 @@ public:
 
     static DisplayInfo& Instance()
     {
-        static DisplayInfo instance("DisplayInfo");
-        return instance;
+        return WPEFramework::Core::SingletonType<DisplayInfo>::Instance("DisplayInfo");
     }
 
 public:
@@ -563,6 +563,11 @@ uint32_t displayinfo_height_in_centimeters(uint8_t* height)
 bool displayinfo_is_atmos_supported()
 {
     return false;
+}
+
+void displayinfo_dispose()
+{
+    Core::Singleton::Dispose();
 }
 
 } // extern "C"
