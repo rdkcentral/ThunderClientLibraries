@@ -266,6 +266,12 @@ EXTERNAL uint32_t displayinfo_height_in_centimeters( uint8_t* height);
  */
 EXTERNAL bool displayinfo_is_atmos_supported();
 
+/**
+ * @brief Close the cached open connection if it exists.
+ *
+ */
+EXTERNAL void displayinfo_dispose();
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

@@ -513,6 +513,12 @@ EXTERNAL OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
     uint32_t initWithLast15);
 #endif // __cplusplus
 
+/**
+ * @brief Close the cached open connection if it exists.
+ *
+ */
+EXTERNAL void opencdm_dispose();
+
 #ifdef __cplusplus
 }
 #endif

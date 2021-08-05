@@ -63,6 +63,8 @@ int GetDeviceId(unsigned short MaxIdLength, char Id[]);
  */
 
 int GetDRMId(const char label[], const unsigned short MaxIdLength, char Id[]);
+
+void provisioningproxy_dispose();
 }
 
 #endif // __ACCESS_PROVISION_H__

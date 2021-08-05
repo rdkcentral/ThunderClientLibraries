@@ -151,4 +151,8 @@ int GetDRMId(const char label[], const unsigned short maxIdLength, char outId[])
     return result;
 }
 
+void provisioningproxy_dispose()
+{
+    Core::Singleton::Dispose();
+}
 } // extern "C"
