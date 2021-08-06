@@ -110,27 +110,27 @@ private:
     friend class WPEFramework::Core::SingletonType<DeviceInfoLink>;
     DeviceInfoLink()
         : BaseClass()
-        ,_subsysInterface(nullptr)
-        ,_identifierInterface(nullptr)
-        ,_deviceCapabilitiesInterface(nullptr)
-        ,_deviceMetaDataInterface(nullptr)
-        ,_architecture()
-        ,_chipsetName()
-        ,_modelName()
-        ,_modelYear()
-        ,_systemIntegraterName()
-        ,_friendlyName()
-        ,_platformName()
-        ,_firmwareVersion()
-        ,_id()
-        ,_idStr()
-        ,_hdr_atmos_cec(0)
-        ,_supportedHdcp()
-        ,_maxOutputResolution()
-        ,_outputResolution()
-        ,_audioOutput()
-        ,_videoOutput()
-        ,_lock()
+        , _lock()
+        , _subsysInterface(nullptr)
+        , _identifierInterface(nullptr)
+        , _deviceCapabilitiesInterface(nullptr)
+        , _deviceMetaDataInterface(nullptr)
+        , _architecture()
+        , _chipsetName()
+        , _modelName()
+        , _modelYear()
+        , _systemIntegraterName()
+        , _friendlyName()
+        , _platformName()
+        , _firmwareVersion()
+        , _idStr()
+        , _supportedHdcp()
+        , _maxOutputResolution()
+        , _outputResolution()
+        , _audioOutput()
+        , _videoOutput()
+        , _id()
+        , _hdr_atmos_cec(0)
     {
         BaseClass::Open(RPC::CommunicationTimeOut, BaseClass::Connector(), Callsign());
 
@@ -190,24 +190,8 @@ private:
                 _deviceMetaDataInterface = nullptr;
             }
         }
-
-        
     }
 
-    PluginHost::ISubSystem*  _subsysInterface;
-    const PluginHost::ISubSystem::IIdentifier* _identifierInterface;
-    Exchange::IDeviceCapabilities* _deviceCapabilitiesInterface; 
-    Exchange::IDeviceMetadata* _deviceMetaDataInterface ;
-    Core::OptionalType<std::string> _architecture;
-    Core::OptionalType<std::string> _chipsetName;
-    Core::OptionalType<std::string> _modelName;
-    Core::OptionalType<uint16_t> _modelYear;
-    Core::OptionalType<std::string> _systemIntegraterName;
-    Core::OptionalType<std::string> _friendlyName;
-    Core::OptionalType<std::string> _platformName;
-    Core::OptionalType<std::string> _firmwareVersion;
-    std::vector<uint8_t> _id;
-    Core::OptionalType<std::string> _idStr;
     /*
     * hdr_atmos_cec variable stores value in this format
     * ZX1X2X3 ZY1Y2Y3
@@ -219,14 +203,6 @@ private:
     * Y2 - atmos cached
     * Y3 - cec cached
     */
-    uint8_t _hdr_atmos_cec;
-    Core::OptionalType<deviceinfo_hdcp_t> _supportedHdcp;
-    Core::OptionalType<deviceinfo_output_resolution_t> _maxOutputResolution;
-    std::vector<deviceinfo_output_resolution_t> _outputResolution;
-    std::vector<deviceinfo_audio_output_t> _audioOutput;
-    std::vector<deviceinfo_video_output_t> _videoOutput;
-    Core::CriticalSection _lock;
-
     void setHdrSupport(const bool hdr)
     {
         _hdr_atmos_cec |= hdr << 6;
@@ -604,7 +580,7 @@ private:
         }
         if (result == Core::ERROR_NONE)
         {
-            *length = (_id.size() > (*length) - 1)? (*length) - 1: _id.size();
+            *length = static_cast<uint8_t>((_id.size() > (*length) - 1)? (*length) - 1: _id.size());
             std::copy_n(_id.begin(), *length, buffer);
         } else {
             *length = 0;
@@ -959,11 +935,27 @@ private:
     }
 
 private:
-    PluginHost::ISubSystem*  _subsysInterface;
+    Core::CriticalSection _lock;
+    PluginHost::ISubSystem* _subsysInterface;
     const PluginHost::ISubSystem::IIdentifier* _identifierInterface;
-    Exchange::IDeviceCapabilities* _deviceCapabilitiesInterface; 
-    Exchange::IDeviceMetadata* _deviceMetaDataInterface ;
-
+    Exchange::IDeviceCapabilities* _deviceCapabilitiesInterface;
+    Exchange::IDeviceMetadata* _deviceMetaDataInterface;
+    Core::OptionalType<std::string> _architecture;
+    Core::OptionalType<std::string> _chipsetName;
+    Core::OptionalType<std::string> _modelName;
+    Core::OptionalType<uint16_t> _modelYear;
+    Core::OptionalType<std::string> _systemIntegraterName;
+    Core::OptionalType<std::string> _friendlyName;
+    Core::OptionalType<std::string> _platformName;
+    Core::OptionalType<std::string> _firmwareVersion;
+    Core::OptionalType<std::string> _idStr;
+    Core::OptionalType<deviceinfo_hdcp_t> _supportedHdcp;
+    Core::OptionalType<deviceinfo_output_resolution_t> _maxOutputResolution;
+    std::vector<deviceinfo_output_resolution_t> _outputResolution;
+    std::vector<deviceinfo_audio_output_t> _audioOutput;
+    std::vector<deviceinfo_video_output_t> _videoOutput;
+    std::vector<uint8_t> _id;
+    uint8_t _hdr_atmos_cec;
 };
 
 }// nameless namespace
