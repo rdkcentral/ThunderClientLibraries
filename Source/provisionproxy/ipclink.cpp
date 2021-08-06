@@ -112,7 +112,7 @@ int GetDeviceId(unsigned short MaxIdLength, char Id[])
  */
 
 int GetDRMId(const char label[], const unsigned short maxIdLength, char outId[])
-{   
+{
     auto engine = Core::ProxyType<RPC::InvokeServerType<1, 0, 4>>::Create();
     auto client = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(GetEndPoint().c_str()), Core::ProxyType<Core::IIPCServer>(engine));
 
@@ -121,7 +121,7 @@ int GetDRMId(const char label[], const unsigned short maxIdLength, char outId[])
     if ((client.IsValid() == true) && (client->IsOpen() == false)) {
         Exchange::IProvisioning* provisioningInterface = client->Open<Exchange::IProvisioning>("Provisioning");
         if (provisioningInterface != nullptr) {
-            uint8_t buffer[10 * 1024]; //should fit ;) 
+            uint8_t buffer[10 * 1024]; //should fit ;)
             uint16_t size = sizeof(buffer);
 
             uint32_t error = provisioningInterface->DRMId(label, size, buffer);
@@ -140,7 +140,6 @@ int GetDRMId(const char label[], const unsigned short maxIdLength, char outId[])
                 printf("%s:%d [%s] Failed to extract %s provisioning. Error code %d.\n", __FILE__, __LINE__, __func__, label, error);
             }
 
-            std::fill_n(buffer, sizeof(buffer), 0);
             provisioningInterface->Release();
         }
         client.Release();
