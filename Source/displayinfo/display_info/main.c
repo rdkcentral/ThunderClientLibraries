@@ -266,6 +266,7 @@ int main(int argc, char* argv[])
     displayinfo_unregister_display_output_change_callback(displayinfo_display_updated);
 
     Trace("Done");
+    displayinfo_dispose();
 
     return 0;
 }

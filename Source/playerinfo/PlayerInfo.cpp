@@ -32,6 +32,7 @@ private:
     using BaseClass = RPC::SmartInterfaceType<Exchange::IPlayerProperties>;
     using DolbyModeAudioUpdateCallbacks = std::map<playerinfo_dolby_audio_updated_cb, void*>;
     using OperationalStateChangeCallbacks = std::map<playerinfo_operational_state_change_cb, void*>;
+    friend class WPEFramework::Core::SingletonType<PlayerInfo>;
 
     //CONSTRUCTORS
     PlayerInfo(const string& callsign)
@@ -131,9 +132,7 @@ public:
 
     static PlayerInfo& Instance()
     {
-        static PlayerInfo instance("PlayerInfo");
-
-        return instance;
+        return WPEFramework::Core::SingletonType<PlayerInfo>::Instance("PlayerInfo");
     }
 
 public:
@@ -561,17 +560,23 @@ uint32_t playerinfo_set_dolby_mode(const playerinfo_dolby_mode_t mode)
     switch (mode) {
     case PLAYERINFO_DOLBY_MODE_AUTO:
         result = PlayerInfo::Instance().SetDolbyMode(Exchange::Dolby::IOutput::Type::AUTO);
+        break;
     case PLAYERINFO_DOLBY_MODE_DIGITAL_PCM:
         result = PlayerInfo::Instance().SetDolbyMode(Exchange::Dolby::IOutput::Type::DIGITAL_PCM);
+        break;
     case PLAYERINFO_DOLBY_MODE_DIGITAL_AC3:
         result = PlayerInfo::Instance().SetDolbyMode(Exchange::Dolby::IOutput::Type::DIGITAL_AC3);
+        break;
     case PLAYERINFO_DOLBY_MODE_DIGITAL_PLUS:
         result = PlayerInfo::Instance().SetDolbyMode(Exchange::Dolby::IOutput::Type::DIGITAL_PLUS);
+        break;
     case PLAYERINFO_DOLBY_MODE_MS12:
         result = PlayerInfo::Instance().SetDolbyMode(Exchange::Dolby::IOutput::Type::MS12);
+        break;
     default:
         TRACE_GLOBAL(Trace::Warning, ("Unknown enum value, not included in playerinfo_dolby_mode_type?"));
         result = Core::ERROR_UNKNOWN_KEY;
+        break;
     }
 
     return result;
@@ -613,5 +618,9 @@ uint32_t playerinfo_get_dolby_mode(playerinfo_dolby_mode_t* mode)
         }
     }
     return result;
+}
+
+void playerinfo_dispose() {
+    Core::Singleton::Dispose();
 }
 }

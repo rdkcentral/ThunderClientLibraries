@@ -371,6 +371,7 @@ int main(int argc, char* argv[])
 
     playerinfo_unregister_operational_state_change_callback(on_operational_state_change);
     Trace("Unregistered operational state changed callback.");
+    playerinfo_dispose();
 
     return 0;
 }
