@@ -30,6 +30,8 @@ extern "C" {
 #include <gbm.h>
 #include <xf86drm.h>
 #include <EGL/egl.h>
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
 
 #ifdef __cplusplus
 }
@@ -64,10 +66,537 @@ struct _remove_const <T const *>{
     typedef T * type;
 };
 
+template <class FROM, class TO, bool ENABLE>
+struct _narrowing {
+    static_assert (( std::is_arithmetic < FROM > :: value && std::is_arithmetic < TO > :: value ) != false);
+
+    // Not complete, assume zero is minimum for unsigned
+    // Common type of signed and unsigned typically is unsigned
+    using common_t = typename std::common_type < FROM, TO > :: type;
+    static constexpr bool value =   ENABLE
+                                    && (
+                                        ( std::is_signed < FROM > :: value && std::is_unsigned < TO > :: value )
+                                        || static_cast < common_t > ( std::numeric_limits < FROM >::max () ) >= static_cast < common_t > ( std::numeric_limits < TO >::max () )
+                                    )
+                                    ;
+};
+
 // Suppress compiler warnings of unused (parameters)
 // Omitting the name is sufficient but a search on this keyword provides easy access to the location
 template <typename T>
 void silence (T &&) {}
+
+// Show logging in blue to make it distinct from TRACE
+#define TRACE_WITHOUT_THIS(level, ...) do {             \
+    fprintf (stderr, "\033[1;34m");                     \
+    fprintf (stderr, "[%s:%d] : ", __FILE__, __LINE__); \
+    fprintf (stderr, ##__VA_ARGS__);                    \
+    fprintf (stderr, "\n");                             \
+    fprintf (stderr, "\033[0m");                        \
+    fflush (stderr);                                    \
+} while (0)
+
+namespace WPEFramework {
+namespace RPI_INTERNAL {
+
+    // Part of / used by EGL function interception
+    class GLResourceMediator {
+
+        private :
+
+            struct _native {
+                struct gbm_surface * _surf;
+                uint32_t _width;
+                uint32_t _height;
+
+                struct {
+                    int _fd;
+                } _prime;
+            };
+
+        public :
+
+            using prime_t = decltype (_native::_prime._fd);
+
+            // Putting it here, enables easy life time management
+            class EGL {
+// TODO:: extention support
+                public :
+
+                    using dpy_t = EGLDisplay;
+                    using ctx_t = EGLContext;
+                    using surf_t = EGLSurface;
+                    using img_t = EGLImageKHR;
+                    using win_t = EGLNativeWindowType;
+
+                    using width_t = EGLint;
+                    using height_t = EGLint;
+
+                    static constexpr dpy_t InvalidDpy () { return EGL_NO_DISPLAY; }
+                    static constexpr ctx_t InvalidCtx () { return EGL_NO_CONTEXT; }
+                    static constexpr surf_t InvalidSurf () { return EGL_NO_SURFACE; }
+
+                    static_assert (std::is_convertible < decltype (nullptr), win_t > :: value != false);
+                    static constexpr win_t InvalidWin () { return nullptr; }
+
+                    static constexpr img_t InvalidImg () { return EGL_NO_IMAGE_KHR; }
+
+                    static img_t CreateImage (dpy_t const & dpy, const ctx_t & ctx, GLResourceMediator::prime_t const & fd, uint32_t width, uint32_t height, uint32_t bpp, uint32_t format, uint32_t stride) {
+                        silence (bpp);
+
+                        img_t _ret = InvalidImg ();
+
+                        if (dpy != InvalidDpy () && ctx != InvalidCtx ()) {
+                            static_assert ((std::is_same <dpy_t, EGLDisplay> :: value && std::is_same <ctx_t, EGLContext> :: value && std::is_same <img_t, EGLImageKHR> :: value ) != false);
+                            static EGLImageKHR (* _eglCreateImageKHR) (EGLDisplay, EGLContext, EGLenum, EGLClientBuffer, EGLint const * ) = reinterpret_cast < EGLImageKHR (*) (EGLDisplay, EGLContext, EGLenum, EGLClientBuffer, EGLint const * ) > (eglGetProcAddress ("eglCreateImageKHR"));
+
+                            if (_eglCreateImageKHR != nullptr) {
+                                using width_t =  decltype (width);
+                                using height_t = decltype (height);
+                                using stride_t = decltype (stride);
+                                using format_t = decltype (format);
+                                using fd_t = std::remove_reference < decltype ( fd ) > :: type;
+
+                                // Narrowing detection
+
+                                // Enable narrowing detection
+// TODO:
+                                constexpr bool _enable = false;
+
+                                // (Almost) all will fail!
+                                if (_narrowing < width_t, EGLint, _enable > :: value != false
+                                    && _narrowing < height_t, EGLint, _enable > :: value != false
+                                    && _narrowing < stride_t, EGLint, _enable > :: value != false
+                                    && _narrowing < format_t, EGLint, _enable > :: value != false
+                                    && _narrowing < fd_t, EGLint, _enable > :: value != false) {
+                                    TRACE_WITHOUT_THIS (Trace::Information, (_T ("Possible narrowing detected!")));
+                                }
+
+                                EGLint const _attrs [] = {
+                                    EGL_WIDTH, static_cast <EGLint> (width),
+                                    EGL_HEIGHT, static_cast <EGLint> (height),
+                                    EGL_LINUX_DRM_FOURCC_EXT, static_cast <EGLint> (format),
+                                    EGL_DMA_BUF_PLANE0_FD_EXT, static_cast <EGLint> (fd),
+// TODO: magic constant
+                                    EGL_DMA_BUF_PLANE0_OFFSET_EXT, 0,
+                                    EGL_DMA_BUF_PLANE0_PITCH_EXT, static_cast <EGLint> (stride),
+                                    EGL_NONE
+                                };
+
+
+                                static_assert (std::is_convertible < decltype (nullptr), EGLClientBuffer > :: value != false);
+                                _ret = _eglCreateImageKHR (dpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, _attrs);
+                            }
+                            else {
+                                // Error
+                                TRACE_WITHOUT_THIS (Trace::Error, (_T ("eglCreateImageKHR is unavailable or invalid parameters.")));
+                            }
+                        }
+                        else {
+                            TRACE_WITHOUT_THIS (Trace::Error, (_T ("EGL is not properly initialized.")));
+                        }
+
+                        return _ret;
+                    }
+
+                    static bool DestroyImage (img_t & img, dpy_t const & dpy, ctx_t const & ctx) {
+                        bool _ret = img != InvalidImg ();
+
+                        if (dpy != InvalidDpy () && ctx != InvalidCtx ()) {
+
+                            static_assert ((std::is_same <dpy_t, EGLDisplay> :: value && std::is_same <ctx_t, EGLContext> :: value && std::is_same <img_t, EGLImageKHR> :: value ) != false);
+                            static EGLBoolean (* _eglDestroyImageKHR) (EGLDisplay, EGLImageKHR) = reinterpret_cast < EGLBoolean (*) (EGLDisplay, EGLImageKHR) > (eglGetProcAddress ("eglDestroyImageKHR"));
+
+                            if (_eglDestroyImageKHR != nullptr) {
+                                _ret = _eglDestroyImageKHR (dpy, img) != EGL_FALSE ? true : false;
+                                img = InvalidImg ();
+                            }
+                            else {
+                                // Error
+                                TRACE_WITHOUT_THIS (Trace::Error, (_T ("eglDestroyImageKHR is unavailable or invalid parameters are provided.")));
+                            }
+
+                        }
+                        else {
+                            TRACE_WITHOUT_THIS (Trace::Error, (_T ("EGL is not properly initialized.")));
+                        }
+
+                        return _ret;
+                    }
+            };
+
+            class GLES {
+// TODO:: extention support
+                public :
+
+                    using fbo_t = GLuint;
+                    using tex_t = GLuint;
+
+                    static constexpr fbo_t InvalidFbo () { return 0; }
+                    static constexpr tex_t InvalidTex () { return 0; }
+
+                    bool ImageAsTarget (EGL::img_t const & img, EGL::width_t width, EGL::height_t height, tex_t & tex, fbo_t & fbo) {
+                        bool _ret = glGetError () == GL_NO_ERROR && img != EGL::InvalidImg () && width > 0 && height > 0;
+
+                        // Always
+                        constexpr GLuint _tgt = GL_TEXTURE_2D;
+
+                        if (_ret != false) {
+                            // Just an arbitrary selected unit
+                            glActiveTexture (GL_TEXTURE0);
+                            _ret = glGetError () == GL_NO_ERROR;
+                        }
+
+                        if (_ret != false) {
+                            if (tex != InvalidTex ()) {
+                                glDeleteTextures (1, &tex);
+                                _ret = glGetError () == GL_NO_ERROR;
+                            }
+
+                            tex = InvalidTex ();
+
+                            if (_ret != false) {
+                                glGenTextures (1, &tex);
+                                _ret = glGetError () == GL_NO_ERROR;
+                            }
+
+                            if (_ret != false) {
+                                glBindTexture (_tgt, tex);
+                                _ret = glGetError () == GL_NO_ERROR;
+                            }
+
+                            if (_ret != false) {
+                                glTexParameteri (_tgt, GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
+                                _ret = glGetError () == GL_NO_ERROR;
+                            }
+
+                            if (_ret != false) {
+                                glTexParameteri (_tgt, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                                _ret = glGetError () == GL_NO_ERROR;
+                            }
+
+                            if (_ret != false) {
+                                glTexParameteri (_tgt, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                                _ret = glGetError () == GL_NO_ERROR;
+                            }
+
+                            if (_ret != false) {
+                                glTexParameteri (_tgt, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                                _ret = glGetError () == GL_NO_ERROR;
+                            }
+
+                            // Requires EGL 1.2 and either the EGL_OES_image or EGL_OES_image_base
+                            // Use eglGetProcAddress, or dlsym for the function pointer of this GL extenstion
+                            // https://www.khronos.org/registry/OpenGL/extensions/OES/OES_EGL_image_external.txt
+
+                            // Take storage for the texture from the EGLImage; Pixel data becomes undefined
+                            static void (* _EGLImageTargetTexture2DOES) (GLenum, GLeglImageOES) = reinterpret_cast < void (*) (GLenum, GLeglImageOES) > (eglGetProcAddress ("glEGLImageTargetTexture2DOES"));
+
+                            if (_ret != false && _EGLImageTargetTexture2DOES != nullptr) {
+                                // Logical const
+                                using no_const_img_t = _remove_const < decltype (img) > :: type;
+                                _EGLImageTargetTexture2DOES (_tgt, reinterpret_cast <GLeglImageOES> ( const_cast < no_const_img_t > (img) ));
+                                _ret = glGetError () == GL_NO_ERROR;
+                            }
+                            else {
+                                _ret = false;
+                            }
+
+                            if (_ret != false) {
+                                if (fbo != InvalidFbo ()) {
+                                    glDeleteFramebuffers (1, &fbo);
+                                    _ret = glGetError () == GL_NO_ERROR;
+                                }
+
+                                if (_ret != false) {
+                                    glGenFramebuffers(1, &fbo);
+                                    _ret = glGetError () == GL_NO_ERROR;
+                                }
+
+                                if (_ret != false) {
+                                    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+                                    _ret = glGetError () == GL_NO_ERROR;
+                                }
+
+                                if (_ret != false) {
+                                    // Bind the created texture as one of the buffers of the frame buffer object
+                                    glFramebufferTexture2D (GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _tgt, tex, 0 /* level */);
+                                    _ret = glGetError () == GL_NO_ERROR;
+                                }
+                            }
+                        }
+
+                        return _ret;
+                    }
+            };
+
+        public :
+
+            using native_t = struct _native;
+            using callback_t = std::function < void () >;
+
+            static_assert ( std::is_convertible < decltype (native_t::_surf), decltype ( EGL::InvalidWin () ) > :: value != false );
+            static constexpr native_t InvalidNative () { return { static_cast < decltype (native_t::_surf) > ( EGL::InvalidWin () ), 0, 0, -1 }; }
+
+        private :
+
+// TODO: simplify
+
+            // Enable platform specific hooks to be called
+            std::map < EGL::win_t const, callback_t > _callbacks;
+
+            // EGL to native mapping
+            std::map < EGL::surf_t const, EGL::win_t const > _wins;
+            std::map < EGL::win_t const, prime_t const > _primes;
+
+            // Native to EGL mapping
+            std::map < prime_t const, EGL::img_t const > _imgs;
+
+            // EGL to GLES mapping
+            std::map < EGL::img_t const, GLES::fbo_t const > _fbos;
+
+            // GLES to GLESmapping
+            std::map < GLES::fbo_t const, GLES::tex_t const > _texs;
+
+            std::recursive_mutex _resourceLock;
+
+        public :
+
+            static GLResourceMediator & Instance () {
+                static GLResourceMediator _instance;
+                return _instance;
+            }
+
+             bool Associate (EGL::surf_t const & surf, EGL::win_t const & win) {
+                std::lock_guard < decltype (_resourceLock) > const _lock (_resourceLock);
+
+                bool _ret = _wins.insert ( std::pair < EGL::surf_t const, EGL::win_t const > (surf, win) ).second;
+
+                return _ret;
+            }
+
+             bool Associate (EGL::win_t const & win, prime_t const & prime) {
+                std::lock_guard < decltype (_resourceLock) > const _lock (_resourceLock);
+
+                bool _ret = _primes.insert ( std::pair < EGL::win_t const, prime_t const > (win, prime) ).second;
+
+                return _ret;
+            }
+
+            bool Associate (prime_t const & prime, EGL::img_t const & img) {
+                std::lock_guard < decltype (_resourceLock) > const _lock (_resourceLock);
+
+                bool _ret = _imgs.insert ( std::pair < prime_t const, EGL::img_t const > (prime, img) ).second;
+
+                return _ret;
+            }
+
+            bool Associate (EGL::img_t const & img, GLES::fbo_t const & fbo) {
+                std::lock_guard < decltype (_resourceLock) > const _lock (_resourceLock);
+
+                bool _ret = _fbos.insert ( std::pair < EGL::img_t const, GLES::fbo_t const > (img, fbo) ).second;
+
+                return _ret;
+            }
+
+            bool Associate (GLES::fbo_t const & fbo, GLES::tex_t const & tex) {
+                std::lock_guard < decltype (_resourceLock) > const _lock (_resourceLock);
+
+                bool _ret = _texs.insert ( std::pair < GLES::fbo_t const, GLES::tex_t const > (fbo, tex) ).second;
+
+                return _ret;
+            }
+
+            // Removes all of thw above
+            bool Disassociate (EGL::surf_t const & surf) {
+                std::lock_guard < decltype (_resourceLock) > const _lock (_resourceLock);
+
+                bool _ret = false;
+
+                auto _win = _wins.find (surf);
+                auto _prime = _primes.end ();
+                auto _img = _imgs.end ();
+                auto _fbo = _fbos.end ();
+                auto _tex = _texs.end ();
+
+// TODO: destroy all dangling EGL / GLES resources because this has been called from eglDestroySurface or the native has changed via Unregister / Regsiter
+
+                _ret = _win != _wins.end ();
+
+                if (_ret != false) {
+                    _prime = _primes.find ( _win->second );
+                    _ret = _prime != _primes.end ();
+
+                    /* iterator  */ _wins.erase ( _win );
+                }
+
+                if (_ret != false) {
+                    _img = _imgs.find ( _prime->second );
+                    _ret = _img != _imgs.end ();
+
+                    /* iterator */ _primes.erase ( _prime );
+                }
+
+                if (_ret != false) {
+                    _fbo = _fbos.find ( _img->second );
+                    _ret = _fbo != _fbos.end ();
+
+//                    EGL::DestroyImage (_dpy, _ctx, _img->second);
+
+                    /* iterator */ _imgs.erase (_img );
+                }
+
+                if (_ret != false) {
+                    _tex = _texs.find (_fbo->second);
+                    _ret = _tex != _texs.end ();
+
+                    /* iterator */ _fbos.erase (_fbo);
+                    /* iterator */ _texs.erase (_tex);
+                }
+
+                return _ret;
+            }
+
+            // Enable EGL / GLES to call any method on the 'native'
+            bool Register (native_t const & native, callback_t callback) {
+                std::lock_guard < decltype (_resourceLock) > const _lock (_resourceLock);
+
+                static_assert ( std::is_convertible < decltype (native_t::_surf), EGL::win_t > :: value != false );
+                bool _ret =
+                    _callbacks.insert ( std::pair < EGL::win_t const, callback_t > ( static_cast < EGL::win_t > (native._surf), callback) ).second
+                    && _primes.insert ( std::pair < EGL::win_t const, prime_t const> ( static_cast < EGL::win_t > (native._surf), native._prime._fd) ).second;
+
+                return _ret;
+            }
+
+            // As the name suggests
+            bool Unregister (native_t const & native) {
+                std::lock_guard < decltype (_resourceLock) > const _lock (_resourceLock);
+
+                static_assert ( std::is_convertible < decltype (native_t::_surf), EGL::win_t > :: value != false );
+                bool _ret =
+                    _callbacks.erase ( static_cast < EGL::win_t > ( native._surf ) ) == 1
+                    && _primes.erase ( static_cast < EGL::win_t > ( native._surf ) ) == 1;
+
+                return _ret;
+            }
+
+            // Call the registered callback for an existing association
+            bool Visit (EGL::surf_t const & surf) const {
+                auto _it = _wins.find (surf);
+
+                bool _ret = _it != _wins.end ();
+
+                if (_ret != false) {
+
+                    auto _itt = _callbacks.find (_it->second);
+
+                    _ret = _itt != _callbacks.end ();
+
+                    if (_ret != false) {
+                        _itt->second ();
+                    }
+
+                }
+
+                return _ret;
+            }
+
+            // EGL resource creation
+            EGL::img_t ImgForSurf (EGL::surf_t const & surf, EGL::width_t width, EGL::height_t height) {
+
+                EGL::img_t _ret = EGL::InvalidImg ();
+
+                EGL::ctx_t _ctx = eglGetCurrentContext ();
+
+                EGL::dpy_t _dpy = _ctx != EGL::InvalidCtx () ? eglGetCurrentDisplay () : EGL::InvalidDpy ();
+
+                if (_dpy != EGL::InvalidDpy ()) {
+
+                    // Get the prime
+
+                    auto _it = _wins.find (surf);
+                    auto _itt = _it != _wins.end () ? _primes.find (_it->second) : _primes.end ();
+                    auto _ittt = _itt != _primes.end () ? _imgs.find (_itt->second) : _imgs.end ();
+
+                    if (_ittt != _imgs.end ()) {
+                        // EGLImage exist
+                        _ret = _ittt->second;
+                    }
+                    else {
+                        // Create an EGLimage
+
+// TODO: These properties should be communicated via DMATransfer, they might differ from the local native
+                        auto _bpp = RenderDevice::BPP ();
+// TODO: Magic constant
+                        auto _stride = _bpp / 8 * width;
+                        auto _format = RenderDevice::SupportedBufferType ();
+
+                        if ( _itt != _primes.end () ){
+
+                            _ret = EGL::CreateImage (_dpy, _ctx, _itt->second, width, height, _bpp, _format, _stride);
+
+                            if (_ret != EGL::InvalidImg () && Associate (surf, _ret) != true) {
+                                /* bool */ EGL::DestroyImage (_dpy, _ctx, _ret);
+                            }
+
+                        }
+                    }
+
+                }
+
+                return _ret;
+            }
+
+            // GLES resource creation
+            GLES::fbo_t FboForImg (EGL::img_t const & img) {
+                static GLES _gles;
+
+                GLES::tex_t _tex = GLES::InvalidTex ();
+                GLES::fbo_t _ret = GLES::InvalidFbo ();
+
+                // Get the fbo and tex
+                auto _it = _fbos.find (img);
+                auto _itt = _it != _fbos.end () ? _texs.find (_it->second) : _texs.end ();
+
+                if (_itt != _texs.end ()) {
+                    // Tex and fbo exist
+                    _ret = _it->second;
+                }
+                else {
+                    // Create tex and fbo
+
+                    // Valid dummy values
+                    uint32_t _width = 1; // At least >0
+                    uint32_t _height = 1; // At least >0
+
+                    // Create the GLES binding
+                    if (_gles.ImageAsTarget (img, _width, _height, _tex, _ret)
+                        && Associate (img, _ret)
+                        && Associate (_ret, _tex) != true) {
+                            _ret = GLES::InvalidFbo ();
+
+// TODO: if one of the Associate's fails the mapping has become corrupt
+//                            assert (false);
+                    }
+
+                }
+
+                return _ret;
+            }
+
+        private :
+
+            GLResourceMediator () = default;
+            ~GLResourceMediator () = default;
+
+            GLResourceMediator (GLResourceMediator const &) = delete;
+            GLResourceMediator & operator= (GLResourceMediator const &) = delete;
+
+    };
+
+}
+}
 
 static const char* connectorNameVirtualInput = "/tmp/keyhandler";
 
@@ -311,7 +840,7 @@ private:
                                 static_assert (sizeof (int) <= sizeof (ssize_t));
                                 TRACE (Trace::Information, (_T ("The sending buffer capacity equals %d bytes."), static_cast < int > (_size)));
 
-// TOOD: do not send if the sending buffer is too small
+// TODO: do not send if the sending buffer is too small
                                 _size = sendmsg (_transfer, &_msgh, 0);
                             }
                             else {
@@ -562,16 +1091,7 @@ private:
         Exchange::IComposition::IClient* _remoteClient;
         Exchange::IComposition::IRender* _remoteRenderer;
 
-        struct {
-            struct gbm_surface * _surf;
-            uint32_t _width;
-            uint32_t _height;
-        } _nativeSurface;
-
-        struct {
-            int _fd;
-            struct gbm_bo * _bo;
-        } _prime;
+        WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t _nativeSurface;
     };
 
     using InputFunction = std::function<void(SurfaceImplementation*)>;
@@ -651,7 +1171,7 @@ private:
 
 public:
     typedef std::map<const string, Display*> DisplayMap;
-    
+
     ~Display() override;
 
     static Display* Instance(const string& displayName){
@@ -706,7 +1226,7 @@ public:
 
     EGLNativeDisplayType Native() const override
     {
-        static_assert ( (std::is_convertible < decltype (_nativeDisplay._device), EGLNativeDisplayType >:: value ) != false);
+        static_assert ( (std::is_convertible < decltype (_nativeDisplay._device), EGLNativeDisplayType > :: value ) != false);
         return static_cast < EGLNativeDisplayType > ( _nativeDisplay._device );
     }
     const std::string& Name() const override
@@ -730,6 +1250,7 @@ public:
 
             // Announce ourself to indicate the data exchange is a request for (file descriptor) data
             // Then, after receiving the data DMA is no longer needed for this client
+// TODO: parse message for buffer properties, like format and stride
             _ret = _dma->Connect () && _dma->Send (_msg, fd) && _dma->Receive (_msg, fd) && _dma->Disconnect ();
         }
 
@@ -876,9 +1397,9 @@ Display::SurfaceImplementation::SurfaceImplementation(
     , _touchpanel(nullptr)
     , _remoteClient(nullptr)
     , _remoteRenderer(nullptr)
-    , _nativeSurface { nullptr, 0, 0 }
+    , _nativeSurface { WPEFramework::RPI_INTERNAL::GLResourceMediator::InvalidNative () }
 {
-    _nativeSurface._surf = gbm_surface_create(_display.Native (), width, height, RenderDevice::SupportedBufferType (), GBM_BO_USE_RENDERING /* used for rendering */);
+    _nativeSurface._surf = gbm_surface_create (_display.Native (), width, height, RenderDevice::SupportedBufferType (), GBM_BO_USE_RENDERING /* used for rendering */);
 
     if (_nativeSurface._surf == nullptr) {
         TRACE_L1 (_T ("Failed to create a native (underlying) surface"));
@@ -898,7 +1419,7 @@ Display::SurfaceImplementation::SurfaceImplementation(
         }
         else {
 
-            if (_display.FDFor (*_remoteClient, _prime._fd) != true) {
+            if (_display.FDFor (*_remoteClient, _nativeSurface._prime._fd) != true) {
                 TRACE (Trace::Error, (_T ( "Failed to setup a share for rendering results!")));
 
                 _remoteRenderer->Release ();
@@ -909,6 +1430,11 @@ Display::SurfaceImplementation::SurfaceImplementation(
 
                 _remoteRenderer = nullptr;
                 _remoteClient = nullptr;
+            }
+            else {
+                // Register a callback for EGL updates
+                WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
+                /* bool */ _map.Register ( _nativeSurface, std::bind ( &WPEFramework::RPI::Display::SurfaceImplementation::ScanOut, this ) );
             }
 
         }
@@ -922,6 +1448,9 @@ Display::SurfaceImplementation::SurfaceImplementation(
 
 Display::SurfaceImplementation::~SurfaceImplementation()
 {
+    WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
+    /* bool */ _map.Unregister ( _nativeSurface );
+
     _display.Unregister(this);
 
     if(_remoteClient != nullptr) {
@@ -939,7 +1468,7 @@ Display::SurfaceImplementation::~SurfaceImplementation()
         gbm_surface_destroy (_nativeSurface._surf);
     }
 
-    _nativeSurface = {nullptr, 0, 0};
+    _nativeSurface = WPEFramework::RPI_INTERNAL::GLResourceMediator::InvalidNative ();
 
     _display.Release();
 }
@@ -1017,13 +1546,6 @@ Display::~Display()
 
 int Display::Process(const uint32_t)
 {
-    _adminLock.Lock();
-
-    for( auto& surface : _surfaces ) {
-        surface->ScanOut();
-    }
-    _adminLock.Unlock();
-
     return (0);
 }
 
@@ -1169,3 +1691,130 @@ Compositor::IDisplay* Compositor::IDisplay::Instance(const string& displayName)
     return RPI::Display::Instance(displayName);
 }
 } // WPEFramework
+
+// (Simple) function interception
+//
+// TODO:
+// Open cases:
+// - Other libs / users of eglGetProcAddress
+// - Other libs / users of options like dlsym that circumvent the use of eglGetProccAddress
+// - Library symbol earch order
+
+// Avoid name mangling
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* EGLAPI */ EGLSurface /* EGLAPIENTRY */ eglCreateWindowSurface (EGLDisplay dpy, EGLConfig cnfg, EGLNativeWindowType win, EGLint const * attr);
+/* EGLAPI */ EGLBoolean /* EGLAPIENTRY */ eglDestroySurface (EGLDisplay dpy, EGLSurface surf);
+/* EGLAPI */ EGLBoolean /* EGLAPIENTRY */ eglDestroySurfaceSwapBuffers (EGLDisplay dpy, EGLSurface surf);
+/* EGLAPI */ EGLBoolean /* EGLAPIENTRY */ eglMakeCurrent (EGLDisplay dpy, EGLSurface draw, EGLSurface read, EGLContext ctx);
+
+/* EGLAPI */ EGLSurface /* EGLAPIENTRY */ eglCreateWindowSurface (EGLDisplay dpy, EGLConfig cnfg, EGLNativeWindowType win, EGLint const * attr) {
+    EGLSurface _ret = EGL_NO_SURFACE;
+
+    static EGLSurface (* _eglCreateWindowSurface) (EGLDisplay, EGLConfig, EGLNativeWindowType, EGLint const *) = reinterpret_cast < EGLSurface (*) (EGLDisplay, EGLConfig, EGLNativeWindowType, EGLint const *) > ( eglGetProcAddress ("eglCreateWindowSurface") );
+
+    assert (_eglCreateWindowSurface != &eglCreateWindowSurface);
+
+    if (_eglCreateWindowSurface != nullptr && _eglCreateWindowSurface != &eglCreateWindowSurface) {
+        _ret = _eglCreateWindowSurface (dpy, cnfg, win, attr);
+    }
+
+    if (_ret != EGL_NO_SURFACE) {
+        static WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
+
+        // Only place, for now, that directly does an associate
+         if (_map.Associate (_ret, win)/* && _map.Associate (_ret, WPEFramework::RPI_INTERNAL::GLResourceMediator::GLES::InvalidFbo ())*/ != true) {
+             /* EGLBoolean */ eglDestroySurface (dpy, _ret);
+             _ret = EGL_NO_SURFACE;
+         }
+
+        assert (_ret != EGL_NO_SURFACE);
+    }
+
+    return _ret;
+}
+
+/* EGLAPI */ EGLBoolean /* EGLAPIENTRY */ eglDestroySurface (EGLDisplay dpy, EGLSurface surf) {
+    EGLBoolean _ret = EGL_FALSE;
+
+    static EGLBoolean (* _eglDestroySurface) (EGLDisplay, EGLSurface) = reinterpret_cast < EGLBoolean (*) (EGLDisplay, EGLSurface) > ( eglGetProcAddress ("eglDestroySurface") );
+
+    assert (_eglDestroySurface != &eglDestroySurface);
+
+    if (_eglDestroySurface != nullptr && _eglDestroySurface != &eglDestroySurface) {
+        _ret = _eglDestroySurface (dpy, surf);
+    }
+
+    if (_ret != EGL_FALSE) {
+        static WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
+
+        _ret = _map.Disassociate (surf) != false ? EGL_TRUE : EGL_FALSE;
+
+        assert (_ret != EGL_FALSE);
+    }
+
+    return _ret;
+}
+
+/* EGLAPI */ EGLBoolean /* EGLAPIENTRY */ eglSwapBuffers (EGLDisplay dpy, EGLSurface surf) {
+    EGLBoolean _ret = EGL_FALSE;
+
+    static EGLBoolean (* _eglSwapBuffers) (EGLDisplay, EGLSurface) = reinterpret_cast < EGLBoolean (*) (EGLDisplay, EGLSurface) > ( eglGetProcAddress ("eglSwapBuffers") );
+
+    assert (_eglSwapBuffers != &eglSwapBuffers);
+
+    if (_eglSwapBuffers != nullptr && _eglSwapBuffers != &eglSwapBuffers) {
+        _ret = _eglSwapBuffers (dpy, surf);
+    }
+
+    if (_ret != EGL_FALSE) {
+        static WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
+
+        _ret = _map.Visit (surf) != false ? EGL_TRUE : EGL_FALSE;
+
+        assert (_ret != EGL_FALSE);
+    }
+
+    return _ret;
+}
+
+/* EGLAPI */ EGLBoolean /* EGLAPIENTRY */ eglMakeCurrent (EGLDisplay dpy, EGLSurface draw, EGLSurface read, EGLContext ctx) {
+    EGLBoolean _ret = EGL_FALSE;
+
+    static EGLBoolean (* _eglMakeCurrent) (EGLDisplay, EGLSurface, EGLSurface, EGLContext) = reinterpret_cast < EGLBoolean (*) (EGLDisplay, EGLSurface, EGLSurface, EGLContext) > ( eglGetProcAddress ("eglMakeCurrent") );
+
+    assert (_eglMakeCurrent != &eglMakeCurrent);
+
+    if (_eglMakeCurrent != nullptr && _eglMakeCurrent != &eglMakeCurrent) {
+        _ret = _eglMakeCurrent (dpy, draw, read, ctx);
+    }
+
+    if (_ret != EGL_FALSE && draw != EGL_NO_SURFACE) {
+        static WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
+
+        if (draw != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidSurf) {
+
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::width_t _width = 0;
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::height_t _height = 0;
+
+            _ret = eglQuerySurface (dpy, draw, EGL_WIDTH, &_width) != EGL_FALSE && eglQuerySurface (dpy, draw, EGL_HEIGHT, &_height) != EGL_FALSE ? EGL_TRUE : EGL_FALSE;
+
+            if (_ret != EGL_FALSE) {
+                auto _img = _map.ImgForSurf (draw, _width, _height);
+                auto _fbo = _map.FboForImg (_img);
+                _ret = ( _img != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidImg () && _fbo != WPEFramework::RPI_INTERNAL::GLResourceMediator::GLES::InvalidFbo () ) != false ? EGL_TRUE : EGL_FALSE;
+            }
+
+        }
+
+        assert (_ret != EGL_FALSE);
+    }
+
+    return _ret;
+}
+
+#ifdef __cplusplus
+}
+#endif
