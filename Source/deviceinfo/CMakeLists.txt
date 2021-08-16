@@ -34,7 +34,8 @@ find_package(${NAMESPACE}COM REQUIRED)
 
 set(PUBLIC_HEADERS "deviceinfo.h")
 
-add_library(${TARGET}  SHARED 
+add_library(${TARGET}  SHARED
+    Module.cpp
     DeviceInfo.cpp
 )
 
@@ -42,7 +43,7 @@ target_link_libraries(${TARGET}
         PUBLIC
           ${NAMESPACE}Core::${NAMESPACE}Core
           ${NAMESPACE}Tracing::${NAMESPACE}Tracing
-          ${NAMESPACE}COM::${NAMESPACE}COM 
+          ${NAMESPACE}COM::${NAMESPACE}COM
           CompileSettingsDebug::CompileSettingsDebug
         )
 
@@ -75,7 +76,7 @@ InstallCMakeConfig(
         TARGETS ${TARGET})
 
 InstallPackageConfig(
-        TARGETS ${TARGET} 
+        TARGETS ${TARGET}
         DESCRIPTION "communications channel abstraction to get the device properties")
 
 add_subdirectory(device_info)
