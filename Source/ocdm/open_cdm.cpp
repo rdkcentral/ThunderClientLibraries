@@ -508,13 +508,11 @@ bool OpenCDMAccessor::WaitForKey(const uint8_t keyLength, const uint8_t keyId[],
 
             for  (; session != _sessionKeys.end(); ++session) {
                 if (!system || session->second->BelongsTo(system) == true) {
-                    if (session->second->HasKeyId(keyLength, keyId) == true)
+                    if(session->second->Status(keyLength, keyId) == status) {
+                        result = true;
                         break;
+                    }
                 }
-            }
-
-            if (session != _sessionKeys.end()) {
-                result = (session->second->Status(keyLength, keyId) == status);
             }
 
             if (result == false) {
