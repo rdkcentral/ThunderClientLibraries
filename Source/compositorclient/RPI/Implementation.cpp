@@ -30,6 +30,7 @@ extern "C" {
 #include <gbm.h>
 #include <xf86drm.h>
 #include <EGL/egl.h>
+#include <EGL/eglext.h>
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 
@@ -109,53 +110,170 @@ namespace RPI_INTERNAL {
                 uint32_t _width;
                 uint32_t _height;
 
-                struct {
+                struct prime {
                     int _fd;
+                    uint32_t _width;
+                    uint32_t _height;
+                    uint32_t _stride;
+                    uint32_t _format;
+
+                    bool operator == (prime const & other) const {
+                        bool _ret = _fd == other._fd
+                                    && _width == other._width
+                                    && _height == other._height
+                                    && _stride == other._stride
+                                    && _format == other._format;
+                        return _ret;
+                    }
+
+                    bool operator < (prime const & other) const {
+                        bool _ret =  !( *this == other );
+                        return _ret;
+                    }
+
+                    bool operator () (prime const & left, prime const & right) const {
+                        bool _ret = left < right;
+                        return _ret;
+                    }
                 } _prime;
+
+                bool operator == (_native const & other) const {
+                    bool _ret = _surf == other._surf
+                                && _width == other._width
+                                && _height == other._height
+                                && _prime == other._prime;
+
+                    return _ret;
+                }
+
+                bool operator < (_native const & other) const {
+                    bool _ret = !( *this == other );
+                    return _ret;
+                }
+
+                bool operator () (_native const & left, _native const & right) const {
+                    bool _ret = left < right;
+                    return _ret;
+                }
+
             };
 
         public :
 
-            using prime_t = decltype (_native::_prime._fd);
+            using prime_t = decltype (_native::_prime);
 
             // Putting it here, enables easy life time management
             class EGL {
-// TODO:: extention support
+
+#define XSTRINGIFY(X) STRINGIFY(X)
+#define STRINGIFY(X) #X
+
+#ifdef EGL_VERSION_1_5
+#define KHRFIX(name) name
+#define _EGL_SYNC_FENCE EGL_SYNC_FENCE
+#define _EGL_NO_SYNC EGL_NO_SYNC
+#define _EGL_FOREVER EGL_FOREVER
+#define _EGL_NO_IMAGE EGL_NO_IMAGE
+#else
+#define _KHRFIX(left, right) left ## right
+#define KHRFIX(name) _KHRFIX(name, KHR)
+#define _EGL_SYNC_FENCE EGL_SYNC_FENCE_KHR
+#define _EGL_NO_SYNC EGL_NO_SYNC_KHR
+#define _EGL_FOREVER EGL_FOREVER_KHR
+#define _EGL_NO_IMAGE EGL_NO_IMAGE_KHR
+using EGLAttrib = EGLint;
+#endif
+
+                class Sync final {
+
+                    public :
+
+                        using dpy_t = EGLDisplay;
+                        using sync_t = KHRFIX (EGLSync);
+
+                    private :
+
+                        sync_t _sync;
+                        dpy_t _dpy;
+
+                    public :
+// TODO: calling Supported is expensive, sync objects are heavily used
+                        explicit Sync (dpy_t & dpy) : _dpy {dpy} {
+                            assert (dpy != InvalidDpy ());
+
+                            _sync = ( EGL::Supported (dpy, "EGL_KHR_fence_sync") && dpy != InvalidDpy () ) != false ? KHRFIX (eglCreateSync) (dpy, _EGL_SYNC_FENCE, nullptr) : InvalidSync ();
+                        }
+
+                        ~Sync () {
+
+                            if (_sync == InvalidSync ()) {
+                                // Error creating sync object or unable to create one
+                                glFinish ();
+                            }
+                            else {
+                                glFlush ();
+
+                                EGLint _val = KHRFIX (eglClientWaitSync) (_dpy, _sync, 0 /* no flags */ , _EGL_FOREVER);
+
+                                if (_val != EGL_TRUE) {
+                                    // Error
+                                }
+
+                                // Consume the (possible) error
+                                /* ELGint */ eglGetError ();
+                            }
+                        }
+
+                        static constexpr dpy_t InvalidDpy () { return EGL_NO_DISPLAY; }
+                        static constexpr sync_t InvalidSync () { return _EGL_NO_SYNC; }
+
+                    private :
+
+                        void * operator new (size_t) = delete;
+                        void * operator new [] (size_t) = delete;
+                        void operator delete (void *) = delete;
+                        void operator delete [] (void *) = delete;
+                };
+
                 public :
 
-                    using dpy_t = EGLDisplay;
+                    using dpy_t = Sync::dpy_t;
                     using ctx_t = EGLContext;
                     using surf_t = EGLSurface;
-                    using img_t = EGLImageKHR;
+                    using img_t = KHRFIX (EGLImage);
                     using win_t = EGLNativeWindowType;
 
                     using width_t = EGLint;
                     using height_t = EGLint;
 
-                    static constexpr dpy_t InvalidDpy () { return EGL_NO_DISPLAY; }
+                    using sync_t = Sync;
+
+                    static constexpr dpy_t InvalidDpy () { return Sync::InvalidDpy (); }
                     static constexpr ctx_t InvalidCtx () { return EGL_NO_CONTEXT; }
                     static constexpr surf_t InvalidSurf () { return EGL_NO_SURFACE; }
 
                     static_assert (std::is_convertible < decltype (nullptr), win_t > :: value != false);
                     static constexpr win_t InvalidWin () { return nullptr; }
 
-                    static constexpr img_t InvalidImg () { return EGL_NO_IMAGE_KHR; }
+                    static constexpr img_t InvalidImg () { return _EGL_NO_IMAGE; }
 
-                    static img_t CreateImage (dpy_t const & dpy, const ctx_t & ctx, GLResourceMediator::prime_t const & fd, uint32_t width, uint32_t height, uint32_t bpp, uint32_t format, uint32_t stride) {
-                        silence (bpp);
 
+                    static img_t CreateImage (dpy_t const & dpy, const ctx_t & ctx, GLResourceMediator::prime_t const & prime) {
                         img_t _ret = InvalidImg ();
 
-                        if (dpy != InvalidDpy () && ctx != InvalidCtx ()) {
-                            static_assert ((std::is_same <dpy_t, EGLDisplay> :: value && std::is_same <ctx_t, EGLContext> :: value && std::is_same <img_t, EGLImageKHR> :: value ) != false);
-                            static EGLImageKHR (* _eglCreateImageKHR) (EGLDisplay, EGLContext, EGLenum, EGLClientBuffer, EGLint const * ) = reinterpret_cast < EGLImageKHR (*) (EGLDisplay, EGLContext, EGLenum, EGLClientBuffer, EGLint const * ) > (eglGetProcAddress ("eglCreateImageKHR"));
+                        if (dpy != InvalidDpy () && ctx != InvalidCtx () && ( Supported (dpy, "EGL_KHR_image") && Supported (dpy, "EGL_KHR_image_base")  && Supported (dpy, "EGL_EXT_image_dma_buf_import") ) != false ) {
+                            static_assert ((std::is_same <dpy_t, EGLDisplay> :: value && std::is_same <ctx_t, EGLContext> :: value && std::is_same <img_t, KHRFIX (EGLImage)> :: value ) != false);
 
-                            if (_eglCreateImageKHR != nullptr) {
-                                using width_t =  decltype (width);
-                                using height_t = decltype (height);
-                                using stride_t = decltype (stride);
-                                using format_t = decltype (format);
-                                using fd_t = std::remove_reference < decltype ( fd ) > :: type;
+                            constexpr char _methodName [] = XSTRINGIFY ( KHRFIX (eglCreateImage) );
+
+                            static KHRFIX (EGLImage) (* _eglCreateImage) (EGLDisplay, EGLContext, EGLenum, EGLClientBuffer, EGLAttrib const * ) = reinterpret_cast < KHRFIX (EGLImage) (*) (EGLDisplay, EGLContext, EGLenum, EGLClientBuffer, EGLAttrib const * ) > (eglGetProcAddress ( _methodName ));
+
+                            if (_eglCreateImage != nullptr) {
+                                using width_t =  decltype (prime._width);
+                                using height_t = decltype (prime._height);
+                                using stride_t = decltype (prime._stride);
+                                using format_t = decltype (prime._format);
+                                using fd_t = decltype ( prime._fd);
 
                                 // Narrowing detection
 
@@ -164,32 +282,32 @@ namespace RPI_INTERNAL {
                                 constexpr bool _enable = false;
 
                                 // (Almost) all will fail!
-                                if (_narrowing < width_t, EGLint, _enable > :: value != false
-                                    && _narrowing < height_t, EGLint, _enable > :: value != false
-                                    && _narrowing < stride_t, EGLint, _enable > :: value != false
-                                    && _narrowing < format_t, EGLint, _enable > :: value != false
-                                    && _narrowing < fd_t, EGLint, _enable > :: value != false) {
+                                if (_narrowing < width_t, EGLAttrib, _enable > :: value != false
+                                    && _narrowing < height_t, EGLAttrib, _enable > :: value != false
+                                    && _narrowing < stride_t, EGLAttrib, _enable > :: value != false
+                                    && _narrowing < format_t, EGLAttrib, _enable > :: value != false
+                                    && _narrowing < fd_t, EGLAttrib, _enable > :: value != false) {
                                     TRACE_WITHOUT_THIS (Trace::Information, (_T ("Possible narrowing detected!")));
                                 }
 
-                                EGLint const _attrs [] = {
-                                    EGL_WIDTH, static_cast <EGLint> (width),
-                                    EGL_HEIGHT, static_cast <EGLint> (height),
-                                    EGL_LINUX_DRM_FOURCC_EXT, static_cast <EGLint> (format),
-                                    EGL_DMA_BUF_PLANE0_FD_EXT, static_cast <EGLint> (fd),
+                                EGLAttrib const _attrs [] = {
+                                    EGL_WIDTH, static_cast <EGLAttrib> (prime._width),
+                                    EGL_HEIGHT, static_cast <EGLAttrib> (prime._height),
+                                    EGL_LINUX_DRM_FOURCC_EXT, static_cast <EGLAttrib> (prime._format),
+                                    EGL_DMA_BUF_PLANE0_FD_EXT, static_cast <EGLAttrib> (prime._fd),
 // TODO: magic constant
                                     EGL_DMA_BUF_PLANE0_OFFSET_EXT, 0,
-                                    EGL_DMA_BUF_PLANE0_PITCH_EXT, static_cast <EGLint> (stride),
+                                    EGL_DMA_BUF_PLANE0_PITCH_EXT, static_cast <EGLAttrib> (prime._stride),
                                     EGL_NONE
                                 };
 
 
                                 static_assert (std::is_convertible < decltype (nullptr), EGLClientBuffer > :: value != false);
-                                _ret = _eglCreateImageKHR (dpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, _attrs);
+                                _ret = _eglCreateImage (dpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, _attrs);
                             }
                             else {
                                 // Error
-                                TRACE_WITHOUT_THIS (Trace::Error, (_T ("eglCreateImageKHR is unavailable or invalid parameters.")));
+                                TRACE_WITHOUT_THIS (Trace::Error, (_T ("%s is unavailable or invalid parameters."), _methodName));
                             }
                         }
                         else {
@@ -202,18 +320,21 @@ namespace RPI_INTERNAL {
                     static bool DestroyImage (img_t & img, dpy_t const & dpy, ctx_t const & ctx) {
                         bool _ret = img != InvalidImg ();
 
-                        if (dpy != InvalidDpy () && ctx != InvalidCtx ()) {
+                        if (dpy != InvalidDpy () && ctx != InvalidCtx () && ( Supported (dpy, "EGL_KHR_image") && Supported (dpy, "EGL_KHR_image_base") ) != false ) {
 
-                            static_assert ((std::is_same <dpy_t, EGLDisplay> :: value && std::is_same <ctx_t, EGLContext> :: value && std::is_same <img_t, EGLImageKHR> :: value ) != false);
-                            static EGLBoolean (* _eglDestroyImageKHR) (EGLDisplay, EGLImageKHR) = reinterpret_cast < EGLBoolean (*) (EGLDisplay, EGLImageKHR) > (eglGetProcAddress ("eglDestroyImageKHR"));
+                            static_assert ((std::is_same <dpy_t, EGLDisplay> :: value && std::is_same <ctx_t, EGLContext> :: value && std::is_same <img_t, KHRFIX (EGLImage)> :: value ) != false);
 
-                            if (_eglDestroyImageKHR != nullptr) {
-                                _ret = _eglDestroyImageKHR (dpy, img) != EGL_FALSE ? true : false;
+                            constexpr char _methodName [] = XSTRINGIFY ( KHRFIX (eglDestroyImage) );
+
+                            static EGLBoolean (* _eglDestroyImage) (EGLDisplay, KHRFIX (EGLImage)) = reinterpret_cast < EGLBoolean (*) (EGLDisplay, KHRFIX (EGLImage)) > (eglGetProcAddress ( KHRFIX ("eglDestroyImage") ));
+
+                            if (_eglDestroyImage != nullptr) {
+                                _ret = _eglDestroyImage (dpy, img) != EGL_FALSE ? true : false;
                                 img = InvalidImg ();
                             }
                             else {
                                 // Error
-                                TRACE_WITHOUT_THIS (Trace::Error, (_T ("eglDestroyImageKHR is unavailable or invalid parameters are provided.")));
+                                TRACE_WITHOUT_THIS (Trace::Error, (_T ("%s is unavailable or invalid parameters are provided."), _methodName));
                             }
 
                         }
@@ -223,10 +344,49 @@ namespace RPI_INTERNAL {
 
                         return _ret;
                     }
+
+                    // Although compile / build time may succeed, runtime checks are also mandatory
+                    static bool Supported (dpy_t const dpy, std::string const & name) {
+                        bool _ret = false;
+
+                        static_assert ((std::is_same <dpy_t, EGLDisplay> :: value) != false);
+
+#ifdef EGL_VERSION_1_5
+                        // KHR extentions that have become part of the standard
+
+                        // Sync capability
+                        _ret = name.find ("EGL_KHR_fence_sync") != std::string::npos
+                               /* CreateImage / DestroyImage */
+                               || name.find ("EGL_KHR_image") != std::string::npos
+                               || name.find ("EGL_KHR_image_base") != std::string::npos;
+#endif
+
+                        if (_ret != true) {
+                            static_assert (std::is_same <std::string::value_type, char> :: value != false);
+                            char const * _ext = eglQueryString (dpy, EGL_EXTENSIONS);
+
+                            _ret =  _ext != nullptr
+                                    && name.size () > 0
+                                    && ( std::string (_ext).find (name)
+                                         != std::string::npos );
+                        }
+
+                        return _ret;
+                    }
+
+#undef XSTRINGIFY
+#undef STRINGIFY
+#ifdef _KHRFIX
+#undef _KHRFIX
+#endif
+#undef KHRFIX
+#undef _EGL_SYNC_FENCE
+#undef _EGL_NO_SYNC
+#undef _EGL_FOREVER
+#undef _EGL_NO_IMAGE
             };
 
             class GLES {
-// TODO:: extention support
                 public :
 
                     using fbo_t = GLuint;
@@ -285,21 +445,28 @@ namespace RPI_INTERNAL {
                                 _ret = glGetError () == GL_NO_ERROR;
                             }
 
-                            // Requires EGL 1.2 and either the EGL_OES_image or EGL_OES_image_base
-                            // Use eglGetProcAddress, or dlsym for the function pointer of this GL extenstion
-                            // https://www.khronos.org/registry/OpenGL/extensions/OES/OES_EGL_image_external.txt
 
-                            // Take storage for the texture from the EGLImage; Pixel data becomes undefined
-                            static void (* _EGLImageTargetTexture2DOES) (GLenum, GLeglImageOES) = reinterpret_cast < void (*) (GLenum, GLeglImageOES) > (eglGetProcAddress ("glEGLImageTargetTexture2DOES"));
+                            // A vialid GL context should exist for GLES::Supported ()
+                            EGL::ctx_t _ctx = eglGetCurrentContext ();
+                            EGL::dpy_t _dpy = _ctx != EGL::InvalidCtx () ? eglGetCurrentDisplay () : EGL::InvalidDpy ();
 
-                            if (_ret != false && _EGLImageTargetTexture2DOES != nullptr) {
-                                // Logical const
-                                using no_const_img_t = _remove_const < decltype (img) > :: type;
-                                _EGLImageTargetTexture2DOES (_tgt, reinterpret_cast <GLeglImageOES> ( const_cast < no_const_img_t > (img) ));
-                                _ret = glGetError () == GL_NO_ERROR;
-                            }
-                            else {
-                                _ret = false;
+
+                            _ret = _ret && eglGetError () == EGL_SUCCESS && _ctx != EGL::InvalidCtx ();
+
+                            if ( _ret && ( Supported ("GL_OES_EGL_image") && ( EGL::Supported (_dpy, "EGL_KHR_image") || EGL::Supported (_dpy, "EGL_KHR_image_base") ) ) != false) {
+
+                                // Take storage for the texture from the EGLImage; Pixel data becomes undefined
+                                static void (* _EGLImageTargetTexture2DOES) (GLenum, GLeglImageOES) = reinterpret_cast < void (*) (GLenum, GLeglImageOES) > (eglGetProcAddress ("glEGLImageTargetTexture2DOES"));
+
+                                if (_ret != false && _EGLImageTargetTexture2DOES != nullptr) {
+                                    // Logical const
+                                    using no_const_img_t = _remove_const < decltype (img) > :: type;
+                                    _EGLImageTargetTexture2DOES (_tgt, reinterpret_cast <GLeglImageOES> ( const_cast < no_const_img_t > (img) ));
+                                    _ret = glGetError () == GL_NO_ERROR;
+                                }
+                                else {
+                                    _ret = false;
+                                }
                             }
 
                             if (_ret != false) {
@@ -323,11 +490,43 @@ namespace RPI_INTERNAL {
                                     glFramebufferTexture2D (GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _tgt, tex, 0 /* level */);
                                     _ret = glGetError () == GL_NO_ERROR;
                                 }
+
+                                if (_ret != false) {
+                                    _ret = glCheckFramebufferStatus (GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+                                }
+
+                                if (_ret != true) {
+                                    glDeleteFramebuffers (1, &fbo);
+                                    glDeleteTextures (1, &tex);
+
+                                    fbo = InvalidFbo ();
+                                    tex = InvalidTex ();
+                                }
                             }
                         }
 
                         return _ret;
                     }
+
+                    bool Supported (std::string const & name) {
+                        bool _ret = false;
+
+                        using string_t = std::string::value_type;
+                        using ustring_t = std::make_unsigned < string_t > :: type;
+
+                        // Identical underlying types except for signedness
+                        static_assert (std::is_same < ustring_t, GLubyte > :: value != false);
+
+                        string_t const * _ext = reinterpret_cast <string_t const *> ( glGetString (GL_EXTENSIONS) );
+
+                        _ret = _ext != nullptr
+                               && name.size () > 0
+                               && ( std::string (_ext).find (name)
+                                    != std::string::npos );
+
+                        return _ret;
+                    }
+
             };
 
         public :
@@ -336,7 +535,7 @@ namespace RPI_INTERNAL {
             using callback_t = std::function < void () >;
 
             static_assert ( std::is_convertible < decltype (native_t::_surf), decltype ( EGL::InvalidWin () ) > :: value != false );
-            static constexpr native_t InvalidNative () { return { static_cast < decltype (native_t::_surf) > ( EGL::InvalidWin () ), 0, 0, -1 }; }
+            static constexpr native_t InvalidNative () { return { static_cast < decltype (native_t::_surf) > ( EGL::InvalidWin () ), 0, 0, { -1, 0, 0, 0, 0 } }; }
 
         private :
 
@@ -350,7 +549,7 @@ namespace RPI_INTERNAL {
             std::map < EGL::win_t const, prime_t const > _primes;
 
             // Native to EGL mapping
-            std::map < prime_t const, EGL::img_t const > _imgs;
+            std::map < prime_t const, EGL::img_t const, prime_t > _imgs;
 
             // EGL to GLES mapping
             std::map < EGL::img_t const, GLES::fbo_t const > _fbos;
@@ -419,8 +618,6 @@ namespace RPI_INTERNAL {
                 auto _fbo = _fbos.end ();
                 auto _tex = _texs.end ();
 
-// TODO: destroy all dangling EGL / GLES resources because this has been called from eglDestroySurface or the native has changed via Unregister / Regsiter
-
                 _ret = _win != _wins.end ();
 
                 if (_ret != false) {
@@ -441,7 +638,14 @@ namespace RPI_INTERNAL {
                     _fbo = _fbos.find ( _img->second );
                     _ret = _fbo != _fbos.end ();
 
-//                    EGL::DestroyImage (_dpy, _ctx, _img->second);
+// TODO : block affecting egl functions (?)
+
+                    EGL::ctx_t _ctx = eglGetCurrentContext ();
+                    EGL::dpy_t _dpy = _ctx != EGL::InvalidCtx () ? eglGetCurrentDisplay () : EGL::InvalidDpy ();
+
+                    if (_dpy != EGL::InvalidDpy ()) {
+                        EGL::DestroyImage (_dpy, _ctx, _img->second);
+                    }
 
                     /* iterator */ _imgs.erase (_img );
                 }
@@ -464,7 +668,7 @@ namespace RPI_INTERNAL {
                 static_assert ( std::is_convertible < decltype (native_t::_surf), EGL::win_t > :: value != false );
                 bool _ret =
                     _callbacks.insert ( std::pair < EGL::win_t const, callback_t > ( static_cast < EGL::win_t > (native._surf), callback) ).second
-                    && _primes.insert ( std::pair < EGL::win_t const, prime_t const> ( static_cast < EGL::win_t > (native._surf), native._prime._fd) ).second;
+                    && _primes.insert ( std::pair < EGL::win_t const, prime_t const> ( static_cast < EGL::win_t > (native._surf), native._prime) ).second;
 
                 return _ret;
             }
@@ -504,7 +708,6 @@ namespace RPI_INTERNAL {
 
             // EGL resource creation
             EGL::img_t ImgForSurf (EGL::surf_t const & surf, EGL::width_t width, EGL::height_t height) {
-
                 EGL::img_t _ret = EGL::InvalidImg ();
 
                 EGL::ctx_t _ctx = eglGetCurrentContext ();
@@ -525,21 +728,19 @@ namespace RPI_INTERNAL {
                     }
                     else {
                         // Create an EGLimage
+                        if ( ( _itt != _primes.end ()
+                                && _itt->second._width == width
+                                && _itt->second._height == height ) != false ){
 
-// TODO: These properties should be communicated via DMATransfer, they might differ from the local native
-                        auto _bpp = RenderDevice::BPP ();
-// TODO: Magic constant
-                        auto _stride = _bpp / 8 * width;
-                        auto _format = RenderDevice::SupportedBufferType ();
+                            _ret = EGL::CreateImage (_dpy, _ctx, _itt->second);
 
-                        if ( _itt != _primes.end () ){
-
-                            _ret = EGL::CreateImage (_dpy, _ctx, _itt->second, width, height, _bpp, _format, _stride);
-
-                            if (_ret != EGL::InvalidImg () && Associate (surf, _ret) != true) {
+                            if (_ret != EGL::InvalidImg () && Associate (_itt->second, _ret) != true) {
                                 /* bool */ EGL::DestroyImage (_dpy, _ctx, _ret);
                             }
 
+                        }
+                        else {
+                            TRACE (Trace::Error, (_T ("Unable to create image for surface.")));
                         }
                     }
 
@@ -577,7 +778,7 @@ namespace RPI_INTERNAL {
                             _ret = GLES::InvalidFbo ();
 
 // TODO: if one of the Associate's fails the mapping has become corrupt
-//                            assert (false);
+                        assert (false);
                     }
 
                 }
@@ -1239,19 +1440,57 @@ public:
     ISurface* Create( const std::string& name, const uint32_t width, const uint32_t height) override;
 
 
-    bool FDFor (Exchange::IComposition::IClient const & client, int & fd) {
+    bool PrimeFor (Exchange::IComposition::IClient const & client, WPEFramework::RPI_INTERNAL::GLResourceMediator::prime_t & prime) {
         std::lock_guard < decltype (_surfaceLock) > const _lock (_surfaceLock);
 
         bool _ret = false;
-        fd = -1;
+        prime = { -1, 0, 0, 0, 0};
 
         if (_dma != nullptr) {
             std::string _msg = client.Name ();
 
             // Announce ourself to indicate the data exchange is a request for (file descriptor) data
             // Then, after receiving the data DMA is no longer needed for this client
-// TODO: parse message for buffer properties, like format and stride
-            _ret = _dma->Connect () && _dma->Send (_msg, fd) && _dma->Receive (_msg, fd) && _dma->Disconnect ();
+            _ret = _dma->Connect () && _dma->Send (_msg, prime._fd) && _dma->Receive (_msg, prime._fd) && _dma->Disconnect ();
+
+            // <prefix>:width:height:stride:format
+            // Search from end to begin
+
+            auto str2prop = [&_msg] (std::string::size_type & pos) -> uint32_t {
+                constexpr char _spacer [] = ":";
+
+                std::string::size_type _start = _msg.rfind (_spacer, pos);
+
+                auto _ret = ( _start != std::string::npos && _start <= _msg.length () != false ) ? std::stoul (_msg.substr (_start + 1, pos) ) : 0;
+
+                // Narrowing detection
+
+// TODO:
+                constexpr bool _enable = false;
+
+                if ( _narrowing < decltype (_ret), uint32_t, _enable> :: value != false ) {
+                    TRACE_WITHOUT_THIS (Trace::Information, (_T ("Possible narrowing detected!")));
+                }
+
+                decltype (ERANGE) _err = errno;
+
+                if (_err == ERANGE) {
+                    TRACE_WITHOUT_THIS (Trace::Error, (_T ("Unbale to determine property value.")));
+                }
+
+                pos = _start - 1;
+
+                return _ret;
+            };
+
+            std::string::size_type _pos = _msg.size () - 1;
+
+            prime._format = str2prop (_pos);
+            prime._stride = str2prop (_pos);
+            prime._height = str2prop (_pos);
+            prime._width = str2prop (_pos);
+
+            TRACE (Trace::Information, (_T ("Received the following properties via DMA: width %d height %d stride %d format %d."), prime._width, prime._height, prime._stride, prime._format));
         }
 
         if (_ret != true) {
@@ -1419,7 +1658,7 @@ Display::SurfaceImplementation::SurfaceImplementation(
         }
         else {
 
-            if (_display.FDFor (*_remoteClient, _nativeSurface._prime._fd) != true) {
+            if (_display.PrimeFor (*_remoteClient, _nativeSurface._prime) != true) {
                 TRACE (Trace::Error, (_T ( "Failed to setup a share for rendering results!")));
 
                 _remoteRenderer->Release ();
@@ -1698,7 +1937,7 @@ Compositor::IDisplay* Compositor::IDisplay::Instance(const string& displayName)
 // Open cases:
 // - Other libs / users of eglGetProcAddress
 // - Other libs / users of options like dlsym that circumvent the use of eglGetProccAddress
-// - Library symbol earch order
+// - Library symbol search order
 
 // Avoid name mangling
 #ifdef __cplusplus
@@ -1706,8 +1945,9 @@ extern "C" {
 #endif
 
 /* EGLAPI */ EGLSurface /* EGLAPIENTRY */ eglCreateWindowSurface (EGLDisplay dpy, EGLConfig cnfg, EGLNativeWindowType win, EGLint const * attr);
+// TODO: eglCreatePlatformWindowSurface
 /* EGLAPI */ EGLBoolean /* EGLAPIENTRY */ eglDestroySurface (EGLDisplay dpy, EGLSurface surf);
-/* EGLAPI */ EGLBoolean /* EGLAPIENTRY */ eglDestroySurfaceSwapBuffers (EGLDisplay dpy, EGLSurface surf);
+/* EGLAPI */ EGLBoolean /* EGLAPIENTRY */ eglSwapBuffers (EGLDisplay dpy, EGLSurface surf);
 /* EGLAPI */ EGLBoolean /* EGLAPIENTRY */ eglMakeCurrent (EGLDisplay dpy, EGLSurface draw, EGLSurface read, EGLContext ctx);
 
 /* EGLAPI */ EGLSurface /* EGLAPIENTRY */ eglCreateWindowSurface (EGLDisplay dpy, EGLConfig cnfg, EGLNativeWindowType win, EGLint const * attr) {
@@ -1808,6 +2048,8 @@ extern "C" {
             }
 
         }
+
+        WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::sync_t _sync (dpy);
 
         assert (_ret != EGL_FALSE);
     }
