@@ -19,10 +19,17 @@
 
 #include "../../Module.h"
 
-#include <vault_implementation.h>
 #include <persistent_implementation.h>
+#include <vault_implementation.h>
 
 #include <cryptalgo/cryptalgo.h>
+
+#if defined(USE_PROVISIONING)
+#include <interfaces/IProvisioning.h>
+#include <provision/DRMInfo.h>
+
+using namespace WPEFramework;
+#endif
 
 #include <openssl/evp.h>
 #include <openssl/rand.h>
@@ -31,6 +38,19 @@
 #include "Vault.h"
 
 namespace Implementation {
+
+#if defined(USE_PROVISIONING)
+static string GetEndPoint()
+{
+    TCHAR* value = ::getenv(_T("PROVISION_PATH"));
+
+#ifdef __WINDOWS__
+    return (value == nullptr ? _T("127.0.0.1:7777") : value);
+#else
+    return (value == nullptr ? _T("/tmp/provision") : value);
+#endif
+}
+#endif
 
 static constexpr uint8_t IV_SIZE = 16;
 
@@ -48,6 +68,88 @@ namespace Netflix {
 
 /* static */ Vault& Vault::NetflixInstance()
 {
+#if defined(USE_PROVISIONING)
+    static const uint8_t key[] = { 0x41, 0xde, 0xba, 0x86, 0x9f, 0xcf, 0x2e, 0xb1, 0xcc, 0x0c, 0x15, 0xb7, 0x4e, 0xd0, 0x9d, 0x90 };
+
+    auto ctor = [](Vault& vault) {
+        auto engine = Core::ProxyType<RPC::InvokeServerType<1, 0, 4>>::Create();
+        auto client = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(GetEndPoint().c_str()), Core::ProxyType<Core::IIPCServer>(engine));
+
+        if ((client.IsValid() == true) && (client->IsOpen() == false)) {
+
+            Exchange::IProvisioning* provisioning = client->Open<Exchange::IProvisioning>("Provisioning");
+
+            if (provisioning != nullptr) {
+                std::string label;
+                Core::SystemInfo::GetEnvironment(_T("NETFLIX_VAULT"), label);
+
+                if (label.empty()) {
+                    label = "netflix";
+                    printf("%s:%d [%s] Set label to default \"%s\"\n", __FILE__, __LINE__, __func__, label.c_str());
+                }
+
+#ifdef __WINDOWS__
+#pragma warning(disable : 4200)
+#endif
+#pragma pack(push, 1)
+                struct NetflixData {
+                    uint8_t salt[16];
+                    uint8_t kpe[16];
+                    uint8_t kph[32];
+                    uint8_t esn[0];
+                };
+#pragma pack(pop)
+#ifdef __WINDOWS__
+#pragma warning(default : 4200)
+#endif
+
+                uint8_t encrypted_data[1024];
+                uint16_t encrypted_data_size = sizeof(encrypted_data);
+
+                uint32_t error = provisioning->DRMId(label, encrypted_data_size, encrypted_data);
+
+                if (error == Core::ERROR_NONE) {
+                    uint8_t netflix_data[256];
+                    uint16_t netflix_data_size = sizeof(netflix_data);
+
+                    netflix_data_size = ClearBlob(encrypted_data_size, reinterpret_cast<const char*>(encrypted_data), sizeof(netflix_data), reinterpret_cast<char*>(netflix_data));
+
+                    if (netflix_data_size > 0) {
+                        printf("%s:%d [%s] Received Provision Info for '%s' with length [%d].\n", __FILE__, __LINE__, __func__, label.c_str(), netflix_data_size);
+
+                        NetflixData* data = reinterpret_cast<NetflixData*>(netflix_data);
+
+                        VARIABLE_IS_NOT_USED uint32_t kpeId = vault.Import(sizeof(NetflixData::kpe), data->kpe, false);
+                        ASSERT(kpeId == Netflix::KPE_ID);
+
+                        VARIABLE_IS_NOT_USED uint32_t kphId = vault.Import(sizeof(NetflixData::kph), data->kph, false);
+                        ASSERT(kphId == Netflix::KPH_ID);
+
+                        uint8_t kpw[32];
+                        // kpe and kph are already concatenated in the correct order
+                        Netflix::DeriveWrappingKey(data->kpe, (sizeof(data->kpe) + sizeof(data->kph)), sizeof(kpw), kpw);
+                        VARIABLE_IS_NOT_USED uint32_t kdwId = vault.Import(16, kpw, false); // take the first 16 bytes only!
+                        ASSERT(kdwId == Netflix::KPW_ID);
+
+                        // Let's (ab)use the vault to hold the ESN as well
+                        vault._lastHandle = (Netflix::ESN_ID - 1);
+                        VARIABLE_IS_NOT_USED uint32_t esnId = vault.Import((netflix_data_size - sizeof(NetflixData)), data->esn, true);
+                        ASSERT(esnId == Netflix::ESN_ID);
+
+                        TRACE_L1("Imported pre-shared keys and ESN () into the Netflix vault");
+
+                    } else {
+                        printf("%s:%d [%s] Failed to get %s\n", __FILE__, __LINE__, __func__, label.c_str());
+                    }
+                } else {
+                    printf("%s:%d [%s] Failed to extract %s provisioning. Error code %d.\n", __FILE__, __LINE__, __func__, label.c_str(), error);
+                }
+
+                provisioning->Release();
+            }
+        }
+    };
+#else
     static const uint8_t key[] = { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x11 };
 
     auto ctor = [](Vault& vault) {
@@ -107,6 +209,8 @@ namespace Netflix {
             file.Close();
         }
     };
+
+#endif
 
     auto dtor = [](Vault& vault) {
         vault.Delete(Netflix::ESN_ID);
@@ -328,7 +432,6 @@ bool Vault::Delete(const uint32_t id)
     return (result);
 }
 
-
 } // namespace Implementation
 
 extern "C" {
@@ -396,7 +499,6 @@ bool vault_delete(VaultImplementation* vault, const uint32_t id)
     return (vaultImpl->Delete(id));
 }
 
-
 // Netflix Security
 
 uint16_t netflix_security_esn(const uint16_t max_length, uint8_t data[])
@@ -423,24 +525,24 @@ uint32_t netflix_security_wrapping_key(void)
     return (Implementation::Vault::NetflixInstance().Size(Implementation::Netflix::KPW_ID) != 0 ? Implementation::Netflix::KPW_ID : 0);
 }
 
-uint32_t persistent_key_exists( struct VaultImplementation* vault ,const char locator[],bool* result)
+uint32_t persistent_key_exists(struct VaultImplementation* /* vault */, const char* /* locator[] */, bool* /* result */)
 {
-    return(WPEFramework::Core::ERROR_UNAVAILABLE);
+    return (WPEFramework::Core::ERROR_UNAVAILABLE);
 }
 
-uint32_t persistent_key_load(struct VaultImplementation* vault,const char locator[],uint32_t*  id)
+uint32_t persistent_key_load(struct VaultImplementation* /* vault */, const char* /* locator[] */, uint32_t* /* id */)
 {
-    return(WPEFramework::Core::ERROR_UNAVAILABLE);
+    return (WPEFramework::Core::ERROR_UNAVAILABLE);
 }
 
-uint32_t persistent_key_create( struct VaultImplementation* vault,const char locator[],const key_type keyType,uint32_t* id)
+uint32_t persistent_key_create(struct VaultImplementation* /* vault */, const char* /* locator[] */, const key_type /* keyType */, uint32_t* /* id */)
 {
-    return(WPEFramework::Core::ERROR_UNAVAILABLE);
+    return (WPEFramework::Core::ERROR_UNAVAILABLE);
 }
 
-uint32_t persistent_flush(struct VaultImplementation* vault)
+uint32_t persistent_flush(struct VaultImplementation* /* vault */)
 {
-    return(WPEFramework::Core::ERROR_UNAVAILABLE);
+    return (WPEFramework::Core::ERROR_UNAVAILABLE);
 }
 
 } // extern "C"

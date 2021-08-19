@@ -19,6 +19,8 @@ set(TARGET implementation)
 
 find_package(OpenSSL REQUIRED)
 
+option(USE_PROVISIONING "Load Netflix data from a provisioning label" ON)
+
 add_library(${TARGET} STATIC
     Vault.cpp
     Hash.cpp
@@ -33,6 +35,20 @@ target_link_libraries(${TARGET}
         OpenSSL::SSL
         OpenSSL::Crypto
 )
+
+if(USE_PROVISIONING)
+    message(STATUS "Build with provisioning support")
+
+    find_package(libprovision REQUIRED)
+
+    target_compile_definitions(${TARGET} PRIVATE
+        USE_PROVISIONING)
+
+    target_link_libraries(${TARGET}
+        PUBLIC
+            libprovision::libprovision
+    )
+endif()
 
 target_include_directories(${TARGET}
     PUBLIC
