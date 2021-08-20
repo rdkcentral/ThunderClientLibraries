@@ -1945,7 +1945,10 @@ extern "C" {
 #endif
 
 /* EGLAPI */ EGLSurface /* EGLAPIENTRY */ eglCreateWindowSurface (EGLDisplay dpy, EGLConfig cnfg, EGLNativeWindowType win, EGLint const * attr);
-// TODO: eglCreatePlatformWindowSurface
+#ifdef EGL_VERSION_1_5
+/* EGLAPI */ EGLSurface /* EGLAPIENTRY */ eglCreatePlatformWindowSurface (EGLDisplay dpy, EGLConfig config, void * native_window, const EGLAttrib * attrib_list);
+#endif
+
 /* EGLAPI */ EGLBoolean /* EGLAPIENTRY */ eglDestroySurface (EGLDisplay dpy, EGLSurface surf);
 /* EGLAPI */ EGLBoolean /* EGLAPIENTRY */ eglSwapBuffers (EGLDisplay dpy, EGLSurface surf);
 /* EGLAPI */ EGLBoolean /* EGLAPIENTRY */ eglMakeCurrent (EGLDisplay dpy, EGLSurface draw, EGLSurface read, EGLContext ctx);
@@ -1964,8 +1967,8 @@ extern "C" {
     if (_ret != EGL_NO_SURFACE) {
         static WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
 
-        // Only place, for now, that directly does an associate
-         if (_map.Associate (_ret, win)/* && _map.Associate (_ret, WPEFramework::RPI_INTERNAL::GLResourceMediator::GLES::InvalidFbo ())*/ != true) {
+        // First place, for now, that directly does an associate
+         if (_map.Associate (_ret, win) != true) {
              /* EGLBoolean */ eglDestroySurface (dpy, _ret);
              _ret = EGL_NO_SURFACE;
          }
@@ -1975,6 +1978,37 @@ extern "C" {
 
     return _ret;
 }
+
+#ifdef EGL_VERSION_1_5
+/* EGLAPI */ EGLSurface /* EGLAPIENTRY */ eglCreatePlatformWindowSurface (EGLDisplay dpy, EGLConfig config, void * native_window, const EGLAttrib * attrib_list) {
+    EGLSurface _ret = EGL_NO_SURFACE;
+
+    static EGLSurface (* _eglCreatePlatformWindowSurface) (EGLDisplay, EGLConfig, void *, EGLAttrib const *) = reinterpret_cast < EGLSurface (*) (EGLDisplay, EGLConfig, void *, EGLAttrib const *) > ( eglGetProcAddress ("eglCreatePlatformWindowSurface") );
+
+    assert (_eglCreatePlatformWindowSurface != &eglCreatePlatformWindowSurface);
+
+    if (_eglCreatePlatformWindowSurface != nullptr && _eglCreatePlatformWindowSurface != &eglCreatePlatformWindowSurface) {
+        _ret = _eglCreatePlatformWindowSurface (dpy, config, native_window, attrib_list);
+    }
+
+    if (_ret != EGL_NO_SURFACE) {
+        static WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
+
+        // This is not generally true for all platforms
+        static_assert (std::is_convertible <decltype (native_window), WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::win_t> :: value != false);
+
+        // Second place, for now, that directly does an associate
+         if (_map.Associate (_ret, static_cast <WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::win_t> (native_window)) != true) {
+             /* EGLBoolean */ eglDestroySurface (dpy, _ret);
+             _ret = EGL_NO_SURFACE;
+         }
+
+        assert (_ret != EGL_NO_SURFACE);
+    }
+
+    return _ret;
+}
+#endif
 
 /* EGLAPI */ EGLBoolean /* EGLAPIENTRY */ eglDestroySurface (EGLDisplay dpy, EGLSurface surf) {
     EGLBoolean _ret = EGL_FALSE;
