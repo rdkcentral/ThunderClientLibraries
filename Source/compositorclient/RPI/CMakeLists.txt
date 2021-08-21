@@ -22,6 +22,7 @@ find_package(EGL REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
 find_package(${NAMESPACE}COM REQUIRED)
+find_package(${NAMESPACE}VirtualInput REQUIRED)
 
 if(VC6)
     find_package(GBM REQUIRED)
