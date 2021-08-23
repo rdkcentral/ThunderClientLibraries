@@ -14,8 +14,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+project(NetflixVaultGenerator)
+cmake_minimum_required(VERSION 3.0)
 
 find_package(OpenSSL REQUIRED)
+
+option(USE_PROVISIONING "Prepare data for a provisioning json" ON)
 
 add_executable(NetflixVaultGenerator
    main.cpp
@@ -26,6 +30,15 @@ target_link_libraries(NetflixVaultGenerator
    OpenSSL::Crypto
    dl
 )
+
+if(USE_PROVISIONING)
+   message(STATUS "Build with provisioning support")
+
+   target_compile_definitions(NetflixVaultGenerator
+   PRIVATE
+       USE_PROVISIONING
+   )
+endif()
 
 install(TARGETS NetflixVaultGenerator DESTINATION bin)
 

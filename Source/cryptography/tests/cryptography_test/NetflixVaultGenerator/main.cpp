@@ -9,13 +9,18 @@
 #include <openssl/modes.h>
 #include <openssl/rand.h>
 
+// HOW TO BUILD
+// cmake -B build -S <path/to/this/source>
+// cmake --build build
+
 using namespace std;
 
-const uint8_t g_key[16] = { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 
+#ifndef USE_PROVISIONING
+const uint8_t g_key[16] = { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88,
                             0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x11 };
+#endif
 
-struct NetflixData
-{
+struct NetflixData {
     uint8_t m_salt[16];
     uint8_t m_kpe[16];
     uint8_t m_kph[32];
@@ -37,13 +42,14 @@ void DecodeBase64(const char input[], uint8_t output[], uint32_t outputSize)
     BIO_free_all(bio);
 }
 
+#ifndef USE_PROVISIONING
 void EncodeAes(const uint8_t input[], uint8_t output[], uint32_t bufferSize, const uint8_t iv[16])
 {
     unsigned char localIv[AES_BLOCK_SIZE];
     memcpy(localIv, iv, 16);
 
     unsigned char ecount[AES_BLOCK_SIZE];
-    memset(ecount, 0, 16); 
+    memset(ecount, 0, 16);
 
     unsigned int num = 0;
 
@@ -51,6 +57,7 @@ void EncodeAes(const uint8_t input[], uint8_t output[], uint32_t bufferSize, con
     AES_set_encrypt_key(g_key, 128, &aesKey);
     CRYPTO_ctr128_encrypt(input, output, bufferSize, &aesKey, localIv, ecount, &num, reinterpret_cast<block128_f>(AES_encrypt));
 }
+#endif
 
 int main(int argc, const char * argv[])
 {
@@ -84,10 +91,12 @@ int main(int argc, const char * argv[])
     // Copy ESN.
     strncpy(reinterpret_cast<char *>(netflixData->m_esn), line.c_str(), esnSize);
 
+#ifndef USE_PROVISIONING
     // Create random IV vector and salt.
     uint8_t iv[16];
 
     RAND_bytes(iv, sizeof(iv));
+#endif
     RAND_bytes(netflixData->m_salt, sizeof(netflixData->m_salt));
 
     // Read KPE (base 64 encoded) and store in NetflixData struct.
@@ -110,10 +119,12 @@ int main(int argc, const char * argv[])
 
     DecodeBase64(line.c_str(), netflixData->m_kph, sizeof(netflixData->m_kph));
 
+#ifndef USE_PROVISIONING
     // Encrypt NetflixData buffer.
     uint8_t * encryptBuffer = static_cast<uint8_t *>(malloc(totalBufferSize));
     memset(encryptBuffer, 0, totalBufferSize);
     EncodeAes(reinterpret_cast<uint8_t *>(netflixData), encryptBuffer, totalBufferSize, iv);
+#endif
 
     ofstream outFile(argv[2], ofstream::binary);
     if (!outFile) {
@@ -121,16 +132,26 @@ int main(int argc, const char * argv[])
         return ENOENT;
     }
 
+#ifdef USE_PROVISIONING
+    outFile.write(reinterpret_cast<const char *>(netflixData), totalBufferSize);
+#else
     // Write IV followed by encrypted NetflixData.
     outFile.write(reinterpret_cast<const char *>(iv), sizeof(iv));
     outFile.write(reinterpret_cast<const char *>(encryptBuffer), totalBufferSize);
+#endif
 
     outFile.close();
     inFile.close();
 
     cout << "SUCCESS: Written netflix vault to " << argv[2] << endl;
 
+#ifdef USE_PROVISIONING
+    cout << "Use this file as input of the BlobCreator tool to create a provisoning json" << endl;
+#endif
+
+#ifndef USE_PROVISIONING
     free(encryptBuffer);
+#endif
     free(netflixData);
 
     return 0;
