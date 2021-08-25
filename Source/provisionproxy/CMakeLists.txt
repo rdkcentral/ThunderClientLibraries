@@ -48,6 +48,9 @@ target_link_libraries(${TARGET}
           libprovision::libprovision
         )
 
+target_compile_options(${TARGET}
+        PUBLIC -uProvisionProxy)
+
 target_link_libraries(${TARGET}
         PUBLIC
           ${NAMESPACE}COM::${NAMESPACE}COM
@@ -78,7 +81,7 @@ target_compile_options(${TARGET}
             PUBLIC
                 "-u OpenSSLModule"
             )
-        
+
 install(
         TARGETS ${TARGET}  EXPORT ${TARGET}Targets  # for downstream dependencies
         ARCHIVE DESTINATION lib COMPONENT libs      # static lib
@@ -93,6 +96,7 @@ InstallCMakeConfig(
         TARGETS ${TARGET})
 
 InstallPackageConfig(
-        TARGETS ${TARGET} 
+        TARGETS ${TARGET}
         DESCRIPTION "Link the binairy encryption library and the communications channel to the encrypted provisioning store together." )
 
+add_subdirectory(blobreader)
