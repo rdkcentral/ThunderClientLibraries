@@ -474,6 +474,8 @@ OpenCDMError opencdm_session_close(struct OpenCDMSession* session)
 OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
     uint8_t encrypted[],
     const uint32_t encryptedLength,
+    const EncryptionScheme encScheme,
+    const EncryptionPattern pattern,
     const uint8_t* IV, const uint16_t IVLength,
     const uint8_t* keyId, const uint16_t keyIdLength,
     uint32_t initWithLast15 /* = 0 */)
@@ -482,7 +484,7 @@ OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
 
     if (session != nullptr) {
         result = encryptedLength > 0 ? static_cast<OpenCDMError>(session->Decrypt(
-            encrypted, encryptedLength, IV, IVLength, keyId, keyIdLength, initWithLast15)) : ERROR_NONE;
+            encrypted, encryptedLength, encScheme, pattern, IV, IVLength, keyId, keyIdLength, initWithLast15)) : ERROR_NONE;
     }
 
     return (result);

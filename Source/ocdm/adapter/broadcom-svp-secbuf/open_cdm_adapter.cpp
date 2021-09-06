@@ -31,7 +31,8 @@ struct Rpc_Secbuf_Info {
     size_t   size;
     void    *token;
 };
-OpenCDMError opencdm_gstreamer_session_decrypt(struct OpenCDMSession* session, GstBuffer* buffer, GstBuffer* subSampleBuffer, const uint32_t subSampleCount,
+OpenCDMError opencdm_gstreamer_session_decrypt_v2(struct OpenCDMSession* session, GstBuffer* buffer, GstBuffer* subSampleBuffer, const uint32_t subSampleCount,
+                                               const EncryptionScheme encScheme, const EncryptionPattern pattern,
                                                GstBuffer* IV, GstBuffer* keyID, uint32_t initWithLast15)
 {
     OpenCDMError result (ERROR_INVALID_SESSION);
@@ -133,7 +134,7 @@ OpenCDMError opencdm_gstreamer_session_decrypt(struct OpenCDMSession* session, G
                 }
                 gst_byte_reader_set_pos(reader, 0);
 
-                result = opencdm_session_decrypt(session, encryptedData, totalEncrypted, mappedIV, mappedIVSize, mappedKeyID, mappedKeyIDSize, initWithLast15);
+                result = opencdm_session_decrypt(session, encryptedData, totalEncrypted, encScheme, pattern, mappedIV, mappedIVSize, mappedKeyID, mappedKeyIDSize, initWithLast15);
 
                 if(ptr && (result == ERROR_NONE)) {
                     memcpy(&sb_info, encryptedData, sizeof(Rpc_Secbuf_Info));
@@ -178,7 +179,7 @@ OpenCDMError opencdm_gstreamer_session_decrypt(struct OpenCDMSession* session, G
                 fEncryptedData = encryptedData;
                 memcpy(encryptedData, mappedData, mappedDataSize);
 
-                result = opencdm_session_decrypt(session, encryptedData, totalEncryptedSize, mappedIV, mappedIVSize, mappedKeyID, mappedKeyIDSize, initWithLast15);
+                result = opencdm_session_decrypt(session, encryptedData, totalEncryptedSize, encScheme, pattern, mappedIV, mappedIVSize, mappedKeyID, mappedKeyIDSize, initWithLast15);
 
                 if(result == ERROR_NONE){
                     memcpy(&sb_info, fEncryptedData, sizeof(Rpc_Secbuf_Info));
@@ -203,3 +204,24 @@ OpenCDMError opencdm_gstreamer_session_decrypt(struct OpenCDMSession* session, G
 
     return (result);
 }
+
+OpenCDMError opencdm_gstreamer_session_decrypt(struct OpenCDMSession* session, GstBuffer* buffer, GstBuffer* subSample, const uint32_t subSampleCount,
+                                                   GstBuffer* IV, GstBuffer* keyID, uint32_t initWithLast15){
+    //Set the Encryption Scheme and Pattern to defaults.
+    EncryptionScheme encScheme = AesCtr_Cenc;
+    EncryptionPattern pattern = {0};
+
+    //Lets try to get Enc Scheme and Pattern from the Protection Metadata.
+    GstProtectionMeta* protectionMeta = reinterpret_cast<GstProtectionMeta*>(gst_buffer_get_protection_meta(buffer));
+    if (protectionMeta != NULL) {
+        if (gst_structure_has_name(protectionMeta->info, "application/x-cbcs")) {
+             encScheme = AesCbc_Cbcs;
+        }
+
+        gst_structure_get_uint(protectionMeta->info, "crypt_byte_block", &pattern.encrypted_blocks);
+        gst_structure_get_uint(protectionMeta->info, "skip_byte_block", &pattern.clear_blocks);
+    }
+
+    return(opencdm_gstreamer_session_decrypt_v2(session, buffer, subSample, subSampleCount, encScheme, pattern, IV, keyID, initWithLast15));
+}
+
