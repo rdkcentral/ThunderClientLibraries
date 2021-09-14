@@ -29,6 +29,7 @@
 #include <provision/DRMInfo.h>
 
 #include "IPCProvision.h"
+MODULE_NAME_ARCHIVE_DECLARATION
 
 using namespace WPEFramework;
 
