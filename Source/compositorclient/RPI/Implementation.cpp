@@ -17,6 +17,8 @@
  * limitations under the License.
  */
 
+// TOOD: glSetViewPort baseed on surface
+
 #include "Module.h"
 
 // TODO: This flag should be included in the preprocessor flags
@@ -105,6 +107,8 @@ namespace RPI_INTERNAL {
 
         private :
 
+// TODO: see modeset for types
+
             struct _native {
                 struct gbm_surface * _surf;
                 uint32_t _width;
@@ -116,13 +120,15 @@ namespace RPI_INTERNAL {
                     uint32_t _height;
                     uint32_t _stride;
                     uint32_t _format;
+                    uint64_t _modifier;
 
                     bool operator == (prime const & other) const {
                         bool _ret = _fd == other._fd
                                     && _width == other._width
                                     && _height == other._height
                                     && _stride == other._stride
-                                    && _format == other._format;
+                                    && _format == other._format
+                                    && _modifier == other._modifier;
                         return _ret;
                     }
 
@@ -181,8 +187,9 @@ namespace RPI_INTERNAL {
 #define _EGL_NO_SYNC EGL_NO_SYNC_KHR
 #define _EGL_FOREVER EGL_FOREVER_KHR
 #define _EGL_NO_IMAGE EGL_NO_IMAGE_KHR
-using EGLAttrib = EGLint;
+                using EGLAttrib = EGLint;
 #endif
+                using EGLuint64KHR = khronos_uint64_t;
 
                 class Sync final {
 
@@ -199,7 +206,7 @@ using EGLAttrib = EGLint;
                     public :
 // TODO: calling Supported is expensive, sync objects are heavily used
                         explicit Sync (dpy_t & dpy) : _dpy {dpy} {
-                            assert (dpy != InvalidDpy ());
+//                            assert (dpy != InvalidDpy ());
 
                             _sync = ( EGL::Supported (dpy, "EGL_KHR_fence_sync") && dpy != InvalidDpy () ) != false ? KHRFIX (eglCreateSync) (dpy, _EGL_SYNC_FENCE, nullptr) : InvalidSync ();
                         }
@@ -257,11 +264,11 @@ using EGLAttrib = EGLint;
 
                     static constexpr img_t InvalidImg () { return _EGL_NO_IMAGE; }
 
-
-                    static img_t CreateImage (dpy_t const & dpy, const ctx_t & ctx, GLResourceMediator::prime_t const & prime) {
+                    static img_t CreateImage (dpy_t const & dpy, const ctx_t & ctx, const win_t win, GLResourceMediator::prime_t const & prime) {
                         img_t _ret = InvalidImg ();
 
-                        if (dpy != InvalidDpy () && ctx != InvalidCtx () && ( Supported (dpy, "EGL_KHR_image") && Supported (dpy, "EGL_KHR_image_base")  && Supported (dpy, "EGL_EXT_image_dma_buf_import") ) != false ) {
+                        if (dpy != InvalidDpy () && ctx != InvalidCtx () && win != InvalidImg () && ( Supported (dpy, "EGL_KHR_image") && Supported (dpy, "EGL_KHR_image_base")  && Supported (dpy, "EGL_EXT_image_dma_buf_import") && Supported (dpy, "EGL_EXT_image_dma_buf_import_modifiers") ) != false ) {
+
                             static_assert ((std::is_same <dpy_t, EGLDisplay> :: value && std::is_same <ctx_t, EGLContext> :: value && std::is_same <img_t, KHRFIX (EGLImage)> :: value ) != false);
 
                             constexpr char _methodName [] = XSTRINGIFY ( KHRFIX (eglCreateImage) );
@@ -273,6 +280,7 @@ using EGLAttrib = EGLint;
                                 using height_t = decltype (prime._height);
                                 using stride_t = decltype (prime._stride);
                                 using format_t = decltype (prime._format);
+                                using modifier_t = decltype (prime._modifier);
                                 using fd_t = decltype ( prime._fd);
 
                                 // Narrowing detection
@@ -286,32 +294,91 @@ using EGLAttrib = EGLint;
                                     && _narrowing < height_t, EGLAttrib, _enable > :: value != false
                                     && _narrowing < stride_t, EGLAttrib, _enable > :: value != false
                                     && _narrowing < format_t, EGLAttrib, _enable > :: value != false
+                                    && _narrowing < modifier_t, EGLAttrib, _enable > :: value != false
                                     && _narrowing < fd_t, EGLAttrib, _enable > :: value != false) {
                                     TRACE_WITHOUT_THIS (Trace::Information, (_T ("Possible narrowing detected!")));
                                 }
 
-                                EGLAttrib const _attrs [] = {
-                                    EGL_WIDTH, static_cast <EGLAttrib> (prime._width),
-                                    EGL_HEIGHT, static_cast <EGLAttrib> (prime._height),
-                                    EGL_LINUX_DRM_FOURCC_EXT, static_cast <EGLAttrib> (prime._format),
-                                    EGL_DMA_BUF_PLANE0_FD_EXT, static_cast <EGLAttrib> (prime._fd),
+
+                                // EGL may report differently than DRM
+                                // Platform formats are cross referenced against prime settings at construction time
+
+
+                                // Query EGL
+                                static EGLBoolean (* _eglQueryDmaBufFormatsEXT) (EGLDisplay, EGLint, EGLint *, EGLint *) = reinterpret_cast < EGLBoolean (*) (EGLDisplay, EGLint, EGLint *, EGLint *) > (eglGetProcAddress ("eglQueryDmaBufFormatsEXT"));
+                                static EGLBoolean (* _eglQueryDmaBufModifiersEXT) (EGLDisplay,EGLint, EGLint, EGLuint64KHR *, EGLBoolean *, EGLint *) = reinterpret_cast < EGLBoolean (*) (EGLDisplay,EGLint, EGLint, EGLuint64KHR *, EGLBoolean *, EGLint *) > (eglGetProcAddress ("eglQueryDmaBufModifiersEXT"));
+
+                                bool _valid = _eglQueryDmaBufFormatsEXT != nullptr && _eglQueryDmaBufModifiersEXT != nullptr;
+
+                                EGLint _count = 0;
+
+                                _valid = _valid && _eglQueryDmaBufFormatsEXT (dpy, 0, nullptr, &_count) != EGL_FALSE;
+
+                                _valid = _valid && _eglQueryDmaBufFormatsEXT (dpy, 0, nullptr, &_count) != EGL_FALSE;
+
+                                EGLint _formats [_count];
+
+                                _valid = _valid && _eglQueryDmaBufFormatsEXT (dpy, _count, &_formats [0], &_count) != EGL_FALSE;
+
+                                // _format should be listed as supported
+                                if (_valid != false) {
+                                    std::list <EGLint> _list_e_for (&_formats [0], &_formats [_count]);
+
+                                    auto _it_e_for = std::find (_list_e_for.begin (), _list_e_for.end (), prime._format);
+
+                                    _valid = _it_e_for != _list_e_for.end ();
+                                }
+
+                                _valid = _valid && _eglQueryDmaBufModifiersEXT (dpy, prime._format, 0, nullptr, nullptr, &_count) != EGL_FALSE;
+
+                                EGLuint64KHR _modifiers [_count];
+                                EGLBoolean _external [_count];
+
+                                // External is required to exclusive use withGL_TEXTURE_EXTERNAL_OES
+                                _valid = _valid && _eglQueryDmaBufModifiersEXT (dpy, prime._format, _count, &_modifiers [0], &_external [0], &_count) != FALSE;
+
+                                // _modifier should be listed as supported, and _external should be true
+
+                                if (_valid != false) {
+                                    std::list <EGLuint64KHR> _list_e_mod (&_modifiers [0], &_modifiers [_count]);
+
+                                    auto _it_e_mod = std::find (_list_e_mod.begin (), _list_e_mod.end (), static_cast <EGLuint64KHR> (prime._modifier));
+
+                                    _valid = _it_e_mod != _list_e_mod.end ();
+
+                                    // For the compositor not relevant, only relevant for the client
+                                    if (_valid != false) {
+                                        // For the compositor not relevant
+                                        _valid = _external [ std::distance (_list_e_mod.begin (), _it_e_mod) ] != true;
+                                    }
+                                }
+
+                                if (_valid != false) {
+                                    EGLAttrib const _attrs [] = {
+                                        EGL_WIDTH, static_cast <EGLAttrib> (prime._width),
+                                        EGL_HEIGHT, static_cast <EGLAttrib> (prime._height),
+                                        EGL_LINUX_DRM_FOURCC_EXT, static_cast <EGLAttrib> (prime._format),
+                                        EGL_DMA_BUF_PLANE0_FD_EXT, static_cast <EGLAttrib> (prime._fd),
 // TODO: magic constant
-                                    EGL_DMA_BUF_PLANE0_OFFSET_EXT, 0,
-                                    EGL_DMA_BUF_PLANE0_PITCH_EXT, static_cast <EGLAttrib> (prime._stride),
-                                    EGL_NONE
-                                };
+                                        EGL_DMA_BUF_PLANE0_OFFSET_EXT, 0,
+                                        EGL_DMA_BUF_PLANE0_PITCH_EXT, static_cast <EGLAttrib> (prime._stride),
+                                        EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT, static_cast <EGLAttrib> (static_cast <EGLuint64KHR> (prime._modifier) & 0xFFFFFFFF),
+                                        EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT, static_cast <EGLAttrib> (static_cast <EGLuint64KHR> (prime._modifier) >> 32),
+//                                        EGL_IMAGE_PRESERVED_KHR, EGL_TRUE,
+                                        EGL_NONE
+                                    };
 
-
-                                static_assert (std::is_convertible < decltype (nullptr), EGLClientBuffer > :: value != false);
-                                _ret = _eglCreateImage (dpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, _attrs);
+                                    static_assert (std::is_convertible < decltype (nullptr), EGLClientBuffer > :: value != false);
+                                    _ret = _eglCreateImage (dpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, _attrs);
+                                }
                             }
                             else {
                                 // Error
-                                TRACE_WITHOUT_THIS (Trace::Error, (_T ("%s is unavailable or invalid parameters."), _methodName));
+                                TRACE_WITHOUT_THIS (Trace::Error, _T ("%s is unavailable or invalid parameters."), _methodName);
                             }
                         }
                         else {
-                            TRACE_WITHOUT_THIS (Trace::Error, (_T ("EGL is not properly initialized.")));
+                            TRACE_WITHOUT_THIS (Trace::Error, _T ("EGL is not properly initialized."));
                         }
 
                         return _ret;
@@ -334,7 +401,7 @@ using EGLAttrib = EGLint;
                             }
                             else {
                                 // Error
-                                TRACE_WITHOUT_THIS (Trace::Error, (_T ("%s is unavailable or invalid parameters are provided."), _methodName));
+                                TRACE_WITHOUT_THIS (Trace::Error, _T ("%s is unavailable or invalid parameters are provided."), _methodName);
                             }
 
                         }
@@ -476,12 +543,12 @@ using EGLAttrib = EGLint;
                                 }
 
                                 if (_ret != false) {
-                                    glGenFramebuffers(1, &fbo);
+                                    glGenFramebuffers (1, &fbo);
                                     _ret = glGetError () == GL_NO_ERROR;
                                 }
 
                                 if (_ret != false) {
-                                    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+                                    glBindFramebuffer (GL_FRAMEBUFFER, fbo);
                                     _ret = glGetError () == GL_NO_ERROR;
                                 }
 
@@ -729,10 +796,11 @@ using EGLAttrib = EGLint;
                     else {
                         // Create an EGLimage
                         if ( ( _itt != _primes.end ()
+// TODO: signed vs unsigned
                                 && _itt->second._width == width
                                 && _itt->second._height == height ) != false ){
 
-                            _ret = EGL::CreateImage (_dpy, _ctx, _itt->second);
+                            _ret = EGL::CreateImage (_dpy, _ctx, _it->second, _itt->second);
 
                             if (_ret != EGL::InvalidImg () && Associate (_itt->second, _ret) != true) {
                                 /* bool */ EGL::DestroyImage (_dpy, _ctx, _ret);
@@ -1456,7 +1524,15 @@ public:
             // <prefix>:width:height:stride:format
             // Search from end to begin
 
-            auto str2prop = [&_msg] (std::string::size_type & pos) -> uint32_t {
+            using width_t = decltype (WPEFramework::RPI_INTERNAL::GLResourceMediator::prime_t::_width);
+            using height_t = decltype (WPEFramework::RPI_INTERNAL::GLResourceMediator::prime_t::_height);
+            using stride_t = decltype (WPEFramework::RPI_INTERNAL::GLResourceMediator::prime_t::_height);
+            using format_t = decltype ( WPEFramework::RPI_INTERNAL::GLResourceMediator::prime_t::_height);
+            using modifier_t = decltype (WPEFramework::RPI_INTERNAL::GLResourceMediator::prime_t::_height);
+
+            using common_t = std::common_type <width_t, height_t, stride_t, format_t, modifier_t> :: type;
+
+            auto str2prop = [&_msg] (std::string::size_type & pos) -> common_t {
                 constexpr char _spacer [] = ":";
 
                 std::string::size_type _start = _msg.rfind (_spacer, pos);
@@ -1485,12 +1561,14 @@ public:
 
             std::string::size_type _pos = _msg.size () - 1;
 
-            prime._format = str2prop (_pos);
-            prime._stride = str2prop (_pos);
-            prime._height = str2prop (_pos);
-            prime._width = str2prop (_pos);
+// TODO: signed vs unsigned , commmon_type  for return type str2prop
+            prime._modifier = static_cast <modifier_t> (str2prop (_pos));
+            prime._format = static_cast <format_t> (str2prop (_pos));
+            prime._stride = static_cast <stride_t> (str2prop (_pos));
+            prime._height = static_cast <height_t> (str2prop (_pos));
+            prime._width = static_cast <width_t> (str2prop (_pos));
 
-            TRACE (Trace::Information, (_T ("Received the following properties via DMA: width %d height %d stride %d format %d."), prime._width, prime._height, prime._stride, prime._format));
+            TRACE_WITHOUT_THIS (Trace::Information, _T ("Received the following properties via DMA: width %d height %d stride %d format %d modifier %d."), prime._width, prime._height, prime._stride, prime._format, prime._modifier);
         }
 
         if (_ret != true) {
@@ -1638,6 +1716,7 @@ Display::SurfaceImplementation::SurfaceImplementation(
     , _remoteRenderer(nullptr)
     , _nativeSurface { WPEFramework::RPI_INTERNAL::GLResourceMediator::InvalidNative () }
 {
+// TODO: gbm_surface_Create_with_modifiers
     _nativeSurface._surf = gbm_surface_create (_display.Native (), width, height, RenderDevice::SupportedBufferType (), GBM_BO_USE_RENDERING /* used for rendering */);
 
     if (_nativeSurface._surf == nullptr) {
@@ -1658,7 +1737,7 @@ Display::SurfaceImplementation::SurfaceImplementation(
         }
         else {
 
-            if (_display.PrimeFor (*_remoteClient, _nativeSurface._prime) != true) {
+            if (_display.PrimeFor (*_remoteClient, _nativeSurface._prime) != true || gbm_device_is_format_supported (static_cast <RenderDevice::GBM::dev_t> (_display.Native ()), _nativeSurface._prime._format, GBM_BO_USE_RENDERING) != 1) {
                 TRACE (Trace::Error, (_T ( "Failed to setup a share for rendering results!")));
 
                 _remoteRenderer->Release ();
@@ -1671,6 +1750,8 @@ Display::SurfaceImplementation::SurfaceImplementation(
                 _remoteClient = nullptr;
             }
             else {
+                assert (gbm_device_get_format_modifier_plane_count (static_cast <RenderDevice::GBM::dev_t>(_display.Native ()), _nativeSurface._prime._format, _nativeSurface._prime._modifier) == 1);
+
                 // Register a callback for EGL updates
                 WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
                 /* bool */ _map.Register ( _nativeSurface, std::bind ( &WPEFramework::RPI::Display::SurfaceImplementation::ScanOut, this ) );
@@ -1944,6 +2025,138 @@ Compositor::IDisplay* Compositor::IDisplay::Instance(const string& displayName)
 extern "C" {
 #endif
 
+__attribute__ (( visibility ("hidden") )) bool _WillRenderEGLTargetFor (EGLNativeWindowType win, EGLSurface surf) {
+    bool _ret = false;
+
+    if (win != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidWin () && surf != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidSurf ()) {
+        static WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
+
+// TODO: Is this required ?
+        WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::ctx_t _ctx = eglGetCurrentContext ();
+        WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::dpy_t _dpy = _ctx != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidCtx () ? eglGetCurrentDisplay () : WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidDpy ();
+        WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::sync_t _sync (_dpy);
+
+        static_assert (std::is_same <EGLNativeWindowType, WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::win_t> :: value != false);
+        _ret = _map.Associate (surf, win);
+    }
+
+    return _ret;
+}
+
+static_assert ( std::is_same < EGLNativeWindowType, decltype ( std::declval <WPEFramework::Compositor::IDisplay::ISurface>().Native () ) > :: value != false );
+bool WillRenderEGLTargetFor (EGLNativeWindowType win) {
+    bool _ret = false;
+
+    EGLSurface _surf = eglGetCurrentSurface (EGL_DRAW);
+
+    _ret = _surf != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidSurf () && eglGetError () == EGL_SUCCESS;
+
+    if (_ret != false) {
+        _ret = _WillRenderEGLTargetFor (win, _surf);
+    }
+
+    return _ret;
+}
+
+__attribute__ (( visibility ("hidden") )) bool _RenderedEGLTarget (EGLSurface surf) {
+    bool _ret = false;
+
+    if (surf != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidSurf ()) {
+        static WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
+
+// TODO: is this required?
+        WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::ctx_t _ctx = eglGetCurrentContext ();
+        WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::dpy_t _dpy = _ctx != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidCtx () ? eglGetCurrentDisplay () : WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidDpy ();
+        WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::sync_t _sync (_dpy);
+
+        _ret = _map.Visit (surf) != false ? EGL_TRUE : EGL_FALSE;
+    }
+
+    return _ret;
+}
+
+bool RenderedEGLTarget () {
+    bool _ret = false;
+
+    EGLSurface _surf = eglGetCurrentSurface (EGL_DRAW);
+
+    _ret = _surf != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidSurf () && eglGetError () == EGL_SUCCESS;
+
+    if (_ret != false) {
+        _ret = _RenderedEGLTarget (_surf);
+    }
+
+    return _ret;
+}
+
+__attribute__ (( visibility ("hidden") )) bool _DestroyEGLTarget (EGLSurface surf) {
+    bool _ret = false;
+
+    if (surf != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidSurf ()) {
+        static WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
+
+        _ret = _map.Disassociate (surf) != false ? EGL_TRUE : EGL_FALSE;
+    }
+
+    return _ret;
+}
+
+bool DestroyEGLTarget () {
+    bool _ret = false;
+
+    EGLSurface _surf = eglGetCurrentSurface (EGL_DRAW);
+
+    _ret = _surf != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidSurf () && eglGetError () == EGL_SUCCESS;
+
+    if (_ret != false) {
+        _ret = _DestroyEGLTarget (_surf);
+    }
+
+    return _ret;
+}
+
+__attribute__ (( visibility ("hidden") )) bool _SetEGLTarget (EGLDisplay dpy, EGLSurface surf) {
+    bool _ret = false;
+
+    if (surf != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidSurf ()) {
+
+        WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::width_t _width = 0;
+        WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::height_t _height = 0;
+
+        _ret = eglQuerySurface (dpy, surf, EGL_WIDTH, &_width) != EGL_FALSE && eglQuerySurface (dpy, surf, EGL_HEIGHT, &_height) != EGL_FALSE ? EGL_TRUE : EGL_FALSE;
+
+        if (_ret != false) {
+            static WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
+
+            auto _img = _map.ImgForSurf (surf, _width, _height);
+            auto _fbo = _map.FboForImg (_img);
+            _ret = ( _img != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidImg () && _fbo != WPEFramework::RPI_INTERNAL::GLResourceMediator::GLES::InvalidFbo () ) != false ? EGL_TRUE : EGL_FALSE;
+        }
+
+    }
+
+    WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::sync_t _sync (dpy);
+
+    return _ret;
+}
+
+bool SetEGLTarget () {
+    bool _ret = false;
+
+    EGLSurface _surf = eglGetCurrentSurface (EGL_DRAW);
+
+    WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::ctx_t _ctx = eglGetCurrentContext ();
+    WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::dpy_t _dpy = _ctx != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidCtx () ? eglGetCurrentDisplay () : WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidDpy ();
+
+    _ret = _dpy != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidDpy () && _surf != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidSurf () && eglGetError () == EGL_SUCCESS;
+
+    if (_ret != false) {
+        _ret = _SetEGLTarget (_dpy, _surf);
+    }
+
+    return _ret;
+}
+
 /* EGLAPI */ EGLSurface /* EGLAPIENTRY */ eglCreateWindowSurface (EGLDisplay dpy, EGLConfig cnfg, EGLNativeWindowType win, EGLint const * attr);
 #ifdef EGL_VERSION_1_5
 /* EGLAPI */ EGLSurface /* EGLAPIENTRY */ eglCreatePlatformWindowSurface (EGLDisplay dpy, EGLConfig config, void * native_window, const EGLAttrib * attrib_list);
@@ -1963,18 +2176,15 @@ extern "C" {
     if (_eglCreateWindowSurface != nullptr && _eglCreateWindowSurface != &eglCreateWindowSurface) {
         _ret = _eglCreateWindowSurface (dpy, cnfg, win, attr);
     }
-
+    
     if (_ret != EGL_NO_SURFACE) {
-        static WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
-
-        // First place, for now, that directly does an associate
-         if (_map.Associate (_ret, win) != true) {
+         if (_WillRenderEGLTargetFor (win, _ret) != true) {
              /* EGLBoolean */ eglDestroySurface (dpy, _ret);
              _ret = EGL_NO_SURFACE;
          }
-
-        assert (_ret != EGL_NO_SURFACE);
     }
+
+    assert (_ret != EGL_NO_SURFACE);
 
     return _ret;
 }
@@ -1992,19 +2202,16 @@ extern "C" {
     }
 
     if (_ret != EGL_NO_SURFACE) {
-        static WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
-
         // This is not generally true for all platforms
         static_assert (std::is_convertible <decltype (native_window), WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::win_t> :: value != false);
 
-        // Second place, for now, that directly does an associate
-         if (_map.Associate (_ret, static_cast <WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::win_t> (native_window)) != true) {
+         if (_WillRenderEGLTargetFor (static_cast <WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::win_t> (native_window), _ret) != true) {
              /* EGLBoolean */ eglDestroySurface (dpy, _ret);
              _ret = EGL_NO_SURFACE;
          }
-
-        assert (_ret != EGL_NO_SURFACE);
     }
+
+    assert (_ret != EGL_NO_SURFACE);
 
     return _ret;
 }
@@ -2022,12 +2229,10 @@ extern "C" {
     }
 
     if (_ret != EGL_FALSE) {
-        static WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
-
-        _ret = _map.Disassociate (surf) != false ? EGL_TRUE : EGL_FALSE;
-
-        assert (_ret != EGL_FALSE);
+        _ret = _DestroyEGLTarget (surf) != false ? EGL_TRUE : EGL_FALSE;
     }
+
+    assert (_ret != EGL_FALSE);
 
     return _ret;
 }
@@ -2044,12 +2249,10 @@ extern "C" {
     }
 
     if (_ret != EGL_FALSE) {
-        static WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
-
-        _ret = _map.Visit (surf) != false ? EGL_TRUE : EGL_FALSE;
-
-        assert (_ret != EGL_FALSE);
+        _ret = _RenderedEGLTarget (surf) != false ? EGL_TRUE : EGL_FALSE;
     }
+
+    assert (_ret != EGL_FALSE);
 
     return _ret;
 }
@@ -2066,27 +2269,10 @@ extern "C" {
     }
 
     if (_ret != EGL_FALSE && draw != EGL_NO_SURFACE) {
-        static WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
-
-        if (draw != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidSurf) {
-
-            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::width_t _width = 0;
-            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::height_t _height = 0;
-
-            _ret = eglQuerySurface (dpy, draw, EGL_WIDTH, &_width) != EGL_FALSE && eglQuerySurface (dpy, draw, EGL_HEIGHT, &_height) != EGL_FALSE ? EGL_TRUE : EGL_FALSE;
-
-            if (_ret != EGL_FALSE) {
-                auto _img = _map.ImgForSurf (draw, _width, _height);
-                auto _fbo = _map.FboForImg (_img);
-                _ret = ( _img != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidImg () && _fbo != WPEFramework::RPI_INTERNAL::GLResourceMediator::GLES::InvalidFbo () ) != false ? EGL_TRUE : EGL_FALSE;
-            }
-
-        }
-
-        WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::sync_t _sync (dpy);
-
-        assert (_ret != EGL_FALSE);
+       _ret = _SetEGLTarget (dpy, draw) != false ? EGL_TRUE : EGL_FALSE;
     }
+
+    assert (_ret != EGL_FALSE);
 
     return _ret;
 }
