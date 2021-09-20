@@ -262,7 +262,7 @@ static const struct wl_seat_listener seatListener = {
 };
 
 static const struct wl_simple_shell_listener simpleShellListener = {
-    // surface_id
+    // surfaceId
     [](void* data, struct wl_simple_shell* shell, struct wl_surface* surface, uint32_t surfaceId) {
         Trace("wl_simple_shell_listener.surface_id shell=%p wl_surface=%p surfaceId=%d\n", shell, surface, surfaceId);
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
@@ -282,11 +282,11 @@ static const struct wl_simple_shell_listener simpleShellListener = {
                 context.Physical().Width, context.Physical().Height);
         }
     },
-    // surface_created
+    // surfaceCreated
     [](void* data, struct wl_simple_shell* shell, uint32_t surfaceId, const char* name) {
         Trace("wl_simple_shell_listener.surface_created shell=%p name=%s surfaceId=%d\n", shell, name, surfaceId);
     },
-    // surface_destroyed
+    // surfaceDestroyed
     [](void* data, struct wl_simple_shell* shell, uint32_t surfaceId, const char* name) {
         Trace("wl_simple_shell_listener.surface_destroyed shell=%p name=%s surfaceId=%d\n", shell, name, surfaceId);
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
@@ -297,7 +297,7 @@ static const struct wl_simple_shell_listener simpleShellListener = {
         context.Destructed(surfaceId);
         Trace("wl_simple_shell_listener.surface_destroyed surfaceId=%d\n", surfaceId);
     },
-    // surface_status
+    // surfaceStatus
     [](void* data, struct wl_simple_shell* shell, uint32_t surfaceId, const char* name, uint32_t visible,
         int32_t x, int32_t y, int32_t width, int32_t height, wl_fixed_t opacity, wl_fixed_t zorder) {
         Trace("surface_status surfaceId=%d name=%s width=%d  height=%d x=%d, y=%d visible=%d opacity=%d zorder=%d\n", surfaceId, name, width, height, x, y, visible, opacity, zorder);
@@ -311,7 +311,7 @@ static const struct wl_simple_shell_listener simpleShellListener = {
         context.Constructed(surfaceId, name);
         Trace("wl_simple_shell_listener.surface_status surfaceId=%d\n", surfaceId);
     },
-    // get_surfaces_done
+    // getSurfacesDone
     [](void* data, struct wl_simple_shell* shell) {
         Trace("wl_simple_shell_listener.get_surfaces_done shell=%p\n", shell);
     }
