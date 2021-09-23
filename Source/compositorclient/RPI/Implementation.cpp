@@ -1537,7 +1537,8 @@ public:
 
                 std::string::size_type _start = _msg.rfind (_spacer, pos);
 
-                auto _ret = ( _start != std::string::npos && _start <= _msg.length () != false ) ? std::stoul (_msg.substr (_start + 1, pos) ) : 0;
+                static_assert (_narrowing <unsigned long, common_t, true> :: value != false);
+                common_t _ret = ( _start != std::string::npos && _start <= _msg.length () != false ) ? std::stoul (_msg.substr (_start + 1, pos) ) : 0;
 
                 // Narrowing detection
 
