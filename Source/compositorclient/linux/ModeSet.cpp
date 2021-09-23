@@ -261,9 +261,11 @@ static bool CreateBuffer(int fd, const uint32_t connector, gbm_device*& device, 
                 uint32_t format = gbm_bo_get_format(bo);
 
                 assert (format == DRM_FORMAT_XRGB8888 || format == DRM_FORMAT_ARGB8888);
-
+#if USE_GBM_BPP
                 uint32_t bpp = gbm_bo_get_bpp(bo);
-
+#else
+                uint32_t bpp = 32;
+#endif
                 int32_t ret = drmModeAddFB(
                                 fb_fd,
                                 gbm_bo_get_width(bo),
@@ -434,7 +436,11 @@ uint32_t ModeSet::AddSurfaceToOutput(struct gbm_surface* surface) {
 
     if (bo != nullptr) {
         uint32_t _format = gbm_bo_get_format (bo);
+#if USE_GBM_BPP
         uint32_t _bpp = gbm_bo_get_bpp (bo);
+#else
+        uint32_t _bpp = 32;
+#endif
         uint32_t _stride = gbm_bo_get_stride (bo);
         uint32_t _handle = gbm_bo_get_handle (bo).u32;
 
