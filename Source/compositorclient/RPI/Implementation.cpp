@@ -102,7 +102,6 @@ void silence (T &&) {}
 namespace WPEFramework {
 namespace RPI_INTERNAL {
 
-    // Part of / used by EGL function interception
     class GLResourceMediator {
 
         private :
@@ -300,7 +299,7 @@ namespace RPI_INTERNAL {
                                 }
 
 
-                                // EGL may report differently than DRM
+                                // EGL may report differently than GBM / DRM
                                 // Platform formats are cross referenced against prime settings at construction time
 
 
@@ -513,7 +512,7 @@ namespace RPI_INTERNAL {
                             }
 
 
-                            // A vialid GL context should exist for GLES::Supported ()
+                            // A valid GL context should exist for GLES::Supported ()
                             EGL::ctx_t _ctx = eglGetCurrentContext ();
                             EGL::dpy_t _dpy = _ctx != EGL::InvalidCtx () ? eglGetCurrentDisplay () : EGL::InvalidDpy ();
 
@@ -606,23 +605,8 @@ namespace RPI_INTERNAL {
 
         private :
 
-// TODO: simplify
-
             // Enable platform specific hooks to be called
-            std::map < EGL::win_t const, callback_t > _callbacks;
-
-            // EGL to native mapping
-            std::map < EGL::surf_t const, EGL::win_t const > _wins;
-            std::map < EGL::win_t const, prime_t const > _primes;
-
-            // Native to EGL mapping
-            std::map < prime_t const, EGL::img_t const, prime_t > _imgs;
-
-            // EGL to GLES mapping
-            std::map < EGL::img_t const, GLES::fbo_t const > _fbos;
-
-            // GLES to GLESmapping
-            std::map < GLES::fbo_t const, GLES::tex_t const > _texs;
+            std::map < native_t const, callback_t > _callbacks;
 
             std::recursive_mutex _resourceLock;
 
@@ -633,109 +617,11 @@ namespace RPI_INTERNAL {
                 return _instance;
             }
 
-             bool Associate (EGL::surf_t const & surf, EGL::win_t const & win) {
-                std::lock_guard < decltype (_resourceLock) > const _lock (_resourceLock);
-
-                bool _ret = _wins.insert ( std::pair < EGL::surf_t const, EGL::win_t const > (surf, win) ).second;
-
-                return _ret;
-            }
-
-             bool Associate (EGL::win_t const & win, prime_t const & prime) {
-                std::lock_guard < decltype (_resourceLock) > const _lock (_resourceLock);
-
-                bool _ret = _primes.insert ( std::pair < EGL::win_t const, prime_t const > (win, prime) ).second;
-
-                return _ret;
-            }
-
-            bool Associate (prime_t const & prime, EGL::img_t const & img) {
-                std::lock_guard < decltype (_resourceLock) > const _lock (_resourceLock);
-
-                bool _ret = _imgs.insert ( std::pair < prime_t const, EGL::img_t const > (prime, img) ).second;
-
-                return _ret;
-            }
-
-            bool Associate (EGL::img_t const & img, GLES::fbo_t const & fbo) {
-                std::lock_guard < decltype (_resourceLock) > const _lock (_resourceLock);
-
-                bool _ret = _fbos.insert ( std::pair < EGL::img_t const, GLES::fbo_t const > (img, fbo) ).second;
-
-                return _ret;
-            }
-
-            bool Associate (GLES::fbo_t const & fbo, GLES::tex_t const & tex) {
-                std::lock_guard < decltype (_resourceLock) > const _lock (_resourceLock);
-
-                bool _ret = _texs.insert ( std::pair < GLES::fbo_t const, GLES::tex_t const > (fbo, tex) ).second;
-
-                return _ret;
-            }
-
-            // Removes all of thw above
-            bool Disassociate (EGL::surf_t const & surf) {
-                std::lock_guard < decltype (_resourceLock) > const _lock (_resourceLock);
-
-                bool _ret = false;
-
-                auto _win = _wins.find (surf);
-                auto _prime = _primes.end ();
-                auto _img = _imgs.end ();
-                auto _fbo = _fbos.end ();
-                auto _tex = _texs.end ();
-
-                _ret = _win != _wins.end ();
-
-                if (_ret != false) {
-                    _prime = _primes.find ( _win->second );
-                    _ret = _prime != _primes.end ();
-
-                    /* iterator  */ _wins.erase ( _win );
-                }
-
-                if (_ret != false) {
-                    _img = _imgs.find ( _prime->second );
-                    _ret = _img != _imgs.end ();
-
-                    /* iterator */ _primes.erase ( _prime );
-                }
-
-                if (_ret != false) {
-                    _fbo = _fbos.find ( _img->second );
-                    _ret = _fbo != _fbos.end ();
-
-// TODO : block affecting egl functions (?)
-
-                    EGL::ctx_t _ctx = eglGetCurrentContext ();
-                    EGL::dpy_t _dpy = _ctx != EGL::InvalidCtx () ? eglGetCurrentDisplay () : EGL::InvalidDpy ();
-
-                    if (_dpy != EGL::InvalidDpy ()) {
-                        EGL::DestroyImage (_dpy, _ctx, _img->second);
-                    }
-
-                    /* iterator */ _imgs.erase (_img );
-                }
-
-                if (_ret != false) {
-                    _tex = _texs.find (_fbo->second);
-                    _ret = _tex != _texs.end ();
-
-                    /* iterator */ _fbos.erase (_fbo);
-                    /* iterator */ _texs.erase (_tex);
-                }
-
-                return _ret;
-            }
-
             // Enable EGL / GLES to call any method on the 'native'
             bool Register (native_t const & native, callback_t callback) {
                 std::lock_guard < decltype (_resourceLock) > const _lock (_resourceLock);
 
-                static_assert ( std::is_convertible < decltype (native_t::_surf), EGL::win_t > :: value != false );
-                bool _ret =
-                    _callbacks.insert ( std::pair < EGL::win_t const, callback_t > ( static_cast < EGL::win_t > (native._surf), callback) ).second
-                    && _primes.insert ( std::pair < EGL::win_t const, prime_t const> ( static_cast < EGL::win_t > (native._surf), native._prime) ).second;
+                bool _ret = _callbacks.insert ( std::pair < native_t const, callback_t > ( native, callback) ).second;
 
                 return _ret;
             }
@@ -744,112 +630,23 @@ namespace RPI_INTERNAL {
             bool Unregister (native_t const & native) {
                 std::lock_guard < decltype (_resourceLock) > const _lock (_resourceLock);
 
-                static_assert ( std::is_convertible < decltype (native_t::_surf), EGL::win_t > :: value != false );
-                bool _ret =
-                    _callbacks.erase ( static_cast < EGL::win_t > ( native._surf ) ) == 1
-                    && _primes.erase ( static_cast < EGL::win_t > ( native._surf ) ) == 1;
+                bool _ret = _callbacks.erase ( native ) == 1;
 
                 return _ret;
             }
 
             // Call the registered callback for an existing association
-            bool Visit (EGL::surf_t const & surf) const {
-                auto _it = _wins.find (surf);
+            bool Visit (native_t const & native) /* const */ {
+// TODO: logical const
+                std::lock_guard < decltype (_resourceLock) > const _lock (_resourceLock);
 
-                bool _ret = _it != _wins.end ();
+                auto _it = _callbacks.find (native);
 
-                if (_ret != false) {
-
-                    auto _itt = _callbacks.find (_it->second);
-
-                    _ret = _itt != _callbacks.end ();
+                bool _ret = _it != _callbacks.end ();
 
                     if (_ret != false) {
-                        _itt->second ();
+                        _it->second ();
                     }
-
-                }
-
-                return _ret;
-            }
-
-            // EGL resource creation
-            EGL::img_t ImgForSurf (EGL::surf_t const & surf, EGL::width_t width, EGL::height_t height) {
-                EGL::img_t _ret = EGL::InvalidImg ();
-
-                EGL::ctx_t _ctx = eglGetCurrentContext ();
-
-                EGL::dpy_t _dpy = _ctx != EGL::InvalidCtx () ? eglGetCurrentDisplay () : EGL::InvalidDpy ();
-
-                if (_dpy != EGL::InvalidDpy ()) {
-
-                    // Get the prime
-
-                    auto _it = _wins.find (surf);
-                    auto _itt = _it != _wins.end () ? _primes.find (_it->second) : _primes.end ();
-                    auto _ittt = _itt != _primes.end () ? _imgs.find (_itt->second) : _imgs.end ();
-
-                    if (_ittt != _imgs.end ()) {
-                        // EGLImage exist
-                        _ret = _ittt->second;
-                    }
-                    else {
-                        // Create an EGLimage
-                        if ( ( _itt != _primes.end ()
-// TODO: signed vs unsigned
-                                && _itt->second._width == width
-                                && _itt->second._height == height ) != false ){
-
-                            _ret = EGL::CreateImage (_dpy, _ctx, _it->second, _itt->second);
-
-                            if (_ret != EGL::InvalidImg () && Associate (_itt->second, _ret) != true) {
-                                /* bool */ EGL::DestroyImage (_dpy, _ctx, _ret);
-                            }
-
-                        }
-                        else {
-                            TRACE (Trace::Error, (_T ("Unable to create image for surface.")));
-                        }
-                    }
-
-                }
-
-                return _ret;
-            }
-
-            // GLES resource creation
-            GLES::fbo_t FboForImg (EGL::img_t const & img) {
-                static GLES _gles;
-
-                GLES::tex_t _tex = GLES::InvalidTex ();
-                GLES::fbo_t _ret = GLES::InvalidFbo ();
-
-                // Get the fbo and tex
-                auto _it = _fbos.find (img);
-                auto _itt = _it != _fbos.end () ? _texs.find (_it->second) : _texs.end ();
-
-                if (_itt != _texs.end ()) {
-                    // Tex and fbo exist
-                    _ret = _it->second;
-                }
-                else {
-                    // Create tex and fbo
-
-                    // Valid dummy values
-                    uint32_t _width = 1; // At least >0
-                    uint32_t _height = 1; // At least >0
-
-                    // Create the GLES binding
-                    if (_gles.ImageAsTarget (img, _width, _height, _tex, _ret)
-                        && Associate (img, _ret)
-                        && Associate (_ret, _tex) != true) {
-                            _ret = GLES::InvalidFbo ();
-
-// TODO: if one of the Associate's fails the mapping has become corrupt
-                        assert (false);
-                    }
-
-                }
 
                 return _ret;
             }
@@ -1340,8 +1137,18 @@ private:
         }
 
         inline void ScanOut () {
+            // Changes of currents cannot be reliably be monitored
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::dpy_t _dpy = eglGetCurrentDisplay ();
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::ctx_t _ctx = eglGetCurrentContext ();
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::surf_t _surf = eglGetCurrentSurface (EGL_DRAW);
+
+            bool _ret = /*_nativeSurface != WPEFramework::RPI_INTERNAL::GLResourceMediator::InvalidNative ()
+                        && */_dpy != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidDpy ()
+                        && _ctx != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidCtx ()
+                        && _surf != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidSurf ();
+
             // A remote ClientSurface has been created and the IRender interface is supported so the compositor is able to support scan out for this client
-            if ( _remoteRenderer != nullptr && _remoteClient != nullptr) {
+            if ( _ret != false && _remoteRenderer != nullptr && _remoteClient != nullptr) {
                 _remoteRenderer->ScanOut ();
             }
             else {
@@ -1349,7 +1156,102 @@ private:
             }
         }
 
+        inline void PreScanOut () {
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::width_t _width = 0;
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::height_t _height = 0;
+
+
+            // Changes of currents cannot be reliably be monitored
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::dpy_t _dpy = eglGetCurrentDisplay ();
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::ctx_t _ctx = eglGetCurrentContext ();
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::surf_t _surf = eglGetCurrentSurface (EGL_DRAW);
+
+
+            bool _ret = /*_nativeSurface != WPEFramework::RPI_INTERNAL::GLResourceMediator::InvalidNative ()
+                        && */_dpy != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidDpy ()
+                        && _ctx != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidCtx ()
+                        && _surf != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidSurf ()
+                        && eglQuerySurface (_dpy, _surf, EGL_WIDTH, &_width) != EGL_FALSE
+                        && eglQuerySurface (_dpy, _surf, EGL_HEIGHT, &_height) != EGL_FALSE;
+
+            if (_ret != false) {
+// TODO: Destroy
+                static WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::img_t _img = WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::CreateImage (_dpy, _ctx, _nativeSurface._surf, _nativeSurface._prime );
+
+// TODO: Destroy
+                static WPEFramework::RPI_INTERNAL::GLResourceMediator::GLES::tex_t _tex = WPEFramework::RPI_INTERNAL::GLResourceMediator::GLES::InvalidTex ();
+// TODO: Destroy
+                static WPEFramework::RPI_INTERNAL::GLResourceMediator::GLES::fbo_t _fbo = WPEFramework::RPI_INTERNAL::GLResourceMediator::GLES::InvalidFbo ();
+
+                static WPEFramework::RPI_INTERNAL::GLResourceMediator::GLES _gles;
+
+                static_assert (_narrowing < decltype (WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::_width), WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::width_t, true > :: value && _narrowing < decltype (WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::_height), WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::height_t, true > :: value != false);
+
+                using n_width_t = decltype (WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::_width);
+                using e_width_t = WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::width_t;
+
+                using n_height_t = decltype (WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::_height);
+                using e_height_t = WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::height_t;
+
+
+// TODO:
+                constexpr bool _enable = true;
+
+                if ( ( _narrowing < n_width_t, e_width_t, _enable > :: value
+                      && _narrowing < n_height_t, e_height_t, _enable > :: value ) != false
+                ) {
+                    TRACE_WITHOUT_THIS (Trace::Information, (_T ("Possible narrowing detected!")));
+                }
+
+
+                using common_width_t = std::common_type < n_width_t, e_width_t> :: type;
+                using common_height_t = std::common_type < n_height_t, e_height_t> :: type;
+
+
+                bool _ret = _img != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidImg () && static_cast <common_width_t> (_width) == static_cast <common_width_t> (_nativeSurface._width) && static_cast <common_height_t> (_height) == static_cast <common_height_t> (_nativeSurface._height) && _gles.ImageAsTarget (_img, _width, _height, _tex, _fbo);
+
+                _ret = ( _ret && _img != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidImg () && _fbo != WPEFramework::RPI_INTERNAL::GLResourceMediator::GLES::InvalidFbo () ) != false;
+            }
+
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::sync_t _sync (_dpy);
+
+            // A remote ClientSurface has been created and the IRender interface is supported so the compositor is able to support scan out for this client
+            if ( _ret != false && _remoteRenderer != nullptr && _remoteClient != nullptr) {
+                _remoteRenderer->PreScanOut ();
+            }
+            else {
+                TRACE (Trace::Error, (_T ("Remote pre scan out is not (yet) supported. Has a remote surface been created? Is the IRender interface available?")));
+            }
+
+        }
+
+        inline void PostScanOut () {
+            // Changes of currents cannot be reliably be monitored
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::dpy_t _dpy = eglGetCurrentDisplay ();
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::ctx_t _ctx = eglGetCurrentContext ();
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::surf_t _surf = eglGetCurrentSurface (EGL_DRAW);
+
+            bool _ret = /*_nativeSurface != WPEFramework::RPI_INTERNAL::GLResourceMediator::InvalidNative ()
+                        && */_dpy != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidDpy ()
+                        && _ctx != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidCtx ()
+                        && _surf != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidSurf ();
+
+            if (_ret != false) {
+                WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
+                _ret = _map.Visit (_nativeSurface) != false;
+            }
+
+            // A remote ClientSurface has been created and the IRender interface is supported so the compositor is able to support scan out for this client
+            if ( _ret != false && _remoteRenderer != nullptr && _remoteClient != nullptr) {
+                _remoteRenderer->PostScanOut ();
+            }
+            else {
+                TRACE (Trace::Error, (_T ("Remote post scan out is not (yet) supported. Has a remote surface been created? Is the IRender interface available?")));
+            }
+        }
+
     private:
+
         Display& _display;
 
         IKeyboard* _keyboard;
@@ -1361,6 +1263,11 @@ private:
         Exchange::IComposition::IRender* _remoteRenderer;
 
         WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t _nativeSurface;
+
+        void Callback () {
+//            TRACE_WITHOUT_THIS (Trace::Information, _T ("Callback called"));
+        }
+
     };
 
     using InputFunction = std::function<void(SurfaceImplementation*)>;
@@ -1754,8 +1661,9 @@ Display::SurfaceImplementation::SurfaceImplementation(
                 assert (gbm_device_get_format_modifier_plane_count (static_cast <RenderDevice::GBM::dev_t>(_display.Native ()), _nativeSurface._prime._format, _nativeSurface._prime._modifier) == 1);
 
                 // Register a callback for EGL updates
+
                 WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
-                /* bool */ _map.Register ( _nativeSurface, std::bind ( &WPEFramework::RPI::Display::SurfaceImplementation::ScanOut, this ) );
+                /* bool */ _map.Register ( _nativeSurface, std::bind ( &WPEFramework::RPI::Display::SurfaceImplementation::Callback, this ) );
             }
 
         }
@@ -1867,6 +1775,14 @@ Display::~Display()
 
 int Display::Process(const uint32_t)
 {
+    // Scan out all surfaces belonging to this display
+// TODO: only scan out the surface that actually has completed or the client should be made aware that all surfaces ishould be completed at the time of calling
+    for (auto _begin = _surfaces.begin (), _it = _begin, _end = _surfaces.end (); _it != _end; _it++) {
+        (*_it)->PreScanOut ();  // will render
+        (*_it)->ScanOut ();     // actual scan out
+        (*_it)->PostScanOut (); // rendered
+    }
+
     return (0);
 }
 
@@ -2012,272 +1928,3 @@ Compositor::IDisplay* Compositor::IDisplay::Instance(const string& displayName)
     return RPI::Display::Instance(displayName);
 }
 } // WPEFramework
-
-// (Simple) function interception
-//
-// TODO:
-// Open cases:
-// - Other libs / users of eglGetProcAddress
-// - Other libs / users of options like dlsym that circumvent the use of eglGetProccAddress
-// - Library symbol search order
-
-// Avoid name mangling
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-__attribute__ (( visibility ("hidden") )) bool _WillRenderEGLTargetFor (EGLNativeWindowType win, EGLSurface surf) {
-    bool _ret = false;
-
-    if (win != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidWin () && surf != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidSurf ()) {
-        static WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
-
-// TODO: Is this required ?
-        WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::ctx_t _ctx = eglGetCurrentContext ();
-        WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::dpy_t _dpy = _ctx != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidCtx () ? eglGetCurrentDisplay () : WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidDpy ();
-        WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::sync_t _sync (_dpy);
-
-        static_assert (std::is_same <EGLNativeWindowType, WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::win_t> :: value != false);
-        _ret = _map.Associate (surf, win);
-    }
-
-    return _ret;
-}
-
-static_assert ( std::is_same < EGLNativeWindowType, decltype ( std::declval <WPEFramework::Compositor::IDisplay::ISurface>().Native () ) > :: value != false );
-bool WillRenderEGLTargetFor (EGLNativeWindowType win) {
-    bool _ret = false;
-
-    EGLSurface _surf = eglGetCurrentSurface (EGL_DRAW);
-
-    _ret = _surf != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidSurf () && eglGetError () == EGL_SUCCESS;
-
-    if (_ret != false) {
-        _ret = _WillRenderEGLTargetFor (win, _surf);
-    }
-
-    return _ret;
-}
-
-__attribute__ (( visibility ("hidden") )) bool _RenderedEGLTarget (EGLSurface surf) {
-    bool _ret = false;
-
-    if (surf != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidSurf ()) {
-        static WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
-
-// TODO: is this required?
-        WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::ctx_t _ctx = eglGetCurrentContext ();
-        WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::dpy_t _dpy = _ctx != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidCtx () ? eglGetCurrentDisplay () : WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidDpy ();
-        WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::sync_t _sync (_dpy);
-
-        _ret = _map.Visit (surf) != false ? EGL_TRUE : EGL_FALSE;
-    }
-
-    return _ret;
-}
-
-bool RenderedEGLTarget () {
-    bool _ret = false;
-
-    EGLSurface _surf = eglGetCurrentSurface (EGL_DRAW);
-
-    _ret = _surf != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidSurf () && eglGetError () == EGL_SUCCESS;
-
-    if (_ret != false) {
-        _ret = _RenderedEGLTarget (_surf);
-    }
-
-    return _ret;
-}
-
-__attribute__ (( visibility ("hidden") )) bool _DestroyEGLTarget (EGLSurface surf) {
-    bool _ret = false;
-
-    if (surf != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidSurf ()) {
-        static WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
-
-        _ret = _map.Disassociate (surf) != false ? EGL_TRUE : EGL_FALSE;
-    }
-
-    return _ret;
-}
-
-bool DestroyEGLTarget () {
-    bool _ret = false;
-
-    EGLSurface _surf = eglGetCurrentSurface (EGL_DRAW);
-
-    _ret = _surf != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidSurf () && eglGetError () == EGL_SUCCESS;
-
-    if (_ret != false) {
-        _ret = _DestroyEGLTarget (_surf);
-    }
-
-    return _ret;
-}
-
-__attribute__ (( visibility ("hidden") )) bool _SetEGLTarget (EGLDisplay dpy, EGLSurface surf) {
-    bool _ret = false;
-
-    if (surf != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidSurf ()) {
-
-        WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::width_t _width = 0;
-        WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::height_t _height = 0;
-
-        _ret = eglQuerySurface (dpy, surf, EGL_WIDTH, &_width) != EGL_FALSE && eglQuerySurface (dpy, surf, EGL_HEIGHT, &_height) != EGL_FALSE ? EGL_TRUE : EGL_FALSE;
-
-        if (_ret != false) {
-            static WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
-
-            auto _img = _map.ImgForSurf (surf, _width, _height);
-            auto _fbo = _map.FboForImg (_img);
-            _ret = ( _img != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidImg () && _fbo != WPEFramework::RPI_INTERNAL::GLResourceMediator::GLES::InvalidFbo () ) != false ? EGL_TRUE : EGL_FALSE;
-        }
-
-    }
-
-    WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::sync_t _sync (dpy);
-
-    return _ret;
-}
-
-bool SetEGLTarget () {
-    bool _ret = false;
-
-    EGLSurface _surf = eglGetCurrentSurface (EGL_DRAW);
-
-    WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::ctx_t _ctx = eglGetCurrentContext ();
-    WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::dpy_t _dpy = _ctx != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidCtx () ? eglGetCurrentDisplay () : WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidDpy ();
-
-    _ret = _dpy != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidDpy () && _surf != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidSurf () && eglGetError () == EGL_SUCCESS;
-
-    if (_ret != false) {
-        _ret = _SetEGLTarget (_dpy, _surf);
-    }
-
-    return _ret;
-}
-
-/* EGLAPI */ EGLSurface /* EGLAPIENTRY */ eglCreateWindowSurface (EGLDisplay dpy, EGLConfig cnfg, EGLNativeWindowType win, EGLint const * attr);
-#ifdef EGL_VERSION_1_5
-/* EGLAPI */ EGLSurface /* EGLAPIENTRY */ eglCreatePlatformWindowSurface (EGLDisplay dpy, EGLConfig config, void * native_window, const EGLAttrib * attrib_list);
-#endif
-
-/* EGLAPI */ EGLBoolean /* EGLAPIENTRY */ eglDestroySurface (EGLDisplay dpy, EGLSurface surf);
-/* EGLAPI */ EGLBoolean /* EGLAPIENTRY */ eglSwapBuffers (EGLDisplay dpy, EGLSurface surf);
-/* EGLAPI */ EGLBoolean /* EGLAPIENTRY */ eglMakeCurrent (EGLDisplay dpy, EGLSurface draw, EGLSurface read, EGLContext ctx);
-
-/* EGLAPI */ EGLSurface /* EGLAPIENTRY */ eglCreateWindowSurface (EGLDisplay dpy, EGLConfig cnfg, EGLNativeWindowType win, EGLint const * attr) {
-    EGLSurface _ret = EGL_NO_SURFACE;
-
-    static EGLSurface (* _eglCreateWindowSurface) (EGLDisplay, EGLConfig, EGLNativeWindowType, EGLint const *) = reinterpret_cast < EGLSurface (*) (EGLDisplay, EGLConfig, EGLNativeWindowType, EGLint const *) > ( eglGetProcAddress ("eglCreateWindowSurface") );
-
-    assert (_eglCreateWindowSurface != &eglCreateWindowSurface);
-
-    if (_eglCreateWindowSurface != nullptr && _eglCreateWindowSurface != &eglCreateWindowSurface) {
-        _ret = _eglCreateWindowSurface (dpy, cnfg, win, attr);
-    }
-    
-    if (_ret != EGL_NO_SURFACE) {
-         if (_WillRenderEGLTargetFor (win, _ret) != true) {
-             /* EGLBoolean */ eglDestroySurface (dpy, _ret);
-             _ret = EGL_NO_SURFACE;
-         }
-    }
-
-    assert (_ret != EGL_NO_SURFACE);
-
-    return _ret;
-}
-
-#ifdef EGL_VERSION_1_5
-/* EGLAPI */ EGLSurface /* EGLAPIENTRY */ eglCreatePlatformWindowSurface (EGLDisplay dpy, EGLConfig config, void * native_window, const EGLAttrib * attrib_list) {
-    EGLSurface _ret = EGL_NO_SURFACE;
-
-    static EGLSurface (* _eglCreatePlatformWindowSurface) (EGLDisplay, EGLConfig, void *, EGLAttrib const *) = reinterpret_cast < EGLSurface (*) (EGLDisplay, EGLConfig, void *, EGLAttrib const *) > ( eglGetProcAddress ("eglCreatePlatformWindowSurface") );
-
-    assert (_eglCreatePlatformWindowSurface != &eglCreatePlatformWindowSurface);
-
-    if (_eglCreatePlatformWindowSurface != nullptr && _eglCreatePlatformWindowSurface != &eglCreatePlatformWindowSurface) {
-        _ret = _eglCreatePlatformWindowSurface (dpy, config, native_window, attrib_list);
-    }
-
-    if (_ret != EGL_NO_SURFACE) {
-        // This is not generally true for all platforms
-        static_assert (std::is_convertible <decltype (native_window), WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::win_t> :: value != false);
-
-         if (_WillRenderEGLTargetFor (static_cast <WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::win_t> (native_window), _ret) != true) {
-             /* EGLBoolean */ eglDestroySurface (dpy, _ret);
-             _ret = EGL_NO_SURFACE;
-         }
-    }
-
-    assert (_ret != EGL_NO_SURFACE);
-
-    return _ret;
-}
-#endif
-
-/* EGLAPI */ EGLBoolean /* EGLAPIENTRY */ eglDestroySurface (EGLDisplay dpy, EGLSurface surf) {
-    EGLBoolean _ret = EGL_FALSE;
-
-    static EGLBoolean (* _eglDestroySurface) (EGLDisplay, EGLSurface) = reinterpret_cast < EGLBoolean (*) (EGLDisplay, EGLSurface) > ( eglGetProcAddress ("eglDestroySurface") );
-
-    assert (_eglDestroySurface != &eglDestroySurface);
-
-    if (_eglDestroySurface != nullptr && _eglDestroySurface != &eglDestroySurface) {
-        _ret = _eglDestroySurface (dpy, surf);
-    }
-
-    if (_ret != EGL_FALSE) {
-        _ret = _DestroyEGLTarget (surf) != false ? EGL_TRUE : EGL_FALSE;
-    }
-
-    assert (_ret != EGL_FALSE);
-
-    return _ret;
-}
-
-/* EGLAPI */ EGLBoolean /* EGLAPIENTRY */ eglSwapBuffers (EGLDisplay dpy, EGLSurface surf) {
-    EGLBoolean _ret = EGL_FALSE;
-
-    static EGLBoolean (* _eglSwapBuffers) (EGLDisplay, EGLSurface) = reinterpret_cast < EGLBoolean (*) (EGLDisplay, EGLSurface) > ( eglGetProcAddress ("eglSwapBuffers") );
-
-    assert (_eglSwapBuffers != &eglSwapBuffers);
-
-    if (_eglSwapBuffers != nullptr && _eglSwapBuffers != &eglSwapBuffers) {
-        _ret = _eglSwapBuffers (dpy, surf);
-    }
-
-    if (_ret != EGL_FALSE) {
-        _ret = _RenderedEGLTarget (surf) != false ? EGL_TRUE : EGL_FALSE;
-    }
-
-    assert (_ret != EGL_FALSE);
-
-    return _ret;
-}
-
-/* EGLAPI */ EGLBoolean /* EGLAPIENTRY */ eglMakeCurrent (EGLDisplay dpy, EGLSurface draw, EGLSurface read, EGLContext ctx) {
-    EGLBoolean _ret = EGL_FALSE;
-
-    static EGLBoolean (* _eglMakeCurrent) (EGLDisplay, EGLSurface, EGLSurface, EGLContext) = reinterpret_cast < EGLBoolean (*) (EGLDisplay, EGLSurface, EGLSurface, EGLContext) > ( eglGetProcAddress ("eglMakeCurrent") );
-
-    assert (_eglMakeCurrent != &eglMakeCurrent);
-
-    if (_eglMakeCurrent != nullptr && _eglMakeCurrent != &eglMakeCurrent) {
-        _ret = _eglMakeCurrent (dpy, draw, read, ctx);
-    }
-
-    if (_ret != EGL_FALSE && draw != EGL_NO_SURFACE) {
-       _ret = _SetEGLTarget (dpy, draw) != false ? EGL_TRUE : EGL_FALSE;
-    }
-
-    assert (_ret != EGL_FALSE);
-
-    return _ret;
-}
-
-#ifdef __cplusplus
-}
-#endif
