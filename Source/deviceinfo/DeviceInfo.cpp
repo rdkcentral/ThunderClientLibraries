@@ -580,7 +580,8 @@ private:
         }
         if (result == Core::ERROR_NONE)
         {
-            *length = static_cast<uint8_t>((_id.size() > (*length) - 1)? (*length) - 1: _id.size());
+            uint8_t size = static_cast<uint8_t>(_id.size());
+            *length = ((size > (*length) - 1) ? (*length) - 1 : size);
             std::copy_n(_id.begin(), *length, buffer);
         } else {
             *length = 0;
