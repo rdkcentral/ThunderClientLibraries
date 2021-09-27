@@ -348,7 +348,11 @@ namespace Wayland {
     /*static*/ EGLenum Display::ImageImplementation::_eglTarget;
     /*static*/ PFNEGLCREATEIMAGEKHRPROC Display::ImageImplementation::_eglCreateImagePtr = nullptr;
     /*static*/ PFNEGLDESTROYIMAGEKHRPROC Display::ImageImplementation::_eglDestroyImagePtr = nullptr;
-
+   /* 
+   Copyright (C) 2007 The Android Open Source Project
+   Licensed under the Apache License, Version 2.0
+   */
+    
     static void printEGLConfiguration(EGLDisplay dpy, EGLConfig config)
     {
 #define X(VAL)    \
