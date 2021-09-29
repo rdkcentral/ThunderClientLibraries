@@ -42,7 +42,7 @@ namespace VirtualInput{
     private:
         virtual void Procedure(Core::IPCChannel& source, Core::ProxyType<Core::IIPC>& data)
         {
-            Core::ProxyType<IVirtualInput::KeyMessage> message(Core::proxy_cast<IVirtualInput::KeyMessage>(data));
+            Core::ProxyType<IVirtualInput::KeyMessage> message(data);
             ASSERT((_callback != nullptr) && (message.IsValid() == true));
             _callback(static_cast<keyactiontype>(message->Parameters().Action), message->Parameters().Code);
             source.ReportResponse(data);
@@ -70,7 +70,7 @@ namespace VirtualInput{
     private:
         virtual void Procedure(Core::IPCChannel& source, Core::ProxyType<Core::IIPC>& data)
         {
-            Core::ProxyType<IVirtualInput::MouseMessage> message(Core::proxy_cast<IVirtualInput::MouseMessage>(data));
+            Core::ProxyType<IVirtualInput::MouseMessage> message(data);
             ASSERT((_callback != nullptr) && (message.IsValid() == true));
             _callback(static_cast<mouseactiontype>(message->Parameters().Action), message->Parameters().Button, message->Parameters().Horizontal, message->Parameters().Vertical);
             source.ReportResponse(data);
@@ -98,7 +98,7 @@ namespace VirtualInput{
     private:
         virtual void Procedure(Core::IPCChannel& source, Core::ProxyType<Core::IIPC>& data)
         {
-            Core::ProxyType<IVirtualInput::TouchMessage> message(Core::proxy_cast<IVirtualInput::TouchMessage>(data));
+            Core::ProxyType<IVirtualInput::TouchMessage> message(data);
             ASSERT((_callback != nullptr) && (message.IsValid() == true));
             _callback(static_cast<touchactiontype>(message->Parameters().Action), message->Parameters().Index, message->Parameters().X, message->Parameters().Y);
             source.ReportResponse(data);
