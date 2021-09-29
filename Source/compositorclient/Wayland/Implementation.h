@@ -170,20 +170,9 @@ namespace Wayland {
             {
                 return (_opacity);
             }
-            inline uint32_t ZOrder() const
+            inline uint32_t ZOrder() const override
             {
                 return (_ZOrder);
-            }
-            inline void Position(const uint32_t, const uint32_t, const uint32_t height, const uint32_t width) override
-            {
-                _adminLock.Lock();
-                if (_display != nullptr) {
-
-                    // Resize the surface
-                    _height = height;
-                    _width = width;
-                }
-                _adminLock.Unlock();
             }
             inline void Name(const char* name)
             {
@@ -203,24 +192,17 @@ namespace Wayland {
                 }
             }
             bool Connect(const EGLSurface& surface);
-            void Unlink() override;
-            void Resize(const int x, const int y, const int width, const int height) override;
-            void Dimensions(
-                const uint32_t visible,
-                const int32_t x, const int32_t y, const int32_t width, const int32_t height,
-                const uint32_t opacity,
-                const uint32_t zorder) override;
-            void Visibility(const bool visible) override;
+            uint32_t ZOrder(const uint16_t order) override;
             void Opacity(const uint32_t opacity) override;
-            void ZOrder(const uint32_t order) override;
-            void BringToFront() override;
+            void Visibility(const bool visible) override;
+            void Resize(const int x, const int y, const int w, const int h) override;
+            void Dimensions(const uint32_t visible,
+                 const int32_t x, const int32_t y, const int32_t width, const int32_t height,
+                 const uint32_t opacity, const uint32_t zorder);
 
         private:
-            inline bool UpScale() const override
-            {
-                return _upScale;
-            }
             void Redraw();
+            void Unlink();
 
         public:
             // Called by C interface methods. A bit to much overkill to actually make the private and all kind
@@ -250,7 +232,6 @@ namespace Wayland {
             EGLSurface _eglSurfaceWindow;
             IKeyboard* _keyboard;
             IPointer* _pointer;
-            const bool _upScale;
         };
 
         class ImageImplementation {
@@ -428,18 +409,12 @@ namespace Wayland {
             inline void ZOrder(const uint32_t order)
             {
                 assert(IsValid() == true);
-                return (_implementation->ZOrder(order));
+                _implementation->ZOrder(order);
             }
-            inline bool UpScale()
+            inline void Resize(const int x, const int y, const int w, const int h)
             {
                 assert(IsValid() == true);
-                return (_implementation->UpScale());
-            }
-
-            inline void Position(const uint32_t X, const uint32_t Y, const uint32_t height, const uint32_t width)
-            {
-                assert(IsValid() == true);
-                _implementation->Position(X, Y, height, width);
+                _implementation->Resize(x, y, w, h);
             }
             inline void Keyboard(IKeyboard* keyboard)
             {
@@ -465,25 +440,10 @@ namespace Wayland {
                     _implementation = nullptr;
                 }
             }
-            inline void Resize(const int x, const int y, const int width, const int height)
-            {
-                assert(IsValid() == true);
-                _implementation->Resize(x, y, width, height);
-            }
-            inline void BringToFront()
-            {
-                assert(IsValid() == true);
-                _implementation->BringToFront();
-            }
             inline EGLNativeWindowType Native() const
             {
                 assert(IsValid() == true);
                 return (_implementation->Native());
-            }
-            inline void Unlink()
-            {
-                assert(IsValid() == true);
-                return _implementation->Unlink();
             }
 
         private:

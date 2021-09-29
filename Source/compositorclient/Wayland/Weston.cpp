@@ -419,7 +419,6 @@ namespace Wayland {
         , _eglSurfaceWindow(EGL_NO_SURFACE)
         , _keyboard(nullptr)
         , _pointer(nullptr)
-        , _upScale(false)
     {
         assert(display.IsOperational());
 
@@ -458,7 +457,6 @@ namespace Wayland {
         , _eglSurfaceWindow(EGL_NO_SURFACE)
         , _keyboard(nullptr)
         , _pointer(nullptr)
-        , _upScale(false)
     {
     }
 
@@ -479,7 +477,6 @@ namespace Wayland {
         , _eglSurfaceWindow(EGL_NO_SURFACE)
         , _keyboard(nullptr)
         , _pointer(nullptr)
-        , _upScale(false)
     {
     }
 
@@ -515,14 +512,10 @@ namespace Wayland {
         Trace("WARNING: Display::SurfaceImplementation::Opacity is not implemented\n");
     }
 
-    void Display::SurfaceImplementation::ZOrder(const uint32_t)
+    uint32_t Display::SurfaceImplementation::ZOrder(const uint16_t)
     {
         Trace("WARNING: Display::SurfaceImplementation::ZOrder is not implemented\n");
-    }
-
-    void Display::SurfaceImplementation::BringToFront()
-    {
-        Trace("WARNING: Display::SurfaceImplementation::BringToFront is not implemented\n");
+        return (Core::ERROR_UNAVAILABLE);
     }
 
     void Display::SurfaceImplementation::Dimensions(

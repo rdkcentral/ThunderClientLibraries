@@ -274,7 +274,7 @@ static const struct wl_simple_shell_listener simpleShellListener = {
         Wayland::Display::Surface waylandSurface;
         context.Get(surfaceId, waylandSurface);
 
-        if ((waylandSurface.IsValid() == true) && (waylandSurface.UpScale() == true)) {
+        if (waylandSurface.IsValid() == true) {
             Trace("wl_simple_shell_listener.surface_id upscaling %s to (%dx%d)\n",
                 waylandSurface.Name().c_str(), context.Physical().Width, context.Physical().Height);
 
@@ -434,7 +434,6 @@ namespace Wayland {
         , _eglSurfaceWindow(EGL_NO_SURFACE)
         , _keyboard(nullptr)
         , _pointer(nullptr)
-        , _upScale(false)
     {
         assert(display.IsOperational());
 
@@ -490,7 +489,6 @@ namespace Wayland {
         , _eglSurfaceWindow(EGL_NO_SURFACE)
         , _keyboard(nullptr)
         , _pointer(nullptr)
-        , _upScale(false)
     {
     }
 
@@ -511,7 +509,6 @@ namespace Wayland {
         , _eglSurfaceWindow(EGL_NO_SURFACE)
         , _keyboard(nullptr)
         , _pointer(nullptr)
-        , _upScale(false)
     {
     }
 
@@ -546,7 +543,7 @@ namespace Wayland {
         Redraw();
     }
 
-    void Display::SurfaceImplementation::ZOrder(const uint32_t order)
+    uint32_t Display::SurfaceImplementation::ZOrder(const uint16_t order)
     {
         // Max layers supported by Westeros have a limitation with 255, hence the ZOrder fraction
         // difference calculation is limiting with std::numeric_limits<uint8_t>::max()
@@ -557,13 +554,7 @@ namespace Wayland {
         wl_simple_shell_set_zorder(_display->_simpleShell, _id, wl_fixed_from_double(fractionalOrder));
         wl_display_flush(_display->_display);
         Redraw();
-    }
-
-    void Display::SurfaceImplementation::BringToFront()
-    {
-        wl_shell_surface_set_toplevel(_shellSurface);
-        wl_display_flush(_display->_display);
-        Redraw();
+        return (Core::ERROR_NONE);
     }
 
     void Display::SurfaceImplementation::Dimensions(
@@ -597,7 +588,6 @@ namespace Wayland {
 
         Trace("Current surfaceId=%d width=%d  height=%d x=%d, y=%d, visible=%d opacity=%d zorder=%d\n", _id, _width, _height, _x, _y, _visible, _opacity, _ZOrder);
     }
-
     void Display::SurfaceImplementation::Redraw()
     {
         _display->Trigger();
@@ -694,7 +684,7 @@ namespace Wayland {
         return (_eglSurfaceWindow != EGL_NO_SURFACE);
     }
 
-    Display::ImageImplementation::ImageImplementation(Display& display, const uint32_t texture, const uint32_t width, const uint32_t height)
+    Display::ImageImplementation::ImageImplementation(Display& display, const uint32_t texture, const uint32_t, const uint32_t)
         : _refcount(1)
         , _display(&display)
     {
@@ -1149,7 +1139,7 @@ namespace Wayland {
         return (*result);
     }
 
-    static void signalHandler(int signum)
+    static void signalHandler(int)
     {
     }
 
