@@ -262,7 +262,7 @@ static const struct wl_seat_listener seatListener = {
 };
 
 static const struct wl_simple_shell_listener simpleShellListener = {
-    // surface_id
+    // surfaceId
     [](void* data, struct wl_simple_shell* shell, struct wl_surface* surface, uint32_t surfaceId) {
         Trace("wl_simple_shell_listener.surface_id shell=%p wl_surface=%p surfaceId=%d\n", shell, surface, surfaceId);
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
@@ -274,7 +274,7 @@ static const struct wl_simple_shell_listener simpleShellListener = {
         Wayland::Display::Surface waylandSurface;
         context.Get(surfaceId, waylandSurface);
 
-        if ((waylandSurface.IsValid() == true) && (waylandSurface.UpScale() == true)) {
+        if (waylandSurface.IsValid() == true) {
             Trace("wl_simple_shell_listener.surface_id upscaling %s to (%dx%d)\n",
                 waylandSurface.Name().c_str(), context.Physical().Width, context.Physical().Height);
 
@@ -282,11 +282,11 @@ static const struct wl_simple_shell_listener simpleShellListener = {
                 context.Physical().Width, context.Physical().Height);
         }
     },
-    // surface_created
+    // surfaceCreated
     [](void* data, struct wl_simple_shell* shell, uint32_t surfaceId, const char* name) {
         Trace("wl_simple_shell_listener.surface_created shell=%p name=%s surfaceId=%d\n", shell, name, surfaceId);
     },
-    // surface_destroyed
+    // surfaceDestroyed
     [](void* data, struct wl_simple_shell* shell, uint32_t surfaceId, const char* name) {
         Trace("wl_simple_shell_listener.surface_destroyed shell=%p name=%s surfaceId=%d\n", shell, name, surfaceId);
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
@@ -297,7 +297,7 @@ static const struct wl_simple_shell_listener simpleShellListener = {
         context.Destructed(surfaceId);
         Trace("wl_simple_shell_listener.surface_destroyed surfaceId=%d\n", surfaceId);
     },
-    // surface_status
+    // surfaceStatus
     [](void* data, struct wl_simple_shell* shell, uint32_t surfaceId, const char* name, uint32_t visible,
         int32_t x, int32_t y, int32_t width, int32_t height, wl_fixed_t opacity, wl_fixed_t zorder) {
         Trace("surface_status surfaceId=%d name=%s width=%d  height=%d x=%d, y=%d visible=%d opacity=%d zorder=%d\n", surfaceId, name, width, height, x, y, visible, opacity, zorder);
@@ -311,7 +311,7 @@ static const struct wl_simple_shell_listener simpleShellListener = {
         context.Constructed(surfaceId, name);
         Trace("wl_simple_shell_listener.surface_status surfaceId=%d\n", surfaceId);
     },
-    // get_surfaces_done
+    // getSurfacesDone
     [](void* data, struct wl_simple_shell* shell) {
         Trace("wl_simple_shell_listener.get_surfaces_done shell=%p\n", shell);
     }
@@ -435,11 +435,9 @@ namespace Wayland {
         , _ZOrder(0)
         , _display(&display)
         , _native(nullptr)
-        , _frameCallback(nullptr)
         , _eglSurfaceWindow(EGL_NO_SURFACE)
         , _keyboard(nullptr)
         , _pointer(nullptr)
-        , _upScale(false)
     {
         assert(display.IsOperational());
 
@@ -491,12 +489,10 @@ namespace Wayland {
         , _ZOrder(0)
         , _display(&display)
         , _native(nullptr)
-        , _frameCallback(nullptr)
         , _shellSurface(nullptr)
         , _eglSurfaceWindow(EGL_NO_SURFACE)
         , _keyboard(nullptr)
         , _pointer(nullptr)
-        , _upScale(false)
     {
     }
 
@@ -513,30 +509,15 @@ namespace Wayland {
         , _ZOrder(0)
         , _display(&display)
         , _native(nullptr)
-        , _frameCallback(nullptr)
         , _shellSurface(nullptr)
         , _eglSurfaceWindow(EGL_NO_SURFACE)
         , _keyboard(nullptr)
         , _pointer(nullptr)
-        , _upScale(false)
     {
     }
 
-    void Display::SurfaceImplementation::Callback(wl_callback_listener* listener, void* data)
+    Display::SurfaceImplementation::~SurfaceImplementation()
     {
-
-        assert((listener == nullptr) ^ (_frameCallback == nullptr));
-
-        if (listener != nullptr) {
-
-            _frameCallback = wl_surface_frame(_surface);
-            wl_callback_add_listener(_frameCallback, listener, data);
-
-            eglSwapBuffers(_display->_eglDisplay, _eglSurfaceWindow);
-        } else {
-            wl_callback_destroy(_frameCallback);
-            _frameCallback = nullptr;
-        }
     }
 
     void Display::SurfaceImplementation::Resize(const int dx, const int dy, const int width, const int height)
@@ -566,7 +547,7 @@ namespace Wayland {
         Redraw();
     }
 
-    void Display::SurfaceImplementation::ZOrder(const uint32_t order)
+    uint32_t Display::SurfaceImplementation::ZOrder(const uint16_t order)
     {
         // Max layers supported by Westeros have a limitation with 255, hence the ZOrder fraction
         // difference calculation is limiting with std::numeric_limits<uint8_t>::max()
@@ -577,13 +558,7 @@ namespace Wayland {
         wl_simple_shell_set_zorder(_display->_simpleShell, _id, wl_fixed_from_double(fractionalOrder));
         wl_display_flush(_display->_display);
         Redraw();
-    }
-
-    void Display::SurfaceImplementation::BringToFront()
-    {
-        wl_shell_surface_set_toplevel(_shellSurface);
-        wl_display_flush(_display->_display);
-        Redraw();
+        return (Core::ERROR_NONE);
     }
 
     void Display::SurfaceImplementation::Dimensions(
@@ -617,7 +592,6 @@ namespace Wayland {
 
         Trace("Current surfaceId=%d width=%d  height=%d x=%d, y=%d, visible=%d opacity=%d zorder=%d\n", _id, _width, _height, _x, _y, _visible, _opacity, _ZOrder);
     }
-
     void Display::SurfaceImplementation::Redraw()
     {
         _display->Trigger();
@@ -632,10 +606,6 @@ namespace Wayland {
     void Display::SurfaceImplementation::Unlink()
     {
         if (_display != nullptr) {
-
-            if (_frameCallback != nullptr) {
-                wl_callback_destroy(_frameCallback);
-            }
 
             if (_eglSurfaceWindow != EGL_NO_SURFACE) {
 
@@ -718,7 +688,7 @@ namespace Wayland {
         return (_eglSurfaceWindow != EGL_NO_SURFACE);
     }
 
-    Display::ImageImplementation::ImageImplementation(Display& display, const uint32_t texture, const uint32_t width, const uint32_t height)
+    Display::ImageImplementation::ImageImplementation(Display& display, const uint32_t texture, const uint32_t, const uint32_t)
         : _refcount(1)
         , _display(&display)
     {
@@ -751,7 +721,7 @@ namespace Wayland {
     {
         if (_display != nullptr) {
             _eglDestroyImagePtr(_display->_eglDisplay, _eglImage);
-	}
+        }
     }
 
     static void* Processor(void* data)
@@ -1173,7 +1143,7 @@ namespace Wayland {
         return (*result);
     }
 
-    static void signalHandler(int signum)
+    static void signalHandler(int)
     {
     }
 
