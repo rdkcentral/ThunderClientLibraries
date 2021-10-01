@@ -609,7 +609,7 @@ public:
     }
     int Process(const uint32_t data) override;
     int FileDescriptor() const override;
-    ISurface* SurfaceByName(const std::string& name) override;
+    
     ISurface* Create(
         const std::string& name,
         const uint32_t width, const uint32_t height) override;
