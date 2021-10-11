@@ -43,7 +43,7 @@ if("${PLUGIN_COMPOSITOR_IMPLEMENTATION}" STREQUAL "Nexus")
         set(COMPOSITORCLIENT_IMPLEMENTATION_REPOSITORY "https://code.rdkcentral.com/r/soc/broadcom/components/rdkcentral/thunder/compositorclient" CACHE STRING "compositorclient implementation repository")
         GetExternalCode(
             GIT_REPOSITORY ${COMPOSITORCLIENT_IMPLEMENTATION_REPOSITORY}
-            GIT_TAG ${COMPOSITORCLIENT_IMPLEMENTATION_VERSION}
+            GIT_VERSION ${COMPOSITORCLIENT_IMPLEMENTATION_VERSION}
             SOURCE_DIR "Nexus"
         )
         add_subdirectory(Nexus)
