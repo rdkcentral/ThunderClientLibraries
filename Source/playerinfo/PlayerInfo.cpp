@@ -51,7 +51,7 @@ public:
 
 private:
     //NOTIFICATIONS
-    void DolbySoundModeUpdated(const Exchange::Dolby::IOutput::SoundModes mode, const bool enabled)
+    void DolbySoundModeUpdated(VARIABLE_IS_NOT_USED const Exchange::Dolby::IOutput::SoundModes mode, VARIABLE_IS_NOT_USED const bool enabled)
     {
         for (auto& index : _dolbyCallbacks) {
             index.first(index.second);

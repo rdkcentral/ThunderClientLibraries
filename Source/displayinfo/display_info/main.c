@@ -22,6 +22,14 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#ifdef __GNUC__
+#define VARIABLE_IS_NOT_USED __attribute__((unused))
+#elif defined(_MSC_VER)
+#define VARIABLE_IS_NOT_USED
+#else
+#define VARIABLE_IS_NOT_USED
+#endif
+
 static void toHexString(
     const uint8_t data[], const uint32_t dataLength,
     char buf[], uint32_t* bufLength)
@@ -31,7 +39,7 @@ static void toHexString(
     if (*bufLength >= totalLength) {
         uint32_t length = 0;
 
-        for (int i = 0; i < dataLength; i++) {
+        for (uint32_t i = 0; i < dataLength; i++) {
             length += snprintf(&buf[length], (*bufLength - length), "%s0x%02X%s",
                 (i % 8 == 0) ? "\n" : "",
                 data[i],
@@ -54,12 +62,12 @@ static void toHexString(
         fflush(stdout);                                 \
     } while (0)
 
-void displayinfo_display_updated(void* data)
+void displayinfo_display_updated(VARIABLE_IS_NOT_USED void* data)
 {
     Trace("Display updated callback!\n");
 }
 
-void on_operational_state_change(bool is_operational, void* data)
+void on_operational_state_change(bool is_operational, VARIABLE_IS_NOT_USED void* data)
 {
     Trace("Operational state of the instance %s operational", is_operational ? "is" : "not");
 }
@@ -84,7 +92,7 @@ void ShowMenu()
         __TIMESTAMP__);
 }
 
-int main(int argc, char* argv[])
+int main()
 {
     ShowMenu();
 
