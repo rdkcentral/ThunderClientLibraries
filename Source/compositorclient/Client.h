@@ -130,9 +130,9 @@ namespace Compositor {
             virtual void TouchPanel(ITouchPanel*) { }
             virtual int32_t Width() const = 0;
             virtual int32_t Height() const = 0;
-            virtual uint32_t Id() const { }
-            virtual uint32_t ZOrder(const uint16_t index) { }
-            virtual uint32_t ZOrder() const { }
+            virtual uint32_t Id() const { return (0); }
+            virtual uint32_t ZOrder(const uint16_t) { return (0); }
+            virtual uint32_t ZOrder() const { return (0); }
             virtual void Opacity(const uint32_t value) { }
             virtual void Visibility(const bool visible) { }
             virtual void Resize(const int, const int, const int, const int) { }
