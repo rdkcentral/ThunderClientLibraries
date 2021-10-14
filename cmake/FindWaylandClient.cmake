@@ -30,13 +30,24 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+if(WaylandClient_FIND_QUIETLY)
+    set(_WAYLANDCLIENT_MODE QUIET)
+elseif(WaylandClient_FIND_REQUIRED)
+    set(_WAYLANDCLIENT_MODE REQUIRED)
+endif()
+
 find_package(PkgConfig)
-pkg_check_modules(WAYLANDCLIENT wayland-client>=1.2 )
+pkg_check_modules(WAYLANDCLIENT ${_WAYLANDCLIENT_MODE} wayland-client>=1.2 )
 
 find_library(WAYLANDCLIENT_LIB NAMES wayland-client
         HINTS ${WAYLANDCLIENT_LIBDIR} ${WAYLANDCLIENT_LIBRARY_DIRS})
 
-if(WAYLANDCLIENT_FOUND AND NOT TARGET WaylandClient::WaylandClient)
+
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(WaylandClient  DEFAULT_MSG WAYLANDCLIENT_FOUND WAYLANDCLIENT_INCLUDE_DIRS WAYLANDCLIENT_LIBRARIES)
+mark_as_advanced(WAYLANDCLIENT_INCLUDE_DIRS WAYLANDCLIENT_LIBRARIES)
+
+if(WaylandClient_FOUND AND NOT TARGET WaylandClient::WaylandClient)
     add_library(WaylandClient::WaylandClient UNKNOWN IMPORTED)
     set_target_properties(WaylandClient::WaylandClient PROPERTIES
             IMPORTED_LOCATION "${WAYLANDCLIENT_LIB}"
@@ -45,7 +56,3 @@ if(WAYLANDCLIENT_FOUND AND NOT TARGET WaylandClient::WaylandClient)
             INTERFACE_INCLUDE_DIRECTORIES "${WAYLANDCLIENT_INCLUDE_DIRS}"
             )
 endif()
-
-include(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(WAYLAND DEFAULT_MSG WAYLANDCLIENT_FOUND)
-mark_as_advanced(WAYLANDCLIENT_INCLUDE_DIRS WAYLANDCLIENT_LIBRARIES)
