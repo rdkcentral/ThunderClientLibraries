@@ -52,11 +52,11 @@ if (NOT "${GSTREAMERCLIENT_IMPLEMENTATION}" STREQUAL "None")
             add_subdirectory(${GSTREAMERCLIENT_IMPLEMENTATION_PATH})
         else()
             include(GetExternalCode)
-            set(GSTREAMERCLIENT_IMPLEMENTATION_VERSION "master" CACHE STRING "gstreamerclient implementation version")
+            set(GSTREAMERCLIENT_IMPLEMENTATION_VERSION "master" CACHE STRING "gstreamerclient implementation version: commit_id_or_tag_or_branch_name")
             set(GSTREAMERCLIENT_IMPLEMENTATION_REPOSITORY "https://code.rdkcentral.com/r/soc/broadcom/components/rdkcentral/thunder/gstreamerclient" CACHE STRING "gstreamerclient implementation repository")
             GetExternalCode(
                 GIT_REPOSITORY ${GSTREAMERCLIENT_IMPLEMENTATION_REPOSITORY}
-                GIT_TAG ${GSTREAMERCLIENT_IMPLEMENTATION_VERSION}
+                GIT_VERSION ${GSTREAMERCLIENT_IMPLEMENTATION_VERSION}
                 SOURCE_DIR "Nexus"
             )
             add_subdirectory(Nexus)
