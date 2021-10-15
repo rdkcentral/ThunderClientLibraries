@@ -25,7 +25,7 @@ if(${CRYPTOGRAPHY_IMPLEMENTATION} STREQUAL "Nexus")
         include(GetExternalCode)
         GetExternalCode(
             GIT_REPOSITORY "git@github.com:WebPlatformForEmbedded/ICrypto-Nexus.git"
-            GIT_TAG "master"
+            GIT_VERSION "master" #commit_id_or_tag_or_branch_name
             SOURCE_DIR "Nexus"
         )
         add_subdirectory(Nexus)
