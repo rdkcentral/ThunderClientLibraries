@@ -44,6 +44,7 @@
 #endif
 
 namespace WPEFramework {
+
 namespace Compositor {
 
     struct EXTERNAL IDisplay {
@@ -132,7 +133,7 @@ namespace Compositor {
             virtual int32_t Height() const = 0;
         };
 
-        static IDisplay* Instance(const std::string& displayName);
+        static IDisplay* Instance(const std::string& displayName, void * display = nullptr);
 
         // If CLIENT_IDENTIFIER variable is set its value is tokenized using comma as the separator
         // and the first token is used to override the passed in name. The second - if present - is

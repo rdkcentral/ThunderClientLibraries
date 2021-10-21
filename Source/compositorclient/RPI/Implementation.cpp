@@ -683,8 +683,8 @@ private:
     Display() = delete;
     Display(const Display&) = delete;
     Display& operator=(const Display&) = delete;
-    
-    Display(const std::string& displayName);
+
+    Display(const std::string& displayName, Exchange::IComposition::IDisplay * display);
 
         class DMATransfer {
 
@@ -1350,7 +1350,7 @@ public:
 
     ~Display() override;
 
-    static Display* Instance(const string& displayName){
+    static Display* Instance(const string& displayName, Exchange::IComposition::IDisplay * display) {
         Display* result(nullptr);
 
         _displaysMapLock.Lock();
@@ -1358,7 +1358,7 @@ public:
         DisplayMap::iterator index(_displays.find(displayName));
 
         if (index == _displays.end()) {
-            result = new Display(displayName);
+            result = new Display(displayName, display);
             if( result->RemoteDisplay() != nullptr ) {
                 _displays.insert(std::pair<const std::string, Display*>(displayName, result));
                 result->AddRef();
@@ -1503,7 +1503,7 @@ private:
         }
     }
 
-    inline void Initialize()
+    inline void Initialize (Exchange::IComposition::IDisplay * display)
     {
         if (Core::WorkerPool::IsAvailable() == true) {
             // If we are in the same process space as where a WorkerPool is registered (Main Process or
@@ -1527,18 +1527,23 @@ private:
             engine->Announcements(_compositerServerRPCConnection->Announcement());
         }
 
-        // Connect to the CompositorServer..
-        uint32_t result = _compositerServerRPCConnection->Open(RPC::CommunicationTimeOut);
-
-        if (result != Core::ERROR_NONE) {
-            TRACE_L1(_T("Could not open connection to Compositor with node %s. Error: %s"), _compositerServerRPCConnection->Source().RemoteId().c_str(), Core::NumberType<uint32_t>(result).Text().c_str());
-            _compositerServerRPCConnection.Release();
+        if (display != nullptr) {
+            _remoteDisplay = display;
         }
         else {
-            _remoteDisplay = _compositerServerRPCConnection->Aquire<Exchange::IComposition::IDisplay>(2000, _displayName, ~0);
+            // Connect to the CompositorServer..
+            uint32_t result = _compositerServerRPCConnection->Open(RPC::CommunicationTimeOut);
 
-            if (_remoteDisplay == nullptr) {
-                TRACE_L1(_T("Could not create remote display for Display %s!"), Name().c_str());
+            if (result != Core::ERROR_NONE) {
+                TRACE_L1(_T("Could not open connection to Compositor with node %s. Error: %s"), _compositerServerRPCConnection->Source().RemoteId().c_str(), Core::NumberType<uint32_t>(result).Text().c_str());
+                _compositerServerRPCConnection.Release();
+            }
+            else {
+                _remoteDisplay = _compositerServerRPCConnection->Aquire<Exchange::IComposition::IDisplay>(2000, _displayName, ~0);
+
+                if (_remoteDisplay == nullptr) {
+                    TRACE_L1(_T("Could not create remote display for Display %s!"), Name().c_str());
+                }
             }
         }
 
@@ -1702,7 +1707,7 @@ Display::SurfaceImplementation::~SurfaceImplementation()
     _display.Release();
 }
 
-Display::Display(const string& name)
+Display::Display (const string& name, Exchange::IComposition::IDisplay * display)
     : _displayName(name)
     , _adminLock()
     , _virtualinput(nullptr)
@@ -1713,7 +1718,7 @@ Display::Display(const string& name)
     , _nativeDisplay {nullptr, -1}
     , _dma { nullptr }
 {
-    Initialize();
+    Initialize (display);
 
     std::vector < std::string > _nodes;
 
@@ -1824,7 +1829,8 @@ int Display::Process(const uint32_t)
     _last_access_time = _current_time;
 
     // Scan out all surfaces belonging to this display
-// TODO: only scan out the surface that actually has completed or the client should be made aware that all surfaces ishould be completed at the time of calling
+// TODO: only scan out the surface that actually has completed or the client should be made aware that all surfaces should be completed at the time of calling
+// TODO: This flow introduces artefacts. At least the initial frame is skipped.
     for (auto _begin = _surfaces.begin (), _it = _begin, _end = _surfaces.end (); _it != _end; _it++) {
         (*_it)->PreScanOut ();  // will render
         (*_it)->ScanOut ();     // actual scan out
@@ -1971,8 +1977,8 @@ inline void Display::Unregister(Display::SurfaceImplementation* surface)
 
 } // RPI
 
-Compositor::IDisplay* Compositor::IDisplay::Instance(const string& displayName)
+Compositor::IDisplay* Compositor::IDisplay::Instance (const string& displayName, void * display)
 {
-    return RPI::Display::Instance(displayName);
+    return RPI::Display::Instance(displayName, reinterpret_cast < Exchange::IComposition::IDisplay * > (display));
 }
 } // WPEFramework
