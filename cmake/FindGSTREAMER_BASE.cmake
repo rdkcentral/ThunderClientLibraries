@@ -1,8 +1,8 @@
-# - Try to find bcm_host.
+# - Try to find gstreamer_base.
 # Once done, this will define
 #
-#  BCM_HOST_FOUND - the bcm_host is available
-#  BCM_HOST::BCM_HOST - The bcm_host library and all its dependecies
+#  GSTREAMER_BASE_FOUND - the gstreamer_base is available
+#  GSTREAMER_BASE::GSTREAMER_BASE - The gstreamer_base library and all its dependecies
 #
 # Copyright (C) 2019 Metrological B.V
 #
@@ -27,12 +27,17 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+if(GSTREAMER_BASE_FIND_QUIETLY)
+    set(_GSTREAMER_BASE_MODE QUIET)
+elseif(GSTREAMER_BASE_FIND_REQUIRED)
+    set(_GSTREAMER_BASE_MODE REQUIRED)
+endif()
+
 find_package(PkgConfig)
-pkg_check_modules(PC_GSTREAMER_BASE gstreamer-base-1.0)
+pkg_check_modules(PC_GSTREAMER_BASE ${_GSTREAMER_BASE_MODE} gstreamer-base-1.0)
 
 include(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(PC_GSTREAMER_BASE DEFAULT_MSG PC_GSTREAMER_BASE_FOUND)
-
+find_package_handle_standard_args(GSTREAMER_BASE DEFAULT_MSG PC_GSTREAMER_BASE_FOUND PC_GSTREAMER_BASE_INCLUDE_DIRS PC_GSTREAMER_BASE_LIBRARIES)
 mark_as_advanced(PC_GSTREAMER_BASE_INCLUDE_DIRS PC_GSTREAMER_BASE_LIBRARIES PC_GSTREAMER_BASE_LIBRARY_DIRS)
 
 foreach(libraryName ${PC_GSTREAMER_BASE_LIBRARIES})
@@ -40,10 +45,9 @@ find_library(${libraryName}_GSTREAMER_BASE_SINGLE_LIB ${libraryName} HINTS ${PC_
 list(APPEND ALL_GSTREAMER_BASE_LIBS "${${libraryName}_GSTREAMER_BASE_SINGLE_LIB}")
 endforeach(libraryName)
 
-if(${PC_GSTREAMER_BASE_FOUND})
+if(GSTREAMER_BASE_FOUND)
     set(GSTREAMER_BASE_LIBRARIES ${ALL_GSTREAMER_BASE_LIBS})
     set(GSTREAMER_BASE_INCLUDES ${PC_GSTREAMER_BASE_INCLUDE_DIRS})
-    set(GSTREAMER_BASE_FOUND ${PC_GSTREAMER_BASE_FOUND})
 
     if(NOT TARGET GSTREAMER_BASE::GSTREAMER_BASE)
         add_library(GSTREAMER_BASE::GSTREAMER_BASE UNKNOWN IMPORTED)

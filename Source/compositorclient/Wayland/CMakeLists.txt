@@ -41,7 +41,7 @@ if ("${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}" STREQUAL "Weston")
     if (GLESV2_FOUND)
         target_link_libraries(${TARGET}
             PRIVATE
-                GLESV2::GLESV2
+                GLESv2::GLESv2
         )
     endif (GLESV2_FOUND)
 endif ()

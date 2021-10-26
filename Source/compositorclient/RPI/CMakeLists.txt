@@ -53,7 +53,7 @@ target_link_libraries(${TARGET}
 if(VC6)
     target_link_libraries(${TARGET}
         PRIVATE
-            libdrm::libdrm
+            LibDRM::LibDRM
     )
 endif()
 
