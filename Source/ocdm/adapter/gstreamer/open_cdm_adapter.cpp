@@ -139,7 +139,7 @@ OpenCDMError opencdm_gstreamer_session_decrypt(struct OpenCDMSession* session, G
                                                    GstBuffer* IV, GstBuffer* keyID, uint32_t initWithLast15){
     //Set the Encryption Scheme and Pattern to defaults. 
     EncryptionScheme encScheme = AesCtr_Cenc;
-    EncryptionPattern pattern = {0};
+    EncryptionPattern pattern = {0, 0};
 
     //Lets try to get Enc Scheme and Pattern from the Protection Metadata.
     GstProtectionMeta* protectionMeta = reinterpret_cast<GstProtectionMeta*>(gst_buffer_get_protection_meta(buffer));
