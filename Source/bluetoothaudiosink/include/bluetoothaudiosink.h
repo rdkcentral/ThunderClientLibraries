@@ -21,7 +21,6 @@
 #define BLUETOOTHAUDIOSINK_H
 
 #include <stdint.h>
-#include <stdbool.h>
 
 #undef EXTERNAL
 #define EXTERNAL __attribute__((visibility("default")))
@@ -50,7 +49,7 @@ typedef enum {
 
 typedef void *bluetoothaudiosink_player_t;
 
-typedef void (*bluetoothaudiosink_operational_state_update_cb)(const bool running, void *user_data);
+typedef void (*bluetoothaudiosink_operational_state_update_cb)(const uint8_t running /* 0 == not running */, void *user_data);
 
 typedef void (*bluetoothaudiosink_state_update_cb)(void *user_data);
 
