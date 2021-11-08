@@ -192,9 +192,9 @@ static void audio_sink_state_update(void *user_data)
     }
 }
 
-static void audio_sink_operational_state_update(const bool running, void *user_data)
+static void audio_sink_operational_state_update(const uint8_t running, void *user_data)
 {
-    if (running == true) {
+    if (running) {
         bluetoothaudiosink_state_t state = BLUETOOTHAUDIOSINK_STATE_UNKNOWN;
         bluetoothaudiosink_state(&state);
 
