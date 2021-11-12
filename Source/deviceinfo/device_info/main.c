@@ -69,7 +69,10 @@ void ShowMenu()
            "\tD : Get friendly name\n"
            "\tP : Get platform name\n"
            "\tR : Get maximum supported resolution\n"
-           "\tS : Get summary of available outputs\n");
+           "\tS : Get summary of available outputs\n"
+           "\t1 : Stress test 1\n"
+           "\t2 : Stress test 2\n"
+           "\tQ : Quit\n");
 }
 
 int main()
@@ -312,6 +315,32 @@ int main()
                 Trace("Instance or buffer is null.Error code = %d ", result);
             }
             break;
+        }
+        case '1': {
+            char bufferstr[150];
+            uint8_t bufferLength = sizeof(bufferstr);
+            uint32_t count = 500000;
+            while (count-- != 0) {
+               bufferLength = sizeof(bufferstr);
+               memset(bufferstr, 0, bufferLength);
+               result = deviceinfo_id_str(bufferstr, &bufferLength);
+               if (result==0) {
+                   Trace("%i: ID[%d]: %s", count, bufferLength, bufferstr);
+               } else if (result == 16) {
+                   Trace("Buffer too small, should be at least of size %d ",bufferLength);
+               } else {
+                   Trace("Instance or buffer is null. Error code = %d ", result);
+               }
+            }
+            break;
+        }
+        case '2': {
+            uint32_t count = 500000;
+            while (count-- != 0) {
+                deviceinfo_output_resolution_t res = DEVICEINFO_RESOLUTION_UNKNOWN;
+                deviceinfo_maximum_output_resolution(&res);
+                Trace("%i: Output Resolution: %d", count, res);
+            }
         }
         case '?': {
             ShowMenu();
