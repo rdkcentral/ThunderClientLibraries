@@ -21,7 +21,7 @@ cmake_minimum_required(VERSION 3.7)
 cmake_policy(VERSION 3.7...3.12)
 
 if(GBM_FIND_QUIETLY)
-     set(_GBM_MODE QUIET)
+    set(_GBM_MODE QUIET)
 elseif(GBM_FIND_REQUIRED)
     set(_GBM_MODE REQUIRED)
 endif()
@@ -31,13 +31,12 @@ if(${PKG_CONFIG_FOUND})
 
     # Just check if the gbm.pc exist, and create the PkgConfig::gbm target
     # No version requirement (yet)
-    pkg_check_modules(GBM ${_GBM_MODE} IMPORTED_TARGET gbm)
+    pkg_check_modules(PC_GBM ${_GBM_MODE} IMPORTED_TARGET gbm)
     find_library(GBM_ACTUAL_LIBRARY NAMES gbm
-        HINTS ${GBM_LIBRARY_DIRS} )
+        HINTS ${PC_GBM_LIBRARY_DIRS})
 
     find_path(GBM_INCLUDE_DIR NAMES gbm.h
-        HINTS ${PC_GBM_INCLUDEDIR} ${PC_GBM_INCLUDE_DIRS}
-    )
+        HINTS ${PC_GBM_INCLUDEDIR} ${PC_GBM_INCLUDE_DIRS})
 else()
     message(FATAL_ERROR "Unable to locate PkgConfig")
 endif()
@@ -47,19 +46,20 @@ include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(
     GBM
     REQUIRED_VARS
-        GBM_LIBRARIES
         GBM_ACTUAL_LIBRARY
+        PC_GBM_LIBRARIES
+        GBM_INCLUDE_DIR
     VERSION_VAR
         GBM_VERSION
 )
-mark_as_advanced(LIBDRM_INCLUDE_DIR LIBDRM_LIBRARIES GBM_ACTUAL_LIBRARY)
+mark_as_advanced(GBM_INCLUDE_DIR PC_GBM_LIBRARIES GBM_ACTUAL_LIBRARY)
 
 if(GBM_FOUND AND NOT TARGET GBM::GBM)
     add_library(GBM::GBM UNKNOWN IMPORTED)
     set_target_properties(GBM::GBM PROPERTIES
         IMPORTED_LOCATION "${GBM_ACTUAL_LIBRARY}"
-        INTERFACE_LINK_LIBRARIES "${GBM_LIBRARIES}"
-        INTERFACE_COMPILE_OPTIONS "${GBM_CFLAGS}"
+        INTERFACE_LINK_LIBRARIES "${PC_GBM_LIBRARIES}"
+        INTERFACE_COMPILE_OPTIONS "${PC_GBM_CFLAGS}"
         INTERFACE_INCLUDE_DIRECTORIES "${GBM_INCLUDE_DIR}"
     )
 endif()
