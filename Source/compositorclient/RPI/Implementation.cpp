@@ -1640,10 +1640,12 @@ Display::SurfaceImplementation::SurfaceImplementation(
         _nativeSurface._width = width;
     }
 
-    _remoteClient = _display.CreateRemoteSurface(name, width, height);
+    // Implicit AddRef ()
+    _remoteClient = _display.CreateRemoteSurface (name, width, height);
 
     if (_remoteClient != nullptr) {
-        _remoteRenderer = _remoteClient->QueryInterface<Exchange::IComposition::IRender>();
+        // Implicit AddRef ()
+        _remoteRenderer = _remoteClient->QueryInterface<Exchange::IComposition::IRender> ();
 
         if(_remoteRenderer == nullptr) {
             TRACE_L1(_T("Could not aquire remote renderer for surface %s."), name.c_str());
@@ -1653,13 +1655,12 @@ Display::SurfaceImplementation::SurfaceImplementation(
             if (_display.PrimeFor (*_remoteClient, _nativeSurface._prime) != true || gbm_device_is_format_supported (static_cast <RenderDevice::GBM::dev_t> (_display.Native ()), _nativeSurface._prime._format, GBM_BO_USE_RENDERING) != 1) {
                 TRACE (Trace::Error, (_T ( "Failed to setup a share for rendering results!")));
 
-                _remoteRenderer->Release ();
-                _remoteClient->Release ();
-
-                delete _remoteRenderer;
-                delete _remoteClient;
-
+                auto result = _remoteRenderer->Release ();
+                ASSERT (result == Core::ERROR_DESTRUCTION_SUCCEEDED);
                 _remoteRenderer = nullptr;
+
+                /* auto */ result = _remoteClient->Release ();
+                ASSERT (result == Core::ERROR_DESTRUCTION_SUCCEEDED);
                 _remoteClient = nullptr;
             }
             else {
@@ -1672,6 +1673,7 @@ Display::SurfaceImplementation::SurfaceImplementation(
             }
 
         }
+
     } else {
         TRACE_L1(_T("Could not create remote surface for surface %s."), name.c_str());
     }
@@ -1692,19 +1694,26 @@ Display::SurfaceImplementation::~SurfaceImplementation()
         TRACE_L1(_T("Destructing surface %s"), _remoteClient->Name().c_str());
 
         if(_remoteRenderer != nullptr) {
-            _remoteRenderer->Release();
+            auto result = _remoteRenderer->Release ();
+            ASSERT (result == Core::ERROR_DESTRUCTION_SUCCEEDED);
+            _remoteRenderer = nullptr;
         }
 
-        _remoteClient->Release();
+        auto result = _remoteClient->Release ();
+        ASSERT (result == Core::ERROR_DESTRUCTION_SUCCEEDED);
+        _remoteClient = nullptr;
+
     }
 
     if (_nativeSurface._surf != nullptr) {
         gbm_surface_destroy (_nativeSurface._surf);
+        _nativeSurface._surf = nullptr;
     }
 
     _nativeSurface = WPEFramework::RPI_INTERNAL::GLResourceMediator::InvalidNative ();
 
-    _display.Release();
+    auto result = _display.Release ();
+    ASSERT (result = Core::ERROR_DESTRUCTION_SUCCEEDED);
 }
 
 Display::Display (const string& name, Exchange::IComposition::IDisplay * display)
