@@ -24,7 +24,9 @@
 #include <interfaces/IBluetoothAudio.h>
 
 
-#define TRACE(format, ...) fprintf(stderr, "bluetoothaudiosink: " format "\n", ##__VA_ARGS__)
+#define CONNECTOR _T("/tmp/bluetoothaudiosink")
+
+#define PRINT(format, ...) fprintf(stderr, _T("bluetoothaudiosink: ") format _T("\n"), ##__VA_ARGS__)
 
 
 namespace WPEFramework {
@@ -33,157 +35,41 @@ namespace BluetoothAudioSinkClient {
 
     class AudioSink : protected RPC::SmartInterfaceType<Exchange::IBluetoothAudioSink> {
     private:
-        class Player : public Core::Thread {
-        private:
-            class SendBuffer : public Core::SharedBuffer {
-            public:
-                SendBuffer() = delete;
-                SendBuffer(const SendBuffer&) = delete;
-                SendBuffer& operator=(const SendBuffer&) = delete;
+        class SendBuffer : public Core::SharedBuffer {
+        public:
+            SendBuffer() = delete;
+            SendBuffer(const SendBuffer&) = delete;
+            SendBuffer& operator=(const SendBuffer&) = delete;
 
-                SendBuffer(const char *connector, const uint32_t maxBufferSize)
-                    : Core::SharedBuffer(connector, 0777, maxBufferSize, 0)
-                    , _maxBufferSize(maxBufferSize)
-                {
-                }
+            SendBuffer(const char *connector, const uint32_t bufferSize)
+                : Core::SharedBuffer(connector, 0777, bufferSize, 0)
+                , _bufferSize(bufferSize)
+            {
+            }
 
-                ~SendBuffer() = default;
-
-            public:
-                uint16_t Write(uint32_t length, uint8_t data[])
-                {
-                    ASSERT(IsValid() == true);
-                    ASSERT(data != nullptr);
-
-                    uint16_t result = 0;
-
-                    if (RequestProduce(100) == Core::ERROR_NONE) {
-                        result = std::min(length, _maxBufferSize);
-                        Size(result);
-                        ::memcpy(Buffer(), data, result);
-                        Produced();
-                    }
-
-                    return (result);
-                }
-
-            private:
-                uint32_t _maxBufferSize;
-            }; // class SendBuffer
+            ~SendBuffer() = default;
 
         public:
-            Player(const char* connector, const uint32_t maxFrameSize, uint16_t bufferSize)
-                : _lock()
-                , _sendBuffer(connector, maxFrameSize)
-                , _buffer(nullptr)
-                , _capacity(0)
-                , _length(0)
-                , _EOS(false)
+            uint16_t Write(uint32_t length, const uint8_t data[])
             {
-                ASSERT(connector != nullptr);
-                ASSERT(maxFrameSize >= 256);
-                ASSERT(bufferSize >= 2);
-
-                if ((maxFrameSize != 0) && (bufferSize != 0)) {
-                    _capacity = (maxFrameSize * bufferSize);
-                    _buffer = static_cast<uint8_t*>(::malloc(_capacity));
-                    ASSERT(_buffer != nullptr);
-
-                    TRACE_L1("Player created");
-                }
-
-                if (_buffer == nullptr) {
-                    TRACE("Failed to allocate a buffer for the player!");
-                }
-            }
-            ~Player() override
-            {
-                Stop();
-                ::free(_buffer);
-                TRACE_L1("Player destroyed");
-            }
-
-            Player(const Player&) = delete;
-            Player& operator=(const Player&) = delete;
-
-        public:
-            bool IsValid() const
-            {
-                return ((_sendBuffer.IsValid() == true) && (_buffer != nullptr));
-            }
-            bool Play()
-            {
-                if (IsRunning() == false) {
-                    _EOS = false;
-                    Run();
-                    TRACE_L1("Player started");
-                    return (true);
-                } else {
-                    return (false);
-                }
-            }
-            bool Stop()
-            {
-                if (IsRunning() == true) {
-                    _EOS = true;
-                    Thread::Wait(BLOCKED, Core::infinite);
-                    TRACE_L1("Player stopped");
-                    return (true);
-                } else {
-                    return (false);
-                }
-            }
-            uint16_t Frame(const uint16_t length, const uint8_t data[])
-            {
+                ASSERT(IsValid() == true);
                 ASSERT(data != nullptr);
 
                 uint16_t result = 0;
 
-                _lock.Lock();
-
-                if (_length + length <= _capacity) {
-                    ::memcpy(&_buffer[_length], data, length);
-                    _length += length;
-                    result = length;
+                if (RequestProduce(100) == Core::ERROR_NONE) {
+                    result = std::min(length, _bufferSize);
+                    Size(result);
+                    ::memcpy(Buffer(), data, result);
+                    Produced();
                 }
-
-                _lock.Unlock();
 
                 return (result);
             }
 
         private:
-            uint32_t Worker()
-            {
-                uint32_t delay = 0;
-
-                _lock.Lock();
-
-                if (_EOS == true) {
-                    Thread::Block();
-                    delay = Core::infinite;
-                } else if (_length != 0) {
-                    uint16_t written = _sendBuffer.Write(_length, _buffer);
-                    if (written != 0) {
-                        // TODO: opportunity for optimisation
-                        ::memmove(_buffer, (_buffer + written), (_length - written));
-                        _length -= written;
-                    }
-                }
-
-                _lock.Unlock();
-
-                return (delay);
-            };
-
-        private:
-            Core::CriticalSection _lock;
-            SendBuffer _sendBuffer;
-            uint8_t* _buffer;
-            uint32_t _capacity;
-            uint32_t _length;
-            bool _EOS;
-        }; // class Player
+            uint32_t _bufferSize;
+        }; // class SendBuffer
 
     private:
         using OperationalStateUpdateCallbacks = std::map<const bluetoothaudiosink_operational_state_update_cb, void*>;
@@ -199,10 +85,10 @@ namespace BluetoothAudioSinkClient {
             , _sink(nullptr)
             , _sinkControl(nullptr)
             , _callback(*this)
-            , _player(nullptr)
+            , _buffer(nullptr)
         {
             if (SmartInterfaceType::Open(RPC::CommunicationTimeOut, SmartInterfaceType::Connector(), callsign) != Core::ERROR_NONE) {
-                TRACE("Failed to open the smart interface!");
+                PRINT(_T("Failed to open the smart interface!"));
             }
         }
 
@@ -213,9 +99,9 @@ namespace BluetoothAudioSinkClient {
 
         ~AudioSink() override
         {
-            if (_player != nullptr) {
-                delete _player;
-                _player = nullptr;
+            if (_buffer != nullptr) {
+                delete _buffer;
+                _buffer = nullptr;
             }
 
             if (_sinkControl != nullptr) {
@@ -287,10 +173,10 @@ namespace BluetoothAudioSinkClient {
                     _sink = SmartInterfaceType::Interface();
 
                     if (_sink == nullptr) {
-                        TRACE("Failed to retrieve the IBluetoothAudioSink interface!");
+                        PRINT(_T("Failed to retrieve the IBluetoothAudioSink interface!"));
                     } else {
                         if (_sink->Callback(&_callback) != Core::ERROR_NONE) {
-                            TRACE("Failed to register the sink callback!");
+                            PRINT(_T("Failed to register the sink callback!"));
                         } else {
                             TRACE_L1("Successfully registered the sink callback!");
                         }
@@ -299,7 +185,7 @@ namespace BluetoothAudioSinkClient {
                             _sinkControl = _sink->QueryInterface<Exchange::IBluetoothAudioSink::IControl>();
 
                             if (_sinkControl == nullptr) {
-                                TRACE("Failed to retrieve the IBluetoothAudioSink::IControl interface!");
+                                PRINT(_T("Failed to retrieve the IBluetoothAudioSink::IControl interface!"));
                             } else {
                                 TRACE_L1("Successfully retrieved IBluetoothAudioSink and IControl intefaces!");
                             }
@@ -322,9 +208,9 @@ namespace BluetoothAudioSinkClient {
 
                  _lock.Lock();
 
-                if (_player != nullptr) {
-                    delete _player;
-                    _player = nullptr;
+                if (_buffer != nullptr) {
+                    delete _buffer;
+                    _buffer = nullptr;
                 }
 
                 if (_sinkControl != nullptr) {
@@ -345,7 +231,7 @@ namespace BluetoothAudioSinkClient {
     public:
         static AudioSink& Instance()
         {
-            return Core::SingletonType<AudioSink>::Instance("BluetoothAudioSink");
+            return Core::SingletonType<AudioSink>::Instance(_T("BluetoothAudioSink"));
         }
 
     public:
@@ -464,31 +350,27 @@ namespace BluetoothAudioSinkClient {
             return (result);
         }
 
-        uint32_t Acquire(const char* connector, const Exchange::IBluetoothAudioSink::IControl::Format& format, const uint16_t bufferSize)
+        uint32_t Acquire(const Exchange::IBluetoothAudioSink::IControl::Format& format)
         {
             uint32_t result = Core::ERROR_ILLEGAL_STATE;
 
             _lock.Lock();
 
             if (_sinkControl != nullptr) {
-                const uint32_t maxFrameSize = (format.Resolution * format.Channels * format.SampleRate) / (format.FrameRate * 8);
-                _player = new Player(connector, maxFrameSize, bufferSize);
-                ASSERT(_player != nullptr);
+                const uint32_t frameSize = (100UL * format.Resolution * format.Channels * format.SampleRate) / (format.FrameRate * 8);
 
-                if (_player != nullptr) {
-                    if (_player->IsValid() == false) {
-                        TRACE_L1("Created player is not valid");
-                        delete _player;
-                        _player = nullptr;
-                    }
-                }
+                TRACE_L1("Acquiring sink with settings: %i Hz, %i channels, %i bits per sample, %i.%i fps, frame size = %i bytes",
+                         format.SampleRate,  format.Channels, format.Resolution, format.FrameRate/100, format.FrameRate%100, frameSize);
 
-                if (_player != nullptr) {
-                    result = _sinkControl->Acquire(connector, format);
+                _buffer = new SendBuffer(CONNECTOR, frameSize);
+                ASSERT(_buffer != nullptr);
+
+                if (_buffer != nullptr) {
+                    result = _sinkControl->Acquire(CONNECTOR, format);
                     if (result != Core::ERROR_NONE) {
                         TRACE_L1("Acquire() failed! [%i]", result);
-                        delete _player;
-                        _player = nullptr;
+                        delete _buffer;
+                        _buffer = nullptr;
                     } else {
                         TRACE_L1("A client acquired the audio sink");
                     }
@@ -509,9 +391,9 @@ namespace BluetoothAudioSinkClient {
             _lock.Lock();
 
             if (_sinkControl != nullptr) {
-                if (_player != nullptr) {
-                    delete _player;
-                    _player = nullptr;
+                if (_buffer != nullptr) {
+                    delete _buffer;
+                    _buffer = nullptr;
                 }
 
                 result = _sinkControl->Relinquish();
@@ -533,23 +415,9 @@ namespace BluetoothAudioSinkClient {
 
             _lock.Lock();
 
-            if ((_sinkControl != nullptr) && (_player != nullptr)) {
+            if ((_sinkControl != nullptr) && (_buffer != nullptr)) {
                 result = _sinkControl->Speed(speed);
-                if (result == Core::ERROR_NONE) {
-                    if (speed == 0) {
-                        if (_player->Stop() == false) {
-                            TRACE_L1("Failed to suspend playback");
-                            result = Core::ERROR_GENERAL;
-                        }
-                    } else if (speed == 100) {
-                        if (_player->Play() == false) {
-                            TRACE_L1("Failed to resume playback");
-                            result = Core::ERROR_GENERAL;
-                        }
-                    } else {
-                       result = Core::ERROR_NOT_SUPPORTED;
-                    }
-                } else {
+                if (result != Core::ERROR_NONE) {
                     TRACE_L1("Speed(%i) failed [%i]", speed, result);
                 }
             }
@@ -565,12 +433,19 @@ namespace BluetoothAudioSinkClient {
 
             _lock.Lock();
 
-            if ((_sinkControl != nullptr) && (_player != nullptr)) {
-                consumed = _player->Frame(length, data);
-                result = Core::ERROR_NONE;
-            }
+            if ((_sinkControl != nullptr) && (_buffer != nullptr)) {
+                _sinkControl->AddRef();
 
-            _lock.Unlock();
+                _lock.Unlock();
+
+                consumed = _buffer->Write(length, data);
+
+                _sinkControl->Release();
+
+                result = Core::ERROR_NONE;
+            } else {
+                _lock.Unlock();
+            }
 
             return (result);
         }
@@ -581,10 +456,28 @@ namespace BluetoothAudioSinkClient {
 
             _lock.Lock();
 
-            if ((_sinkControl != nullptr) && (_player != nullptr)) {
+            if ((_sinkControl != nullptr) && (_buffer != nullptr)) {
                 result = _sinkControl->Time(timeMs);
                 if (result != Core::ERROR_NONE) {
                     TRACE_L1("Time() failed! [%i]", result);
+                }
+            }
+
+            _lock.Unlock();
+
+            return (result);
+        }
+
+        uint32_t Delay(uint32_t& delaySamples)
+        {
+            uint32_t result = Core::ERROR_ILLEGAL_STATE;
+
+            _lock.Lock();
+
+            if (_sinkControl != nullptr) {
+                result = _sinkControl->Delay(delaySamples);
+                if (result != Core::ERROR_NONE) {
+                    TRACE_L1("Delay() failed! [%i]", result);
                 }
             }
 
@@ -600,7 +493,7 @@ namespace BluetoothAudioSinkClient {
         Exchange::IBluetoothAudioSink* _sink;
         Exchange::IBluetoothAudioSink::IControl* _sinkControl;
         Core::Sink<Callback> _callback;
-        Player* _player;
+        SendBuffer* _buffer;
     };
 
 } // namespace BluetoothAudioSinkClient
@@ -689,12 +582,12 @@ uint32_t bluetoothaudiosink_state(bluetoothaudiosink_state_t* state)
     }
 }
 
-uint32_t bluetoothaudiosink_acquire(const char *connector, const bluetoothaudiosink_format_t *format, const uint16_t buffer_size_in_frames)
+uint32_t bluetoothaudiosink_acquire(const bluetoothaudiosink_format_t *format)
 {
-    if ((connector == nullptr) || (format == nullptr)) {
+    if (format == nullptr) {
         return (Core::ERROR_BAD_REQUEST);
     } else {
-        return (BluetoothAudioSinkClient::AudioSink::Instance().Acquire(connector, {format->sample_rate, format->frame_rate, format->resolution, format->channels}, buffer_size_in_frames));
+        return (BluetoothAudioSinkClient::AudioSink::Instance().Acquire({format->sample_rate, format->frame_rate, format->resolution, format->channels}));
     }
 }
 
@@ -714,6 +607,15 @@ uint32_t bluetoothaudiosink_time(uint32_t* time_ms)
         return (Core::ERROR_BAD_REQUEST);
     } else {
         return (BluetoothAudioSinkClient::AudioSink::Instance().Time(*time_ms));
+    }
+}
+
+uint32_t bluetoothaudiosink_delay(uint32_t* delay_samples)
+{
+    if (delay_samples == nullptr) {
+        return (Core::ERROR_BAD_REQUEST);
+    } else {
+        return (BluetoothAudioSinkClient::AudioSink::Instance().Delay(*delay_samples));
     }
 }
 

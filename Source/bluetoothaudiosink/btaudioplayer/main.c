@@ -29,9 +29,7 @@
 
 #include <bluetoothaudiosink.h>
 
-
-#define CONNECTOR "/tmp/btaudiobuffer"
-#define CDDA_FRAMERATE (75 /* fps */)
+#define CDDA_FRAMERATE (7500 /* cHz */)
 
 #define TRACE(format, ...) fprintf(stderr, "btaudioplayer: " format "\n", ##__VA_ARGS__)
 
@@ -69,9 +67,9 @@ static void* playback_task(void *user_data)
 {
     context_t *context = (context_t*)user_data;
 
-    TRACE("File streaming thread started");
+    TRACE("WAV streaming thread started");
 
-    if (bluetoothaudiosink_acquire(CONNECTOR, &context->format, 8) != 0) {
+    if (bluetoothaudiosink_acquire(&context->format) != 0) {
         TRACE("Failed to acquire Bluetooth audio sink device!");
     } else {
         TRACE("Starting a playback session...");
@@ -81,11 +79,11 @@ static void* playback_task(void *user_data)
             FILE *f = fopen(context->file, "rb+");
             if (f != NULL) {
 
-                const uint16_t bufferSize = ((context->format.channels * context->format.resolution * (context->format.sample_rate / context->format.frame_rate)) / 8);
+                const uint16_t bufferSize = ((100UL * context->format.channels * context->format.resolution * (context->format.sample_rate / context->format.frame_rate)) / 8);
                 uint8_t *data = alloca(bufferSize);
                 uint16_t to_play = 0;
 
-                TRACE("Opened file '%s', read buffer size %i bytes", context->file, bufferSize);
+                TRACE("Opened file '%s' (read buffer size: %i bytes)", context->file, bufferSize);
 
                 fseek(f, sizeof(wav_header_t), SEEK_SET);
 
@@ -238,85 +236,92 @@ int main(int argc, const char* argv[])
 
         f = fopen(context.file, "rb+");
         if (f != NULL) {
-            wav_header_t header;
+            wav_header_t header = { 0 };
 
             if (fread(&header, 1, sizeof(header), f) == sizeof(header)) {
-                context.format.sample_rate = header.sample_rate;
-                context.format.frame_rate = CDDA_FRAMERATE;
-                context.format.channels = header.channels;
-                context.format.resolution = header.resolution;
+                if (memcmp(header.wave, "WAVE", 4) == 0) {
+                    context.format.sample_rate = header.sample_rate;
+                    context.format.frame_rate = CDDA_FRAMERATE;
+                    context.format.channels = header.channels;
+                    context.format.resolution = header.resolution;
 
-                TRACE("Input format: PCM %i Hz, %i bit (signed, little endian), %i channels @ %i Hz",
-                    context.format.sample_rate, context.format.resolution, context.format.channels, context.format.frame_rate);
+                    TRACE("Input format: PCM %i Hz, %i bit (signed, little endian), %i channels @ %i.%02i fps",
+                        context.format.sample_rate, context.format.resolution, context.format.channels,
+                        (context.format.frame_rate/100), (context.format.frame_rate%100));
+                }
             }
 
             fclose(f);
             f = NULL;
 
-            TRACE("Waiting for Bluetooth audio sink device to be available... (Press Ctrl+C to quit any time.)");
+            if ((context.format.sample_rate >= 8000) && (context.format.channels == 1) || (context.format.channels == 2) && (context.format.resolution == 16)) {
+                TRACE("Waiting for Bluetooth audio sink device to be available... (Press Ctrl+C to quit at any time.)");
 
-            sem_init(&context.connect_sync, 0, 0);
-            sem_init(&context.playback_sync, 0, 0);
+                sem_init(&context.connect_sync, 0, 0);
+                sem_init(&context.playback_sync, 0, 0);
 
-            // Register for the audio sink service updates
-            if (bluetoothaudiosink_register_operational_state_update_callback(&audio_sink_operational_state_update, &context) != 0) {
-                TRACE("Failed to register Bluetooths Audio Sink operational callback");
-            } else {
-                const uint32_t timeout = 120 /* sec */;
-                struct timespec ts;
-
-                // Install a Ctrl+C handler
-                struct sigaction handler;
-                handler.sa_handler = ctrl_c_handler;
-                sigemptyset(&handler.sa_mask);
-                handler.sa_flags = 0;
-                sigaction(SIGINT, &handler, NULL);
-
-                clock_gettime(CLOCK_REALTIME, &ts);
-                ts.tv_sec += timeout;
-
-                // Wait for connection...
-                if (sem_timedwait(&context.connect_sync, &ts) != -1) {
+                // Register for the audio sink service updates
+                if (bluetoothaudiosink_register_operational_state_update_callback(&audio_sink_operational_state_update, &context) != 0) {
+                    TRACE("Failed to register Bluetooths Audio Sink operational callback");
+                } else {
+                    const uint32_t timeout = 120 /* sec */;
                     struct timespec ts;
+
+                    // Install a Ctrl+C handler
+                    struct sigaction handler;
+                    handler.sa_handler = ctrl_c_handler;
+                    sigemptyset(&handler.sa_mask);
+                    handler.sa_flags = 0;
+                    sigaction(SIGINT, &handler, NULL);
+
                     clock_gettime(CLOCK_REALTIME, &ts);
-                    ts.tv_sec += 2;
+                    ts.tv_sec += timeout;
 
-                    pthread_create(&context.thread, NULL, playback_task, (void*)&context);
+                    // Wait for connection...
+                    if (sem_timedwait(&context.connect_sync, &ts) != -1) {
+                        struct timespec ts;
+                        clock_gettime(CLOCK_REALTIME, &ts);
+                        ts.tv_sec += 2;
 
-                    // Wait for playback start...
-                    if (sem_timedwait(&context.playback_sync, &ts) != -1) {
-                        TRACE("Playing...");
+                        pthread_create(&context.thread, NULL, playback_task, (void*)&context);
 
-                        while (context.playing == true) {
-                            uint32_t playtime = 0;
-                            bluetoothaudiosink_time(&playtime);
-                            fprintf(stderr, "Time: %02i:%02i:%03i\r", ((playtime / 1000) / 60), ((playtime / 1000) % 60), playtime % 1000);
+                        // Wait for playback start...
+                        if (sem_timedwait(&context.playback_sync, &ts) != -1) {
+                            TRACE("Playing...");
 
-                            usleep(50 * 1000);
+                            while (context.playing == true) {
+                                uint32_t playtime = 0;
+                                bluetoothaudiosink_time(&playtime);
+                                fprintf(stderr, "Time: %02i:%02i:%03i\r", ((playtime / 1000) / 60), ((playtime / 1000) % 60), playtime % 1000);
 
-                            if ((user_break != false) && (context.playing == true)) {
-                                // Ctrl+C!
-                                TRACE("User break! Stopping playback...");
-                                context.playing = false;
+                                usleep(50 * 1000);
+
+                                if ((user_break != false) && (context.playing == true)) {
+                                    // Ctrl+C!
+                                    TRACE("User break! Stopping playback...");
+                                    context.playing = false;
+                                }
                             }
+
+                            printf("\n");
+
+                            result = 0;
+                        } else {
+                            TRACE("Failed to start playback!");
                         }
 
-                        printf("\n");
-
-                        result = 0;
+                        pthread_join(context.thread, NULL);
                     } else {
-                        TRACE("Failed to start playback!");
+                        TRACE("Bluetooth audio sink device not connected in %i seconds, terminating!", timeout);
                     }
 
-                    pthread_join(context.thread, NULL);
-                } else {
-                    TRACE("Bluetooth audio sink device not connected in %i seconds, terminating!", timeout);
+                    // And we're done...
+                    bluetoothaudiosink_unregister_state_update_callback(&audio_sink_state_update);
+                    bluetoothaudiosink_unregister_operational_state_update_callback(&audio_sink_operational_state_update);
+                    bluetoothaudiosink_dispose();
                 }
-
-                // And we're done...
-                bluetoothaudiosink_unregister_state_update_callback(&audio_sink_state_update);
-                bluetoothaudiosink_unregister_operational_state_update_callback(&audio_sink_operational_state_update);
-                bluetoothaudiosink_dispose();
+            } else {
+                TRACE("Invalid file format!");
             }
         } else {
             TRACE("Failed to open the source file!");

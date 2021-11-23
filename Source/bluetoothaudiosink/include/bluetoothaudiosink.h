@@ -64,13 +64,15 @@ EXTERNAL uint32_t bluetoothaudiosink_unregister_state_update_callback(const blue
 
 EXTERNAL uint32_t bluetoothaudiosink_state(bluetoothaudiosink_state_t *state);
 
-EXTERNAL uint32_t bluetoothaudiosink_acquire(const char *connector, const bluetoothaudiosink_format_t *format, const uint16_t buffer_size_in_frames);
+EXTERNAL uint32_t bluetoothaudiosink_acquire(const bluetoothaudiosink_format_t *format);
 
 EXTERNAL uint32_t bluetoothaudiosink_relinquish(void);
 
 EXTERNAL uint32_t bluetoothaudiosink_speed(const int8_t speed);
 
 EXTERNAL uint32_t bluetoothaudiosink_time(uint32_t *time_ms);
+
+EXTERNAL uint32_t bluetoothaudiosink_delay(uint32_t *delay_samples);
 
 EXTERNAL uint32_t bluetoothaudiosink_frame(const uint16_t length, const uint8_t data[], uint16_t *consumed);
 
