@@ -66,7 +66,7 @@ namespace Implementation {
         template <typename TYPE, typename... Args>
         Core::ProxyType<Core::IUnknown> Register(Args&&... args)
         {
-            return (_interfaces.template Instance<TYPE>(std::forward<Args>(args)...));
+            return (Core::ProxyType<Core::IUnknown>(_interfaces.template Instance<TYPE>(std::forward<Args>(args)...)));
         }
 
     private:
