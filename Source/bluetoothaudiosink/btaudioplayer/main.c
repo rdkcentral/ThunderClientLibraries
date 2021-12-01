@@ -207,7 +207,8 @@ static void audio_sink_operational_state_update(const uint8_t running, void *use
             }
         }
     } else {
-        TRACE("Bluetooth Audio Sink service is now unvailable");
+        TRACE("Bluetooth Audio Sink service is now unavailable");
+        audio_sink_disconnected((context_t*)user_data);
     }
 }
 
@@ -254,7 +255,7 @@ int main(int argc, const char* argv[])
             fclose(f);
             f = NULL;
 
-            if ((context.format.sample_rate >= 8000) && (context.format.channels == 1) || (context.format.channels == 2) && (context.format.resolution == 16)) {
+            if (((context.format.sample_rate >= 8000) && (context.format.channels == 1)) || ((context.format.channels == 2) && (context.format.resolution == 16))) {
                 TRACE("Waiting for Bluetooth audio sink device to be available... (Press Ctrl+C to quit at any time.)");
 
                 sem_init(&context.connect_sync, 0, 0);
@@ -291,6 +292,7 @@ int main(int argc, const char* argv[])
 
                             while (context.playing == true) {
                                 uint32_t playtime = 0;
+
                                 bluetoothaudiosink_time(&playtime);
                                 fprintf(stderr, "Time: %02i:%02i:%03i\r", ((playtime / 1000) / 60), ((playtime / 1000) % 60), playtime % 1000);
 
@@ -303,8 +305,6 @@ int main(int argc, const char* argv[])
                                 }
                             }
 
-                            printf("\n");
-
                             result = 0;
                         } else {
                             TRACE("Failed to start playback!");
@@ -316,7 +316,8 @@ int main(int argc, const char* argv[])
                     }
 
                     // And we're done...
-                    bluetoothaudiosink_unregister_state_update_callback(&audio_sink_state_update);
+                    TRACE("Cleaning up...");
+                    bluetoothaudiosink_unregister_state_update_callback(&audio_sink_state_update); // this can fail, it's OK
                     bluetoothaudiosink_unregister_operational_state_update_callback(&audio_sink_operational_state_update);
                     bluetoothaudiosink_dispose();
                 }
