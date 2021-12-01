@@ -210,15 +210,6 @@ namespace BluetoothAudioSinkClient {
             } else {
                 TRACE_L1("Bluetooth audio sink is no longer operational!");
 
-                _bufferLock.Lock();
-
-                if (_buffer != nullptr) {
-                    delete _buffer;
-                    _buffer = nullptr;
-                }
-
-                _bufferLock.Unlock();
-
                 if (_sinkControl != nullptr) {
                     _sinkControl->Release();
                     _sinkControl = nullptr;
@@ -233,6 +224,17 @@ namespace BluetoothAudioSinkClient {
             auto callbacks = _operationalStateCallbacks;
 
            _lock.Unlock();
+
+            if (upAndRunning == false) {
+                _bufferLock.Lock();
+
+                if (_buffer != nullptr) {
+                    delete _buffer;
+                    _buffer = nullptr;
+                }
+
+                _bufferLock.Unlock();
+            }
 
             for (auto& cb : callbacks) {
                 cb.first(upAndRunning, cb.second);
