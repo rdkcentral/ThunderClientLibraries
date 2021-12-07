@@ -19,6 +19,8 @@
 
 #include <gtest/gtest.h>
 
+#define MODULE_NAME rpc_cryptography_test
+
 #include <com/com.h>
 #include <core/core.h>
 #include <plugins/plugins.h>
