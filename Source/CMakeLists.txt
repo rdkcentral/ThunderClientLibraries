@@ -15,7 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-option(PROTOCOLS 
+option(BLUETOOTHAUDIOSINK
+        "Include the bluetoothaudiosink library." OFF)
+option(PROTOCOLS
         "Include the protocols library." ON)
 option(COMPOSITORCLIENT
         "Include a graphics backend abstraction for external applications." OFF)
@@ -35,6 +37,10 @@ option(CDMI
         "Include OpenCDM interface." OFF)
 option(CRYPTOGRAPHY
         "Include the cryptography library." OFF)
+
+if(BLUETOOTHAUDIOSINK)
+    add_subdirectory(bluetoothaudiosink)
+endif()
 
 if(COMPOSITORCLIENT)
     add_subdirectory(compositorclient)
