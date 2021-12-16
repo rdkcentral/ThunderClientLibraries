@@ -32,6 +32,7 @@ target_link_libraries(${TARGET}
     PRIVATE
         GTest::GTest
         ${NAMESPACE}Cryptography
+        ${NAMESPACE}COM
 )
 
 install(TARGETS ${TARGET}  
