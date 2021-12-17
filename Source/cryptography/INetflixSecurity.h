@@ -25,7 +25,7 @@ namespace WPEFramework {
 
 namespace Cryptography {
 
-struct INetflixSecurity : public Core::IUnknown
+struct EXTERNAL INetflixSecurity : public Core::IUnknown
 {
     enum { ID = 0x00001200 };
 
