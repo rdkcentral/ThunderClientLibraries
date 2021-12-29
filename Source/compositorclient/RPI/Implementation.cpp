@@ -35,6 +35,7 @@ extern "C" {
 #include <EGL/eglext.h>
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
+#include <fcntl.h>
 
 #ifdef __cplusplus
 }
@@ -115,14 +116,17 @@ namespace RPI_INTERNAL {
 
                 struct prime {
                     int _fd;
+                    int _sync_fd;
                     uint32_t _width;
                     uint32_t _height;
                     uint32_t _stride;
+// TODO DRM_FORMAT_INVALID and DRM_FORMAT_MOD_NONE narrowing
                     uint32_t _format;
                     uint64_t _modifier;
 
                     bool operator == (prime const & other) const {
                         bool _ret = _fd == other._fd
+                                    && _sync_fd == other._sync_fd
                                     && _width == other._width
                                     && _height == other._height
                                     && _stride == other._stride
@@ -140,6 +144,45 @@ namespace RPI_INTERNAL {
                         bool _ret = left < right;
                         return _ret;
                     }
+
+                    bool Lock () {
+                        auto init = [] () -> struct flock {
+                            struct flock fl;
+                            /* void * */ memset( &fl, 0, sizeof ( fl ) );
+
+                            fl.l_type = F_WRLCK;
+                            fl.l_whence = SEEK_SET;
+                            fl.l_start = 0;
+                            fl.l_len = 0;
+
+                            return fl;
+                        };
+
+                        static struct flock fl = init ();
+
+                        bool ret = _sync_fd > -1 && fcntl (_sync_fd, F_SETLKW,  &fl) != -1;
+                        return ret;
+                    }
+
+                    bool Unlock () {
+                        auto init = [] () -> struct flock {
+                            struct flock fl;
+                                /* void * */ memset( &fl, 0, sizeof ( fl ) );
+
+                                fl.l_type = F_UNLCK;
+                                fl.l_whence = SEEK_SET;
+                                fl.l_start = 0;
+                                fl.l_len = 0;
+
+                                return fl;
+                            };
+
+                        static struct flock fl = init ();
+
+                        bool ret = _sync_fd > -1 && fcntl (_sync_fd, F_SETLK, &fl) != -1;
+                        return ret;
+                    }
+
                 } _prime;
 
                 bool operator == (_native const & other) const {
@@ -160,7 +203,6 @@ namespace RPI_INTERNAL {
                     bool _ret = left < right;
                     return _ret;
                 }
-
             };
 
         public :
@@ -601,7 +643,8 @@ namespace RPI_INTERNAL {
             using callback_t = std::function < void () >;
 
             static_assert ( std::is_convertible < decltype (native_t::_surf), decltype ( EGL::InvalidWin () ) > :: value != false );
-            static constexpr native_t InvalidNative () { return { static_cast < decltype (native_t::_surf) > ( EGL::InvalidWin () ), 0, 0, { -1, 0, 0, 0, 0 } }; }
+// TODO: narrowing
+            static constexpr native_t InvalidNative () { return { static_cast < decltype (native_t::_surf) > ( EGL::InvalidWin () ), 0, 0, { -1, -1, 0, 0, 0, DRM_FORMAT_INVALID, DRM_FORMAT_MOD_NONE} }; }
 
         private :
 
@@ -703,6 +746,10 @@ private:
 
             public :
 
+                // Sharing handles (file descriptors)
+                static constexpr uint8_t MAX_SHARING_FDS = 2;
+                using fds_t = std::array <int, MAX_SHARING_FDS>;
+
                 DMATransfer () : _transfer { -1 }, _addr { AF_UNIX, "/tmp/Compositor/DMA" }, _valid { Initialize () } {}
                 ~DMATransfer () {
                     /* bool */ Deinitialize ();
@@ -713,27 +760,27 @@ private:
 
                 valid_t Valid () const { return _valid; }
 
-                valid_t Receive (std::string & msg, int & fd) {
+                valid_t Receive (std::string & msg, DMATransfer::fds_t & fds) {
                     valid_t _ret = Valid ();
 
                     if (_ret != true) {
                         TRACE (Trace::Information, (_T ("Unable to receive (DMA) data.")));
                     }
                     else {
-                        _ret = _Receive (msg, fd);
+                        _ret = _Receive (msg, fds.data (), fds.size ());
                     }
 
                     return _ret;
                 }
 
-                valid_t Send (std::string const & msg, int fd) {
+                valid_t Send (std::string const & msg, DMATransfer::fds_t const & fds) {
                     valid_t _ret = Valid ();
 
                     if (_ret != true) {
                         TRACE (Trace::Information, (_T ("Unable to send (DMA) data.")));
                     }
                     else {
-                        _ret = _Send (msg, fd);
+                        _ret = _Send (msg, fds.data (), fds.size ());
                     }
 
                     return _ret;
@@ -805,7 +852,9 @@ private:
                     return _ret;
                 }
 
-                valid_t _Send (std::string const & msg, int fd) {
+                valid_t _Send (std::string const & msg, int const * fd, uint8_t count) {
+                    using fd_t = _remove_const < std::remove_pointer < decltype (fd) > :: type > :: type;
+
                     valid_t _ret = false;
 
                     // Logical const
@@ -838,9 +887,15 @@ private:
 
                         // Ancillary data
                         // The macro returns the number of bytes an ancillary element with payload of the passed in data length, eg size of ancillary data to be sent
-                        char _control [CMSG_SPACE (sizeof ( decltype ( fd) ))];
+                        char _control [CMSG_SPACE (sizeof ( fd_t ) * count)];
 
-                        if (fd > -1) {
+                        // Only valid file descriptor (s) can be sent via extra payload
+                        _ret = true;
+                        for (decltype (count) i = 0; i < count && fd != nullptr; i++) {
+                            _ret = fd [i] > -1 && _ret;
+                        }
+
+                        if (_ret != false) {
                             // Contruct ancillary data to be added to the transfer via the control message
 
                             // Ancillary data, pointer
@@ -870,11 +925,10 @@ private:
                                 _cmsgh->cmsg_type = SCM_RIGHTS;
 
                                 // The value to store in the cmsg_len member of the cmsghdr structure, taking into account any necessary alignmen, eg byte count of control message including header
-                                _cmsgh->cmsg_len = CMSG_LEN (sizeof ( decltype ( fd ) ));
+                                _cmsgh->cmsg_len = CMSG_LEN (sizeof ( fd_t ) * count);
 
                                 // Initialize the payload
-                                // Pointer to the data portion of a cmsghdr, ie unsigned char []
-                                * reinterpret_cast < decltype (fd) * > ( CMSG_DATA ( _cmsgh ) ) = fd;
+                                /* void */ memcpy (CMSG_DATA (_cmsgh ), fd, sizeof ( fd_t ) * count);
 
                                 _ret = true;
                             }
@@ -931,11 +985,10 @@ private:
                     return _ret;
                 }
 
-                valid_t _Receive (std::string & msg, int & fd) {
+                valid_t _Receive (std::string & msg, int * fd, uint8_t count) {
                     bool _ret = false;
 
                     msg.clear ();
-                    fd = -1;
 
                     ssize_t _size = -1;
                     socklen_t _len = sizeof (_size);
@@ -954,11 +1007,15 @@ private:
 
                     size_t const _bufsize = msg.capacity ();
 
-                    if (_bufsize > 0) {
+                    if (_bufsize > 0 && count > 0 && fd != nullptr) {
+                        using fd_t = std::remove_pointer < decltype (fd) > :: type;
+
+                        for (decltype (count) i = 0; i < count; i++) {
+                            fd [i] = -1;
+                        }
+
                         static_assert ((std::is_same <char *, _remove_const  < decltype ( & msg [0] ) > :: type >:: value) != false);
                         char _buf [_bufsize];
-
-                        using fd_t = std::remove_reference < decltype (fd) > :: type;
 
                         // Scatter array for vector I/O
                         struct iovec _iov;
@@ -982,7 +1039,7 @@ private:
 
                         // Ancillary data
                         // The macro returns the number of bytes an ancillary element with payload of the passed in data length, eg size of ancillary data to be sent
-                        char _control [CMSG_SPACE (sizeof ( fd_t ))];
+                        char _control [CMSG_SPACE (sizeof ( fd_t ) * count)];
 
                         // Ancillary data, pointer
                         _msgh.msg_control = _control;
@@ -1021,7 +1078,7 @@ private:
                                                 && _cmsgh->cmsg_type == SCM_RIGHTS) {
 
                                                 // The macro returns a pointer to the data portion of a cmsghdr.
-                                                fd = * reinterpret_cast < fd_t * > ( CMSG_DATA ( _cmsgh ) );
+                                                /* void */ memcpy (fd, CMSG_DATA (_cmsgh ), sizeof ( fd_t ) * count);
                                             }
                                             else {
                                                 TRACE (Trace::Information, (_T ("No (valid) ancillary data received.")));
@@ -1041,7 +1098,6 @@ private:
         };
 
     class SurfaceImplementation : public Compositor::IDisplay::ISurface {
-
     public:
         SurfaceImplementation() = delete;
         SurfaceImplementation(const SurfaceImplementation&) = delete;
@@ -1250,6 +1306,16 @@ private:
             }
         }
 
+        bool SyncPrimitiveStart () {
+            bool ret = _nativeSurface._prime.Lock ();
+            return ret;
+        }
+
+        bool SyncPrimitiveEnd () {
+            bool ret = _nativeSurface._prime.Unlock ();
+            return ret;
+        }
+
     private:
 
         Display& _display;
@@ -1419,14 +1485,20 @@ public:
         std::lock_guard < decltype (_surfaceLock) > const _lock (_surfaceLock);
 
         bool _ret = false;
-        prime = { -1, 0, 0, 0, 0};
+// TODO: narrowing
+        prime = { -1, -1, 0, 0, 0, DRM_FORMAT_INVALID, DRM_FORMAT_MOD_NONE};
+
+        DMATransfer::fds_t handles = {prime._fd, prime._sync_fd};
 
         if (_dma != nullptr) {
             std::string _msg = client.Name ();
 
             // Announce ourself to indicate the data exchange is a request for (file descriptor) data
             // Then, after receiving the data DMA is no longer needed for this client
-            _ret = _dma->Connect () && _dma->Send (_msg, prime._fd) && _dma->Receive (_msg, prime._fd) && _dma->Disconnect ();
+            _ret = _dma->Connect () && _dma->Send (_msg, handles) && _dma->Receive (_msg, handles) && _dma->Disconnect ();
+
+            prime._fd = handles [0];
+            prime._sync_fd = handles [1];
 
             // <prefix>:width:height:stride:format
             // Search from end to begin
@@ -1839,11 +1911,24 @@ int Display::Process(const uint32_t)
 
     // Scan out all surfaces belonging to this display
 // TODO: only scan out the surface that actually has completed or the client should be made aware that all surfaces should be completed at the time of calling
-// TODO: This flow introduces artefacts. At least the initial frame is skipped.
+// TODO: This flow introduces artefacts
     for (auto _begin = _surfaces.begin (), _it = _begin, _end = _surfaces.end (); _it != _end; _it++) {
+
+        // THe way the API has been constructed limits the optimal syncing strategy
+
         (*_it)->PreScanOut ();  // will render
-        (*_it)->ScanOut ();     // actual scan out
+
+        // At least fails the very first time
+        bool  ret = (*_it)->SyncPrimitiveEnd ();
+//            assert (ret != false);
+
+        (*_it)->ScanOut ();     // actual scan out (at the remote site)
+
+        ret = (*_it)->SyncPrimitiveStart ();
+//            assert (ret != false);
+
         (*_it)->PostScanOut (); // rendered
+
     }
 
     return (0);
