@@ -221,6 +221,10 @@ namespace RPI_INTERNAL {
 #define _EGL_NO_SYNC EGL_NO_SYNC
 #define _EGL_FOREVER EGL_FOREVER
 #define _EGL_NO_IMAGE EGL_NO_IMAGE
+#define _EGL_CONDITION_SATISFIED EGL_CONDITION_SATISFIED
+#define _EGL_SYNC_STATUS EGL_SYNC_STATUS
+#define _EGL_SIGNALED EGL_SIGNALED
+#define _EGL_SYNC_FLUSH_COMMANDS_BIT EGL_SYNC_FLUSH_COMMANDS_BIT
 #else
 #define _KHRFIX(left, right) left ## right
 #define KHRFIX(name) _KHRFIX(name, KHR)
@@ -228,6 +232,10 @@ namespace RPI_INTERNAL {
 #define _EGL_NO_SYNC EGL_NO_SYNC_KHR
 #define _EGL_FOREVER EGL_FOREVER_KHR
 #define _EGL_NO_IMAGE EGL_NO_IMAGE_KHR
+#define _EGL_CONDITION_SATISFIED EGL_CONDITION_SATISFIED_KHR
+#define _EGL_SYNC_FLUSH_COMMANDS_BIT EGL_SYNC_FLUSH_COMMANDS_BIT_KHR
+#define _EGL_SIGNALED EGL_SIGNALED_KHR
+#define _EGL_SYNC_STATUS EGL_SYNC_STATUS_KHR
                 using EGLAttrib = EGLint;
 #endif
                 using EGLuint64KHR = khronos_uint64_t;
@@ -247,13 +255,16 @@ namespace RPI_INTERNAL {
                     public :
 // TODO: calling Supported is expensive, sync objects are heavily used
                         explicit Sync (dpy_t & dpy) : _dpy {dpy} {
-//                            assert (dpy != InvalidDpy ());
+                            static bool _supported = EGL::Supported (_dpy, "EGL_KHR_fence_sync") != false;
 
-                            _sync = ( EGL::Supported (dpy, "EGL_KHR_fence_sync") && dpy != InvalidDpy () ) != false ? KHRFIX (eglCreateSync) (dpy, _EGL_SYNC_FENCE, nullptr) : InvalidSync ();
+                            assert (_supported != false);
+                            assert (dpy != InvalidDpy ());
+
+
+                            _sync = ( _supported && _dpy != InvalidDpy () ) != false ? KHRFIX (eglCreateSync) (_dpy, _EGL_SYNC_FENCE, nullptr) : InvalidSync ();
                         }
 
                         ~Sync () {
-
                             if (_sync == InvalidSync ()) {
                                 // Error creating sync object or unable to create one
                                 glFinish ();
@@ -261,13 +272,31 @@ namespace RPI_INTERNAL {
                             else {
                                 glFlush ();
 
-                                EGLint _val = KHRFIX (eglClientWaitSync) (_dpy, _sync, 0 /* no flags */ , _EGL_FOREVER);
+                                EGLint _val = static_cast <EGLint> ( KHRFIX (eglClientWaitSync) (_dpy, _sync, _EGL_SYNC_FLUSH_COMMANDS_BIT, _EGL_FOREVER) );
+
+                                if (_val == static_cast <EGLint> (EGL_FALSE) || _val != static_cast <EGLint> (_EGL_CONDITION_SATISFIED)) {
+                                    EGLAttrib _status;
+
+                                    bool _ret = KHRFIX (eglGetSyncAttrib) (_dpy, _sync, _EGL_SYNC_STATUS, &_status) != EGL_FALSE;
+
+                                    _ret = _ret && _status == _EGL_SIGNALED;
+
+                                    // Assert on error
+                                    if (_ret != true) {
+                                        TRACE (Trace::Error, (_T ("EGL: synchronization primitive")) );
+                                        assert (false);
+                                    }
+                                }
+
+
+                                /* EGLBoolean */ _val = static_cast <EGLint> ( KHRFIX (eglDestroySync) (_dpy, _sync) );
 
                                 if (_val != EGL_TRUE) {
                                     // Error
                                 }
 
                                 // Consume the (possible) error
+                                /* ELGint */ glGetError ();
                                 /* ELGint */ eglGetError ();
                             }
                         }
