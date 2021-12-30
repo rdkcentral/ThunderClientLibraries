@@ -1,7 +1,7 @@
-# If not stated otherwise in this file or this component's LICENSE file the
+# If not stated otherwise in this file or this component's license file the
 # following copyright and licenses apply:
 #
-# Copyright 2020 Metrological
+# Copyright 2020 RDK Management
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,6 +26,8 @@ find_package(${NAMESPACE}COM REQUIRED)
 if(VC6)
     find_package(GBM REQUIRED)
     find_package(LibDRM REQUIRED)
+    find_package(EGL REQUIRED)
+    find_package(GLESv2 REQUIRED)
 
     if(NOT GBM_FOUND)
         message(FATAL_ERROR "The GBM library and its headers cannot be found.")
@@ -35,7 +37,15 @@ if(VC6)
         message(FATAL_ERROR "The libDRM library and its headers cannot be found.")
     endif()
 
-    add_library(${TARGET} SHARED ModeSet.cpp Implementation.cpp)
+    if(NOT EGL_FOUND)
+        message(FATAL_ERROR "The EGL library and its headers cannot be found.")
+    endif()
+
+    if(NOT GLESV2_FOUND)
+        message(FATAL_ERROR "The GLESv2 library and its headers cannot be found.")
+    endif()
+
+    add_library(${TARGET} SHARED Headless.cpp Implementation.cpp)
     target_compile_definitions(${TARGET} PRIVATE VC6)
 else()
     add_library(${TARGET} SHARED Implementation.cpp)
@@ -53,7 +63,10 @@ target_link_libraries(${TARGET}
 if(VC6)
     target_link_libraries(${TARGET}
         PRIVATE
-            LibDRM::LibDRM
+            libdrm::libdrm
+            libgbm::libgbm
+            EGL::EGL
+            GLESV2::GLESV2
     )
 endif()
 

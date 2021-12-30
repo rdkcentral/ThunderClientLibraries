@@ -26,14 +26,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-if(WestonClient_FIND_QUIETLY)
-    set(_WESTON_CLIENT_MODE QUIET)
-elseif(WestonClient_FIND_REQUIRED)
-    set(_WESTON_CLIENT_MODE REQUIRED)
-endif()
-
-
 find_package(PkgConfig)
-pkg_check_modules(PC_WESTON ${_WESTON_CLIENT_MODE} weston>=6)
+pkg_check_modules(PC_WESTON weston>=6)
 
 set(WESTON_CLIENT_FOUND ${PC_WESTON_FOUND})

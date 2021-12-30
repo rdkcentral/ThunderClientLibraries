@@ -2,7 +2,7 @@
  * If not stated otherwise in this file or this component's LICENSE file the
  * following copyright and licenses apply:
  *
- * Copyright 2020 Metrological
+ * Copyright 2020 RDK Management
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,328 +17,697 @@
  * limitations under the License.
  */
 
+// TOOD: glSetViewPort baseed on surface
+
 #include "Module.h"
 
-#include <EGL/egl.h>
+// TODO: This flag should be included in the preprocessor flags
+#define __GBM__
 
-#ifdef VC6
-#include "ModeSet.h"
-#else
-#include <EGL/eglext.h>
-#include <bcm_host.h>
+#include "Headless.h"
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-#include <algorithm>
+#include <gbm.h>
+#include <xf86drm.h>
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
+#include <fcntl.h>
 
+#ifdef __cplusplus
+}
+#endif
+
+#include <mutex>
+#include <algorithm>
+#include <chrono>
 #include <core/core.h>
 #include <com/com.h>
 #include <interfaces/IComposition.h>
 #include <virtualinput/virtualinput.h>
 #include "../Client.h"
 
-int g_pipefd[2];
-
-enum inputtype {
-    KEYBOARD,
-    MOUSE,
-    TOUCHSCREEN
+template <class T>
+struct _remove_const {
+    typedef T type;
 };
 
-struct Message {
-    inputtype type;
-    union {
-        struct {
-            keyactiontype type;
-            uint32_t code;
-        } keyData;
-        struct {
-            mouseactiontype type;
-            uint16_t button;
-            int16_t horizontal;
-            int16_t vertical;
-        } mouseData;
-        struct {
-            touchactiontype type;
-            uint16_t index;
-            uint16_t x;
-            uint16_t y;
-        } touchData;
-    };
+template <class T>
+struct _remove_const <T const> {
+    typedef T type;
 };
 
-static const char* connectorNameVirtualInput = "/tmp/keyhandler";
-
-static void VirtualKeyboardCallback(keyactiontype type, unsigned int code)
-{
-    if (type != KEY_COMPLETED) {
-        Message message;
-        message.type = KEYBOARD;
-        message.keyData.type = type;
-        message.keyData.code = code;
-        write(g_pipefd[1], &message, sizeof(message));
-    }
-}
-
-static void VirtualMouseCallback(mouseactiontype type, unsigned short button, signed short horizontal, signed short vertical)
-{
-    Message message;
-    message.type = MOUSE;
-    message.mouseData.type = type;
-    message.mouseData.button = button;
-    message.mouseData.horizontal = horizontal;
-    message.mouseData.vertical = vertical;
-    write(g_pipefd[1], &message, sizeof(message));
-}
-
-static void VirtualTouchScreenCallback(touchactiontype type, unsigned short index, unsigned short x, unsigned short y)
-{
-    Message message;
-    message.type = TOUCHSCREEN;
-    message.touchData.type = type;
-    message.touchData.index = index;
-    message.touchData.x = x;
-    message.touchData.y = y;
-    write(g_pipefd[1], &message, sizeof(message));
-}
-
-namespace {
-
-#ifdef VC6
-
-using namespace WPEFramework;
-
-class Platform {
-private:
-    Platform() : _platform()
-    {
-    }
-
-public:
-    Platform(const Platform&) = delete;
-    Platform& operator=(const Platform&) = delete;
-
-    static Platform& Instance() {
-        static Platform singleton;
-        return singleton;
-    }
-    ~Platform() = default;
-
-public:
-    EGLNativeDisplayType Display() const 
-    {
-        EGLNativeDisplayType result (static_cast<EGLNativeDisplayType>(EGL_DEFAULT_DISPLAY));
-
-        const struct gbm_device* pointer = _platform.UnderlyingHandle();
-
-        if(pointer != nullptr) {
-            result = reinterpret_cast<EGLNativeDisplayType>(const_cast<struct gbm_device*>(pointer));
-        }
-        else {
-            TRACE_L1(_T("The native display (id) might be invalid / unsupported. Using the EGL default display instead!"));
-        }
-
-        return (result);
-    }
-    uint32_t Width() const
-    {
-        return (_platform.Width());
-    }
-    uint32_t Height() const
-    {
-        return (_platform.Height());
-    }
-    EGLSurface CreateSurface (const EGLNativeDisplayType& display, const uint32_t width, const uint32_t height) 
-    {
-        // A Native surface that acts as a native window
-        EGLSurface result = reinterpret_cast<EGLSurface>(_platform.CreateRenderTarget(width, height));
-
-        if (result != 0) {
-            TRACE_L1(_T("The native window (handle) might be invalid / unsupported. Expect undefined behavior!"));
-        }
-
-        return (result);
-    }
-    void DestroySurface(const EGLSurface& surface) 
-    {
-        _platform.DestroyRenderTarget(reinterpret_cast<struct gbm_surface*>(surface));
-    }
-    void Opacity(const EGLSurface&, const uint8_t) 
-    {
-        TRACE_L1(_T("Currently not supported"));
-    }
-    void Geometry (const EGLSurface&, const Exchange::IComposition::Rectangle&) 
-    {
-        TRACE_L1(_T("Currently not supported"));
-    }
-    void ZOrder(const EGLSurface&, const uint16_t)
-    {
-        TRACE_L1(_T("Currently not supported"));
-    }
- 
-private:
-    ModeSet _platform;
+template <class T>
+struct _remove_const <T *> {
+    typedef T * type;
 };
 
+template <class T>
+struct _remove_const <T const *>{
+    typedef T * type;
+};
+
+template <class FROM, class TO, bool ENABLE>
+struct _narrowing {
+    static_assert (( std::is_arithmetic < FROM > :: value && std::is_arithmetic < TO > :: value ) != false);
+
+    // Not complete, assume zero is minimum for unsigned
+    // Common type of signed and unsigned typically is unsigned
+    using common_t = typename std::common_type < FROM, TO > :: type;
+    static constexpr bool value =   ENABLE
+                                    && (
+                                        ( std::is_signed < FROM > :: value && std::is_unsigned < TO > :: value )
+                                        || static_cast < common_t > ( std::numeric_limits < FROM >::max () ) >= static_cast < common_t > ( std::numeric_limits < TO >::max () )
+                                    )
+                                    ;
+};
+
+// Suppress compiler warnings of unused (parameters)
+// Omitting the name is sufficient but a search on this keyword provides easy access to the location
+template <typename T>
+void silence (T &&) {}
+
+// Show logging in blue to make it distinct from TRACE
+#define TRACE_WITHOUT_THIS(level, ...) do {             \
+    fprintf (stderr, "\033[1;34m");                     \
+    fprintf (stderr, "[%s:%d] : ", __FILE__, __LINE__); \
+    fprintf (stderr, ##__VA_ARGS__);                    \
+    fprintf (stderr, "\n");                             \
+    fprintf (stderr, "\033[0m");                        \
+    fflush (stderr);                                    \
+} while (0)
+
+namespace WPEFramework {
+namespace RPI_INTERNAL {
+
+    class GLResourceMediator {
+
+        private :
+
+// TODO: see modeset for types
+
+            struct _native {
+                struct gbm_surface * _surf;
+                uint32_t _width;
+                uint32_t _height;
+
+                struct prime {
+                    int _fd;
+                    int _sync_fd;
+                    uint32_t _width;
+                    uint32_t _height;
+                    uint32_t _stride;
+// TODO DRM_FORMAT_INVALID and DRM_FORMAT_MOD_NONE narrowing
+                    uint32_t _format;
+                    uint64_t _modifier;
+
+                    bool operator == (prime const & other) const {
+                        bool _ret = _fd == other._fd
+                                    && _sync_fd == other._sync_fd
+                                    && _width == other._width
+                                    && _height == other._height
+                                    && _stride == other._stride
+                                    && _format == other._format
+                                    && _modifier == other._modifier;
+                        return _ret;
+                    }
+
+                    bool operator < (prime const & other) const {
+                        bool _ret =  !( *this == other );
+                        return _ret;
+                    }
+
+                    bool operator () (prime const & left, prime const & right) const {
+                        bool _ret = left < right;
+                        return _ret;
+                    }
+
+                    bool Lock () {
+                        auto init = [] () -> struct flock {
+                            struct flock fl;
+                            /* void * */ memset( &fl, 0, sizeof ( fl ) );
+
+                            fl.l_type = F_WRLCK;
+                            fl.l_whence = SEEK_SET;
+                            fl.l_start = 0;
+                            fl.l_len = 0;
+
+                            return fl;
+                        };
+
+                        static struct flock fl = init ();
+
+                        bool ret = _sync_fd > -1 && fcntl (_sync_fd, F_SETLKW,  &fl) != -1;
+                        return ret;
+                    }
+
+                    bool Unlock () {
+                        auto init = [] () -> struct flock {
+                            struct flock fl;
+                                /* void * */ memset( &fl, 0, sizeof ( fl ) );
+
+                                fl.l_type = F_UNLCK;
+                                fl.l_whence = SEEK_SET;
+                                fl.l_start = 0;
+                                fl.l_len = 0;
+
+                                return fl;
+                            };
+
+                        static struct flock fl = init ();
+
+                        bool ret = _sync_fd > -1 && fcntl (_sync_fd, F_SETLK, &fl) != -1;
+                        return ret;
+                    }
+
+                } _prime;
+
+                bool operator == (_native const & other) const {
+                    bool _ret = _surf == other._surf
+                                && _width == other._width
+                                && _height == other._height
+                                && _prime == other._prime;
+
+                    return _ret;
+                }
+
+                bool operator < (_native const & other) const {
+                    bool _ret = !( *this == other );
+                    return _ret;
+                }
+
+                bool operator () (_native const & left, _native const & right) const {
+                    bool _ret = left < right;
+                    return _ret;
+                }
+            };
+
+        public :
+
+            using prime_t = decltype (_native::_prime);
+
+            // Putting it here, enables easy life time management
+            class EGL {
+
+#define XSTRINGIFY(X) STRINGIFY(X)
+#define STRINGIFY(X) #X
+
+#ifdef EGL_VERSION_1_5
+#define KHRFIX(name) name
+#define _EGL_SYNC_FENCE EGL_SYNC_FENCE
+#define _EGL_NO_SYNC EGL_NO_SYNC
+#define _EGL_FOREVER EGL_FOREVER
+#define _EGL_NO_IMAGE EGL_NO_IMAGE
 #else
+#define _KHRFIX(left, right) left ## right
+#define KHRFIX(name) _KHRFIX(name, KHR)
+#define _EGL_SYNC_FENCE EGL_SYNC_FENCE_KHR
+#define _EGL_NO_SYNC EGL_NO_SYNC_KHR
+#define _EGL_FOREVER EGL_FOREVER_KHR
+#define _EGL_NO_IMAGE EGL_NO_IMAGE_KHR
+                using EGLAttrib = EGLint;
+#endif
+                using EGLuint64KHR = khronos_uint64_t;
 
-class Platform {
-private:
-    struct Surface {
-        EGL_DISPMANX_WINDOW_T surface;
-        VC_RECT_T rectangle;
-        uint16_t layer;
-        uint8_t opacity;
-    };
+                class Sync final {
 
-    Platform()
-    {
-        bcm_host_init();
-    }
+                    public :
 
-public:
-    Platform(const Platform&) = delete;
-    Platform& operator=(const Platform&) = delete;
+                        using dpy_t = EGLDisplay;
+                        using sync_t = KHRFIX (EGLSync);
 
-    static Platform& Instance() {
-        static Platform singleton;
-        return singleton;
-    }
-    ~Platform()
-    {
-        bcm_host_deinit();
-    }
+                    private :
 
-public:
-    EGLNativeDisplayType Display() const 
-    {
-        EGLNativeDisplayType result (static_cast<EGLNativeDisplayType>(EGL_DEFAULT_DISPLAY));
+                        sync_t _sync;
+                        dpy_t _dpy;
 
-        return (result);
-    }
-    uint32_t Width() const
-    {
-        uint32_t width, height;
-        graphics_get_display_size(0, &width, &height);
-        return (width);
-    }
-    uint32_t Height() const
-    {
-        uint32_t width, height;
-        graphics_get_display_size(0, &width, &height);
-        return (height);
-    }
-    EGLSurface CreateSurface (const EGLNativeWindowType&, const uint32_t, const uint32_t) 
-    {
-        EGLSurface result;
+                    public :
+// TODO: calling Supported is expensive, sync objects are heavily used
+                        explicit Sync (dpy_t & dpy) : _dpy {dpy} {
+//                            assert (dpy != InvalidDpy ());
 
-        uint32_t displayWidth  = Width();
-        uint32_t displayHeight = Height();
-        Surface* surface = new Surface;
+                            _sync = ( EGL::Supported (dpy, "EGL_KHR_fence_sync") && dpy != InvalidDpy () ) != false ? KHRFIX (eglCreateSync) (dpy, _EGL_SYNC_FENCE, nullptr) : InvalidSync ();
+                        }
 
-        VC_RECT_T srcRect;
+                        ~Sync () {
 
-        vc_dispmanx_rect_set(&(surface->rectangle), 0, 0, displayWidth, displayHeight);
-        vc_dispmanx_rect_set(&srcRect, 0, 0, displayWidth << 16, displayHeight << 16);
-        surface->layer = 0;
-        surface->opacity = 255;
+                            if (_sync == InvalidSync ()) {
+                                // Error creating sync object or unable to create one
+                                glFinish ();
+                            }
+                            else {
+                                glFlush ();
 
-        VC_DISPMANX_ALPHA_T alpha = {
-            static_cast<DISPMANX_FLAGS_ALPHA_T>(DISPMANX_FLAGS_ALPHA_FROM_SOURCE | DISPMANX_FLAGS_ALPHA_MIX),
-            surface->opacity,
-            255
-        };
+                                EGLint _val = KHRFIX (eglClientWaitSync) (_dpy, _sync, 0 /* no flags */ , _EGL_FOREVER);
 
-        DISPMANX_DISPLAY_HANDLE_T dispmanDisplay = vc_dispmanx_display_open(0);
-        DISPMANX_UPDATE_HANDLE_T  dispmanUpdate  = vc_dispmanx_update_start(0);
-        DISPMANX_ELEMENT_HANDLE_T dispmanElement = vc_dispmanx_element_add(
-            dispmanUpdate,
-            dispmanDisplay,
-            surface->layer, /* Z order layer, new one is always on top */
-            &(surface->rectangle),
-            0 /*src*/,
-            &srcRect,
-            DISPMANX_PROTECTION_NONE,
-            &alpha /*alpha*/,
-            0 /*clamp*/,
-            DISPMANX_NO_ROTATE);
-        vc_dispmanx_update_submit_sync(dispmanUpdate);
+                                if (_val != EGL_TRUE) {
+                                    // Error
+                                }
 
-        surface->surface.element = dispmanElement;
-        surface->surface.width   = displayWidth;
-        surface->surface.height  = displayHeight;
-        result                   = static_cast<EGLSurface>(surface);
+                                // Consume the (possible) error
+                                /* ELGint */ eglGetError ();
+                            }
+                        }
 
-        return (result);
-    }
+                        static constexpr dpy_t InvalidDpy () { return EGL_NO_DISPLAY; }
+                        static constexpr sync_t InvalidSync () { return _EGL_NO_SYNC; }
 
-    void DestroySurface(const EGLSurface& surface) 
-    {
-        Surface* object = reinterpret_cast<Surface*>(surface);
-        // DISPMANX_DISPLAY_HANDLE_T dispmanDisplay = vc_dispmanx_display_open(0);
-        DISPMANX_UPDATE_HANDLE_T  dispmanUpdate  = vc_dispmanx_update_start(0);
-        vc_dispmanx_element_remove(dispmanUpdate, object->surface.element);
-        vc_dispmanx_update_submit_sync(dispmanUpdate);
-        // vc_dispmanx_display_close(dispmanDisplay);
-        delete object;
-    }
-    
-    void Opacity(const EGLSurface& surface, const uint16_t opacity) 
-    {
-        VC_RECT_T srcRect;
-        Surface* object = reinterpret_cast<Surface*>(surface);
+                    private :
 
-        vc_dispmanx_rect_set(&srcRect, 0, 0, (Width() << 16), (Height() << 16));
-        object->opacity = opacity;
+                        void * operator new (size_t) = delete;
+                        void * operator new [] (size_t) = delete;
+                        void operator delete (void *) = delete;
+                        void operator delete [] (void *) = delete;
+                };
 
-        DISPMANX_UPDATE_HANDLE_T  dispmanUpdate = vc_dispmanx_update_start(0);
-        vc_dispmanx_element_change_attributes(dispmanUpdate,
-            object->surface.element,
-            (1 << 1),
-            object->layer,
-            object->opacity,
-            &object->rectangle,
-            &srcRect,
-            0,
-            DISPMANX_NO_ROTATE);
-        vc_dispmanx_update_submit_sync(dispmanUpdate);
-    }
+                public :
 
-    void Geometry (const EGLSurface& surface, const WPEFramework::Exchange::IComposition::Rectangle& rectangle) 
-    {
-        VC_RECT_T srcRect;
-        Surface* object = reinterpret_cast<Surface*>(surface);
+                    using dpy_t = Sync::dpy_t;
+                    using ctx_t = EGLContext;
+                    using surf_t = EGLSurface;
+                    using img_t = KHRFIX (EGLImage);
+                    using win_t = EGLNativeWindowType;
 
-        vc_dispmanx_rect_set(&srcRect, 0, 0, (Width() << 16), (Height() << 16));
-        vc_dispmanx_rect_set(&(object->rectangle), rectangle.x, rectangle.y, rectangle.width, rectangle.height);
+                    using width_t = EGLint;
+                    using height_t = EGLint;
 
-        DISPMANX_UPDATE_HANDLE_T  dispmanUpdate = vc_dispmanx_update_start(0);
-        vc_dispmanx_element_change_attributes(dispmanUpdate,
-            object->surface.element,
-            (1 << 2),
-            object->layer,
-            object->opacity,
-            &object->rectangle,
-            &srcRect,
-            0,
-            DISPMANX_NO_ROTATE);
-        vc_dispmanx_update_submit_sync(dispmanUpdate);
-    }
+                    using sync_t = Sync;
 
-    void ZOrder(const EGLSurface& surface, const uint16_t layer)
-    {
-        // RPI is unique: layer #0 actually means "deepest", so we need to convert.
-        const uint16_t actualLayer = std::numeric_limits<uint16_t>::max() - layer;
-        Surface* object = reinterpret_cast<Surface*>(surface);
-        DISPMANX_UPDATE_HANDLE_T  dispmanUpdate = vc_dispmanx_update_start(0);
-        object->layer = layer;
-        vc_dispmanx_element_change_layer(dispmanUpdate, object->surface.element, actualLayer);
-        vc_dispmanx_update_submit_sync(dispmanUpdate);
-    }
-};
+                    static constexpr dpy_t InvalidDpy () { return Sync::InvalidDpy (); }
+                    static constexpr ctx_t InvalidCtx () { return EGL_NO_CONTEXT; }
+                    static constexpr surf_t InvalidSurf () { return EGL_NO_SURFACE; }
 
+                    static_assert (std::is_convertible < decltype (nullptr), win_t > :: value != false);
+                    static constexpr win_t InvalidWin () { return nullptr; }
+
+                    static constexpr img_t InvalidImg () { return _EGL_NO_IMAGE; }
+
+                    static img_t CreateImage (dpy_t const & dpy, const ctx_t & ctx, const win_t win, GLResourceMediator::prime_t const & prime) {
+                        img_t _ret = InvalidImg ();
+
+                        if (dpy != InvalidDpy () && ctx != InvalidCtx () && win != InvalidImg () && ( Supported (dpy, "EGL_KHR_image") && Supported (dpy, "EGL_KHR_image_base")  && Supported (dpy, "EGL_EXT_image_dma_buf_import") && Supported (dpy, "EGL_EXT_image_dma_buf_import_modifiers") ) != false ) {
+
+                            static_assert ((std::is_same <dpy_t, EGLDisplay> :: value && std::is_same <ctx_t, EGLContext> :: value && std::is_same <img_t, KHRFIX (EGLImage)> :: value ) != false);
+
+                            constexpr char _methodName [] = XSTRINGIFY ( KHRFIX (eglCreateImage) );
+
+                            static KHRFIX (EGLImage) (* _eglCreateImage) (EGLDisplay, EGLContext, EGLenum, EGLClientBuffer, EGLAttrib const * ) = reinterpret_cast < KHRFIX (EGLImage) (*) (EGLDisplay, EGLContext, EGLenum, EGLClientBuffer, EGLAttrib const * ) > (eglGetProcAddress ( _methodName ));
+
+                            if (_eglCreateImage != nullptr) {
+                                using width_t =  decltype (prime._width);
+                                using height_t = decltype (prime._height);
+                                using stride_t = decltype (prime._stride);
+                                using format_t = decltype (prime._format);
+                                using modifier_t = decltype (prime._modifier);
+                                using fd_t = decltype ( prime._fd);
+
+                                // Narrowing detection
+
+                                // Enable narrowing detection
+// TODO:
+                                constexpr bool _enable = false;
+
+                                // (Almost) all will fail!
+                                if (_narrowing < width_t, EGLAttrib, _enable > :: value != false
+                                    && _narrowing < height_t, EGLAttrib, _enable > :: value != false
+                                    && _narrowing < stride_t, EGLAttrib, _enable > :: value != false
+                                    && _narrowing < format_t, EGLAttrib, _enable > :: value != false
+                                    && _narrowing < modifier_t, EGLAttrib, _enable > :: value != false
+                                    && _narrowing < fd_t, EGLAttrib, _enable > :: value != false) {
+                                    TRACE_WITHOUT_THIS (Trace::Information, (_T ("Possible narrowing detected!")));
+                                }
+
+
+                                // EGL may report differently than GBM / DRM
+                                // Platform formats are cross referenced against prime settings at construction time
+
+
+                                // Query EGL
+                                static EGLBoolean (* _eglQueryDmaBufFormatsEXT) (EGLDisplay, EGLint, EGLint *, EGLint *) = reinterpret_cast < EGLBoolean (*) (EGLDisplay, EGLint, EGLint *, EGLint *) > (eglGetProcAddress ("eglQueryDmaBufFormatsEXT"));
+                                static EGLBoolean (* _eglQueryDmaBufModifiersEXT) (EGLDisplay,EGLint, EGLint, EGLuint64KHR *, EGLBoolean *, EGLint *) = reinterpret_cast < EGLBoolean (*) (EGLDisplay,EGLint, EGLint, EGLuint64KHR *, EGLBoolean *, EGLint *) > (eglGetProcAddress ("eglQueryDmaBufModifiersEXT"));
+
+                                bool _valid = _eglQueryDmaBufFormatsEXT != nullptr && _eglQueryDmaBufModifiersEXT != nullptr;
+
+                                EGLint _count = 0;
+
+                                _valid = _valid && _eglQueryDmaBufFormatsEXT (dpy, 0, nullptr, &_count) != EGL_FALSE;
+
+                                _valid = _valid && _eglQueryDmaBufFormatsEXT (dpy, 0, nullptr, &_count) != EGL_FALSE;
+
+                                EGLint _formats [_count];
+
+                                _valid = _valid && _eglQueryDmaBufFormatsEXT (dpy, _count, &_formats [0], &_count) != EGL_FALSE;
+
+                                // _format should be listed as supported
+                                if (_valid != false) {
+                                    std::list <EGLint> _list_e_for (&_formats [0], &_formats [_count]);
+
+                                    auto _it_e_for = std::find (_list_e_for.begin (), _list_e_for.end (), prime._format);
+
+                                    _valid = _it_e_for != _list_e_for.end ();
+                                }
+
+                                _valid = _valid && _eglQueryDmaBufModifiersEXT (dpy, prime._format, 0, nullptr, nullptr, &_count) != EGL_FALSE;
+
+                                EGLuint64KHR _modifiers [_count];
+                                EGLBoolean _external [_count];
+
+                                // External is required to exclusive use withGL_TEXTURE_EXTERNAL_OES
+                                _valid = _valid && _eglQueryDmaBufModifiersEXT (dpy, prime._format, _count, &_modifiers [0], &_external [0], &_count) != FALSE;
+
+                                // _modifier should be listed as supported, and _external should be true
+
+                                if (_valid != false) {
+                                    std::list <EGLuint64KHR> _list_e_mod (&_modifiers [0], &_modifiers [_count]);
+
+                                    auto _it_e_mod = std::find (_list_e_mod.begin (), _list_e_mod.end (), static_cast <EGLuint64KHR> (prime._modifier));
+
+                                    _valid = _it_e_mod != _list_e_mod.end ();
+
+                                    // For the compositor not relevant, only relevant for the client
+                                    if (_valid != false) {
+                                        // For the compositor not relevant
+                                        _valid = _external [ std::distance (_list_e_mod.begin (), _it_e_mod) ] != true;
+                                    }
+                                }
+
+                                if (_valid != false) {
+                                    EGLAttrib const _attrs [] = {
+                                        EGL_WIDTH, static_cast <EGLAttrib> (prime._width),
+                                        EGL_HEIGHT, static_cast <EGLAttrib> (prime._height),
+                                        EGL_LINUX_DRM_FOURCC_EXT, static_cast <EGLAttrib> (prime._format),
+                                        EGL_DMA_BUF_PLANE0_FD_EXT, static_cast <EGLAttrib> (prime._fd),
+// TODO: magic constant
+                                        EGL_DMA_BUF_PLANE0_OFFSET_EXT, 0,
+                                        EGL_DMA_BUF_PLANE0_PITCH_EXT, static_cast <EGLAttrib> (prime._stride),
+                                        EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT, static_cast <EGLAttrib> (static_cast <EGLuint64KHR> (prime._modifier) & 0xFFFFFFFF),
+                                        EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT, static_cast <EGLAttrib> (static_cast <EGLuint64KHR> (prime._modifier) >> 32),
+//                                        EGL_IMAGE_PRESERVED_KHR, EGL_TRUE,
+                                        EGL_NONE
+                                    };
+
+                                    static_assert (std::is_convertible < decltype (nullptr), EGLClientBuffer > :: value != false);
+                                    _ret = _eglCreateImage (dpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, _attrs);
+                                }
+                            }
+                            else {
+                                // Error
+                                TRACE_WITHOUT_THIS (Trace::Error, _T ("%s is unavailable or invalid parameters."), _methodName);
+                            }
+                        }
+                        else {
+                            TRACE_WITHOUT_THIS (Trace::Error, _T ("EGL is not properly initialized."));
+                        }
+
+                        return _ret;
+                    }
+
+                    static bool DestroyImage (img_t & img, dpy_t const & dpy, ctx_t const & ctx) {
+                        bool _ret = img != InvalidImg ();
+
+                        if (dpy != InvalidDpy () && ctx != InvalidCtx () && ( Supported (dpy, "EGL_KHR_image") && Supported (dpy, "EGL_KHR_image_base") ) != false ) {
+
+                            static_assert ((std::is_same <dpy_t, EGLDisplay> :: value && std::is_same <ctx_t, EGLContext> :: value && std::is_same <img_t, KHRFIX (EGLImage)> :: value ) != false);
+
+                            constexpr char _methodName [] = XSTRINGIFY ( KHRFIX (eglDestroyImage) );
+
+                            static EGLBoolean (* _eglDestroyImage) (EGLDisplay, KHRFIX (EGLImage)) = reinterpret_cast < EGLBoolean (*) (EGLDisplay, KHRFIX (EGLImage)) > (eglGetProcAddress ( KHRFIX ("eglDestroyImage") ));
+
+                            if (_eglDestroyImage != nullptr) {
+                                _ret = _eglDestroyImage (dpy, img) != EGL_FALSE ? true : false;
+                                img = InvalidImg ();
+                            }
+                            else {
+                                // Error
+                                TRACE_WITHOUT_THIS (Trace::Error, _T ("%s is unavailable or invalid parameters are provided."), _methodName);
+                            }
+
+                        }
+                        else {
+                            TRACE_WITHOUT_THIS (Trace::Error, (_T ("EGL is not properly initialized.")));
+                        }
+
+                        return _ret;
+                    }
+
+                    // Although compile / build time may succeed, runtime checks are also mandatory
+                    static bool Supported (dpy_t const dpy, std::string const & name) {
+                        bool _ret = false;
+
+                        static_assert ((std::is_same <dpy_t, EGLDisplay> :: value) != false);
+
+#ifdef EGL_VERSION_1_5
+                        // KHR extentions that have become part of the standard
+
+                        // Sync capability
+                        _ret = name.find ("EGL_KHR_fence_sync") != std::string::npos
+                               /* CreateImage / DestroyImage */
+                               || name.find ("EGL_KHR_image") != std::string::npos
+                               || name.find ("EGL_KHR_image_base") != std::string::npos;
 #endif
 
+                        if (_ret != true) {
+                            static_assert (std::is_same <std::string::value_type, char> :: value != false);
+                            char const * _ext = eglQueryString (dpy, EGL_EXTENSIONS);
+
+                            _ret =  _ext != nullptr
+                                    && name.size () > 0
+                                    && ( std::string (_ext).find (name)
+                                         != std::string::npos );
+                        }
+
+                        return _ret;
+                    }
+
+#undef XSTRINGIFY
+#undef STRINGIFY
+#ifdef _KHRFIX
+#undef _KHRFIX
+#endif
+#undef KHRFIX
+#undef _EGL_SYNC_FENCE
+#undef _EGL_NO_SYNC
+#undef _EGL_FOREVER
+#undef _EGL_NO_IMAGE
+            };
+
+            class GLES {
+                public :
+
+                    using fbo_t = GLuint;
+                    using tex_t = GLuint;
+
+                    static constexpr fbo_t InvalidFbo () { return 0; }
+                    static constexpr tex_t InvalidTex () { return 0; }
+
+                    bool ImageAsTarget (EGL::img_t const & img, EGL::width_t width, EGL::height_t height, tex_t & tex, fbo_t & fbo) {
+                        bool _ret = glGetError () == GL_NO_ERROR && img != EGL::InvalidImg () && width > 0 && height > 0;
+
+                        // Always
+                        constexpr GLuint _tgt = GL_TEXTURE_2D;
+
+                        if (_ret != false) {
+                            // Just an arbitrary selected unit
+                            glActiveTexture (GL_TEXTURE0);
+                            _ret = glGetError () == GL_NO_ERROR;
+                        }
+
+                        if (_ret != false) {
+                            if (tex != InvalidTex ()) {
+                                glDeleteTextures (1, &tex);
+                                _ret = glGetError () == GL_NO_ERROR;
+                            }
+
+                            tex = InvalidTex ();
+
+                            if (_ret != false) {
+                                glGenTextures (1, &tex);
+                                _ret = glGetError () == GL_NO_ERROR;
+                            }
+
+                            if (_ret != false) {
+                                glBindTexture (_tgt, tex);
+                                _ret = glGetError () == GL_NO_ERROR;
+                            }
+
+                            if (_ret != false) {
+                                glTexParameteri (_tgt, GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
+                                _ret = glGetError () == GL_NO_ERROR;
+                            }
+
+                            if (_ret != false) {
+                                glTexParameteri (_tgt, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                                _ret = glGetError () == GL_NO_ERROR;
+                            }
+
+                            if (_ret != false) {
+                                glTexParameteri (_tgt, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                                _ret = glGetError () == GL_NO_ERROR;
+                            }
+
+                            if (_ret != false) {
+                                glTexParameteri (_tgt, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                                _ret = glGetError () == GL_NO_ERROR;
+                            }
+
+
+                            // A valid GL context should exist for GLES::Supported ()
+                            EGL::ctx_t _ctx = eglGetCurrentContext ();
+                            EGL::dpy_t _dpy = _ctx != EGL::InvalidCtx () ? eglGetCurrentDisplay () : EGL::InvalidDpy ();
+
+
+                            _ret = _ret && eglGetError () == EGL_SUCCESS && _ctx != EGL::InvalidCtx ();
+
+                            if ( _ret && ( Supported ("GL_OES_EGL_image") && ( EGL::Supported (_dpy, "EGL_KHR_image") || EGL::Supported (_dpy, "EGL_KHR_image_base") ) ) != false) {
+
+                                // Take storage for the texture from the EGLImage; Pixel data becomes undefined
+                                static void (* _EGLImageTargetTexture2DOES) (GLenum, GLeglImageOES) = reinterpret_cast < void (*) (GLenum, GLeglImageOES) > (eglGetProcAddress ("glEGLImageTargetTexture2DOES"));
+
+                                if (_ret != false && _EGLImageTargetTexture2DOES != nullptr) {
+                                    // Logical const
+                                    using no_const_img_t = _remove_const < decltype (img) > :: type;
+                                    _EGLImageTargetTexture2DOES (_tgt, reinterpret_cast <GLeglImageOES> ( const_cast < no_const_img_t > (img) ));
+                                    _ret = glGetError () == GL_NO_ERROR;
+                                }
+                                else {
+                                    _ret = false;
+                                }
+                            }
+
+                            if (_ret != false) {
+                                if (fbo != InvalidFbo ()) {
+                                    glDeleteFramebuffers (1, &fbo);
+                                    _ret = glGetError () == GL_NO_ERROR;
+                                }
+
+                                if (_ret != false) {
+                                    glGenFramebuffers (1, &fbo);
+                                    _ret = glGetError () == GL_NO_ERROR;
+                                }
+
+                                if (_ret != false) {
+                                    glBindFramebuffer (GL_FRAMEBUFFER, fbo);
+                                    _ret = glGetError () == GL_NO_ERROR;
+                                }
+
+                                if (_ret != false) {
+                                    // Bind the created texture as one of the buffers of the frame buffer object
+                                    glFramebufferTexture2D (GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, _tgt, tex, 0 /* level */);
+                                    _ret = glGetError () == GL_NO_ERROR;
+                                }
+
+                                if (_ret != false) {
+                                    _ret = glCheckFramebufferStatus (GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+                                }
+
+                                if (_ret != true) {
+                                    glDeleteFramebuffers (1, &fbo);
+                                    glDeleteTextures (1, &tex);
+
+                                    fbo = InvalidFbo ();
+                                    tex = InvalidTex ();
+                                }
+                            }
+                        }
+
+                        return _ret;
+                    }
+
+                    bool Supported (std::string const & name) {
+                        bool _ret = false;
+
+                        using string_t = std::string::value_type;
+                        using ustring_t = std::make_unsigned < string_t > :: type;
+
+                        // Identical underlying types except for signedness
+                        static_assert (std::is_same < ustring_t, GLubyte > :: value != false);
+
+                        string_t const * _ext = reinterpret_cast <string_t const *> ( glGetString (GL_EXTENSIONS) );
+
+                        _ret = _ext != nullptr
+                               && name.size () > 0
+                               && ( std::string (_ext).find (name)
+                                    != std::string::npos );
+
+                        return _ret;
+                    }
+
+            };
+
+        public :
+
+            using native_t = struct _native;
+            using callback_t = std::function < void () >;
+
+            static_assert ( std::is_convertible < decltype (native_t::_surf), decltype ( EGL::InvalidWin () ) > :: value != false );
+// TODO: narrowing
+            static constexpr native_t InvalidNative () { return { static_cast < decltype (native_t::_surf) > ( EGL::InvalidWin () ), 0, 0, { -1, -1, 0, 0, 0, DRM_FORMAT_INVALID, DRM_FORMAT_MOD_NONE} }; }
+
+        private :
+
+            // Enable platform specific hooks to be called
+            std::map < native_t const, callback_t > _callbacks;
+
+            std::recursive_mutex _resourceLock;
+
+        public :
+
+            static GLResourceMediator & Instance () {
+                static GLResourceMediator _instance;
+                return _instance;
+            }
+
+            // Enable EGL / GLES to call any method on the 'native'
+            bool Register (native_t const & native, callback_t callback) {
+                std::lock_guard < decltype (_resourceLock) > const _lock (_resourceLock);
+
+                bool _ret = _callbacks.insert ( std::pair < native_t const, callback_t > ( native, callback) ).second;
+
+                return _ret;
+            }
+
+            // As the name suggests
+            bool Unregister (native_t const & native) {
+                std::lock_guard < decltype (_resourceLock) > const _lock (_resourceLock);
+
+                bool _ret = _callbacks.erase ( native ) == 1;
+
+                return _ret;
+            }
+
+            // Call the registered callback for an existing association
+            bool Visit (native_t const & native) /* const */ {
+// TODO: logical const
+                std::lock_guard < decltype (_resourceLock) > const _lock (_resourceLock);
+
+                auto _it = _callbacks.find (native);
+
+                bool _ret = _it != _callbacks.end ();
+
+                    if (_ret != false) {
+                        _it->second ();
+                    }
+
+                return _ret;
+            }
+
+        private :
+
+            GLResourceMediator () = default;
+            ~GLResourceMediator () = default;
+
+            GLResourceMediator (GLResourceMediator const &) = delete;
+            GLResourceMediator & operator= (GLResourceMediator const &) = delete;
+
+    };
+
 }
+}
+
+static const char* connectorNameVirtualInput = "/tmp/keyhandler";
 
 namespace WPEFramework {
 namespace RPI {
@@ -357,150 +726,438 @@ private:
     Display() = delete;
     Display(const Display&) = delete;
     Display& operator=(const Display&) = delete;
-    
-    Display(const std::string& displayName);
 
-    class EXTERNAL CompositorClient {
-    private:
-        // -------------------------------------------------------------------
-        // This object should not be copied or assigned. Prevent the copy
-        // constructor and assignment constructor from being used. Compiler
-        // generated assignment and copy methods will be blocked by the
-        // following statments.
-        // Define them but do not implement them, compile error/link error.
-        // -------------------------------------------------------------------
-        CompositorClient(const CompositorClient& a_Copy) = delete;
-        CompositorClient& operator=(const CompositorClient& a_RHS) = delete;
+    Display(const std::string& displayName, Exchange::IComposition::IDisplay * display);
 
-    public:
-        CompositorClient(const TCHAR formatter[], ...)
-        {
-            va_list ap;
-            va_start(ap, formatter);
-            Core::Format(_text, formatter, ap);
-            va_end(ap);
-        }
-        CompositorClient(const string& text)
-            : _text(Core::ToString(text))
-        {
-        }
-        ~CompositorClient() = default;
+        class DMATransfer {
 
-    public:
-        inline const char* Data() const
-        {
-            return (_text.c_str());
-        }
-        inline uint16_t Length() const
-        {
-            return (static_cast<uint16_t>(_text.length()));
-        }
+            private : 
 
-    private:
-        string _text;
-    };
+                // Actual socket for communication
+                int _transfer;
 
-    class SurfaceImplementation : public Compositor::IDisplay::ISurface {
-    private:
-        class RemoteAccess : public Exchange::IComposition::IClient {
-        public:
-            RemoteAccess() = delete;
-            RemoteAccess(const RemoteAccess&) = delete;
-            RemoteAccess& operator= (const RemoteAccess&) = delete;
+                struct sockaddr_un _addr;
 
-            RemoteAccess(EGLSurface& surface, const string& name, const uint32_t width, const uint32_t height)
-                : _name(name)
-                , _opacity(Exchange::IComposition::maxOpacity)
-                , _layer(0)
-                , _nativeSurface(surface)
-                , _destination( { 0, 0, width, height } ) 
-            {
-            }
-            ~RemoteAccess() override = default;
+                bool _valid;
 
-        public:
-            inline const EGLSurface& Surface() const
-            {
-                return (_nativeSurface);
-            }
-            inline int32_t Width() const
-            {
-                return _destination.width;
-            }
-            inline int32_t Height() const
-            {
-                return _destination.height;
-            }
-            string Name() const override
-            {
-                return _name;
-            }
-            void Opacity(const uint32_t value) override;
-            uint32_t Geometry(const Exchange::IComposition::Rectangle& rectangle) override;
-            Exchange::IComposition::Rectangle Geometry() const override;
-            uint32_t ZOrder(const uint16_t zorder) override;
-            uint32_t ZOrder() const override;
+                using valid_t = decltype (_valid);
 
-            BEGIN_INTERFACE_MAP(RemoteAccess)
-                INTERFACE_ENTRY(Exchange::IComposition::IClient)
-            END_INTERFACE_MAP
- 
-        private:
-            const std::string _name;
+                using timeout_t = _remove_const < decltype ( Core::infinite ) > :: type;
 
-            uint32_t _opacity;
-            uint32_t _layer;
+            public :
 
-            EGLSurface _nativeSurface;
+                // Sharing handles (file descriptors)
+                static constexpr uint8_t MAX_SHARING_FDS = 2;
+                using fds_t = std::array <int, MAX_SHARING_FDS>;
 
-            Exchange::IComposition::Rectangle _destination;
+                DMATransfer () : _transfer { -1 }, _addr { AF_UNIX, "/tmp/Compositor/DMA" }, _valid { Initialize () } {}
+                ~DMATransfer () {
+                    /* bool */ Deinitialize ();
+                }
+
+                DMATransfer (DMATransfer const &) = delete;
+                DMATransfer & operator = (DMATransfer const &) = delete;
+
+                valid_t Valid () const { return _valid; }
+
+                valid_t Receive (std::string & msg, DMATransfer::fds_t & fds) {
+                    valid_t _ret = Valid ();
+
+                    if (_ret != true) {
+                        TRACE (Trace::Information, (_T ("Unable to receive (DMA) data.")));
+                    }
+                    else {
+                        _ret = _Receive (msg, fds.data (), fds.size ());
+                    }
+
+                    return _ret;
+                }
+
+                valid_t Send (std::string const & msg, DMATransfer::fds_t const & fds) {
+                    valid_t _ret = Valid ();
+
+                    if (_ret != true) {
+                        TRACE (Trace::Information, (_T ("Unable to send (DMA) data.")));
+                    }
+                    else {
+                        _ret = _Send (msg, fds.data (), fds.size ());
+                    }
+
+                    return _ret;
+                }
+
+                valid_t Connect () {
+                    valid_t _ret = false;
+
+                    timeout_t _timeout = Core::infinite;
+
+                    _ret = _Connect (_timeout);
+
+                    return _ret;
+                }
+
+                valid_t Disconnect () {
+                     valid_t _ret = false;
+
+                    timeout_t _timeout = Core::infinite;
+
+                    _ret = _Disconnect (_timeout);
+
+                    return _ret;
+                }
+
+            private :
+
+                valid_t  Initialize () {
+                    valid_t _ret = false;
+
+                    _transfer = socket (_addr.sun_family /* domain */, SOCK_STREAM /* type */, 0 /* protocol */);
+                    _ret = _transfer != -1;
+
+                    return _ret;
+                }
+
+                valid_t Deinitialize () {
+                    valid_t _ret = false;
+
+                    _ret = Disconnect ();
+
+                    return _ret;
+                }
+
+                valid_t _Connect (timeout_t timeout) {
+                    silence (timeout);
+
+                    valid_t _ret = _transfer > -1;
+
+                    _ret = _ret && connect (_transfer, reinterpret_cast < struct sockaddr const * > (&_addr), sizeof (_addr)) == 0;
+
+                    decltype (EISCONN) _err = errno;
+
+                    // Already connected is not an error
+                    _ret = _ret != false || _err == EISCONN;
+
+                    return _ret;
+                }
+
+                valid_t _Disconnect (timeout_t timeout) {
+                    silence (timeout);
+
+                    valid_t _ret = _transfer > -1;
+
+                    _ret = _ret && close (_transfer) == 0;
+
+                    _transfer = -1;
+
+                    return _ret;
+                }
+
+                valid_t _Send (std::string const & msg, int const * fd, uint8_t count) {
+                    using fd_t = _remove_const < std::remove_pointer < decltype (fd) > :: type > :: type;
+
+                    valid_t _ret = false;
+
+                    // Logical const
+                    static_assert ((std::is_same <char *, _remove_const  < decltype ( & msg [0] ) > :: type >:: value) != false);
+                    char * _buf  = const_cast <char *> ( & msg [0] );
+
+                    size_t const _bufsize = msg.size ();
+
+                    if (_bufsize > 0) {
+
+                        // Scatter array for vector I/O
+                        struct iovec _iov;
+
+                        // Starting address
+                        _iov.iov_base = reinterpret_cast <void *> (_buf);
+                        // Number of bytes to transfer
+                        _iov.iov_len = _bufsize;
+
+                        // Actual message
+                        struct msghdr _msgh {};
+
+                        // Optional address
+                        _msgh.msg_name = nullptr;
+                        // Size of address
+                        _msgh.msg_namelen = 0;
+                        // Scatter array
+                        _msgh.msg_iov = &_iov;
+                        // Elements in msg_iov
+                        _msgh.msg_iovlen = 1;
+
+                        // Ancillary data
+                        // The macro returns the number of bytes an ancillary element with payload of the passed in data length, eg size of ancillary data to be sent
+                        char _control [CMSG_SPACE (sizeof ( fd_t ) * count)];
+
+                        // Only valid file descriptor (s) can be sent via extra payload
+                        _ret = true;
+                        for (decltype (count) i = 0; i < count && fd != nullptr; i++) {
+                            _ret = fd [i] > -1 && _ret;
+                        }
+
+                        if (_ret != false) {
+                            // Contruct ancillary data to be added to the transfer via the control message
+
+                            // Ancillary data, pointer
+                            _msgh.msg_control = _control;
+
+                            // Ancillery data buffer length
+                            _msgh.msg_controllen = sizeof ( _control );
+
+                            // Ancillary data should be access via cmsg macros
+                            // https://linux.die.net/man/2/recvmsg
+                            // https://linux.die.net/man/3/cmsg
+                            // https://linux.die.net/man/2/setsockopt
+                            // https://www.man7.org/linux/man-pages/man7/unix.7.html
+
+                            // Control message
+
+                            // Pointer to the first cmsghdr in the ancillary data buffer associated with the passed msgh
+                            struct cmsghdr * _cmsgh = CMSG_FIRSTHDR ( &_msgh );
+
+                            if (_cmsgh != nullptr) {
+                                // Originating protocol
+                                // To manipulate options at the sockets API level
+                                _cmsgh->cmsg_level = SOL_SOCKET;
+
+                                // Protocol specific type
+                                // Option at the API level, send or receive a set of open file descriptors from another process
+                                _cmsgh->cmsg_type = SCM_RIGHTS;
+
+                                // The value to store in the cmsg_len member of the cmsghdr structure, taking into account any necessary alignmen, eg byte count of control message including header
+                                _cmsgh->cmsg_len = CMSG_LEN (sizeof ( fd_t ) * count);
+
+                                // Initialize the payload
+                                /* void */ memcpy (CMSG_DATA (_cmsgh ), fd, sizeof ( fd_t ) * count);
+
+                                _ret = true;
+                            }
+                            else {
+                                // Error
+                            }
+                        }
+                        else {
+                            // No extra payload, ie  file descriptor(s), to include
+                            _msgh.msg_control = nullptr;
+                            _msgh.msg_controllen = 0;
+
+                            _ret = true;
+                        }
+
+                        if (_ret != false) {
+                            // Configuration succeeded
+
+                            // https://linux.die.net/man/2/sendmsg
+                            // https://linux.die.net/man/2/write
+                            // Zero flags is equivalent to write
+
+                            ssize_t _size = -1;
+                            socklen_t _len = sizeof (_size);
+
+                            // Only send data if the buffer is large enough to contain all data
+                            if (getsockopt (_transfer, SOL_SOCKET, SO_SNDBUF, &_size, &_len) == 0) {
+                                // Most options use type int, ssize_t was just a placeholder
+                                static_assert (sizeof (int) <= sizeof (ssize_t));
+                                TRACE (Trace::Information, (_T ("The sending buffer capacity equals %d bytes."), static_cast < int > (_size)));
+
+// TODO: do not send if the sending buffer is too small
+                                _size = sendmsg (_transfer, &_msgh, 0);
+                            }
+                            else {
+                                // Unable to determine buffer capacity
+                            }
+
+                            _ret = _size != -1;
+
+                            if (_ret != false) {
+                                TRACE (Trace::Information, (_T ("Send %d bytes out of %d."), _size, _msgh.msg_iov->iov_len /* just a single element */ + _msgh.msg_controllen));
+                            }
+                            else {
+                                TRACE (Trace::Error, (_T ("Failed to send data.")));
+                            }
+                        }
+
+                    }
+                    else {
+                        TRACE (Trace::Error, (_T ("A data message to be send cannot be empty!")));
+                    }
+
+                    return _ret;
+                }
+
+                valid_t _Receive (std::string & msg, int * fd, uint8_t count) {
+                    bool _ret = false;
+
+                    msg.clear ();
+
+                    ssize_t _size = -1;
+                    socklen_t _len = sizeof (_size);
+
+                    if (getsockopt (_transfer, SOL_SOCKET, SO_RCVBUF, &_size, &_len) == 0) {
+                        TRACE (Trace::Information, (_T ("The receiving buffer maximum capacity equals %d [bytes]."), _size));
+
+                        // Most options use type int, ssize_t was just a placeholder
+                        static_assert (sizeof (int) <= sizeof (ssize_t));
+                        msg.reserve (static_cast < int > (_size));
+                    }
+                    else {
+                        // Unable to determine buffer capacity
+                        TRACE (Trace::Information, (_T ("Unable to determine buffer maximum cpacity. Using %d [bytes] instead."), msg.capacity ()));
+                    }
+
+                    size_t const _bufsize = msg.capacity ();
+
+                    if (_bufsize > 0 && count > 0 && fd != nullptr) {
+                        using fd_t = std::remove_pointer < decltype (fd) > :: type;
+
+                        for (decltype (count) i = 0; i < count; i++) {
+                            fd [i] = -1;
+                        }
+
+                        static_assert ((std::is_same <char *, _remove_const  < decltype ( & msg [0] ) > :: type >:: value) != false);
+                        char _buf [_bufsize];
+
+                        // Scatter array for vector I/O
+                        struct iovec _iov;
+
+                        // Starting address
+                        _iov.iov_base = reinterpret_cast <void *> ( &_buf [0] );
+                        // Number of bytes to transfer
+                        _iov.iov_len = _bufsize;
+
+                        // Actual message
+                        struct msghdr _msgh {};
+
+                        // Optional address
+                        _msgh.msg_name = nullptr;
+                        // Size of address
+                        _msgh.msg_namelen = 0;
+                        // Elements in msg_iov
+                        _msgh.msg_iovlen = 1;
+                        // Scatter array
+                        _msgh.msg_iov = &_iov;
+
+                        // Ancillary data
+                        // The macro returns the number of bytes an ancillary element with payload of the passed in data length, eg size of ancillary data to be sent
+                        char _control [CMSG_SPACE (sizeof ( fd_t ) * count)];
+
+                        // Ancillary data, pointer
+                        _msgh.msg_control = _control;
+
+                        // Ancillary data buffer length
+                        _msgh.msg_controllen = sizeof (_control);
+
+                        // No flags set
+// TODO: do not receive if the receiving buffer is too small
+                        _size = recvmsg (_transfer, &_msgh, 0);
+
+                        _ret = _size > 0;
+
+                        switch (_size) {
+                            case -1 :   // Error
+                                        {
+                                            // TRACE (Trace::Error, (_T ("Error receiving remote (DMA) data.")));
+                                            break;
+                                        }
+                            case 0  :   // Peer has done an orderly shutdown, before any data was received
+                                        {
+                                            // TRACE (Trace::Error, (_T ("Error receiving remote (DMA) data. Client may have become unavailable.")));
+                                            break;
+                                        }
+                            default :   // Data
+                                        {
+                                            // Extract the file descriptor information
+                                            TRACE (Trace::Information, (_T ("Received %d bytes."), _size));
+
+                                            // Pointer to the first cmsghdr in the ancillary data buffer associated with the passed msgh
+                                            struct cmsghdr * _cmsgh = CMSG_FIRSTHDR ( &_msgh );
+
+                                            // Check for the expected properties the client should have set
+                                            if (_cmsgh != nullptr 
+                                                && _cmsgh->cmsg_level == SOL_SOCKET 
+                                                && _cmsgh->cmsg_type == SCM_RIGHTS) {
+
+                                                // The macro returns a pointer to the data portion of a cmsghdr.
+                                                /* void */ memcpy (fd, CMSG_DATA (_cmsgh ), sizeof ( fd_t ) * count);
+                                            }
+                                            else {
+                                                TRACE (Trace::Information, (_T ("No (valid) ancillary data received.")));
+                                            }
+
+                                            msg.assign (_buf, _size);
+                                        }
+                        }
+                    }
+                    else {
+                        // Error
+                        TRACE (Trace::Error, (_T ("A receiving data buffer (message) cannot be empty!")));
+                    }
+
+                    return _ret;
+                }
         };
 
+    class SurfaceImplementation : public Compositor::IDisplay::ISurface {
     public:
         SurfaceImplementation() = delete;
         SurfaceImplementation(const SurfaceImplementation&) = delete;
         SurfaceImplementation& operator=(const SurfaceImplementation&) = delete;
 
         SurfaceImplementation(
-            Display* compositor, const std::string& name,
+            Display& display, const std::string& name,
             const uint32_t width, const uint32_t height);
         ~SurfaceImplementation() override;
 
     public:
+        EGLNativeWindowType Native() const override
+        {
+            static_assert ( (std::is_convertible < decltype (_nativeSurface._surf), EGLNativeWindowType >:: value ) != false);
+            return static_cast < EGLNativeWindowType > ( _nativeSurface._surf );
+        }
         std::string Name() const override {
-            return (_remoteAccess->Name());
+            return ( _remoteClient != nullptr ? _remoteClient->Name() : string());
         }
-        inline EGLNativeWindowType Native() const
-        {
-            return (reinterpret_cast<EGLNativeWindowType>(_remoteAccess->Surface()));
-        }
-        inline int32_t Width() const
-        {
-            return (_remoteAccess->Width());
-        }
-        inline int32_t Height() const
-        {
-            return (_remoteAccess->Height());
-        }
-        inline void Keyboard(Compositor::IDisplay::IKeyboard* keyboard) override
+        void Keyboard(Compositor::IDisplay::IKeyboard* keyboard) override
         {
             assert((_keyboard == nullptr) ^ (keyboard == nullptr));
             _keyboard = keyboard;
         }
-        inline void Wheel(Compositor::IDisplay::IWheel* wheel) override
-        {
-            assert((_wheel == nullptr) ^ (wheel == nullptr));
-            _wheel = wheel;
-        }
-        inline void Pointer(Compositor::IDisplay::IPointer* pointer) override
+        void Pointer(Compositor::IDisplay::IPointer* pointer) override
         {
             assert((_pointer == nullptr) ^ (pointer == nullptr));
             _pointer = pointer;
         }
-        inline void TouchPanel(Compositor::IDisplay::ITouchPanel* touchpanel) override
+        void Wheel(Compositor::IDisplay::IWheel* wheel) override
+        {
+            assert((_wheel == nullptr) ^ (wheel == nullptr));
+            _wheel = wheel;
+        }
+        void TouchPanel(Compositor::IDisplay::ITouchPanel* touchpanel) override
         {
             assert((_touchpanel == nullptr) ^ (touchpanel == nullptr));
             _touchpanel = touchpanel;
+        }
+        int32_t Width() const override
+        {
+            using width_t = decltype (_nativeSurface._width);
+
+            static_assert ( ( std::numeric_limits < width_t > :: is_exact &&
+                0 >= std::numeric_limits < int32_t > :: min () &&
+                std::numeric_limits < std::make_signed < width_t >::type > :: max () <= std::numeric_limits < int32_t > :: max () ) !=
+                false);
+
+            return ( _nativeSurface._surf != nullptr && _nativeSurface._width <= static_cast < width_t > (std::numeric_limits < int32_t >::max ()) ? _nativeSurface._width : 0 );
+        }
+        int32_t Height() const override
+        {
+            using height_t = decltype (_nativeSurface._height);
+
+            static_assert ( ( std::numeric_limits < height_t > :: is_exact &&
+                0 >= std::numeric_limits < int32_t > :: min () &&
+                std::numeric_limits < std::make_signed < height_t >::type > :: max () <= std::numeric_limits < int32_t > :: max () ) !=
+                false);
+
+            return ( _nativeSurface._surf != nullptr && _nativeSurface._height <= static_cast < height_t > (std::numeric_limits < int32_t >::max ()) ? _nativeSurface._height : 0 );
         }
         inline void SendKey(
             const uint32_t key,
@@ -535,7 +1192,132 @@ private:
             }
         }
 
+        inline void ScanOut () {
+            // Changes of currents cannot be reliably be monitored
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::dpy_t _dpy = eglGetCurrentDisplay ();
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::ctx_t _ctx = eglGetCurrentContext ();
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::surf_t _surf = eglGetCurrentSurface (EGL_DRAW);
+
+            bool _ret = /*_nativeSurface != WPEFramework::RPI_INTERNAL::GLResourceMediator::InvalidNative ()
+                        && */_dpy != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidDpy ()
+                        && _ctx != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidCtx ()
+                        && _surf != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidSurf ();
+
+            // A remote ClientSurface has been created and the IRender interface is supported so the compositor is able to support scan out for this client
+            if ( _ret != false && _remoteRenderer != nullptr && _remoteClient != nullptr) {
+                _remoteRenderer->ScanOut ();
+            }
+            else {
+                TRACE (Trace::Error, (_T ("Remote scan out is not (yet) supported. Has a remote surface been created? Is the IRender interface available?")));
+            }
+        }
+
+        inline void PreScanOut () {
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::width_t _width = 0;
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::height_t _height = 0;
+
+
+            // Changes of currents cannot be reliably be monitored
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::dpy_t _dpy = eglGetCurrentDisplay ();
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::ctx_t _ctx = eglGetCurrentContext ();
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::surf_t _surf = eglGetCurrentSurface (EGL_DRAW);
+
+
+            bool _ret = /*_nativeSurface != WPEFramework::RPI_INTERNAL::GLResourceMediator::InvalidNative ()
+                        && */_dpy != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidDpy ()
+                        && _ctx != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidCtx ()
+                        && _surf != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidSurf ()
+                        && eglQuerySurface (_dpy, _surf, EGL_WIDTH, &_width) != EGL_FALSE
+                        && eglQuerySurface (_dpy, _surf, EGL_HEIGHT, &_height) != EGL_FALSE;
+
+            if (_ret != false) {
+// TODO: Destroy
+                static WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::img_t _img = WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::CreateImage (_dpy, _ctx, _nativeSurface._surf, _nativeSurface._prime );
+
+// TODO: Destroy
+                static WPEFramework::RPI_INTERNAL::GLResourceMediator::GLES::tex_t _tex = WPEFramework::RPI_INTERNAL::GLResourceMediator::GLES::InvalidTex ();
+// TODO: Destroy
+                static WPEFramework::RPI_INTERNAL::GLResourceMediator::GLES::fbo_t _fbo = WPEFramework::RPI_INTERNAL::GLResourceMediator::GLES::InvalidFbo ();
+
+                static WPEFramework::RPI_INTERNAL::GLResourceMediator::GLES _gles;
+
+                static_assert (_narrowing < decltype (WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::_width), WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::width_t, true > :: value && _narrowing < decltype (WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::_height), WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::height_t, true > :: value != false);
+
+                using n_width_t = decltype (WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::_width);
+                using e_width_t = WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::width_t;
+
+                using n_height_t = decltype (WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::_height);
+                using e_height_t = WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::height_t;
+
+
+// TODO:
+                constexpr bool _enable = true;
+
+                if ( ( _narrowing < n_width_t, e_width_t, _enable > :: value
+                      && _narrowing < n_height_t, e_height_t, _enable > :: value ) != false
+                ) {
+                    TRACE_WITHOUT_THIS (Trace::Information, (_T ("Possible narrowing detected!")));
+                }
+
+
+                using common_width_t = std::common_type < n_width_t, e_width_t> :: type;
+                using common_height_t = std::common_type < n_height_t, e_height_t> :: type;
+
+
+                bool _ret = _img != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidImg () && static_cast <common_width_t> (_width) == static_cast <common_width_t> (_nativeSurface._width) && static_cast <common_height_t> (_height) == static_cast <common_height_t> (_nativeSurface._height) && _gles.ImageAsTarget (_img, _width, _height, _tex, _fbo);
+
+                _ret = ( _ret && _img != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidImg () && _fbo != WPEFramework::RPI_INTERNAL::GLResourceMediator::GLES::InvalidFbo () ) != false;
+            }
+
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::sync_t _sync (_dpy);
+
+            // A remote ClientSurface has been created and the IRender interface is supported so the compositor is able to support scan out for this client
+            if ( _ret != false && _remoteRenderer != nullptr && _remoteClient != nullptr) {
+                _remoteRenderer->PreScanOut ();
+            }
+            else {
+                TRACE (Trace::Error, (_T ("Remote pre scan out is not (yet) supported. Has a remote surface been created? Is the IRender interface available?")));
+            }
+
+        }
+
+        inline void PostScanOut () {
+            // Changes of currents cannot be reliably be monitored
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::dpy_t _dpy = eglGetCurrentDisplay ();
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::ctx_t _ctx = eglGetCurrentContext ();
+            WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::surf_t _surf = eglGetCurrentSurface (EGL_DRAW);
+
+            bool _ret = /*_nativeSurface != WPEFramework::RPI_INTERNAL::GLResourceMediator::InvalidNative ()
+                        && */_dpy != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidDpy ()
+                        && _ctx != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidCtx ()
+                        && _surf != WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::InvalidSurf ();
+
+            if (_ret != false) {
+                WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
+                _ret = _map.Visit (_nativeSurface) != false;
+            }
+
+            // A remote ClientSurface has been created and the IRender interface is supported so the compositor is able to support scan out for this client
+            if ( _ret != false && _remoteRenderer != nullptr && _remoteClient != nullptr) {
+                _remoteRenderer->PostScanOut ();
+            }
+            else {
+                TRACE (Trace::Error, (_T ("Remote post scan out is not (yet) supported. Has a remote surface been created? Is the IRender interface available?")));
+            }
+        }
+
+        bool SyncPrimitiveStart () {
+            bool ret = _nativeSurface._prime.Lock ();
+            return ret;
+        }
+
+        bool SyncPrimitiveEnd () {
+            bool ret = _nativeSurface._prime.Unlock ();
+            return ret;
+        }
+
     private:
+
         Display& _display;
 
         IKeyboard* _keyboard;
@@ -543,15 +1325,98 @@ private:
         IPointer* _pointer;
         ITouchPanel* _touchpanel;
 
-        RemoteAccess* _remoteAccess;
+        Exchange::IComposition::IClient* _remoteClient;
+        Exchange::IComposition::IRender* _remoteRenderer;
+
+        WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t _nativeSurface;
+
+        void Callback () {
+//            TRACE_WITHOUT_THIS (Trace::Information, _T ("Callback called"));
+        }
+
     };
+
+    using InputFunction = std::function<void(SurfaceImplementation*)>;
+
+    static void VirtualKeyboardCallback(keyactiontype type, unsigned int code)
+    {
+        if (type != KEY_COMPLETED) {
+            time_t timestamp = time(nullptr);
+            const IDisplay::IKeyboard::state state = ((type == KEY_RELEASED) ? IDisplay::IKeyboard::released : 
+                                                     ((type == KEY_REPEAT)   ? IDisplay::IKeyboard::repeated : 
+                                                                               IDisplay::IKeyboard::pressed));
+
+            InputFunction action = [=](SurfaceImplementation* s) { s->SendKey(code, state, timestamp); };
+
+            Publish(action);
+        }
+    }
+
+    static void VirtualMouseCallback(mouseactiontype type, unsigned short button, signed short horizontal, signed short vertical)
+    {
+        static int32_t pointer_x = 0;
+        static int32_t pointer_y = 0;
+
+        time_t timestamp = time(nullptr);
+        InputFunction action;
+        pointer_x = pointer_x + horizontal;
+        pointer_y = pointer_y + vertical;
+
+        switch (type)
+        {
+            case MOUSE_MOTION:
+                action = [=](SurfaceImplementation* s) { 
+                    int32_t X = std::min(std::max(0, pointer_x), s->Width());
+                    int32_t Y = std::min(std::max(0, pointer_y), s->Height());
+                    s->SendPointerPosition(X,Y,timestamp); };
+                break;
+            case MOUSE_SCROLL:
+                action = [=](SurfaceImplementation* s) { s->SendWheelMotion(horizontal, vertical, timestamp); };
+                break;
+            case MOUSE_RELEASED:
+            case MOUSE_PRESSED:
+                action = [=](SurfaceImplementation* s) { s->SendPointerButton(button, type == MOUSE_RELEASED? IDisplay::IPointer::released : IDisplay::IPointer::pressed, timestamp); };
+                break;
+        }
+
+        Publish(action);
+    }
+
+    static void VirtualTouchScreenCallback(touchactiontype type, unsigned short index, unsigned short x, unsigned short y)
+    {
+        static uint16_t touch_x = ~0;
+        static uint16_t touch_y = ~0;
+        static touchactiontype last_type = TOUCH_RELEASED;
+
+        // Get touch position in pixels
+        // Reduce IPC traffic. The physical touch coordinates might be different, but when scaled to screen position, they may be same as previous.
+        if ((x != touch_x) || (y != touch_y) || (type != last_type)) {
+
+            last_type = type;
+            touch_x = x;
+            touch_y = y;
+
+            time_t timestamp = time(nullptr);
+            const IDisplay::ITouchPanel::state state = ((type == TOUCH_RELEASED) ? ITouchPanel::released : 
+                                                       ((type == TOUCH_PRESSED)  ? ITouchPanel::pressed  : 
+                                                                                   ITouchPanel::motion));
+
+            InputFunction action = [=](SurfaceImplementation* s) { 
+                const uint16_t mapped_x = (s->Width() * x) >> 16;
+                const uint16_t mapped_y = (s->Height() * y) >> 16;
+                s->SendTouch(index, state, mapped_x, mapped_y, timestamp); 
+            };
+
+            Publish(action);
+        }
+    }
 
 public:
     typedef std::map<const string, Display*> DisplayMap;
-    
+
     ~Display() override;
 
-    static Display& Instance(const string& displayName){
+    static Display* Instance(const string& displayName, Exchange::IComposition::IDisplay * display) {
         Display* result(nullptr);
 
         _displaysMapLock.Lock();
@@ -559,25 +1424,26 @@ public:
         DisplayMap::iterator index(_displays.find(displayName));
 
         if (index == _displays.end()) {
-            result = new Display(displayName);
-            _displays.insert(std::pair<const std::string, Display*>(displayName, result));
+            result = new Display(displayName, display);
+            if( result->RemoteDisplay() != nullptr ) {
+                _displays.insert(std::pair<const std::string, Display*>(displayName, result));
+                result->AddRef();
+            } else {
+                delete result;
+                result = nullptr;
+            }
         } else {
             result = index->second;
+            result->AddRef();
         }
-        result->AddRef();
         _displaysMapLock.Unlock();
 
-        assert(result != nullptr);
-
-        return (*result);
+        return result;
     } 
 
     void AddRef() const override
     {
-        if (Core::InterlockedIncrement(_refCount) == 1) {
-            const_cast<Display*>(this)->Initialize();
-        }
-        return;
+        Core::InterlockedIncrement(_refCount);
     }
 
     uint32_t Release() const override
@@ -593,76 +1459,164 @@ public:
 
             _displaysMapLock.Unlock();
 
-            const_cast<Display*>(this)->Deinitialize();
+            delete this;
 
             return (Core::ERROR_CONNECTION_CLOSED);
         }
         return (Core::ERROR_NONE);
     }
+
     EGLNativeDisplayType Native() const override
     {
-        return (Platform::Instance().Display());
+        static_assert ( (std::is_convertible < decltype (_nativeDisplay._device), EGLNativeDisplayType > :: value ) != false);
+        return static_cast < EGLNativeDisplayType > ( _nativeDisplay._device );
     }
-    const std::string& Name() const final override
+    const std::string& Name() const override
     {
         return (_displayName);
     }
     int Process(const uint32_t data) override;
     int FileDescriptor() const override;
     ISurface* SurfaceByName(const std::string& name) override;
-    
-    ISurface* Create(
-        const std::string& name,
-        const uint32_t width, const uint32_t height) override;
+    ISurface* Create( const std::string& name, const uint32_t width, const uint32_t height) override;
 
-    inline uint32_t DisplaySizeWidth() const
-    {
-        return Platform::Instance().Width();
-    }
 
-    inline uint32_t DisplaySizeHeight() const
-    {
-        return Platform::Instance().Height();
+    bool PrimeFor (Exchange::IComposition::IClient const & client, WPEFramework::RPI_INTERNAL::GLResourceMediator::prime_t & prime) {
+        std::lock_guard < decltype (_surfaceLock) > const _lock (_surfaceLock);
+
+        bool _ret = false;
+// TODO: narrowing
+        prime = { -1, -1, 0, 0, 0, DRM_FORMAT_INVALID, DRM_FORMAT_MOD_NONE};
+
+        DMATransfer::fds_t handles = {prime._fd, prime._sync_fd};
+
+        if (_dma != nullptr) {
+            std::string _msg = client.Name ();
+
+            // Announce ourself to indicate the data exchange is a request for (file descriptor) data
+            // Then, after receiving the data DMA is no longer needed for this client
+            _ret = _dma->Connect () && _dma->Send (_msg, handles) && _dma->Receive (_msg, handles) && _dma->Disconnect ();
+
+            prime._fd = handles [0];
+            prime._sync_fd = handles [1];
+
+            // <prefix>:width:height:stride:format
+            // Search from end to begin
+
+            using width_t = decltype (WPEFramework::RPI_INTERNAL::GLResourceMediator::prime_t::_width);
+            using height_t = decltype (WPEFramework::RPI_INTERNAL::GLResourceMediator::prime_t::_height);
+            using stride_t = decltype (WPEFramework::RPI_INTERNAL::GLResourceMediator::prime_t::_height);
+            using format_t = decltype ( WPEFramework::RPI_INTERNAL::GLResourceMediator::prime_t::_height);
+            using modifier_t = decltype (WPEFramework::RPI_INTERNAL::GLResourceMediator::prime_t::_height);
+
+            using common_t = std::common_type <width_t, height_t, stride_t, format_t, modifier_t> :: type;
+
+            auto str2prop = [&_msg] (std::string::size_type & pos) -> common_t {
+                constexpr char _spacer [] = ":";
+
+                std::string::size_type _start = _msg.rfind (_spacer, pos);
+
+                static_assert (_narrowing <unsigned long, common_t, true> :: value != false);
+                common_t _ret = ( _start != std::string::npos && _start <= _msg.length () != false ) ? std::stoul (_msg.substr (_start + 1, pos) ) : 0;
+
+                // Narrowing detection
+
+// TODO:
+                constexpr bool _enable = false;
+
+                if ( _narrowing < decltype (_ret), uint32_t, _enable> :: value != false ) {
+                    TRACE_WITHOUT_THIS (Trace::Information, (_T ("Possible narrowing detected!")));
+                }
+
+                decltype (ERANGE) _err = errno;
+
+                if (_err == ERANGE) {
+                    TRACE_WITHOUT_THIS (Trace::Error, (_T ("Unbale to determine property value.")));
+                }
+
+                pos = _start - 1;
+
+                return _ret;
+            };
+
+            std::string::size_type _pos = _msg.size () - 1;
+
+// TODO: signed vs unsigned , commmon_type  for return type str2prop
+            prime._modifier = static_cast <modifier_t> (str2prop (_pos));
+            prime._format = static_cast <format_t> (str2prop (_pos));
+            prime._stride = static_cast <stride_t> (str2prop (_pos));
+            prime._height = static_cast <height_t> (str2prop (_pos));
+            prime._width = static_cast <width_t> (str2prop (_pos));
+
+            TRACE_WITHOUT_THIS (Trace::Information, _T ("Received the following properties via DMA: width %d height %d stride %d format %d modifier %d."), prime._width, prime._height, prime._stride, prime._format, prime._modifier);
+        }
+
+        if (_ret != true) {
+            TRACE (Trace::Error, (_T ("Unable to receive (DMA) data for %s."), client.Name ().c_str ()));
+        }
+
+        return _ret;
     }
 
 private:
+    inline Exchange::IComposition::IClient* CreateRemoteSurface(const std::string& name, const uint32_t width, const uint32_t height);
     inline void Register(SurfaceImplementation* surface);
     inline void Unregister(SurfaceImplementation* surface);
-    inline void OfferClientInterface(Exchange::IComposition::IClient* client);
-    inline void RevokeClientInterface(Exchange::IComposition::IClient* client);
 
-    inline void Initialize()
+    inline static void Publish(InputFunction& action) {
+        if (action != nullptr) {
+            _displaysMapLock.Lock();
+            for (std::pair<const string, Display*>& entry : _displays) {
+                entry.second->_adminLock.Lock();
+                std::for_each(begin(entry.second->_surfaces), end(entry.second->_surfaces), action);
+                entry.second->_adminLock.Unlock();
+            }
+            _displaysMapLock.Unlock();
+        }
+    }
+
+    inline void Initialize (Exchange::IComposition::IDisplay * display)
     {
-        _adminLock.Lock();
-        _isRunning = true;
-
         if (Core::WorkerPool::IsAvailable() == true) {
             // If we are in the same process space as where a WorkerPool is registered (Main Process or
-            // hosting ptocess) use, it!
+            // hosting process) use, it!
             Core::ProxyType<RPC::InvokeServer> engine = Core::ProxyType<RPC::InvokeServer>::Create(&Core::WorkerPool::Instance());
-            ASSERT(engine.IsValid() == true);
+            ASSERT(static_cast<Core::IReferenceCounted*>(engine) != nullptr);
 
             _compositerServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(Connector(), Core::ProxyType<Core::IIPCServer>(engine));
-            ASSERT(_compositerServerRPCConnection.IsValid() == true);
+            ASSERT(_compositerServerRPCConnection != nullptr);
 
             engine->Announcements(_compositerServerRPCConnection->Announcement());
         } else {
             // Seems we are not in a process space initiated from the Main framework process or its hosting process.
             // Nothing more to do than to create a workerpool for RPC our selves !
             Core::ProxyType<RPC::InvokeServerType<2,0,8>> engine = Core::ProxyType<RPC::InvokeServerType<2,0,8>>::Create();
-            ASSERT(engine.IsValid() == true);
+            ASSERT(engine != nullptr);
 
             _compositerServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(Connector(), Core::ProxyType<Core::IIPCServer>(engine));
-            ASSERT(_compositerServerRPCConnection.IsValid() == true);
+            ASSERT(_compositerServerRPCConnection != nullptr);
 
             engine->Announcements(_compositerServerRPCConnection->Announcement());
         }
 
-        uint32_t result = _compositerServerRPCConnection->Open(RPC::CommunicationTimeOut);
+        if (display != nullptr) {
+            _remoteDisplay = display;
+        }
+        else {
+            // Connect to the CompositorServer..
+            uint32_t result = _compositerServerRPCConnection->Open(RPC::CommunicationTimeOut);
 
-        if (result != Core::ERROR_NONE) {
-            TRACE_L1(_T("Could not open connection to Compositor with node %s. Error: %s"), _compositerServerRPCConnection->Source().RemoteId().c_str(), Core::NumberType<uint32_t>(result).Text().c_str());
-            _compositerServerRPCConnection.Release();
+            if (result != Core::ERROR_NONE) {
+                TRACE_L1(_T("Could not open connection to Compositor with node %s. Error: %s"), _compositerServerRPCConnection->Source().RemoteId().c_str(), Core::NumberType<uint32_t>(result).Text().c_str());
+                _compositerServerRPCConnection.Release();
+            }
+            else {
+                _remoteDisplay = _compositerServerRPCConnection->Aquire<Exchange::IComposition::IDisplay>(2000, _displayName, ~0);
+
+                if (_remoteDisplay == nullptr) {
+                    TRACE_L1(_T("Could not create remote display for Display %s!"), Name().c_str());
+                }
+            }
         }
 
         _virtualinput = virtualinput_open(_displayName.c_str(), connectorNameVirtualInput, VirtualKeyboardCallback, VirtualMouseCallback, VirtualTouchScreenCallback);
@@ -670,29 +1624,14 @@ private:
         if (_virtualinput == nullptr) {
             TRACE_L1(_T("Initialization of virtual input failed for Display %s!"), Name().c_str());
         }
-
-        if (pipe(g_pipefd) == -1) {
-            g_pipefd[0] = -1;
-            g_pipefd[1] = -1;
-        }
-        _adminLock.Unlock();
     }
 
     inline void Deinitialize()
     {
-        _adminLock.Lock();
-        _isRunning = false;
-
-        Message message;
-        memset(&message, 0, sizeof(message));
-        write(g_pipefd[1], &message, sizeof(message));
-
         if (_virtualinput != nullptr) {
             virtualinput_close(_virtualinput);
+            _virtualinput = nullptr;
         }
-
-        close(g_pipefd[1]);
-        close(g_pipefd[0]);
 
         std::list<SurfaceImplementation*>::iterator index(_surfaces.begin());
         while (index != _surfaces.end()) {
@@ -704,211 +1643,402 @@ private:
 
             index = _surfaces.erase(index);
         }
+
+        if(_remoteDisplay != nullptr) {
+            _remoteDisplay->Release();
+            _remoteDisplay = nullptr;
+        }
+
         if (_compositerServerRPCConnection.IsValid() == true) {
             _compositerServerRPCConnection.Release();
         }
-
-        _adminLock.Unlock();
     }
+
+    inline const Exchange::IComposition::IDisplay* RemoteDisplay() const {
+        return _remoteDisplay;
+    }
+
+    inline Exchange::IComposition::IDisplay* RemoteDisplay() {
+        return _remoteDisplay;
+    }
+
+private:
 
     static DisplayMap _displays; 
     static Core::CriticalSection _displaysMapLock;
 
-    bool _isRunning;
     std::string _displayName;
     mutable Core::CriticalSection _adminLock;
     void* _virtualinput;
     std::list<SurfaceImplementation*> _surfaces;
     Core::ProxyType<RPC::CommunicatorClient> _compositerServerRPCConnection;
-    uint16_t _pointer_x;
-    uint16_t _pointer_y;
-    uint16_t _touch_x;
-    uint16_t _touch_y;
-    uint16_t _touch_state;
-
     mutable uint32_t _refCount;
+
+    Exchange::IComposition::IDisplay* _remoteDisplay;
+
+    struct {
+        struct gbm_device * _device;
+        int _fd;
+    } _nativeDisplay;
+
+    DMATransfer * _dma;
+    std::mutex _surfaceLock;
 };
 
 Display::DisplayMap Display::_displays;
 Core::CriticalSection Display::_displaysMapLock;
 
 Display::SurfaceImplementation::SurfaceImplementation(
-    Display* display,
+    Display& display,
     const std::string& name,
     const uint32_t width, const uint32_t height)
-    : _display(*display)
+    : _display(display)
     , _keyboard(nullptr)
     , _wheel(nullptr)
     , _pointer(nullptr)
     , _touchpanel(nullptr)
+    , _remoteClient(nullptr)
+    , _remoteRenderer(nullptr)
+    , _nativeSurface { WPEFramework::RPI_INTERNAL::GLResourceMediator::InvalidNative () }
 {
-    uint32_t realWidth(width);
-    uint32_t realHeight(height);
+// TODO: gbm_surface_Create_with_modifiers
+    _nativeSurface._surf = gbm_surface_create (_display.Native (), width, height, RenderDevice::SupportedBufferType (), GBM_BO_USE_RENDERING /* used for rendering */);
 
-    _display.AddRef();
-
-    // To support scanout the underlying buffer should be large enough to support the selected mode
-    // A buffer of smaller dimensions than the display will fail. A larger one is possible but will
-    // probably fail in the current setup. Currently, it is best to give both equal dimensions
-
-    if ((width != _display.DisplaySizeWidth()) || (height != _display.DisplaySizeHeight())) {
-        TRACE_L1(_T("Requested surface dimensions [%d, %d] might not be honered. Rendering might fail!"), width, height);
-
-        // Truncating
-        if (realWidth  != _display.DisplaySizeWidth())  { realWidth  = _display.DisplaySizeWidth();  }
-        if (realHeight != _display.DisplaySizeHeight()) { realHeight = _display.DisplaySizeHeight(); }
+    if (_nativeSurface._surf == nullptr) {
+        TRACE_L1 (_T ("Failed to create a native (underlying) surface"));
+    }
+    else {
+        _nativeSurface._height = height;
+        _nativeSurface._width = width;
     }
 
-    EGLSurface nativeSurface = Platform::Instance().CreateSurface(_display.Native(), realWidth, realHeight);
+    // Implicit AddRef ()
+    _remoteClient = _display.CreateRemoteSurface (name, width, height);
 
+    if (_remoteClient != nullptr) {
+        // Implicit AddRef ()
+        _remoteRenderer = _remoteClient->QueryInterface<Exchange::IComposition::IRender> ();
+
+        if(_remoteRenderer == nullptr) {
+            TRACE_L1(_T("Could not aquire remote renderer for surface %s."), name.c_str());
+        }
+        else {
+
+            if (_display.PrimeFor (*_remoteClient, _nativeSurface._prime) != true || gbm_device_is_format_supported (static_cast <RenderDevice::GBM::dev_t> (_display.Native ()), _nativeSurface._prime._format, GBM_BO_USE_RENDERING) != 1) {
+                TRACE (Trace::Error, (_T ( "Failed to setup a share for rendering results!")));
+
+                auto result = _remoteRenderer->Release ();
+                ASSERT (result == Core::ERROR_DESTRUCTION_SUCCEEDED);
+                _remoteRenderer = nullptr;
+
+                /* auto */ result = _remoteClient->Release ();
+                ASSERT (result == Core::ERROR_DESTRUCTION_SUCCEEDED);
+                _remoteClient = nullptr;
+            }
+            else {
+                assert (gbm_device_get_format_modifier_plane_count (static_cast <RenderDevice::GBM::dev_t>(_display.Native ()), _nativeSurface._prime._format, _nativeSurface._prime._modifier) == 1);
+
+                // Register a callback for EGL updates
+
+                WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
+                /* bool */ _map.Register ( _nativeSurface, std::bind ( &WPEFramework::RPI::Display::SurfaceImplementation::Callback, this ) );
+            }
+
+        }
+
+    } else {
+        TRACE_L1(_T("Could not create remote surface for surface %s."), name.c_str());
+    }
+
+    _display.AddRef();
     _display.Register(this);
-
-    _remoteAccess = Core::Service<RemoteAccess>::Create<RemoteAccess>(nativeSurface, name, realWidth, realHeight);
-
-    _display.OfferClientInterface(_remoteAccess);
 }
 
 Display::SurfaceImplementation::~SurfaceImplementation()
 {
-    TRACE_L1(_T("Destructing client named: %s"), _remoteAccess->Name().c_str());
+    WPEFramework::RPI_INTERNAL::GLResourceMediator & _map = WPEFramework::RPI_INTERNAL::GLResourceMediator::Instance ();
+    /* bool */ _map.Unregister ( _nativeSurface );
 
     _display.Unregister(this);
 
-    Platform::Instance().DestroySurface(_remoteAccess->Surface());
+    if(_remoteClient != nullptr) {
 
-    _display.RevokeClientInterface(_remoteAccess);
+        TRACE_L1(_T("Destructing surface %s"), _remoteClient->Name().c_str());
 
-    _remoteAccess->Release();
+        if(_remoteRenderer != nullptr) {
+            auto result = _remoteRenderer->Release ();
+            ASSERT (result == Core::ERROR_DESTRUCTION_SUCCEEDED);
+            _remoteRenderer = nullptr;
+        }
 
-    _display.Release();
+        auto result = _remoteClient->Release ();
+        ASSERT (result == Core::ERROR_DESTRUCTION_SUCCEEDED);
+        _remoteClient = nullptr;
+
+    }
+
+    if (_nativeSurface._surf != nullptr) {
+        gbm_surface_destroy (_nativeSurface._surf);
+        _nativeSurface._surf = nullptr;
+    }
+
+    _nativeSurface = WPEFramework::RPI_INTERNAL::GLResourceMediator::InvalidNative ();
+
+    auto result = _display.Release ();
+    ASSERT (result = Core::ERROR_DESTRUCTION_SUCCEEDED);
 }
 
-void Display::SurfaceImplementation::RemoteAccess::Opacity(
-    const uint32_t value)
-{
-
-    _opacity = (value > Exchange::IComposition::maxOpacity) ? Exchange::IComposition::maxOpacity : value;
-
-    Platform::Instance().Opacity(_nativeSurface, _opacity);
-}
-
-
-uint32_t Display::SurfaceImplementation::RemoteAccess::Geometry(const Exchange::IComposition::Rectangle& rectangle)
-{
-    _destination = rectangle;
-
-    Platform::Instance().Geometry(_nativeSurface, _destination);
-    return (Core::ERROR_NONE);
-}
-
-Exchange::IComposition::Rectangle Display::SurfaceImplementation::RemoteAccess::Geometry() const 
-{
-    return (_destination);
-}
-
-uint32_t Display::SurfaceImplementation::RemoteAccess::ZOrder(const uint16_t zorder)
-{
-    _layer = zorder;
-
-    Platform::Instance().ZOrder(_nativeSurface, _layer);
-
-    return (Core::ERROR_NONE);
-}
-
-uint32_t Display::SurfaceImplementation::RemoteAccess::ZOrder() const {
-    return (_layer);
-}
-
-Display::Display(const string& name)
-    : _isRunning(true)
-    , _displayName(name)
+Display::Display (const string& name, Exchange::IComposition::IDisplay * display)
+    : _displayName(name)
     , _adminLock()
     , _virtualinput(nullptr)
+    , _surfaces()
     , _compositerServerRPCConnection()
-    , _pointer_x(0)
-    , _pointer_y(0)
-    , _touch_x(-1)
-    , _touch_y(-1)
-    , _touch_state(0)
     , _refCount(0)
+    , _remoteDisplay(nullptr)
+    , _nativeDisplay {nullptr, -1}
+    , _dma { nullptr }
 {
+    Initialize (display);
+
+    std::vector < std::string > _nodes;
+
+    RenderDevice::GetNodes (static_cast <uint32_t> (DRM_NODE_RENDER), _nodes);
+
+    for (auto _begin = _nodes.begin (), _it = _begin, _end = _nodes.end (); _it != _end; _it++) {
+        decltype (_nativeDisplay._fd) & _fd = _nativeDisplay._fd;
+        decltype (_nativeDisplay._device) & _device = _nativeDisplay._device;
+
+        _fd = open(_it->c_str(), O_RDWR);
+
+        if (_fd >= 0) {
+            _device = gbm_create_device (_fd);
+
+            if (_device != nullptr) {
+                TRACE (Trace::Information, (_T ("Opened RenderDevice: %s"), _it->c_str ()));
+
+                _dma = new DMATransfer ();
+
+                if (_dma == nullptr || _dma->Valid () != true) {
+                    TRACE (Trace::Error, (_T ("DMA transfers are not supported.")));
+
+                    delete _dma;
+                    _dma = nullptr;
+                }
+                else {
+                    break;
+                }
+            }
+
+            /* int */ close (_fd);
+        }
+    }
 }
 
 Display::~Display()
 {
+    if (_dma != nullptr) {
+        delete _dma;
+    }
+
+    decltype (_nativeDisplay._fd) & _fd = _nativeDisplay._fd;
+    decltype (_nativeDisplay._device) & _device = _nativeDisplay._device;
+
+    if (_device != nullptr) {
+        gbm_device_destroy (_device);
+    }
+
+    if (_fd >= 0) {
+        close (_fd);
+    }
+
+    _dma = nullptr;
+    _device = nullptr;
+    _fd = -1;
+
+    Deinitialize();
 }
 
-int Display::Process(const uint32_t data)
+int Display::Process(const uint32_t)
 {
-    Message message;
-    if ((data != 0) && (g_pipefd[0] != -1) && (read(g_pipefd[0], &message, sizeof(message)) > 0)) {
-        _adminLock.Lock();
+    // Signed and at least 45 bits
+    using milli_t = int32_t;
 
-        time_t timestamp = time(nullptr);
-        std::function<void(SurfaceImplementation*)> action = nullptr;
-        if (message.type == KEYBOARD) {
-            const IDisplay::IKeyboard::state state = ((message.keyData.type == KEY_RELEASED)? IDisplay::IKeyboard::released : ((message.keyData.type == KEY_REPEAT)? IDisplay::IKeyboard::repeated : IDisplay::IKeyboard::pressed));
-            action = [=](SurfaceImplementation* s) { s->SendKey(message.keyData.code, state, timestamp); };
-        } else if (message.type == MOUSE) {
-            // Clamp movement to display size
-            // TODO: Handle surfaces that are not full screen
-            _pointer_x = std::max(0, std::min(static_cast<int32_t>(_pointer_x) + message.mouseData.horizontal, static_cast<int32_t>(DisplaySizeWidth() - 1)));
-            _pointer_y = std::max(0, std::min(static_cast<int32_t>(_pointer_y) + message.mouseData.vertical, static_cast<int32_t>(DisplaySizeHeight() - 1)));
-            switch (message.mouseData.type)
-            {
-            case MOUSE_MOTION:
-                action = [=](SurfaceImplementation* s) { s->SendPointerPosition(_pointer_x, _pointer_y, timestamp); };
-                break;
-            case MOUSE_SCROLL:
-                action = [=](SurfaceImplementation* s) { s->SendWheelMotion(message.mouseData.horizontal, message.mouseData.vertical, timestamp); };
-                break;
-            case MOUSE_RELEASED:
-            case MOUSE_PRESSED:
-                action = [=](SurfaceImplementation* s) { s->SendPointerButton(message.mouseData.button, message.mouseData.type == MOUSE_RELEASED? IDisplay::IPointer::released : IDisplay::IPointer::pressed , timestamp); };
-                break;
-            }
-        } else if (message.type == TOUCHSCREEN) {
-            // Get touch position in pixels
-            // TODO: Handle surfaces that are not full screen
-            const uint16_t x = (DisplaySizeWidth() * (message.touchData.x)) >> 16;
-            const uint16_t y = (DisplaySizeHeight() * (message.touchData.y)) >> 16;
-            const IDisplay::ITouchPanel::state state = ((message.touchData.type == TOUCH_RELEASED)? ITouchPanel::released : ((message.touchData.type == TOUCH_PRESSED)? ITouchPanel::pressed : ITouchPanel::motion));
-            // Reduce IPC traffic. The physical touch coordinates might be different, but when scaled to screen position, they may be same as previous.
-            if ((x != _touch_x) || (y != _touch_y) || (state != _touch_state)) {
-                action = [=](SurfaceImplementation* s) { s->SendTouch(message.touchData.index, state, x, y, timestamp); };
-                _touch_state = state;
-                _touch_x = x;
-                _touch_y = y;
-            }
+    auto RefreshRateFromResolution = [] (Exchange::IComposition::ScreenResolution const resolution) -> milli_t {
+        // Assume 'unknown' rate equals 60 Hz
+        milli_t _rate = 60;
+
+        switch (resolution) {
+            case Exchange::IComposition::ScreenResolution_1080p24Hz : // 1920x1080 progressive @ 24 Hz
+                                                                        _rate = 24; break;
+            case Exchange::IComposition::ScreenResolution_720p50Hz  : // 1280x720 progressive @ 50 Hz
+            case Exchange::IComposition::ScreenResolution_1080i50Hz : // 1920x1080 interlaced @ 50 Hz
+            case Exchange::IComposition::ScreenResolution_1080p50Hz : // 1920x1080 progressive @ 50 Hz
+            case Exchange::IComposition::ScreenResolution_2160p50Hz : // 4K, 3840x2160 progressive @ 50 Hz
+                                                                        _rate = 50; break;
+            case Exchange::IComposition::ScreenResolution_480i      : // 720x480
+            case Exchange::IComposition::ScreenResolution_480p      : // 720x480 progressive
+            case Exchange::IComposition::ScreenResolution_720p      : // 1280x720 progressive
+            case Exchange::IComposition::ScreenResolution_1080p60Hz : // 1920x1080 progressive @ 60 Hz
+            case Exchange::IComposition::ScreenResolution_2160p60Hz : // 4K, 3840x2160 progressive @ 60 Hz
+            case Exchange::IComposition::ScreenResolution_Unknown   :   _rate = 60;
         }
 
-        if ((action != nullptr) && (_isRunning == true)) {
-            std::for_each(begin(_surfaces), end(_surfaces), action);
-        }
+        return _rate;
+    };
 
-        _adminLock.Unlock();
+    constexpr milli_t _milli = 1000;
+
+    static decltype (_milli) _rate = RefreshRateFromResolution ( ( _remoteDisplay != nullptr ? _remoteDisplay->Resolution () : Exchange::IComposition::ScreenResolution_Unknown ) );
+    static std::chrono::milliseconds _delay = std::chrono::milliseconds (_milli / _rate);
+
+// TODO: move to scanout ?
+
+    // Delay the (free running) loop
+    auto _current_time = std::chrono::steady_clock::now ();
+
+    static decltype (_current_time) _last_access_time = _current_time;
+
+    auto _duration = std::chrono::duration_cast < std::chrono::milliseconds > (_current_time - _last_access_time);
+
+    if (_duration.count () < _delay .count () ) {
+        std::this_thread::sleep_for( std::chrono::milliseconds (_delay - _duration) );
     }
+    else {
+    }
+
+    _last_access_time = _current_time;
+
+    // Scan out all surfaces belonging to this display
+// TODO: only scan out the surface that actually has completed or the client should be made aware that all surfaces should be completed at the time of calling
+// TODO: This flow introduces artefacts
+    for (auto _begin = _surfaces.begin (), _it = _begin, _end = _surfaces.end (); _it != _end; _it++) {
+
+        // THe way the API has been constructed limits the optimal syncing strategy
+
+        (*_it)->PreScanOut ();  // will render
+
+        // At least fails the very first time
+        bool  ret = (*_it)->SyncPrimitiveEnd ();
+//            assert (ret != false);
+
+        (*_it)->ScanOut ();     // actual scan out (at the remote site)
+
+        ret = (*_it)->SyncPrimitiveStart ();
+//            assert (ret != false);
+
+        (*_it)->PostScanOut (); // rendered
+
+    }
+
     return (0);
 }
 
 int Display::FileDescriptor() const
 {
-    return (g_pipefd[0]);
+    return -1;
 }
 
-Compositor::IDisplay::ISurface* Display::SurfaceByName(const std::string&)
+Compositor::IDisplay::ISurface* Display::SurfaceByName(const std::string& name)
 {
-    //TODO not implemented
-    return nullptr;
+    IDisplay::ISurface* result = nullptr;
+
+    _adminLock.Lock();
+
+    std::list<SurfaceImplementation*>::iterator index(_surfaces.begin());
+    while ( (index != _surfaces.end()) && ((*index)->Name() != name) ) { index++; }
+
+    if (index != _surfaces.end()) {
+        result = *index;
+        result->AddRef();
+    }
+
+    _adminLock.Unlock();
+
+    return result;
 }
 
-Compositor::IDisplay::ISurface* Display::Create(
-    const std::string& name, const uint32_t width, const uint32_t height)
+static uint32_t WidthFromResolution (Exchange::IComposition::ScreenResolution const resolution) {
+    // Asumme an invalid width equals 0
+    uint32_t _width = 0;
+
+    switch (resolution) {
+        case Exchange::IComposition::ScreenResolution_480p      :   // 720x480
+                                                                    _width = 720; break;
+        case Exchange::IComposition::ScreenResolution_720p      :   // 1280x720 progressive
+        case Exchange::IComposition::ScreenResolution_720p50Hz  :   // 1280x720 @ 50 Hz
+                                                                    _width = 720; break;
+        case Exchange::IComposition::ScreenResolution_1080p24Hz :   // 1920x1080 progressive @ 24 Hz
+        case Exchange::IComposition::ScreenResolution_1080i50Hz :   // 1920x1080 interlaced  @ 50 Hz
+        case Exchange::IComposition::ScreenResolution_1080p50Hz :   // 1920x1080 progressive @ 50 Hz
+        case Exchange::IComposition::ScreenResolution_1080p60Hz :   // 1920x1080 progressive @ 60 Hz
+                                                                    _width = 1920; break;
+        case Exchange::IComposition::ScreenResolution_2160p50Hz :   // 4K, 3840x2160 progressive @ 50 Hz
+        case Exchange::IComposition::ScreenResolution_2160p60Hz :   // 4K, 3840x2160 progressive @ 60 Hz
+                                                                    _width = 3840; break;
+        case Exchange::IComposition::ScreenResolution_480i      :   // Unknown according to the standards (?)
+        case Exchange::IComposition::ScreenResolution_Unknown   :
+        default                                                 :   _width = 0;
+    }
+
+    return _width;
+}
+
+static uint32_t HeightFromResolution(const Exchange::IComposition::ScreenResolution resolution) {
+    // Asumme an invalid height equals 0
+    uint32_t _height = 0;
+
+    switch (resolution) {
+        // For descriptions see WidthFromResolution
+        case Exchange::IComposition::ScreenResolution_480i      : // 720x480
+        case Exchange::IComposition::ScreenResolution_480p      : // 720x480 progressive
+                                                                    _height = 480; break;
+        case Exchange::IComposition::ScreenResolution_720p      : // 1280x720 progressive
+        case Exchange::IComposition::ScreenResolution_720p50Hz  : // 1280x720 progressive @ 50 Hz
+                                                                    _height = 720; break;
+        case Exchange::IComposition::ScreenResolution_1080p24Hz : // 1920x1080 progressive @ 24 Hz
+        case Exchange::IComposition::ScreenResolution_1080i50Hz : // 1920x1080 interlaced @ 50 Hz
+        case Exchange::IComposition::ScreenResolution_1080p50Hz : // 1920x1080 progressive @ 50 Hz
+        case Exchange::IComposition::ScreenResolution_1080p60Hz : // 1920x1080 progressive @ 60 Hz
+                                                                    _height = 1080; break;
+        case Exchange::IComposition::ScreenResolution_2160p50Hz : // 4K, 3840x2160 progressive @ 50 Hz
+        case Exchange::IComposition::ScreenResolution_2160p60Hz : // 4K, 3840x2160 progressive @ 60 Hz
+                                                                    _height = 2160; break;
+        case Exchange::IComposition::ScreenResolution_Unknown   :
+        default                                                 :   _height = 0;
+    }
+
+    return _height;
+}
+
+Compositor::IDisplay::ISurface* Display::Create(const std::string& name, const uint32_t width, const uint32_t height)
 {
-    Core::ProxyType<SurfaceImplementation> retval = (Core::ProxyType<SurfaceImplementation>::Create(this, name, width, height));
+    uint32_t _realHeight = height;
+    uint32_t _realWidth = width;
+
+    if (_remoteDisplay != nullptr) {
+        Exchange::IComposition::ScreenResolution _resolution = _remoteDisplay->Resolution ();
+
+        _realHeight = HeightFromResolution (_resolution);
+        _realWidth = WidthFromResolution (_resolution);
+
+        if (_realWidth != width || _realHeight != height) {
+            TRACE (Trace::Information, (_T ("Requested surface dimensions (%d x %d) differ from true (real) display dimensions (%d x %d). Continuing with the latter!"), width, height, _realWidth, _realHeight));
+        }
+    }
+    else {
+        TRACE (Trace::Information, (_T ("No remote display exist. Unable to query its dimensions. Expect the unexpected!")));
+    }
+
+    Core::ProxyType<SurfaceImplementation> retval = (Core::ProxyType<SurfaceImplementation>::Create(*this, name, _realWidth, _realHeight));
     Compositor::IDisplay::ISurface* result = &(*retval);
     result->AddRef();
+
     return result;
+}
+
+inline Exchange::IComposition::IClient* Display::CreateRemoteSurface(const std::string& name, const uint32_t width, const uint32_t height) {
+    return (_remoteDisplay != nullptr ? _remoteDisplay->CreateClient(name, width, height) : nullptr);
 }
 
 inline void Display::Register(Display::SurfaceImplementation* surface)
@@ -939,45 +2069,10 @@ inline void Display::Unregister(Display::SurfaceImplementation* surface)
     _adminLock.Unlock();
 }
 
-void Display::OfferClientInterface(Exchange::IComposition::IClient* client)
-{
-    ASSERT(client != nullptr);
-
-    if (_compositerServerRPCConnection.IsValid()) {
-        uint32_t result = _compositerServerRPCConnection->Offer(client);
-
-        if (result != Core::ERROR_NONE) {
-            TRACE_L1(_T("Could not offer IClient interface with callsign %s to Compositor. Error: %s"), client->Name().c_str(), Core::NumberType<uint32_t>(result).Text().c_str());
-        }
-    } else {
-#if defined(COMPOSITORSERVERPLUGIN)
-        SYSLOG(Logging::Fatal, (_T("The CompositorServer plugin is included in the build, but not able to reach!")));
-        ASSERT(false && "The CompositorServer plugin is included in the build, but not able to reach!");
-#endif
-    }
-}
-
-void Display::RevokeClientInterface(Exchange::IComposition::IClient* client)
-{
-    ASSERT(client != nullptr);
-
-    if (_compositerServerRPCConnection.IsValid()) {
-        uint32_t result = _compositerServerRPCConnection->Revoke(client);
-
-        if (result != Core::ERROR_NONE) {
-            TRACE_L1(_T("Could not revoke IClient interface with callsign %s to Compositor. Error: %s"), client->Name().c_str(), Core::NumberType<uint32_t>(result).Text().c_str());
-        }
-    }else {
-#if defined(COMPOSITORSERVERPLUGIN)
-        SYSLOG(Logging::Fatal, (_T("The CompositorServer plugin is included in the build, but not able to reach!")));
-        ASSERT(false && "The CompositorServer plugin is included in the build, but not able to reach!");
-#endif
-    }
-}
 } // RPI
 
-Compositor::IDisplay* Compositor::IDisplay::Instance(const string& displayName)
+Compositor::IDisplay* Compositor::IDisplay::Instance (const string& displayName, void * display)
 {
-    return (&(RPI::Display::Instance(displayName)));
+    return RPI::Display::Instance(displayName, reinterpret_cast < Exchange::IComposition::IDisplay * > (display));
 }
 } // WPEFramework

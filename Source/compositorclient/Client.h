@@ -138,7 +138,7 @@ namespace Compositor {
             virtual void Resize(const int, const int, const int, const int) { }
         };
 
-        static IDisplay* Instance(const std::string&);
+        static IDisplay* Instance(const std::string&, void* display = nullptr);
 
         // If CLIENT_IDENTIFIER variable is set its value is tokenized using comma as the separator
         // and the first token is used to override the passed in name. The second - if present - is
