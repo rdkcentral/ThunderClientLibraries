@@ -220,8 +220,14 @@ opencdm_session_get_challenge_data(struct OpenCDMSession* mOpenCDMSession,
     uint32_t isLDL)
 {
     ASSERT(mOpenCDMSession != nullptr);
-    return (OpenCDMError)mOpenCDMSession->GetChallengeDataExt(challenge,
-        *challengeSize, isLDL);
+    ASSERT((*challengeSize) < 0xFFFF);
+    uint16_t realLength = static_cast<uint16_t>(*challengeSize);
+
+    OpenCDMError result = static_cast<OpenCDMError>(mOpenCDMSession->GetChallengeDataExt(challenge, realLength, isLDL));
+
+    *challengeSize = realLength;
+
+    return (result);
 }
 
 OpenCDMError

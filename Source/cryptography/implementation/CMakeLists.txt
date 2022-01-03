@@ -1,7 +1,7 @@
-# If not stated otherwise in this file or this component's license file the
+# If not stated otherwise in this file or this component's LICENSE file the
 # following copyright and licenses apply:
 #
-# Copyright 2020 RDK Management
+# Copyright 2020 Metrological
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ if(${CRYPTOGRAPHY_IMPLEMENTATION} STREQUAL "Nexus")
         include(GetExternalCode)
         GetExternalCode(
             GIT_REPOSITORY "git@github.com:WebPlatformForEmbedded/ICrypto-Nexus.git"
-            GIT_TAG "master"
+            GIT_VERSION "master" #commit_id_or_tag_or_branch_name
             SOURCE_DIR "Nexus"
         )
         add_subdirectory(Nexus)

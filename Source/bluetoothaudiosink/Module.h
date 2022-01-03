@@ -16,13 +16,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #pragma once
 
 #ifndef MODULE_NAME
-#define MODULE_NAME ClientLibrary_DisplayInfo
+#define MODULE_NAME ClientLibrary_BluetoothAudioSink
 #endif
 
 #include <com/com.h>
 #include <core/core.h>
+#include <plugins/plugins.h>
 #include <tracing/tracing.h>
-#include <websocket/websocket.h>

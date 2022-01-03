@@ -117,40 +117,38 @@ namespace Wayland {
             SurfaceImplementation(Display& compositor, const std::string& name, const uint32_t width, const uint32_t height);
             SurfaceImplementation(Display& compositor, const uint32_t id, const char* name);
             SurfaceImplementation(Display& compositor, const uint32_t id, struct wl_surface* surface);
-            virtual ~SurfaceImplementation()
-            {
-            }
+            virtual ~SurfaceImplementation();
 
         public:
-            virtual void AddRef() const override
+            void AddRef() const override
             {
                 _refcount++;
                 return;
             }
-            virtual uint32_t Release() const override
+            uint32_t Release() const override
             {
                 if (--_refcount == 0) {
                     delete const_cast<SurfaceImplementation*>(this);
                 }
                 return (0);
             }
-            virtual EGLNativeWindowType Native() const override
+            EGLNativeWindowType Native() const override
             {
                 return (reinterpret_cast<EGLNativeWindowType>(_native));
             }
-            virtual std::string Name() const override
+            std::string Name() const override
             {
                 return _name;
             }
-            virtual int32_t Height() const override
+            int32_t Height() const override
             {
                 return (_height);
             }
-            virtual int32_t Width() const override
+            int32_t Width() const override
             {
                 return (_width);
             }
-            virtual void Keyboard(IKeyboard* keyboard) override
+            void Keyboard(IKeyboard* keyboard) override
             {
                 assert((_keyboard == nullptr) ^ (keyboard == nullptr));
                 _keyboard = keyboard;
@@ -160,7 +158,7 @@ namespace Wayland {
                     _keyboard->KeyMap(mapping.c_str(), mapping.length());
                 }
             }
-            inline uint32_t Id() const
+            inline uint32_t Id() const override
             {
                 return (_id);
             }
@@ -172,20 +170,9 @@ namespace Wayland {
             {
                 return (_opacity);
             }
-            inline uint32_t ZOrder() const
+            inline uint32_t ZOrder() const override
             {
                 return (_ZOrder);
-            }
-            inline void Position(const uint32_t X, const uint32_t Y, const uint32_t height, const uint32_t width)
-            {
-                _adminLock.Lock();
-                if (_display != nullptr) {
-
-                    // Resize the surface
-                    _height = height;
-                    _width = width;
-                }
-                _adminLock.Unlock();
             }
             inline void Name(const char* name)
             {
@@ -193,7 +180,7 @@ namespace Wayland {
                     _name = name;
                 }
             }
-            void Pointer(IPointer* pointer)
+            void Pointer(IPointer* pointer) override
             {
                 assert((_pointer == nullptr) ^ (pointer == nullptr));
                 _pointer = pointer;
@@ -205,25 +192,17 @@ namespace Wayland {
                 }
             }
             bool Connect(const EGLSurface& surface);
-            void Unlink();
-            void Resize(const int x, const int y, const int width, const int height);
-            void Dimensions(
-                const uint32_t visible,
-                const int32_t x, const int32_t y, const int32_t width, const int32_t height,
-                const uint32_t opacity,
-                const uint32_t zorder);
-            void Callback(wl_callback_listener* listener, void* data);
-            void Visibility(const bool visible);
-            void Opacity(const uint32_t opacity);
-            void ZOrder(const uint32_t order);
-            void BringToFront();
+            uint32_t ZOrder(const uint16_t order) override;
+            void Opacity(const uint32_t opacity) override;
+            void Visibility(const bool visible) override;
+            void Resize(const int x, const int y, const int w, const int h) override;
+            void Dimensions(const uint32_t visible,
+                 const int32_t x, const int32_t y, const int32_t width, const int32_t height,
+                 const uint32_t opacity, const uint32_t zorder);
 
         private:
-            inline const bool UpScale() const
-            {
-                return _upScale;
-            }
             void Redraw();
+            void Unlink();
 
         public:
             // Called by C interface methods. A bit to much overkill to actually make the private and all kind
@@ -232,8 +211,6 @@ namespace Wayland {
 
             struct xdg_surface *_xdg_surface;
             struct xdg_toplevel *_xdg_toplevel;
-
-            bool _wait_for_configure;
 
         private:
             friend Display;
@@ -251,12 +228,10 @@ namespace Wayland {
             uint32_t _ZOrder;
             Display* _display;
             struct wl_egl_window* _native;
-            struct wl_callback* _frameCallback;
             struct wl_shell_surface* _shellSurface;
             EGLSurface _eglSurfaceWindow;
             IKeyboard* _keyboard;
             IPointer* _pointer;
-            const bool _upScale;
         };
 
         class ImageImplementation {
@@ -303,16 +278,20 @@ namespace Wayland {
         Display(const std::string& displayName)
             : _display(nullptr)
             , _registry(nullptr)
+            , _seat_name(0)
             , _seat(nullptr)
-            , _simpleShell(nullptr)
+            , _seat_registry(nullptr)
+            , _output_name(0)
             , _output(nullptr)
+            , _output_registry(nullptr)
+            , _simpleShell(nullptr)
             , _keyboard(nullptr)
             , _pointer(nullptr)
             , _touch(nullptr)
             , _shell(nullptr)
             , _trigger()
             , _redraw()
-            , _tid()
+            , _tid(0)
             , _displayName(displayName)
             , _displayId()
             , _keyboardReceiver(nullptr)
@@ -361,8 +340,8 @@ namespace Wayland {
                 : _implementation(nullptr)
             {
             }
-            inline Surface(SurfaceImplementation& impl)
-                : _implementation(&impl)
+            inline Surface(Compositor::IDisplay::ISurface* impl)
+                : _implementation(impl)
             {
                 _implementation->AddRef();
             }
@@ -430,18 +409,12 @@ namespace Wayland {
             inline void ZOrder(const uint32_t order)
             {
                 assert(IsValid() == true);
-                return (_implementation->ZOrder(order));
+                _implementation->ZOrder(order);
             }
-            inline const bool UpScale()
+            inline void Resize(const int x, const int y, const int w, const int h)
             {
                 assert(IsValid() == true);
-                return (_implementation->UpScale());
-            }
-
-            inline void Position(const uint32_t X, const uint32_t Y, const uint32_t height, const uint32_t width)
-            {
-                assert(IsValid() == true);
-                _implementation->Position(X, Y, height, width);
+                _implementation->Resize(x, y, w, h);
             }
             inline void Keyboard(IKeyboard* keyboard)
             {
@@ -467,34 +440,14 @@ namespace Wayland {
                     _implementation = nullptr;
                 }
             }
-            inline void Callback(wl_callback_listener* listener, void* data = nullptr)
-            {
-                assert(IsValid() == true);
-                _implementation->Callback(listener, data);
-            }
-            inline void Resize(const int x, const int y, const int width, const int height)
-            {
-                assert(IsValid() == true);
-                _implementation->Resize(x, y, width, height);
-            }
-            inline void BringToFront()
-            {
-                assert(IsValid() == true);
-                _implementation->BringToFront();
-            }
             inline EGLNativeWindowType Native() const
             {
                 assert(IsValid() == true);
                 return (_implementation->Native());
             }
-            inline void Unlink()
-            {
-                assert(IsValid() == true);
-                return _implementation->Unlink();
-            }
 
         private:
-            SurfaceImplementation* _implementation;
+            Compositor::IDisplay::ISurface* _implementation;
         };
 
         class Image {
@@ -582,35 +535,36 @@ namespace Wayland {
         virtual uint32_t Release() const;
 
         // Methods
-        virtual EGLNativeDisplayType Native() const override
+        EGLNativeDisplayType Native() const override
         {
             return (reinterpret_cast<EGLNativeDisplayType>(_display));
         }
-        virtual const std::string& Name() const override
+        const std::string& Name() const override
         {
             return (_displayName);
         }
-        virtual int FileDescriptor() const override;
-        virtual int Process(const uint32_t data) override;
-        virtual ISurface* Create(const std::string& name, const uint32_t width, const uint32_t height) override;
-	virtual ISurface* SurfaceByName(const std::string& name) override
-	{
-	    //iterate through waylandsurface map return wl_surface with matching name
-	    _adminLock.Lock();
+        int FileDescriptor() const override;
+        int Process(const uint32_t data) override;
+        ISurface* Create(const std::string& name, const uint32_t width, const uint32_t height) override;
+        ISurface* SurfaceByName(const std::string& name) override
+        {
+            //iterate through waylandsurface map return wl_surface with matching name
+            _adminLock.Lock();
 
-	    WaylandSurfaceMap::iterator entry(_waylandSurfaces.begin());
+            WaylandSurfaceMap::iterator entry(_waylandSurfaces.begin());
 
-	    while (entry != _waylandSurfaces.end()) {
-	      if (entry->second->Name().compare(name) == 0) {
-	        _adminLock.Unlock();
-	        //return iSurface to upper layers
-	        return entry->second;
-	      }
-	      entry++;
-	    }
-	    _adminLock.Unlock();
-	    return nullptr;
-	}
+            while (entry != _waylandSurfaces.end()) {
+                if (entry->second->Name().compare(name) == 0) {
+                    _adminLock.Unlock();
+                    //return iSurface to upper layers
+                    return entry->second;
+                }
+                entry++;
+            }
+            _adminLock.Unlock();
+            return nullptr;
+        }
+
         inline bool IsOperational() const
         {
             return (_display != nullptr);
@@ -645,7 +599,7 @@ namespace Wayland {
             SurfaceMap::iterator index(_surfaces.find(id));
 
             if (index != _surfaces.end()) {
-                surface = Surface(*(index->second));
+                surface = Surface(index->second);
             } else {
                 surface.Release();
             }
@@ -685,7 +639,7 @@ namespace Wayland {
 
         void InitializeEGL();
         void Constructed(const uint32_t id, wl_surface* surface);
-        void Constructed(const uint32_t id, const char* name);
+        void Constructed(const uint32_t id, const char* name = nullptr);
         void Destructed(const uint32_t id);
         void Dimensions(
             const uint32_t id, const uint32_t visible, const int32_t x, const int32_t y, const int32_t width,
@@ -699,11 +653,9 @@ namespace Wayland {
                 if (state == false) {
                     if (_keyboardReceiver == index->second) {
                         _keyboardReceiver = nullptr;
-                        printf("%s:%d disable keyboard input\n", __FILE__, __LINE__);
                     }
                 } else {
                     _keyboardReceiver = index->second;
-                    printf("%s:%d PID=%d enabled keyboard input _keyboardReceiver=%p\n", __FILE__, __LINE__, getpid(), _keyboardReceiver);
                 }
             }
             _adminLock.Unlock();
@@ -741,7 +693,7 @@ namespace Wayland {
 
             _adminLock.Unlock();
         }
-        void Key(const uint32_t key, const IKeyboard::state action, const uint32_t time)
+        void Key(const uint32_t key, const IKeyboard::state action, const uint32_t)
         {
             _adminLock.Lock();
 
@@ -800,9 +752,13 @@ namespace Wayland {
         struct wl_display* _display;
         struct wl_registry* _registry;
         struct wl_compositor* _compositor;
+        uint32_t _seat_name;
         struct wl_seat* _seat;
-        struct wl_simple_shell* _simpleShell;
+        struct wl_registry* _seat_registry;
+        uint32_t _output_name;
         struct wl_output* _output;
+        struct wl_registry* _output_registry;
+        struct wl_simple_shell* _simpleShell;
         struct wl_keyboard* _keyboard;
         struct wl_pointer* _pointer;
         struct wl_touch* _touch;

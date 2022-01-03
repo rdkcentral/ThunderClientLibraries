@@ -56,7 +56,7 @@ public:
     DisplayInfo& operator=(const DisplayInfo&) = delete;
 
 private:
-    void DisplayOutputUpdated(const Exchange::IConnectionProperties::INotification::Source event)
+    void DisplayOutputUpdated(VARIABLE_IS_NOT_USED const Exchange::IConnectionProperties::INotification::Source event)
     {
         for (auto& index : _displayChangeCallbacks) {
             index.first(index.second);

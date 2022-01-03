@@ -2,7 +2,7 @@
  * If not stated otherwise in this file or this component's LICENSE file the
  * following copyright and licenses apply:
  *
- * Copyright 2020 RDK Management
+ * Copyright 2020 Metrological
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,14 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+
+#ifdef __GNUC__
+#define VARIABLE_IS_NOT_USED __attribute__((unused))
+#elif defined(_MSC_VER)
+#define VARIABLE_IS_NOT_USED
+#else
+#define VARIABLE_IS_NOT_USED
+#endif
 
 #define Trace(fmt, ...)                                 \
     do {                                                \
@@ -50,17 +58,17 @@ void show_menu()
            "\tQ : Quit\n");
 }
 
-void on_dolby_event(void* data)
+void on_dolby_event(VARIABLE_IS_NOT_USED void* data)
 {
     Trace("Dolby event triggered");
 }
 
-void on_operational_state_change(bool is_operational, void* data)
+void on_operational_state_change(bool is_operational, VARIABLE_IS_NOT_USED void* data)
 {
     Trace("Operational state of the instance %s operational", is_operational ? "is" : "not");
 }
 
-int main(int argc, char* argv[])
+int main()
 {
     playerinfo_videocodec_t videoCodecs[BUFFER_LENGTH];
     playerinfo_audiocodec_t audioCodecs[BUFFER_LENGTH];

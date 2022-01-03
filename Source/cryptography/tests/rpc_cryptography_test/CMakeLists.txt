@@ -1,4 +1,4 @@
-# If not stated otherwise in this file or this component's license file the
+# If not stated otherwise in this file or this component's LICENSE file the
 # following copyright and licenses apply:
 #
 # Copyright 2020 Metrological
@@ -32,6 +32,7 @@ target_link_libraries(${TARGET}
     PRIVATE
         GTest::GTest
         ${NAMESPACE}Cryptography
+        ${NAMESPACE}COM
 )
 
 install(TARGETS ${TARGET}  

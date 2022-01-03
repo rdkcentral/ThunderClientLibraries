@@ -1,8 +1,7 @@
-#
 # If not stated otherwise in this file or this component's LICENSE file the
 # following copyright and licenses apply:
 #
-# Copyright 2020 Metrological
+# Copyright 2021 Metrological
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,19 +14,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
 
-add_executable(device_info main.c)
+project(btaudioplayer)
 
-target_include_directories(device_info 
-    PRIVATE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../include>
-        $<INSTALL_INTERFACE:include/deviceinfo.h> 
+set(TARGET ${PROJECT_NAME})
+
+cmake_minimum_required(VERSION 3.0)
+
+add_executable(${PROJECT_NAME}
+    main.c
 )
 
-target_link_libraries(device_info
+target_include_directories(btaudioplayer
     PRIVATE
-        deviceinfo)
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../include>
+        $<INSTALL_INTERFACE:include/bluetoothaudiosink>
+)
 
-install(TARGETS device_info 
-    DESTINATION bin)
+target_link_libraries(${TARGET}
+    PUBLIC
+        bluetoothaudiosink
+        pthread
+)
+
+install(TARGETS ${PROJECT_NAME} DESTINATION bin)
