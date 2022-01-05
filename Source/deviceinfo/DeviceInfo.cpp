@@ -155,16 +155,14 @@ private:
 
         PluginHost::IShell* ControllerInterface = BaseClass::ControllerInterface();
 
-        ASSERT (ControllerInterface!= nullptr);
+        if(ControllerInterface!= nullptr) {
 
-        _subsysInterface = ControllerInterface->SubSystems();
+            _subsysInterface = ControllerInterface->SubSystems();
 
-        ASSERT (_subsysInterface!= nullptr);
-
-        if (_subsysInterface != nullptr) {
-            _identifierInterface = _subsysInterface->Get<PluginHost::ISubSystem::IIdentifier>();
+            if (_subsysInterface != nullptr) {
+                _identifierInterface = _subsysInterface->Get<PluginHost::ISubSystem::IIdentifier>();
+            }
         }
-        ASSERT (_identifierInterface!= nullptr);
     }
 
 public:
