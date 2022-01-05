@@ -52,6 +52,8 @@ else()
     add_subdirectory (${PLUGIN_COMPOSITOR_IMPLEMENTATION})
 endif()
 
+target_sources(${TARGET} PRIVATE ../Module.cpp)
+
 install(
 	FILES Client.h
         DESTINATION include/${NAMESPACE}/compositor
