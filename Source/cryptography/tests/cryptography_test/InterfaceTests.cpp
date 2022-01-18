@@ -335,22 +335,22 @@ int main(int argc, char **argv)
 	for( int i= 1; i < argc; ++i )
 	{
 	    len = strlen(argv[i]);
-	    if ( (len == 9) && !strncmp( (const char*)argv[i], "--NETFLIX", len) )
+	    if ( (len == 9) && !strncmp( (const char*)argv[i], "--netflix", len) )
             {
 		 printf("\nAcquiring Netflix instance\n");
                  vault = cg->Vault(cryptographyvault::CRYPTOGRAPHY_VAULT_NETFLIX);
             }
-	    else if ( (len == 9) && !strncmp( (const char*)argv[i], "--DEFAULT", len) )
+	    else if ( (len == 9) && !strncmp( (const char*)argv[i], "--default", len) )
             {
 		 printf("\nAcquiring DEFAULT instance\n");
 	         vault = cg->Vault(cryptographyvault::CRYPTOGRAPHY_VAULT_DEFAULT);
             }
-	    else if ( (len == 10) && !strncmp( (const char*)argv[i], "--PLATFORM", len) )
+	    else if ( (len == 10) && !strncmp( (const char*)argv[i], "--platform", len) )
             {
 		 printf("\nAcquiring PLATFORM instance\n");
 		 vault = cg->Vault(cryptographyvault::CRYPTOGRAPHY_VAULT_PLATFORM);
 	    }
-	    else if ( (len == 21) && !strncmp( (const char*)argv[i], "--testDefaultInstance", len) )
+	    else if ( (len == 21) && !strncmp( (const char*)argv[i], "--testdefaultinstance", len) )
             {
 #ifdef SecApi
 		 printf("\nAcquiring DEFAULT instance for SecApi\n");
