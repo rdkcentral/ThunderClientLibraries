@@ -19,7 +19,7 @@
 
 // TOOD: glSetViewPort baseed on surface
 
-#include "Module.h"
+#include "../Module.h"
 
 // TODO: This flag should be included in the preprocessor flags
 #define __GBM__
@@ -221,6 +221,10 @@ namespace RPI_INTERNAL {
 #define _EGL_NO_SYNC EGL_NO_SYNC
 #define _EGL_FOREVER EGL_FOREVER
 #define _EGL_NO_IMAGE EGL_NO_IMAGE
+#define _EGL_CONDITION_SATISFIED EGL_CONDITION_SATISFIED
+#define _EGL_SYNC_STATUS EGL_SYNC_STATUS
+#define _EGL_SIGNALED EGL_SIGNALED
+#define _EGL_SYNC_FLUSH_COMMANDS_BIT EGL_SYNC_FLUSH_COMMANDS_BIT
 #else
 #define _KHRFIX(left, right) left ## right
 #define KHRFIX(name) _KHRFIX(name, KHR)
@@ -228,6 +232,10 @@ namespace RPI_INTERNAL {
 #define _EGL_NO_SYNC EGL_NO_SYNC_KHR
 #define _EGL_FOREVER EGL_FOREVER_KHR
 #define _EGL_NO_IMAGE EGL_NO_IMAGE_KHR
+#define _EGL_CONDITION_SATISFIED EGL_CONDITION_SATISFIED_KHR
+#define _EGL_SYNC_FLUSH_COMMANDS_BIT EGL_SYNC_FLUSH_COMMANDS_BIT_KHR
+#define _EGL_SIGNALED EGL_SIGNALED_KHR
+#define _EGL_SYNC_STATUS EGL_SYNC_STATUS_KHR
                 using EGLAttrib = EGLint;
 #endif
                 using EGLuint64KHR = khronos_uint64_t;
@@ -247,13 +255,16 @@ namespace RPI_INTERNAL {
                     public :
 // TODO: calling Supported is expensive, sync objects are heavily used
                         explicit Sync (dpy_t & dpy) : _dpy {dpy} {
-//                            assert (dpy != InvalidDpy ());
+                            static bool _supported = EGL::Supported (_dpy, "EGL_KHR_fence_sync") != false;
 
-                            _sync = ( EGL::Supported (dpy, "EGL_KHR_fence_sync") && dpy != InvalidDpy () ) != false ? KHRFIX (eglCreateSync) (dpy, _EGL_SYNC_FENCE, nullptr) : InvalidSync ();
+                            assert (_supported != false);
+                            assert (dpy != InvalidDpy ());
+
+
+                            _sync = ( _supported && _dpy != InvalidDpy () ) != false ? KHRFIX (eglCreateSync) (_dpy, _EGL_SYNC_FENCE, nullptr) : InvalidSync ();
                         }
 
                         ~Sync () {
-
                             if (_sync == InvalidSync ()) {
                                 // Error creating sync object or unable to create one
                                 glFinish ();
@@ -261,13 +272,31 @@ namespace RPI_INTERNAL {
                             else {
                                 glFlush ();
 
-                                EGLint _val = KHRFIX (eglClientWaitSync) (_dpy, _sync, 0 /* no flags */ , _EGL_FOREVER);
+                                EGLint _val = static_cast <EGLint> ( KHRFIX (eglClientWaitSync) (_dpy, _sync, _EGL_SYNC_FLUSH_COMMANDS_BIT, _EGL_FOREVER) );
+
+                                if (_val == static_cast <EGLint> (EGL_FALSE) || _val != static_cast <EGLint> (_EGL_CONDITION_SATISFIED)) {
+                                    EGLAttrib _status;
+
+                                    bool _ret = KHRFIX (eglGetSyncAttrib) (_dpy, _sync, _EGL_SYNC_STATUS, &_status) != EGL_FALSE;
+
+                                    _ret = _ret && _status == _EGL_SIGNALED;
+
+                                    // Assert on error
+                                    if (_ret != true) {
+                                        TRACE (Trace::Error, (_T ("EGL: synchronization primitive")) );
+                                        assert (false);
+                                    }
+                                }
+
+
+                                /* EGLBoolean */ _val = static_cast <EGLint> ( KHRFIX (eglDestroySync) (_dpy, _sync) );
 
                                 if (_val != EGL_TRUE) {
                                     // Error
                                 }
 
                                 // Consume the (possible) error
+                                /* ELGint */ glGetError ();
                                 /* ELGint */ eglGetError ();
                             }
                         }
@@ -1251,7 +1280,7 @@ private:
 
 
 // TODO:
-                constexpr bool _enable = true;
+                constexpr bool _enable = false;
 
                 if ( ( _narrowing < n_width_t, e_width_t, _enable > :: value
                       && _narrowing < n_height_t, e_height_t, _enable > :: value ) != false
@@ -1581,20 +1610,16 @@ private:
             // If we are in the same process space as where a WorkerPool is registered (Main Process or
             // hosting process) use, it!
             Core::ProxyType<RPC::InvokeServer> engine = Core::ProxyType<RPC::InvokeServer>::Create(&Core::WorkerPool::Instance());
-            ASSERT(static_cast<Core::IReferenceCounted*>(engine) != nullptr);
 
             _compositerServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(Connector(), Core::ProxyType<Core::IIPCServer>(engine));
-            ASSERT(_compositerServerRPCConnection != nullptr);
 
             engine->Announcements(_compositerServerRPCConnection->Announcement());
         } else {
             // Seems we are not in a process space initiated from the Main framework process or its hosting process.
             // Nothing more to do than to create a workerpool for RPC our selves !
             Core::ProxyType<RPC::InvokeServerType<2,0,8>> engine = Core::ProxyType<RPC::InvokeServerType<2,0,8>>::Create();
-            ASSERT(engine != nullptr);
 
             _compositerServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(Connector(), Core::ProxyType<Core::IIPCServer>(engine));
-            ASSERT(_compositerServerRPCConnection != nullptr);
 
             engine->Announcements(_compositerServerRPCConnection->Announcement());
         }
@@ -1892,8 +1917,6 @@ int Display::Process(const uint32_t)
     static decltype (_milli) _rate = RefreshRateFromResolution ( ( _remoteDisplay != nullptr ? _remoteDisplay->Resolution () : Exchange::IComposition::ScreenResolution_Unknown ) );
     static std::chrono::milliseconds _delay = std::chrono::milliseconds (_milli / _rate);
 
-// TODO: move to scanout ?
-
     // Delay the (free running) loop
     auto _current_time = std::chrono::steady_clock::now ();
 
@@ -1902,33 +1925,30 @@ int Display::Process(const uint32_t)
     auto _duration = std::chrono::duration_cast < std::chrono::milliseconds > (_current_time - _last_access_time);
 
     if (_duration.count () < _delay .count () ) {
-        std::this_thread::sleep_for( std::chrono::milliseconds (_delay - _duration) );
-    }
-    else {
+        // skip frame, the client is creating frames at a too high rate
+	std::this_thread::sleep_for( std::chrono::milliseconds (_delay - _duration) );
     }
 
-    _last_access_time = _current_time;
-
-    // Scan out all surfaces belonging to this display
+        // Scan out all surfaces belonging to this display
 // TODO: only scan out the surface that actually has completed or the client should be made aware that all surfaces should be completed at the time of calling
 // TODO: This flow introduces artefacts
-    for (auto _begin = _surfaces.begin (), _it = _begin, _end = _surfaces.end (); _it != _end; _it++) {
+    _last_access_time = _current_time;
 
+    for (auto _begin = _surfaces.begin (), _it = _begin, _end = _surfaces.end (); _it != _end; _it++) {
         // THe way the API has been constructed limits the optimal syncing strategy
 
         (*_it)->PreScanOut ();  // will render
 
-        // At least fails the very first time
+            // At least fails the very first time
         bool  ret = (*_it)->SyncPrimitiveEnd ();
-//            assert (ret != false);
+//        assert (ret != false);
 
-        (*_it)->ScanOut ();     // actual scan out (at the remote site)
+        (*_it)->ScanOut (); // actual scan out (at the remote site)
 
         ret = (*_it)->SyncPrimitiveStart ();
-//            assert (ret != false);
+//        assert (ret != false);
 
         (*_it)->PostScanOut (); // rendered
-
     }
 
     return (0);
@@ -1967,7 +1987,7 @@ static uint32_t WidthFromResolution (Exchange::IComposition::ScreenResolution co
                                                                     _width = 720; break;
         case Exchange::IComposition::ScreenResolution_720p      :   // 1280x720 progressive
         case Exchange::IComposition::ScreenResolution_720p50Hz  :   // 1280x720 @ 50 Hz
-                                                                    _width = 720; break;
+                                                                    _width = 1280; break;
         case Exchange::IComposition::ScreenResolution_1080p24Hz :   // 1920x1080 progressive @ 24 Hz
         case Exchange::IComposition::ScreenResolution_1080i50Hz :   // 1920x1080 interlaced  @ 50 Hz
         case Exchange::IComposition::ScreenResolution_1080p50Hz :   // 1920x1080 progressive @ 50 Hz
