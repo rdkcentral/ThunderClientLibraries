@@ -30,7 +30,6 @@ private:
     using BaseClass = RPC::SmartInterfaceType<Exchange::IConnectionProperties>;
     using DisplayOutputUpdatedCallbacks = std::map<displayinfo_display_output_change_cb, void*>;
     using OperationalStateChangeCallbacks = std::map<displayinfo_operational_state_change_cb, void*>;
-    friend class WPEFramework::Core::SingletonType<DisplayInfo>;
 
     //CONSTRUCTORS
     #ifdef __WINDOWS__

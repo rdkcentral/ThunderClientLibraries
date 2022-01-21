@@ -126,7 +126,6 @@ class DeviceInfoLink : public WPEFramework::RPC::SmartInterfaceType<WPEFramework
 private:
     using BaseClass = WPEFramework::RPC::SmartInterfaceType<WPEFramework::Exchange::IDeviceCapabilities>;
 
-    friend class WPEFramework::Core::SingletonType<DeviceInfoLink>;
     DeviceInfoLink()
         : BaseClass()
         , _lock()
