@@ -59,7 +59,7 @@ struct xdg_toplevel;
 namespace WPEFramework {
 namespace Wayland {
 
-    class Display : public Compositor::IDisplay {
+    class EXTERNAL Display : public Compositor::IDisplay {
     public:
         struct ICallback {
             virtual ~ICallback() {}
