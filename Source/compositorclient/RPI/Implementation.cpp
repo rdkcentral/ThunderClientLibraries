@@ -1675,6 +1675,7 @@ private:
         }
 
         if (_compositerServerRPCConnection.IsValid() == true) {
+            _compositerServerRPCConnection->Close (RPC::CommunicationTimeOut);
             _compositerServerRPCConnection.Release();
         }
     }
@@ -1792,12 +1793,12 @@ Display::SurfaceImplementation::~SurfaceImplementation()
 
         if(_remoteRenderer != nullptr) {
             auto result = _remoteRenderer->Release ();
-            ASSERT (result == Core::ERROR_DESTRUCTION_SUCCEEDED);
+//            ASSERT (result == Core::ERROR_DESTRUCTION_SUCCEEDED);
             _remoteRenderer = nullptr;
         }
 
         auto result = _remoteClient->Release ();
-        ASSERT (result == Core::ERROR_DESTRUCTION_SUCCEEDED);
+//        ASSERT (result == Core::ERROR_DESTRUCTION_SUCCEEDED);
         _remoteClient = nullptr;
 
     }
