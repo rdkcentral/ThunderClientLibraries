@@ -249,7 +249,7 @@ namespace BluetoothAudioSinkClient {
     public:
         static AudioSink& Instance()
         {
-            AudioSink* instance = new AudioSink("BluetoothAudioSink");
+            static AudioSink* instance = new AudioSink("BluetoothAudioSink");
             ASSERT(instance!=nullptr);
             return *instance;
         }

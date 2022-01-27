@@ -57,7 +57,7 @@ namespace Implementation {
         }
         static CryptographyLink& Instance(const std::string& callsign = Callsign)
         {
-            CryptographyLink *instance = new CryptographyLink(TimeOut, PluginConnector, callsign);
+            static CryptographyLink *instance = new CryptographyLink(TimeOut, PluginConnector, callsign);
             ASSERT(instance!=nullptr);
             return *instance;
         }

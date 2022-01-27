@@ -136,7 +136,7 @@ public:
 
     static PlayerInfo& Instance()
     {
-        PlayerInfo* instance = new PlayerInfo("PlayerInfo");
+        static PlayerInfo* instance = new PlayerInfo("PlayerInfo");
         ASSERT(instance!=nullptr);
         return *instance;
     }
