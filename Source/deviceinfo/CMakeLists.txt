@@ -45,7 +45,6 @@ target_link_libraries(${TARGET}
           ${NAMESPACE}Core::${NAMESPACE}Core
           ${NAMESPACE}Tracing::${NAMESPACE}Tracing
           ${NAMESPACE}COM::${NAMESPACE}COM
-          ${NAMESPACE}Connector::${NAMESPACE}Connector
           CompileSettingsDebug::CompileSettingsDebug
         )
 
