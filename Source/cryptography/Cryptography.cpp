@@ -46,6 +46,8 @@ namespace Implementation {
             : BaseClass()
             , _adminLock()
         {
+            ASSERT(_singleton==nullptr);
+            _singleton=this;
             BaseClass::Open(waitTime, thunder, callsign);
         }
         ~CryptographyLink() override
@@ -55,7 +57,18 @@ namespace Implementation {
         }
         static CryptographyLink& Instance(const std::string& callsign = Callsign)
         {
-            return Core::SingletonType<CryptographyLink>::Instance(TimeOut, PluginConnector, callsign);
+            static CryptographyLink *instance = new CryptographyLink(TimeOut, PluginConnector, callsign);
+            ASSERT(instance!=nullptr);
+            return *instance;
+        }
+        static void Dispose()
+        {
+            ASSERT(_singleton != nullptr);
+
+            if(_singleton != nullptr)
+            {
+                delete _singleton;
+            }
         }
         Cryptography::ICryptography* Aquire(const Core::NodeId& nodeId)
         {
@@ -81,7 +94,10 @@ namespace Implementation {
     private:
         mutable Core::CriticalSection _adminLock;
         Core::ProxyListType<Core::IUnknown> _interfaces;
+        static CryptographyLink* _singleton;
     };
+
+    CryptographyLink* CryptographyLink::_singleton = nullptr;
 
     class RPCDiffieHellmanImpl : public Cryptography::IDiffieHellman {
     public:

@@ -31,6 +31,7 @@ find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
 find_package(${NAMESPACE}Tracing REQUIRED)
 find_package(${NAMESPACE}COM REQUIRED)
+find_package(${NAMESPACE}Connector REQUIRED)
 
 set(PUBLIC_HEADERS "include/playerinfo.h")
 
@@ -44,6 +45,7 @@ target_link_libraries(${TARGET}
           ${NAMESPACE}Core::${NAMESPACE}Core
           ${NAMESPACE}Tracing::${NAMESPACE}Tracing
           ${NAMESPACE}COM::${NAMESPACE}COM
+          ${NAMESPACE}Connector::${NAMESPACE}Connector
           CompileSettingsDebug::CompileSettingsDebug
         )
 

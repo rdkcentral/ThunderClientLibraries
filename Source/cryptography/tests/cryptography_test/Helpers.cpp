@@ -200,7 +200,7 @@ bool DHAuthenticatedDerive(DH* dh, const uint16_t secretSize, const uint8_t secr
 
 void Teardown()
 {
-    WPEFramework::Core::Singleton::Dispose();
+    WPEFramework::Implementation::CryptographyLink::Dispose();
 }
 
 } // extern "C"

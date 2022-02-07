@@ -126,7 +126,6 @@ class DeviceInfoLink : public WPEFramework::RPC::SmartInterfaceType<WPEFramework
 private:
     using BaseClass = WPEFramework::RPC::SmartInterfaceType<WPEFramework::Exchange::IDeviceCapabilities>;
 
-    friend class WPEFramework::Core::SingletonType<DeviceInfoLink>;
     DeviceInfoLink()
         : BaseClass()
         , _lock()
@@ -151,6 +150,10 @@ private:
         , _id()
         , _hdr_atmos_cec(0)
     {
+        ASSERT(_singleton==nullptr);
+        
+        _singleton = this;
+        
         BaseClass::Open(RPC::CommunicationTimeOut, BaseClass::Connector(), Callsign());
 
         PluginHost::IShell* ControllerInterface = BaseClass::ControllerInterface();
@@ -179,10 +182,23 @@ public:
             _identifierInterface = nullptr;
         }
         BaseClass::Close(WPEFramework::Core::infinite);
+        _singleton = nullptr;
     }
     static DeviceInfoLink& Instance()
     {
-        return WPEFramework::Core::SingletonType<DeviceInfoLink>::Instance();
+        static DeviceInfoLink *instance = new DeviceInfoLink;
+        ASSERT(instance!=nullptr);
+        return *instance;
+    }
+
+    static void Dispose()
+    {
+        ASSERT(_singleton != nullptr);
+
+        if(_singleton != nullptr)
+        {
+            delete _singleton;
+        }
     }
 
 private:
@@ -974,7 +990,11 @@ private:
     std::vector<deviceinfo_video_output_t> _videoOutput;
     std::vector<uint8_t> _id;
     uint8_t _hdr_atmos_cec;
+    static DeviceInfoLink* _singleton;
 };
+
+DeviceInfoLink* DeviceInfoLink::_singleton = nullptr;
+
 
 }// nameless namespace
 
@@ -1081,7 +1101,7 @@ uint32_t deviceinfo_platform_name(char buffer[], uint8_t* length)
 
 
 void deviceinfo_dispose() {
-    Core::Singleton::Dispose();
+    DeviceInfoLink::Dispose();
 }
 
 } // extern "C"

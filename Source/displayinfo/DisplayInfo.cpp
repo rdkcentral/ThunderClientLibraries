@@ -30,7 +30,6 @@ private:
     using BaseClass = RPC::SmartInterfaceType<Exchange::IConnectionProperties>;
     using DisplayOutputUpdatedCallbacks = std::map<displayinfo_display_output_change_cb, void*>;
     using OperationalStateChangeCallbacks = std::map<displayinfo_operational_state_change_cb, void*>;
-    friend class WPEFramework::Core::SingletonType<DisplayInfo>;
 
     //CONSTRUCTORS
     #ifdef __WINDOWS__
@@ -44,6 +43,9 @@ private:
         , _callsign(callsign)
         , _displayUpdatedNotification(this)
     {
+        ASSERT(_singleton==nullptr);
+        _singleton = this;
+
         BaseClass::Open(RPC::CommunicationTimeOut, BaseClass::Connector(), callsign);
     }
     #ifdef __WINDOWS__
@@ -51,7 +53,6 @@ private:
     #endif
 
 public:
-    DisplayInfo() = delete;
     DisplayInfo(const DisplayInfo&) = delete;
     DisplayInfo& operator=(const DisplayInfo&) = delete;
 
@@ -135,17 +136,31 @@ private:
     DisplayOutputUpdatedCallbacks _displayChangeCallbacks;
     OperationalStateChangeCallbacks _operationalStateCallbacks;
     Core::Sink<Notification> _displayUpdatedNotification;
+    static DisplayInfo* _singleton;
 
 public:
     //OBJECT MANAGEMENT
     ~DisplayInfo()
     {
         BaseClass::Close(Core::infinite);
+        _singleton = nullptr;
     }
 
     static DisplayInfo& Instance()
     {
-        return WPEFramework::Core::SingletonType<DisplayInfo>::Instance("DisplayInfo");
+        static DisplayInfo *instance = new DisplayInfo("DisplayInfo");
+        ASSERT(instance!=nullptr);
+        return *instance;
+    }
+
+    static void Dispose()
+    {
+        ASSERT(_singleton != nullptr);
+
+        if(_singleton != nullptr)
+        {
+            delete _singleton;
+        }
     }
 
 public:
@@ -346,6 +361,8 @@ public:
         return errorCode;
     }
 };
+
+DisplayInfo* DisplayInfo::_singleton = nullptr;
 } // namespace WPEFramework
 
 using namespace WPEFramework;
@@ -567,7 +584,7 @@ bool displayinfo_is_atmos_supported()
 
 void displayinfo_dispose()
 {
-    Core::Singleton::Dispose();
+    DisplayInfo::Dispose();
 }
 
 } // extern "C"
