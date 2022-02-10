@@ -44,10 +44,10 @@ struct CipherImplementation* cipher_create_aes(const struct VaultImplementation*
 void cipher_destroy(struct CipherImplementation* cipher);
 
 
-uint32_t cipher_encrypt(const struct CipherImplementation* cipher, const uint8_t iv_length, const uint8_t iv[],
+int32_t cipher_encrypt(const struct CipherImplementation* cipher, const uint8_t iv_length, const uint8_t iv[],
                         const uint32_t input_length, const uint8_t input[], const uint32_t max_output_length, uint8_t output[]);
 
-uint32_t cipher_decrypt(const struct CipherImplementation* cipher, const uint8_t iv_length, const uint8_t iv[],
+int32_t cipher_decrypt(const struct CipherImplementation* cipher, const uint8_t iv_length, const uint8_t iv[],
                         const uint32_t input_length, const uint8_t input[], const uint32_t max_output_length, uint8_t output[]);
 
 #ifdef __cplusplus

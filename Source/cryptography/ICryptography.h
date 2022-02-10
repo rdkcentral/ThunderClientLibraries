@@ -76,12 +76,12 @@ namespace Cryptography {
         virtual ~ICipher() { }
 
         /* Encrypt data */
-        virtual uint32_t Encrypt(const uint8_t ivLength, const uint8_t iv[] /* @length:ivLength */,
+        virtual int32_t Encrypt(const uint8_t ivLength, const uint8_t iv[] /* @length:ivLength */,
                                  const uint32_t inputLength, const uint8_t input[] /* @length:inputLength */,
                                  const uint32_t maxOutputLength, uint8_t output[] /* @out @maxlength:maxOutputLength */) const = 0;
 
         /* Decrypt data */
-        virtual uint32_t Decrypt(const uint8_t ivLength, const uint8_t iv[] /* @length:ivLength */,
+        virtual int32_t Decrypt(const uint8_t ivLength, const uint8_t iv[] /* @length:ivLength */,
                                  const uint32_t inputLength, const uint8_t input[] /* @length:inputLength */,
                                  const uint32_t maxOutputLength, uint8_t output[] /* @out @maxlength:maxOutputLength */) const = 0;
     };

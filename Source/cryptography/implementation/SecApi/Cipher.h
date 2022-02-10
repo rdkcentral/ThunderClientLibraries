@@ -30,10 +30,10 @@
 
 
 struct CipherImplementation {
-    virtual uint32_t Encrypt(const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
+    virtual int32_t Encrypt(const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
         const uint8_t input[], const uint32_t maxOutputLength, uint8_t output[]) const = 0;
 
-    virtual uint32_t Decrypt(const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
+    virtual int32_t Decrypt(const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
         const uint8_t input[], const uint32_t maxOutputLength, uint8_t output[]) const = 0;
 
     virtual ~CipherImplementation() { }
@@ -54,14 +54,14 @@ namespace Implementation {
 
     public:
 
-        uint32_t Operation(bool encrypt, const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
+        int32_t Operation(bool encrypt, const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
             const uint8_t input[], const uint32_t maxOutputLength, uint8_t output[]) const;
 
         const Sec_CipherAlgorithm AESCipher(const aes_mode mode);
-        uint32_t Encrypt(const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
+        int32_t Encrypt(const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
             const uint8_t input[], const uint32_t maxOutputLength, uint8_t output[]) const override;
 
-        uint32_t Decrypt(const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
+        int32_t Decrypt(const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
             const uint8_t input[], const uint32_t maxOutputLength, uint8_t output[]) const override;
 
     private:
@@ -90,13 +90,13 @@ namespace Implementation {
     public:
 
         const Sec_CipherAlgorithm AESCipher(const aes_mode mode);
-        uint32_t Encrypt(const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
+        int32_t Encrypt(const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
             const uint8_t input[], const uint32_t maxOutputLength, uint8_t output[]) const override;
 
-        uint32_t Decrypt(const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
+        int32_t Decrypt(const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
             const uint8_t input[], const uint32_t maxOutputLength, uint8_t output[]) const override;
 
-        uint32_t Operation(bool encrypt, const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
+        int32_t Operation(bool encrypt, const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
             const uint8_t input[], const uint32_t maxOutputLength, uint8_t output[]) const;
     };
 
