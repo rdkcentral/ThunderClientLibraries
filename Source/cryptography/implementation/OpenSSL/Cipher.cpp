@@ -34,11 +34,11 @@
 
 
 struct CipherImplementation {
-    virtual uint32_t Encrypt(const uint8_t ivLength, const uint8_t iv[],
+    virtual int32_t Encrypt(const uint8_t ivLength, const uint8_t iv[],
                              const uint32_t inputLength, const uint8_t input[],
                              const uint32_t maxOutputLength, uint8_t output[]) const = 0;
 
-    virtual uint32_t Decrypt(const uint8_t ivLength, const uint8_t iv[],
+    virtual int32_t Decrypt(const uint8_t ivLength, const uint8_t iv[],
                              const uint32_t inputLength, const uint8_t input[],
                              const uint32_t maxOutputLength, uint8_t output[]) const = 0;
 
@@ -79,14 +79,14 @@ public:
         }
     }
 
-    uint32_t Encrypt(const uint8_t ivLength, const uint8_t iv[],
+    int32_t Encrypt(const uint8_t ivLength, const uint8_t iv[],
                      const uint32_t inputLength, const uint8_t input[],
                      const uint32_t maxOutputLength, uint8_t output[]) const override
     {
         return (Operation(true, ivLength, iv, inputLength, input, maxOutputLength, output));
     }
 
-    uint32_t Decrypt(const uint8_t ivLength, const uint8_t iv[],
+    int32_t Decrypt(const uint8_t ivLength, const uint8_t iv[],
                      const uint32_t inputLength, const uint8_t input[],
                      const uint32_t maxOutputLength, uint8_t output[]) const override
     {
@@ -94,12 +94,12 @@ public:
     }
 
 private:
-    uint32_t Operation(bool encrypt,
+    int32_t Operation(bool encrypt,
                        const uint8_t ivLength, const uint8_t iv[],
                        const uint32_t inputLength, const uint8_t input[],
                        const uint32_t maxOutputLength, uint8_t output[]) const
     {
-        uint32_t result = 0;
+        int32_t result = 0;
 
         ASSERT(iv != nullptr);
         ASSERT(ivLength != 0);
@@ -245,14 +245,14 @@ void cipher_destroy(struct CipherImplementation* cipher)
     delete cipher;
 }
 
-uint32_t cipher_encrypt(const struct CipherImplementation* cipher, const uint8_t iv_length, const uint8_t iv[],
+int32_t cipher_encrypt(const struct CipherImplementation* cipher, const uint8_t iv_length, const uint8_t iv[],
                         const uint32_t input_length, const uint8_t input[], const uint32_t max_output_length, uint8_t output[])
 {
     ASSERT(cipher != nullptr);
     return (cipher->Encrypt(iv_length, iv, input_length, input, max_output_length, output));
 }
 
-uint32_t cipher_decrypt(const struct CipherImplementation* cipher, const uint8_t iv_length, const uint8_t iv[],
+int32_t cipher_decrypt(const struct CipherImplementation* cipher, const uint8_t iv_length, const uint8_t iv[],
                         const uint32_t input_length, const uint8_t input[], const uint32_t max_output_length, uint8_t output[])
 {
     ASSERT(cipher != nullptr);

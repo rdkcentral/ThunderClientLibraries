@@ -62,7 +62,7 @@ namespace Implementation {
      * @return Length of the bytesWritten as encrypted blob
      *
      *********************************************************************/
-    uint32_t CipherNetflix::Encrypt(const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
+    int32_t CipherNetflix::Encrypt(const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
         const uint8_t input[], const uint32_t maxOutputLength, uint8_t output[]) const
     {
         return (Operation(true, ivLength, iv, inputLength, input, maxOutputLength, output));
@@ -83,7 +83,7 @@ namespace Implementation {
      * @return Length of the bytesWritten as decrypted blob/data
      *
      *********************************************************************/
-    uint32_t CipherNetflix::Decrypt(const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
+    int32_t CipherNetflix::Decrypt(const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
         const uint8_t input[], const uint32_t maxOutputLength, uint8_t output[]) const
     {
         return (Operation(false, ivLength, iv, inputLength, input, maxOutputLength, output));
@@ -105,12 +105,12 @@ namespace Implementation {
      * @return Length of the bytesWritten as encrypted/decrypted blob/data
      *
      *********************************************************************/
-    uint32_t CipherNetflix::Operation(bool encrypt, const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
+    int32_t CipherNetflix::Operation(bool encrypt, const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
         const uint8_t input[], const uint32_t maxOutputLength, uint8_t output[]) const
     {
 
         uint32_t keyHandle;
-        uint32_t retVal = -1;
+        int32_t retVal = -1;
         Sec_SocKeyHandle* pKey = NULL;
         SEC_SIZE            bytesWritten = 0;
         std::string outputbuf;

@@ -29,7 +29,7 @@
 
 
 struct CryptImplementation {
-    virtual uint32_t Operation(const uint8_t ivLength, const uint8_t iv[],
+    virtual int32_t Operation(const uint8_t ivLength, const uint8_t iv[],
                                const uint32_t inputLength, const uint8_t input[],
                                const uint32_t maxOutputLength, uint8_t output[]) = 0;
 
@@ -45,14 +45,14 @@ namespace Operation {
 
     struct Encrypt {
         typedef WPEFramework::Crypto::AESEncryption Implementation;
-        static uint32_t Operation(Implementation& impl, const uint32_t length, const uint8_t input[], uint8_t output[]) {
+        static int32_t Operation(Implementation& impl, const uint32_t length, const uint8_t input[], uint8_t output[]) {
             return (impl.Encrypt(length, input, output));
         }
     };
 
     struct Decrypt {
         typedef WPEFramework::Crypto::AESDecryption Implementation;
-        static uint32_t Operation(Implementation& impl, const uint32_t length, const uint8_t input[], uint8_t output[]) {
+        static int32_t Operation(Implementation& impl, const uint32_t length, const uint8_t input[], uint8_t output[]) {
             return (impl.Decrypt(length, input, output));
         }
     };
@@ -78,11 +78,11 @@ public:
     ~AESCryptor() override = default;
 
 public:
-    uint32_t Operation(const uint8_t ivLength, const uint8_t iv[],
+    int32_t Operation(const uint8_t ivLength, const uint8_t iv[],
                        const uint32_t inputLength, const uint8_t input[],
                        const uint32_t maxOutputLength, uint8_t output[]) override
     {
-        uint32_t result = 0;
+        int32_t result = 0;
 
         ASSERT(iv != nullptr);
         ASSERT(input != nullptr);
@@ -222,7 +222,7 @@ void cipher_destroy(struct CryptImplementation* crypt)
     delete crypt;
 }
 
-uint32_t cipher_operation(struct CryptImplementation* crypt, const uint8_t iv_length, const uint8_t iv[],
+int32_t cipher_operation(struct CryptImplementation* crypt, const uint8_t iv_length, const uint8_t iv[],
                           const uint32_t input_length, const uint8_t input[], const uint32_t max_output_length, uint8_t output[])
 {
     ASSERT(crypt != nullptr);
