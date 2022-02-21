@@ -78,11 +78,38 @@ struct narrowing {
     // Common type of signed and unsigned typically is unsigned
     using common_t = typename std::common_type < FROM , TO > :: type;
     static constexpr bool value =      ENABLE
-                                    && (
-                                            ( std::is_signed < FROM > :: value && std::is_unsigned < TO > :: value )
-                                         || static_cast < common_t > ( std::numeric_limits < FROM > :: max () ) >= static_cast < common_t > ( std::numeric_limits < TO > :: max () )
+                                    && (    (    std::is_signed < FROM > :: value
+                                              && std::is_unsigned < TO > :: value
+                                            )
+                                         || (    std::is_same < FROM , TO > :: value
+                                              && static_cast < common_t > ( std::numeric_limits < FROM > :: max () ) > static_cast < common_t > ( std::numeric_limits < TO > :: max () )
+                                            )
                                        )
                                     ;
+};
+
+template < typename TYPE , intmax_t VAL >
+struct in_signed_range {
+    static_assert ( (    std::is_integral < TYPE > :: value
+                      && std::is_signed < TYPE > :: value
+                    )
+                    != false
+                  );
+    using common_t = typename std::common_type < TYPE , decltype ( VAL ) > :: type;
+    static constexpr bool value =    static_cast < common_t > ( VAL ) >= static_cast < common_t > ( std::numeric_limits < TYPE > :: min () )
+                                  && static_cast < common_t > ( VAL ) <= static_cast < common_t > ( std::numeric_limits < TYPE > :: max () );
+};
+
+template < typename TYPE , uintmax_t VAL >
+struct in_unsigned_range {
+    static_assert ( (    std::is_integral < TYPE > :: value
+                      && std::is_unsigned < TYPE > :: value
+                    )
+                    != false
+                  );
+    using common_t = typename std::common_type < TYPE , decltype ( VAL ) > :: type;
+    static constexpr bool value =    static_cast < common_t > ( VAL ) >= static_cast < common_t > ( std::numeric_limits < TYPE > :: min () )
+                                  && static_cast < common_t > ( VAL ) <= static_cast < common_t > ( std::numeric_limits < TYPE > :: max () );
 };
 
 // Suppress compiler warnings of unused (parameters)
@@ -188,9 +215,9 @@ namespace RPI_INTERNAL {
                 Native ( Native const & ) = delete;
                 Native & operator= ( Native const & ) = delete;
 
-                explicit Native ( surf_t , width_t , height_t );
+                explicit Native ( surf_t const , width_t const , height_t const );
                 // A way to update prime
-                explicit Native ( prime_t && , surf_t , width_t , height_t );
+                explicit Native ( prime_t && , surf_t const , width_t const , height_t const );
 // TODO: clean up
                 ~Native () = default;
 
@@ -199,7 +226,7 @@ namespace RPI_INTERNAL {
 
                 bool operator == ( Native const & other ) const;
                 bool operator < ( Native const & other ) const;
-                bool operator () ( Native const & left , Native const & right ) const;
+                bool operator () ( Native const & , Native const &) const;
 
                 prime_t const & Prime () const { return _prime; }
                 surf_t const & Surface () const { return _surf; }
@@ -265,6 +292,8 @@ namespace RPI_INTERNAL {
 
                     using sync_t = KHRFIX ( EGLSync );
 
+                    static_assert ( std::is_convertible < decltype ( _EGL_NO_SYNC ) , sync_t > :: value != false );
+
                     static constexpr dpy_t InvalidDpy () { return static_cast < dpy_t > ( EGL::InvalidDpy () ) ; }
                     static constexpr sync_t InvalidSync () { return static_cast < sync_t > ( _EGL_NO_SYNC ) ; }
 
@@ -290,13 +319,18 @@ namespace RPI_INTERNAL {
 
                 using sync_t = Sync;
 
+                static_assert ( std::is_convertible < decltype ( EGL_NO_DISPLAY ) , dpy_t > :: value != false );
+                static_assert ( std::is_convertible < decltype ( EGL_NO_CONTEXT ) , ctx_t > :: value != false );
+                static_assert ( std::is_convertible < decltype ( EGL_NO_SURFACE ) , surf_t > :: value != false );
+
                 static constexpr dpy_t InvalidDpy () { return static_cast < dpy_t > ( EGL_NO_DISPLAY ) ; }
-                static constexpr ctx_t InvalidCtx () { return static_cast < ctx_t > ( EGL_NO_CONTEXT ); }
+                static constexpr ctx_t InvalidCtx () { return static_cast < ctx_t > ( EGL_NO_CONTEXT ) ; }
                 static constexpr surf_t InvalidSurf () { return static_cast < surf_t > ( EGL_NO_SURFACE ); }
 
                 static_assert ( std::is_convertible < decltype ( nullptr ) , win_t > :: value != false );
-                static constexpr win_t InvalidWin () { return static_cast < win_t > ( nullptr ); }
+                static constexpr win_t InvalidWin () { return static_cast < win_t > ( nullptr ) ; }
 
+                static_assert ( std::is_convertible < decltype ( _EGL_NO_IMAGE ) , dpy_t > :: value != false );
                 static constexpr img_t InvalidImg () { return static_cast < img_t > ( _EGL_NO_IMAGE ) ; }
 
                 static img_t CreateImage ( dpy_t const & , ctx_t const & , win_t const , Native::prime_t const & );
@@ -326,10 +360,13 @@ namespace RPI_INTERNAL {
                 using fbo_t = GLuint;
                 using tex_t = GLuint;
 
+                // Probably signed to unsigned
+                static_assert ( std::is_integral < fbo_t > :: value != false );
                 static constexpr fbo_t InvalidFbo () { return static_cast < fbo_t > ( 0 ); }
+                static_assert ( std::is_integral < tex_t > :: value != false );
                 static constexpr tex_t InvalidTex () { return static_cast < tex_t > ( 0 ); }
 
-                bool ImageAsTarget ( EGL::img_t const & , EGL::width_t , EGL::height_t , tex_t & , fbo_t & );
+                bool ImageAsTarget ( EGL::img_t const & , EGL::width_t const, EGL::height_t const , tex_t & , fbo_t & );
 
                 bool Supported ( std::string const & );
             };
@@ -404,9 +441,9 @@ namespace RPI {
 
         using InputFunction = std::function < void ( SurfaceImplementation * ) >;
 
-        static void VirtualKeyboardCallback ( keyactiontype , unsigned int );
-        static void VirtualMouseCallback ( mouseactiontype , unsigned short , signed short , signed short );
-        static void VirtualTouchScreenCallback ( touchactiontype , unsigned short , unsigned short , unsigned short );
+        static void VirtualKeyboardCallback ( keyactiontype , unsigned int const );
+        static void VirtualMouseCallback ( mouseactiontype , unsigned short const , signed short const , signed short const );
+        static void VirtualTouchScreenCallback ( touchactiontype , unsigned short const , unsigned short const , unsigned short const );
 
 
 
@@ -415,7 +452,7 @@ namespace RPI {
             using valid_t = bool;
 
             // Sharing handles (file descriptors)
-            static constexpr uint8_t MAX_SHARING_FDS = 2;
+            static constexpr uint8_t const MAX_SHARING_FDS = 2;
             using fds_t = std::array < int , MAX_SHARING_FDS >;
 
             DMATransfer ( DMATransfer const & ) = delete;
@@ -425,7 +462,7 @@ namespace RPI {
             DMATransfer ();
             ~DMATransfer ();
 
-            valid_t Valid ();
+            valid_t Valid () const;
 
             valid_t Receive ( std::string & , fds_t & fds );
             valid_t Send ( std::string const & , fds_t const & );
@@ -436,12 +473,11 @@ namespace RPI {
         private :
 
             using timeout_t = remove_const < decltype ( Core::infinite ) > :: type;
+
             using sock_t = int;
-// TODO
             using fd_t = int;
 
             static constexpr sock_t InvalidSocket () { return static_cast < sock_t > ( -1 ) ; };
-// TODO
             static constexpr fd_t InvalidFd () { return static_cast < fd_t > ( -1 ) ; };
 
             valid_t Initialize ();
@@ -450,8 +486,8 @@ namespace RPI {
             valid_t Connect ( timeout_t );
             valid_t Disconnect ( timeout_t );
 
-            valid_t Send ( std::string const & , int const * , uint8_t );
-            valid_t Receive ( std::string & , int * , uint8_t );
+            valid_t Send ( std::string const & , int const * , uint8_t const );
+            valid_t Receive ( std::string & , int * , uint8_t const );
 
             // Actual socket for communication
             sock_t _transfer;
@@ -835,7 +871,9 @@ namespace RPI {
 
                 bool ret = KHRFIX ( eglGetSyncAttrib ) ( _dpy , _sync , _EGL_SYNC_STATUS , & status ) != EGL_FALSE;
 
-                ret = ret && ( status == _EGL_SIGNALED );
+                ret =    ret
+                      && ( status == _EGL_SIGNALED )
+                      ;
 
                 // Assert on error
                 if ( ret != true ) {
@@ -870,7 +908,7 @@ namespace RPI {
                 ) != false
             ) {
 
-            constexpr char methodName [] = XSTRINGIFY ( KHRFIX ( eglCreateImage ) );
+            constexpr char const methodName [] = XSTRINGIFY ( KHRFIX ( eglCreateImage ) );
 
             // Probably never fires
             static_assert ( (    std::is_same < dpy_t , EGLDisplay > :: value
@@ -891,15 +929,15 @@ namespace RPI {
 
                 // Disable / enable narrowing detection
 // TODO:
-                constexpr bool enable = false;
+                constexpr bool const enable = false;
 
                 // (Almost) all will fail!
                 if (    narrowing < width_t , EGLAttrib , enable > :: value != false
-                     && narrowing < height_t , EGLAttrib , enable > :: value != false
-                     && narrowing < stride_t , EGLAttrib , enable > :: value != false
-                     && narrowing < format_t , EGLAttrib , enable > :: value != false
-                     && narrowing < modifier_t , EGLAttrib , enable > :: value != false
-                     && narrowing < fd_t , EGLAttrib , enable > :: value != false
+                     || narrowing < height_t , EGLAttrib , enable > :: value != false
+                     || narrowing < stride_t , EGLAttrib , enable > :: value != false
+                     || narrowing < format_t , EGLAttrib , enable > :: value != false
+                     || narrowing < modifier_t , EGLAttrib , enable > :: value != false
+                     || narrowing < fd_t , EGLAttrib , enable > :: value != false
                    ) {
                     TRACE_WITHOUT_THIS ( Trace::Information , ( _T ( "Possible narrowing detected!" ) ) );
                 }
@@ -927,7 +965,7 @@ namespace RPI {
 
                 // Format should be listed as supported
                 if ( valid != false ) {
-                    std::list < EGLint > list_e_format (& formats [ 0 ] , & formats [ count ] );
+                    std::list < EGLint > list_e_format ( & formats [ 0 ] , & formats [ count ] );
 
                     auto it_e_format = std::find ( list_e_format . begin () , list_e_format . end () , prime . Format () );
 
@@ -953,6 +991,8 @@ namespace RPI {
                 if ( valid != false ) {
                     std::list < EGLuint64KHR > list_e_modifier ( & modifiers [ 0 ] , & modifiers [ count ] );
 
+                    static_assert ( narrowing < std::remove_reference < decltype ( prime . Modifier () ) > :: type , EGLuint64KHR , true > :: value != true );
+
                     auto it_e_modifier = std::find ( list_e_modifier . begin () , list_e_modifier . end () , static_cast < EGLuint64KHR > ( prime . Modifier () ) );
 
                     valid = it_e_modifier != list_e_modifier . end ();
@@ -965,6 +1005,20 @@ namespace RPI {
 
 
                 if ( valid != false ) {
+
+                    static_assert ( std::is_integral < EGLAttrib > :: value != false );
+                    static_assert ( std::is_signed < EGLAttrib > :: value != false );
+
+                    static_assert ( in_signed_range < EGLAttrib , EGL_WIDTH > :: value != false );
+                    static_assert ( in_signed_range < EGLAttrib , EGL_HEIGHT > :: value != false );
+                    static_assert ( in_signed_range < EGLAttrib , EGL_LINUX_DRM_FOURCC_EXT > :: value != false );
+                    static_assert ( in_signed_range < EGLAttrib , EGL_DMA_BUF_PLANE0_FD_EXT > :: value != false );
+                    static_assert ( in_signed_range < EGLAttrib , EGL_DMA_BUF_PLANE0_OFFSET_EXT > :: value != false );
+                    static_assert ( in_signed_range < EGLAttrib , EGL_DMA_BUF_PLANE0_PITCH_EXT > :: value != false );
+                    static_assert ( in_signed_range < EGLAttrib , EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT > :: value != false );
+                    static_assert ( in_signed_range < EGLAttrib , EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT > :: value != false );
+                    static_assert ( in_signed_range < EGLAttrib , EGL_NONE > :: value != false );
+
                     // 64 bit hence the shift 32 and mask 0xFFFFFFF, each half equals 32 bitsF
                     static_assert ( sizeof ( EGLuint64KHR ) == static_cast < size_t > ( 8 ) );
 
@@ -1076,15 +1130,25 @@ namespace RPI {
 
 
 
-    bool WPEFramework::RPI_INTERNAL::GLResourceMediator::GLES::ImageAsTarget ( EGL::img_t const & img , EGL::width_t width , EGL::height_t height , tex_t & tex , fbo_t & fbo ) {
+    bool WPEFramework::RPI_INTERNAL::GLResourceMediator::GLES::ImageAsTarget ( EGL::img_t const & img , EGL::width_t const width , EGL::height_t const height , tex_t & tex , fbo_t & fbo ) {
         bool ret =    glGetError () == GL_NO_ERROR
                    && img != EGL::InvalidImg ()
                    && width > 0
                    && height > 0
                    ;
 
+        static_assert ( std::is_integral < EGL::width_t > :: value != false );
+        static_assert ( std::is_integral < EGL::height_t > :: value != false );
+
         // Always
-        constexpr GLuint tgt = GL_TEXTURE_2D;
+        static_assert ( std::is_integral < decltype ( GL_TEXTURE_2D ) > :: value != false );
+        // Possibly signed to unsigned
+        static_assert (    narrowing < decltype ( GL_TEXTURE_2D ) , GLuint , true > :: value != true 
+                        || (    GL_TEXTURE_2D >= static_cast < decltype ( GL_TEXTURE_2D ) > ( 0 )
+                             && in_unsigned_range < GLuint , GL_TEXTURE_2D > :: value != false
+                           )
+                      );
+        constexpr GLuint const tgt = GL_TEXTURE_2D;
 
         if ( ret != false ) {
             // Just an arbitrary selected unit
@@ -1236,7 +1300,7 @@ namespace RPI {
             connector = _T ( "/tmp/compositor" );
         }
 
-        return ( Core::NodeId(connector . c_str () ) );
+        return ( Core::NodeId ( connector . c_str () ) );
     }
 
 
@@ -1253,7 +1317,7 @@ namespace RPI {
             gbm_device_destroy ( device );
         }
 
-        if ( fd >= RenderDevice::GBM::InvalidFd () ) {
+        if ( fd != RenderDevice::GBM::InvalidFd () ) {
             close ( fd );
         }
 
@@ -1307,10 +1371,26 @@ namespace RPI {
 
             delete this;
 
-            return ( Core::ERROR_CONNECTION_CLOSED );
+            // Posibly signed to unsiged
+            static_assert ( std::is_enum < decltype ( Core::ERROR_CONNECTION_CLOSED ) > :: value != false );
+            static_assert (    narrowing < std::underlying_type < decltype ( Core::ERROR_CONNECTION_CLOSED ) > :: type , uint32_t , true > :: value != true
+                            || (    Core::ERROR_CONNECTION_CLOSED >= static_cast < std::underlying_type < decltype ( Core::ERROR_CONNECTION_CLOSED ) > :: type > ( 0 )
+                                 && in_unsigned_range < uint32_t , Core::ERROR_CONNECTION_CLOSED > :: value != false
+                               )
+                          );
+
+            return static_cast < uint32_t > ( Core::ERROR_CONNECTION_CLOSED );
         }
 
-        return ( Core::ERROR_NONE );
+        // Posibly signed to unsiged
+        static_assert ( std::is_enum < decltype ( Core::ERROR_NONE ) > :: value != false );
+        static_assert (    narrowing < std::underlying_type < decltype ( Core::ERROR_NONE ) > :: type , uint32_t , true > :: value != true
+                        || (    Core::ERROR_NONE >= static_cast < std::underlying_type < decltype ( Core::ERROR_NONE ) > :: type > ( 0 )
+                             && in_unsigned_range < uint32_t , Core::ERROR_NONE > :: value != false
+                           )
+                      );
+
+        return static_cast < uint32_t > ( Core::ERROR_NONE );
     }
 
     EGLNativeDisplayType WPEFramework::RPI::Display::Native () const {
@@ -1381,7 +1461,7 @@ namespace RPI {
             silence ( ret );
 //            assert ( ret != false );
 
-            ( * it )->ScanOut (); // actual scan out (at the remote site)
+            ( * it ) -> ScanOut (); // actual scan out (at the remote site)
 
             ret = ( * it ) -> SyncPrimitiveStart ();
 //            assert ( ret != false );
@@ -1424,7 +1504,14 @@ namespace RPI {
             realHeight = HeightFromResolution ( resolution );
             realWidth = WidthFromResolution ( resolution );
 
-            if ( realWidth != width || realHeight != height ) {
+            if (    realWidth != width
+                 || realHeight != height
+               ) {
+                static_assert ( narrowing < decltype ( width ) , int , true > :: value != true );
+                static_assert ( narrowing < decltype ( height ) , int , true > :: value != true );
+                static_assert ( narrowing < decltype ( realWidth ) , int , true > :: value != true );
+                static_assert ( narrowing < decltype ( realHeight ) , int , true > :: value != true );
+
                 TRACE ( Trace::Information , ( _T ( "Requested surface dimensions (%d x %d) differ from true (real) display dimensions (%d x %d). Continuing with the latter!" ) , width , height , realWidth , realHeight ) );
             }
         }
@@ -1438,9 +1525,6 @@ namespace RPI {
 
         return result;
     }
-
-
-
 
 
 
@@ -1481,7 +1565,7 @@ namespace RPI {
 
                 std::string::size_type start = msg . rfind ( spacer , pos );
 
-                static_assert ( narrowing  < unsigned long , common_t , true > :: value != false );
+                static_assert ( narrowing  < unsigned long , common_t , true > :: value != true );
                 common_t ret = ( ( start != std::string::npos && start <= msg . length () ) != false ) ? std::stoul ( msg . substr ( start + 1 , pos ) ) : 0;
 
                 // Narrowing detection
@@ -1514,9 +1598,15 @@ namespace RPI {
                 , static_cast < stride_t > (str2prop ( pos ) )
                 , static_cast < height_t > (str2prop ( pos ) )
                 , static_cast < width_t > ( str2prop ( pos ) )
-            )
+            );
 
             prime = std::move ( tmp_prime );
+
+            static_assert ( narrowing < std::remove_reference < decltype ( prime . Width () ) > :: type  , int , true > :: value != true );
+            static_assert ( narrowing < std::remove_reference < decltype ( prime . Height () ) > :: type  , int , true > :: value != true );
+            static_assert ( narrowing < std::remove_reference < decltype ( prime . Stride () ) > :: type  , int , true > :: value != true );
+            static_assert ( narrowing < std::remove_reference < decltype ( prime . Format () ) > :: type  , int , true > :: value != true );
+            static_assert ( narrowing < std::remove_reference < decltype ( prime . Modifier () ) > :: type  , int , true > :: value != true );
 
             TRACE_WITHOUT_THIS ( Trace::Information , _T ( "Received the following properties via DMA: width %d height %d stride %d format %d modifier %ld." ) , prime . Width () , prime . Height () , prime . Stride () , prime . Format () , prime . Modifier () );
         }
@@ -1618,13 +1708,17 @@ namespace RPI {
 
 
     WPEFramework::RPI::Display::DMATransfer::DMATransfer ()
-        : _transfer { -1 }
-        , _addr { AF_UNIX, "/tmp/Compositor/DMA" }
+        : _transfer { InvalidSocket () }
+        , _addr { AF_UNIX , "/tmp/Compositor/DMA" }
         , _valid { Initialize () } {
     }
 
     WPEFramework::RPI::Display::DMATransfer::~DMATransfer () {
         /* valid_t */ Deinitialize ();
+    }
+
+    WPEFramework::RPI::Display::DMATransfer::valid_t WPEFramework::RPI::Display::DMATransfer::Valid () const {
+        return _valid;
     }
 
     WPEFramework::RPI::Display::DMATransfer::valid_t WPEFramework::RPI::Display::DMATransfer::Receive ( std::string & msg , DMATransfer::fds_t & fds ) {
@@ -1691,7 +1785,7 @@ namespace RPI {
         return ret;
     }
 
-    WPEFramework::RPI::Display::DMATransfer::valid_t WPEFramework::RPI::Display::DMATransfer::Connect ( timeout_t timeout ) {
+    WPEFramework::RPI::Display::DMATransfer::valid_t WPEFramework::RPI::Display::DMATransfer::Connect ( timeout_t const timeout ) {
         silence ( timeout );
 
         valid_t ret = _transfer != InvalidSocket ();
@@ -1707,7 +1801,7 @@ namespace RPI {
         return ret;
     }
 
-    WPEFramework::RPI::Display::DMATransfer::valid_t WPEFramework::RPI::Display::DMATransfer::Disconnect ( timeout_t timeout ) {
+    WPEFramework::RPI::Display::DMATransfer::valid_t WPEFramework::RPI::Display::DMATransfer::Disconnect ( timeout_t const timeout ) {
         silence ( timeout );
 
         valid_t ret = _transfer != InvalidSocket ();
@@ -1823,7 +1917,7 @@ namespace RPI {
                 // Only send data if the buffer is large enough to contain all data
                 if ( getsockopt ( _transfer , SOL_SOCKET, SO_SNDBUF , & size , & len ) == 0 ) {
                     // Most options use type int, ssize_t was just a placeholder
-                    static_assert ( sizeof ( int ) <= sizeof ( ssize_t ) );
+                    static_assert ( narrowing < decltype ( size ) , int , true > :: value != true );
                     TRACE ( Trace::Information , ( _T ( "The sending buffer capacity equals %d bytes." ) , static_cast < int > ( size ) ) );
 
 // TODO: do not send if the sending buffer is too small
@@ -1836,7 +1930,9 @@ namespace RPI {
                 ret = size != -1;
 
                 if ( ret != false ) {
-                    TRACE ( Trace::Information , ( _T ( "Send %d bytes out of %d." ) , size , msgh . msg_iov -> iov_len /* just a single element */ + msgh .msg_controllen ) );
+                    static_assert ( narrowing < decltype ( size ) , int , true > :: value != true );
+                    static_assert ( narrowing < decltype ( msgh . msg_iov -> iov_len + msgh . msg_controllen ) , int , true > :: value != true );
+                    TRACE ( Trace::Information , ( _T ( "Send %d bytes out of %d." ) , size , msgh . msg_iov -> iov_len /* just a single element */ + msgh . msg_controllen ) );
                 }
                 else {
                     TRACE ( Trace::Error , ( _T ( "Failed to send data." ) ) );
@@ -1851,7 +1947,7 @@ namespace RPI {
         return ret;
     }
 
-    WPEFramework::RPI::Display::DMATransfer::valid_t WPEFramework::RPI::Display::DMATransfer::Receive ( std::string & msg , fd_t * fd , uint8_t count) {
+    WPEFramework::RPI::Display::DMATransfer::valid_t WPEFramework::RPI::Display::DMATransfer::Receive ( std::string & msg , fd_t * fd , uint8_t const count ) {
         valid_t ret = false;
 
         msg . clear ();
@@ -1859,18 +1955,24 @@ namespace RPI {
         ssize_t size = -1;
         socklen_t len = sizeof ( size );
 
+        static_assert ( narrowing < decltype ( len ) , decltype ( size ) , true > :: value != true );
+
         if ( getsockopt ( _transfer , SOL_SOCKET , SO_RCVBUF , & size , & len ) == 0 ) {
+            static_assert ( narrowing < decltype ( size ) , int , true > :: value != true );
+
             TRACE ( Trace::Information , ( _T ( "The receiving buffer maximum capacity equals %d [bytes]." ) , size ) );
 
             // Most options use type int, ssize_t was just a placeholder
-            static_assert ( sizeof ( int ) <= sizeof ( ssize_t ) );
+            static_assert ( narrowing < int , decltype ( size ) , true > :: value != true );
             msg . reserve ( static_cast < int > ( size ) );
         }
         else {
             // Unable to determine buffer capacity
+            static_assert ( narrowing < decltype ( msg . capacity () ) , int , true > :: value != true );
             TRACE ( Trace::Information , ( _T ( "Unable to determine buffer maximum cpacity. Using %d [bytes] instead." ) , msg . capacity () ) );
         }
 
+        static_assert ( narrowing < decltype ( msg . capacity () ) , size_t , true > :: value != true );
         size_t const bufsize = msg . capacity ();
 
         if (    bufsize > 0
@@ -1878,7 +1980,7 @@ namespace RPI {
              && fd != nullptr
            ) {
 
-            for ( decltype ( count ) i = 0 ; i < count ; i++ ) {
+            for ( remove_const < decltype ( count ) > :: type i = 0 ; i < count ; i++ ) {
                 fd [ i ] = InvalidFd ();
             }
 
@@ -1935,6 +2037,7 @@ namespace RPI {
                 default :   // Data
                             {
                                 // Extract the file descriptor information
+                                static_assert ( narrowing < decltype ( size ) , int , true > :: value != true );
                                 TRACE ( Trace::Information , ( _T ( "Received %d bytes." ) , size ) );
 
                                 // Pointer to the first cmsghdr in the ancillary data buffer associated with the passed msgh
@@ -2090,11 +2193,7 @@ namespace RPI {
     int32_t WPEFramework::RPI::Display::SurfaceImplementation::Width () const {
         using width_t = WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::width_t;
 
-        static_assert ( (    std::numeric_limits < width_t > :: is_exact
-                          && 0 >= std::numeric_limits < int32_t > :: min ()
-                          && std::numeric_limits < std::make_signed < width_t >::type > :: max () <= std::numeric_limits < int32_t > :: max ()
-                        ) != false
-                      );
+        static_assert ( narrowing < width_t , int32_t, true > :: value != true );
 
         return (    _nativeSurface . Surface () != WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::InvalidSurface ()
                  && _nativeSurface . Width () <= static_cast < width_t > ( std::numeric_limits < int32_t > :: max () ) ? _nativeSurface . Width () : 0 );
@@ -2103,11 +2202,7 @@ namespace RPI {
     int32_t WPEFramework::RPI::Display::SurfaceImplementation::Height () const {
         using height_t = WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::height_t;
 
-        static_assert ( (    std::numeric_limits < height_t > :: is_exact
-                          && 0 >= std::numeric_limits < int32_t > :: min ()
-                          && std::numeric_limits < std::make_signed < height_t > :: type > :: max () <= std::numeric_limits < int32_t > :: max ()
-                        ) != false
-                      );
+        static_assert ( narrowing < height_t , int32_t, true > :: value != true );
 
         return (    _nativeSurface . Surface () != WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::InvalidSurface ()
                  && _nativeSurface . Height () <= static_cast < height_t > ( std::numeric_limits < int32_t > :: max ()) ? _nativeSurface . Height () : 0 );
@@ -2196,9 +2291,8 @@ namespace RPI {
 
             static WPEFramework::RPI_INTERNAL::GLResourceMediator::GLES gles;
 
-            static_assert (    narrowing < WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::width_t , WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::width_t , true > :: value
-                            && narrowing < WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::height_t , WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::height_t , true > :: value
-                            != false
+            static_assert (    narrowing < WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::width_t , WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::width_t , true > :: value != true
+                            && narrowing < WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::height_t , WPEFramework::RPI_INTERNAL::GLResourceMediator::EGL::height_t , true > :: value != true
                           );
 
             using n_width_t = WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::width_t;
@@ -2209,10 +2303,10 @@ namespace RPI {
 
 
 // TODO:
-            constexpr bool enable = false;
+            constexpr bool const enable = false;
 
-            if ( (    narrowing < n_width_t, e_width_t , enable > :: value
-                   && narrowing < n_height_t, e_height_t , enable > :: value
+            if ( (    narrowing < n_width_t, e_width_t , enable > :: value != false
+                   || narrowing < n_height_t, e_height_t , enable > :: value != false
                  ) != false ) {
                 TRACE_WITHOUT_THIS ( Trace::Information , ( _T ( "Possible narrowing detected!" ) ) );
             }
@@ -2415,7 +2509,15 @@ namespace RPI {
             // Connect to the CompositorServer..
             uint32_t result = _compositerServerRPCConnection -> Open ( RPC::CommunicationTimeOut );
 
-            if ( result != Core::ERROR_NONE ) {
+            // Posibly signed to unsiged
+            static_assert ( std::is_enum < decltype ( Core::ERROR_NONE ) > :: value != false );
+            static_assert (    narrowing < std::underlying_type < decltype ( Core::ERROR_NONE ) > :: type , uint32_t , true > :: value != true
+                            || (    Core::ERROR_NONE >= static_cast < std::underlying_type < decltype ( Core::ERROR_NONE ) > :: type > ( 0 )
+                                 && in_unsigned_range < uint32_t , Core::ERROR_NONE > :: value != false
+                               )
+                         );
+
+            if ( result != static_cast < decltype ( result ) > ( Core::ERROR_NONE ) ) {
                 TRACE_L1 ( _T ( "Could not open connection to Compositor with node %s. Error: %s" ) , _compositerServerRPCConnection -> Source () . RemoteId () . c_str () , Core::NumberType < uint32_t > ( result ) . Text () . c_str () );
                 _compositerServerRPCConnection . Release ();
             }
