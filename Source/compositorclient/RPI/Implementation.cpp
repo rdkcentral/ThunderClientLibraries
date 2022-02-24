@@ -2076,7 +2076,7 @@ namespace RPI {
         , _touchpanel { nullptr }
         , _remoteClient { nullptr }
         , _remoteRenderer { nullptr }
-        , _nativeSurface { nullptr , width , height } {
+        , _nativeSurface { WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::InvalidSurface () , WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::InvalidWidth () , WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::InvalidHeight () } {
 
 // TODO: gbm_surface_Create_with_modifiers
         WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::surf_t surf = gbm_surface_create ( _display . Native () , width , height , RenderDevice::SupportedBufferType () , GBM_BO_USE_RENDERING /* used for rendering */ );
@@ -2117,7 +2117,7 @@ namespace RPI {
                 else {
                     assert ( gbm_device_get_format_modifier_plane_count ( static_cast < RenderDevice::GBM::dev_t > ( _display . Native () ) , prime . Format () , prime . Modifier () ) == 1 );
 
-                    WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t native ( std::move ( prime ), surf , height , width );
+                    WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t native ( std::move ( prime ), surf , width, height );
 
                     _nativeSurface = std::move ( native );
                 }
