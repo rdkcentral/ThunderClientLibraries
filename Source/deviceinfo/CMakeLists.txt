@@ -31,7 +31,6 @@ find_package(${NAMESPACE}Core REQUIRED)
 find_package(${NAMESPACE}Tracing REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}COM REQUIRED)
-find_package(${NAMESPACE}Connector REQUIRED)
 
 set(PUBLIC_HEADERS "deviceinfo.h")
 
