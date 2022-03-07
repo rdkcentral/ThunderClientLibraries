@@ -103,6 +103,7 @@ namespace BluetoothAudioSinkClient {
         AudioSink(const AudioSink&) = delete;
         AudioSink& operator=(const AudioSink&) = delete;
 
+    private:
         ~AudioSink() override
         {
             TRACE_L1("Bluetooth audio sink is closing...");
@@ -258,7 +259,7 @@ namespace BluetoothAudioSinkClient {
             ASSERT(_singleton!=nullptr);
             if(_singleton != nullptr)
             {
-                delete _singelton;
+                delete _singleton;
             }
         }
 
