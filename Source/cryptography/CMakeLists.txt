@@ -40,7 +40,7 @@ find_package(ProxyStubGenerator REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
 find_package(${NAMESPACE}Tracing REQUIRED)
-find_package(${NAMESPACE}Plugins REQUIRED)
+find_package(${NAMESPACE}COM REQUIRED)
 
 ProxyStubGenerator(
     NAMESPACE "WPEFramework::Cryptography" 
@@ -62,7 +62,7 @@ target_link_libraries(${TARGET}
     PUBLIC
         ${NAMESPACE}Core::${NAMESPACE}Core
         ${NAMESPACE}Tracing::${NAMESPACE}Tracing
-        ${NAMESPACE}Plugins::${NAMESPACE}Plugins
+        ${NAMESPACE}COM::${NAMESPACE}COM
     PRIVATE
         -Wl,--whole-archive implementation -Wl,--no-whole-archive
 )
