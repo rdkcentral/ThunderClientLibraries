@@ -147,7 +147,7 @@ public:
     {
         return (_platform.Height());
     }
-    EGLSurface CreateSurface (const EGLNativeDisplayType& display, const uint32_t width, const uint32_t height) 
+    EGLSurface CreateSurface(const EGLNativeDisplayType& display VARIABLE_IS_NOT_USED, const uint32_t width, const uint32_t height)
     {
         // A Native surface that acts as a native window
         EGLSurface result = reinterpret_cast<EGLSurface>(_platform.CreateRenderTarget(width, height));

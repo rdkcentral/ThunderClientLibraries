@@ -513,7 +513,7 @@ uint32_t playerinfo_playback_resolution(playerinfo_playback_resolution_t* resolu
 
 uint32_t playerinfo_is_audio_equivalence_enabled(bool* is_enabled)
 {
-    return (is_enabled != nullptr) ? PlayerInfo::Instance().IsAudioEquivalenceEnabled(*is_enabled) : Core::ERROR_UNAVAILABLE;
+    return (is_enabled != nullptr) ? PlayerInfo::Instance().IsAudioEquivalenceEnabled(*is_enabled) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE);
 }
 
 int8_t playerinfo_video_codecs(playerinfo_videocodec_t array[], const uint8_t length)
