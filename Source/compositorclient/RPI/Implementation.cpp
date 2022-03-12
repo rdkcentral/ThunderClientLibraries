@@ -534,6 +534,18 @@ private:
                 _touchpanel->Direct(index, state, x, y);
             }
         }
+        inline void Opacity(const uint32_t opacity) override
+        {
+            _remoteAccess->Opacity(opacity);
+        }
+        inline void Visibility(const bool visible) override
+        {
+            if (visible == true) {
+                _remoteAccess->Opacity(255);
+            } else {
+                _remoteAccess->Opacity(0);
+            }
+        }
 
     private:
         Display& _display;
