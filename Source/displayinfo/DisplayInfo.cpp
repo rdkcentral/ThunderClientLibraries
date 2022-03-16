@@ -32,9 +32,7 @@ private:
     using OperationalStateChangeCallbacks = std::map<displayinfo_operational_state_change_cb, void*>;
 
     //CONSTRUCTORS
-    #ifdef __WINDOWS__
-    #pragma warning(disable: 4355)
-    #endif
+PUSH_WARNING(DISABLE_WARNING_THIS_IN_MEMBER_INITIALIZER_LIST)
     DisplayInfo(const string& callsign)
         : BaseClass()
         , _displayConnection(nullptr)
@@ -48,9 +46,7 @@ private:
 
         BaseClass::Open(RPC::CommunicationTimeOut, BaseClass::Connector(), callsign);
     }
-    #ifdef __WINDOWS__
-    #pragma warning(default: 4355)
-    #endif
+POP_WARNING()
 
 public:
     DisplayInfo(const DisplayInfo&) = delete;
