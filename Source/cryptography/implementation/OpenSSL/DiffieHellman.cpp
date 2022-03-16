@@ -198,13 +198,9 @@ private:
         uint16_t generatorSize;
         uint16_t privateKeySize;
         uint16_t publicKeySize;
-#ifdef __WINDOWS__
-#pragma warning(disable: 4200)
-#endif
+PUSH_WARNING(DISABLE_WARNING_NON_STANDARD_EXTENSION_USED)
         uint8_t data[0];
-#ifdef __WINDOWS__
-#pragma warning(default: 4200)
-#endif
+POP_WARNING()
 
     };
 
