@@ -711,7 +711,10 @@ namespace RPI {
 
         static struct flock fl = init ();
 
-        bool ret = _sync_fd != InvalidFd () && fcntl ( _sync_fd , F_SETLKW ,  & fl ) != -1;
+        bool ret =    _sync_fd != InvalidFd ()
+                   && fcntl ( _sync_fd , F_SETLKW ,  & fl ) != -1
+                   ;
+
         return ret;
     }
 
@@ -731,7 +734,10 @@ namespace RPI {
 
         static struct flock fl = init ();
 
-        bool ret = _sync_fd != InvalidFd () && fcntl ( _sync_fd , F_SETLK , & fl ) != -1;
+        bool ret =    _sync_fd != InvalidFd ()
+                   && fcntl ( _sync_fd , F_SETLK , & fl ) != -1
+                   ;
+
         return ret;
     }
 
@@ -1337,8 +1343,13 @@ namespace RPI {
 
         if ( index == _displays . end () ) {
             result = new Display ( displayName , display );
-            if ( result -> RemoteDisplay () != nullptr ) {
+            if (    result != nullptr
+                 && result -> RemoteDisplay () != nullptr
+               ) {
+
                 _displays . insert ( std::pair < const std::string , Display * > ( displayName , result ) );
+
+                // If successful inserted
                 result -> AddRef ();
             } else {
                 delete result;
@@ -1499,7 +1510,7 @@ namespace RPI {
         uint32_t realWidth = width;
 
         if ( _remoteDisplay != nullptr ) {
-            Exchange::IComposition::ScreenResolution resolution = _remoteDisplay->Resolution ();
+            Exchange::IComposition::ScreenResolution resolution = _remoteDisplay -> Resolution ();
 
             realHeight = HeightFromResolution ( resolution );
             realWidth = WidthFromResolution ( resolution );
@@ -1520,7 +1531,7 @@ namespace RPI {
         }
 
         Core::ProxyType < SurfaceImplementation > retval = ( Core::ProxyType < SurfaceImplementation > :: Create ( * this , name , realWidth , realHeight ) );
-        Compositor::IDisplay::ISurface* result = & ( * retval );
+        Compositor::IDisplay::ISurface * result = & ( * retval );
         result -> AddRef ();
 
         return result;
@@ -2078,6 +2089,8 @@ namespace RPI {
         , _remoteRenderer { nullptr }
         , _nativeSurface { WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::InvalidSurface () , WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::InvalidWidth () , WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::InvalidHeight () } {
 
+        _display . AddRef ();
+
 // TODO: gbm_surface_Create_with_modifiers
         WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::surf_t surf = gbm_surface_create ( _display . Native () , width , height , RenderDevice::SupportedBufferType () , GBM_BO_USE_RENDERING /* used for rendering */ );
 
@@ -2085,12 +2098,10 @@ namespace RPI {
             TRACE_L1  ( _T ( "Failed to create a native (underlying) surface" ) );
         }
         else {
-            // Implicit AddRef ()
             _remoteClient = _display . CreateRemoteSurface ( name , width , height );
         }
 
         if ( _remoteClient != nullptr ) {
-            // Implicit AddRef ()
             _remoteRenderer = _remoteClient -> QueryInterface < Exchange::IComposition::IRender > ();
 
             if ( _remoteRenderer == nullptr ) {
@@ -2128,16 +2139,34 @@ namespace RPI {
             TRACE_L1(_T ( "Could not create remote surface for surface %s." ) , name . c_str () );
         }
 
-        _display . AddRef ();
         _display . Register ( this );
     }
 
     WPEFramework::RPI::Display::SurfaceImplementation::~SurfaceImplementation () {
+
+        if ( _keyboard != nullptr ) {
+            _keyboard -> Release ();
+        }
+
+        if ( _wheel != nullptr ) {
+            _wheel -> Release ();
+        }
+
+        if ( _pointer != nullptr ) {
+            _pointer -> Release ();
+        }
+
+        if ( _touchpanel != nullptr ) {
+            _touchpanel -> Release ();
+        }
+
         _display . Unregister ( this );
 
         if ( _remoteClient != nullptr ) {
 
             TRACE_L1(_T ( "Destructing surface %s" ) , _remoteClient -> Name() . c_str () );
+
+            _display . RemoteDisplay () -> InvalidateClient ( _remoteClient );
 
             if ( _remoteRenderer != nullptr ) {
                 auto result = _remoteRenderer -> Release ();
@@ -2158,6 +2187,7 @@ namespace RPI {
         }
 
         auto result = _display . Release ();
+        silence ( result );
         ASSERT ( result = Core::ERROR_DESTRUCTION_SUCCEEDED );
     }
 
@@ -2173,21 +2203,25 @@ namespace RPI {
     void WPEFramework::RPI::Display::SurfaceImplementation::Keyboard (WPEFramework::Compositor::IDisplay::IKeyboard * keyboard ) {
         assert ( ( _keyboard == nullptr ) ^ ( keyboard == nullptr ) );
         _keyboard = keyboard;
+        _keyboard -> AddRef ();
     }
 
     void WPEFramework::RPI::Display::SurfaceImplementation::Pointer ( WPEFramework::Compositor::IDisplay::IPointer * pointer ) {
         assert ( ( _pointer == nullptr ) ^ ( pointer == nullptr ) );
         _pointer = pointer;
+        _pointer -> AddRef ();
     }
 
     void WPEFramework::RPI::Display::SurfaceImplementation::Wheel ( WPEFramework::Compositor::IDisplay::IWheel * wheel ) {
         assert ( ( _wheel == nullptr ) ^ ( wheel == nullptr ) );
         _wheel = wheel;
+        _wheel -> AddRef ();
     }
 
     void WPEFramework::RPI::Display::SurfaceImplementation::TouchPanel ( WPEFramework::Compositor::IDisplay::ITouchPanel * touchpanel ) {
         assert ( ( _touchpanel == nullptr ) ^ ( touchpanel == nullptr ) );
         _touchpanel = touchpanel;
+        _touchpanel -> AddRef ();
     }
 
     int32_t WPEFramework::RPI::Display::SurfaceImplementation::Width () const {
@@ -2412,7 +2446,7 @@ namespace RPI {
                     _dma = new DMATransfer ();
 
                     if (    _dma == nullptr
-                         || _dma->Valid () != true
+                         || _dma -> Valid () != true
                        ) {
 
                         TRACE ( Trace::Error , ( _T ( "DMA transfers are not supported." ) ) );
@@ -2504,6 +2538,7 @@ namespace RPI {
 
         if ( display != nullptr ) {
             _remoteDisplay = display;
+            _remoteDisplay -> AddRef ();
         }
         else {
             // Connect to the CompositorServer..
