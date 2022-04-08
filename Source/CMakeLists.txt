@@ -37,6 +37,8 @@ option(CDMI
         "Include OpenCDM interface." OFF)
 option(CRYPTOGRAPHY
         "Include the cryptography library." OFF)
+option(LOCALTRACER
+        "Header only library to locally print traces coming from Messaging without the need of running Thunder/WPEFramework." OFF)
 
 if(BLUETOOTHAUDIOSINK)
     add_subdirectory(bluetoothaudiosink)
@@ -80,4 +82,8 @@ endif()
 
 if(CRYPTOGRAPHY)
     add_subdirectory(cryptography)
+endif()
+
+if(LOCALTRACER)
+    add_subdirectory(localtracer)
 endif()

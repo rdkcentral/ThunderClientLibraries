@@ -462,9 +462,7 @@ public:
     OpenCDMSession& operator= (const OpenCDMSession&) = delete;
     OpenCDMSession() = delete;
 
-    #ifdef __WINDOWS__
-    #pragma warning(disable : 4355)
-    #endif
+PUSH_WARNING(DISABLE_WARNING_THIS_IN_MEMBER_INITIALIZER_LIST)
 
     OpenCDMSession(OpenCDMSystem* system,
         const string& initDataType,
@@ -506,9 +504,7 @@ public:
         }
     }
 
-    #ifdef __WINDOWS__
-    #pragma warning(default : 4355)
-    #endif
+POP_WARNING()
 
     virtual ~OpenCDMSession()
     {

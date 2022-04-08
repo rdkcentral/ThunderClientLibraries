@@ -88,20 +88,14 @@ namespace Netflix {
                     printf("%s:%d [%s] Set label to default \"%s\"\n", __FILE__, __LINE__, __func__, label.c_str());
                 }
 
-#ifdef __WINDOWS__
-#pragma warning(disable : 4200)
-#endif
-#pragma pack(push, 1)
+PUSH_WARNING(DISABLE_WARNING_NON_STANDARD_EXTENSION_USED)
                 struct NetflixData {
                     uint8_t salt[16];
                     uint8_t kpe[16];
                     uint8_t kph[32];
                     uint8_t esn[0];
                 };
-#pragma pack(pop)
-#ifdef __WINDOWS__
-#pragma warning(default : 4200)
-#endif
+POP_WARNING()
 
                 uint8_t encrypted_data[1024];
                 uint16_t encrypted_data_size = sizeof(encrypted_data);
@@ -158,20 +152,14 @@ namespace Netflix {
         WPEFramework::Core::File file(path);
 
         if (file.Open(true) == true) {
-#ifdef __WINDOWS__
-#pragma warning(disable : 4200)
-#endif
-#pragma pack(push, 1)
+PUSH_WARNING(DISABLE_WARNING_NON_STANDARD_EXTENSION_USED)
             struct NetflixData {
                 uint8_t salt[16];
                 uint8_t kpe[16];
                 uint8_t kph[32];
                 uint8_t esn[0];
             };
-#pragma pack(pop)
-#ifdef __WINDOWS__
-#pragma warning(default : 4200)
-#endif
+POP_WARNING()
 
             uint64_t fileSize = file.Size();
 
