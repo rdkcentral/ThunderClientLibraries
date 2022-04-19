@@ -2160,13 +2160,11 @@ namespace RPI {
             _touchpanel -> Release ();
         }
 
-        _display . Unregister ( this );
-
         if ( _remoteClient != nullptr ) {
 
             TRACE_L1(_T ( "Destructing surface %s" ) , _remoteClient -> Name() . c_str () );
 
-            _display . RemoteDisplay () -> InvalidateClient ( _remoteClient );
+            _display . RemoteDisplay () -> InvalidateClient ( _remoteClient -> Name () );
 
             if ( _remoteRenderer != nullptr ) {
                 auto result = _remoteRenderer -> Release ();
@@ -2181,6 +2179,8 @@ namespace RPI {
             _remoteClient = nullptr;
 
         }
+
+        _display . Unregister ( this );
 
         if ( _nativeSurface . Surface () != WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::InvalidSurface () ) {
             gbm_surface_destroy ( _nativeSurface  . Surface () );
