@@ -27,7 +27,7 @@ namespace Implementation {
 
 namespace Netflix {
 
-uint16_t DeriveWrappingKey(const uint8_t input[], const uint16_t inputSize, const uint16_t maxSize, uint8_t output[])
+uint16_t DeriveWrappingKey(const uint8_t input[], const uint16_t inputSize, const uint16_t maxSize VARIABLE_IS_NOT_USED, uint8_t output[])
 {
     // As per https://github.com/Netflix/msl/wiki/Pre-shared-Keys-or-Model-Group-Keys-Entity-Authentication
 
