@@ -58,9 +58,10 @@ set_target_properties(${TARGET} PROPERTIES
         )
 
 target_include_directories( ${TARGET}
-        PUBLIC
+        PRIVATE
           $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
           $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../>
+        PUBLIC
           $<INSTALL_INTERFACE:include/${NAMESPACE}>
           $<INSTALL_INTERFACE:include/${NAMESPACE}/virtualinput>
         )
