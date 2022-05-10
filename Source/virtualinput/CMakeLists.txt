@@ -57,11 +57,10 @@ set_target_properties(${TARGET} PROPERTIES
         SOSOVERSION ${PROJECT_VERSION_MAJOR}
         )
 
-target_include_directories( ${TARGET}
-        PRIVATE
+target_include_directories(${TARGET}
+        PUBLIC
           $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
           $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../>
-        PUBLIC
           $<INSTALL_INTERFACE:include/${NAMESPACE}>
           $<INSTALL_INTERFACE:include/${NAMESPACE}/virtualinput>
         )
@@ -80,7 +79,7 @@ InstallCMakeConfig(
         TARGETS ${TARGET})
 
 InstallPackageConfig(
-        TARGETS ${TARGET} 
+        TARGETS ${TARGET}
         DESCRIPTION "An abstraction layer for input virtualisation using an IPC message channel.")
 
 if (VIRTUALINPUT_TOOLS)
