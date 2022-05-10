@@ -69,6 +69,7 @@ target_include_directories(${TARGET}
         $<INSTALL_INTERFACE:include/${NAMESPACE}>
     PRIVATE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/..>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../..>
         ${EGL_INCLUDE_DIRS})
 
 target_compile_definitions(${TARGET}
