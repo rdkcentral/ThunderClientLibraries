@@ -57,9 +57,6 @@
     <ClInclude Include="implementation\vault_implementation.h">
       <Filter>C Interface</Filter>
     </ClInclude>
-    <ClInclude Include="cryptography_vault_ids.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Cryptography.cpp">
@@ -82,12 +79,6 @@
     </ClCompile>
     <ClCompile Include="implementation\OpenSSL\Vault.cpp">
       <Filter>Implementation\Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ProxyStubs_NetflixSecurity.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ProxyStubs_Cryptography.cpp">
-      <Filter>Generated Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

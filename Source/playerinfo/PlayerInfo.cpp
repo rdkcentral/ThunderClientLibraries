@@ -32,7 +32,6 @@ private:
     using BaseClass = RPC::SmartInterfaceType<Exchange::IPlayerProperties>;
     using DolbyModeAudioUpdateCallbacks = std::map<playerinfo_dolby_audio_updated_cb, void*>;
     using OperationalStateChangeCallbacks = std::map<playerinfo_operational_state_change_cb, void*>;
-    friend class WPEFramework::Core::SingletonType<PlayerInfo>;
 
     //CONSTRUCTORS
     PlayerInfo(const string& callsign)
@@ -41,6 +40,8 @@ private:
         , _callsign(callsign)
         , _dolbyNotification(this)
     {
+        ASSERT(_singleton==nullptr);
+        _singleton=this;
         BaseClass::Open(RPC::CommunicationTimeOut, BaseClass::Connector(), callsign);
     }
 
@@ -122,17 +123,31 @@ private:
     DolbyModeAudioUpdateCallbacks _dolbyCallbacks;
     OperationalStateChangeCallbacks _operationalStateCallbacks;
     Core::Sink<Notification> _dolbyNotification;
+    static PlayerInfo* _singleton;
 
 public:
     //OBJECT MANAGEMENT
     ~PlayerInfo()
     {
         BaseClass::Close(Core::infinite);
+        ASSERT(_singleton!=nullptr);
+        _singleton = nullptr;
     }
 
     static PlayerInfo& Instance()
     {
-        return WPEFramework::Core::SingletonType<PlayerInfo>::Instance("PlayerInfo");
+        static PlayerInfo* instance = new PlayerInfo("PlayerInfo");
+        ASSERT(instance!=nullptr);
+        return *instance;
+    }
+
+    static void Dispose()
+    {
+        ASSERT(_singleton != nullptr);
+        if(_singleton != nullptr)
+        {
+            delete _singleton;
+        }
     }
 
 public:
@@ -409,6 +424,9 @@ public:
         return errorCode;
     }
 };
+
+PlayerInfo* PlayerInfo::_singleton=nullptr;
+
 } //namespace WPEFramework
 
 using namespace WPEFramework;
@@ -495,7 +513,7 @@ uint32_t playerinfo_playback_resolution(playerinfo_playback_resolution_t* resolu
 
 uint32_t playerinfo_is_audio_equivalence_enabled(bool* is_enabled)
 {
-    return (is_enabled != nullptr) ? PlayerInfo::Instance().IsAudioEquivalenceEnabled(*is_enabled) : Core::ERROR_UNAVAILABLE;
+    return (is_enabled != nullptr) ? PlayerInfo::Instance().IsAudioEquivalenceEnabled(*is_enabled) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE);
 }
 
 int8_t playerinfo_video_codecs(playerinfo_videocodec_t array[], const uint8_t length)
@@ -621,6 +639,6 @@ uint32_t playerinfo_get_dolby_mode(playerinfo_dolby_mode_t* mode)
 }
 
 void playerinfo_dispose() {
-    Core::Singleton::Dispose();
+    PlayerInfo::Dispose();
 }
 }

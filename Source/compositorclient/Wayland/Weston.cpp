@@ -144,7 +144,7 @@ static const struct wl_keyboard_listener keyboardListener = {
         context.FocusKeyboard(surface, false);
     },
     // keyboardKey
-    [](void* data, struct wl_keyboard*, uint32_t, uint32_t time, uint32_t key, uint32_t state) {
+    [](void* data, struct wl_keyboard* keyboard, uint32_t, uint32_t time, uint32_t key, uint32_t state) {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
 
         // Have no idea if this is true, just lets see...
@@ -227,17 +227,17 @@ static const struct wl_pointer_listener pointerListener = {
         v = wl_fixed_to_int(value);
         Trace("wl_pointer_listener.pointerAxis [%u,%d]\n", axis, v);
     },
-    // frame
+    // pointerFrame
     [](void*, struct wl_pointer*) {
     },
-    // axisSource
-    [] (void*, struct wl_pointer*, uint32_t) {
+    // pointerAxisSource
+    [](void*, struct wl_pointer*, uint32_t) {
     },
-    // axisStop
-    [] (void*, struct wl_pointer*, uint32_t, uint32_t) {
+    // pointerAxisStop
+    [](void*, struct wl_pointer*, uint32_t, uint32_t) {
     },
-    // axisDiscrete
-    [] (void*, struct wl_pointer*, uint32_t, int32_t){
+    // pointerAxisDiscrete
+    [](void*, struct wl_pointer*, uint32_t, int32_t) {
     }
 };
 
@@ -303,8 +303,8 @@ static const struct wl_registry_listener globalRegistryListener = {
             context._shell = static_cast<struct wl_shell*>(wl_registry_bind(registry, name, &wl_shell_interface, 1));
         } else if (::strcmp(interface, "wl_output") == 0) {
             struct wl_output* result = static_cast<struct wl_output*>(wl_registry_bind(registry, name, &wl_output_interface, 2));
-             wl_output_add_listener(result, &outputListener, data);
-             context._output = result;
+            wl_output_add_listener(result, &outputListener, data);
+            context._output = result;
         } else if (strcmp(interface, "xdg_wm_base") == 0) {
             struct xdg_wm_base* result = static_cast<struct xdg_wm_base*>(wl_registry_bind(registry, name, &xdg_wm_base_interface, 1));
 
@@ -357,11 +357,11 @@ namespace Wayland {
     /*static*/ EGLenum Display::ImageImplementation::_eglTarget;
     /*static*/ PFNEGLCREATEIMAGEKHRPROC Display::ImageImplementation::_eglCreateImagePtr = nullptr;
     /*static*/ PFNEGLDESTROYIMAGEKHRPROC Display::ImageImplementation::_eglDestroyImagePtr = nullptr;
-   /* 
-   Copyright (C) 2007 The Android Open Source Project
-   Licensed under the Apache License, Version 2.0
-   */
-    
+
+    /*
+    Copyright (C) 2007 The Android Open Source Project
+    Licensed under the Apache License, Version 2.0
+    */
     static void printEGLConfiguration(EGLDisplay dpy, EGLConfig config)
     {
 #define X(VAL)    \
@@ -657,7 +657,7 @@ namespace Wayland {
     {
         if (_display != nullptr) {
             _eglDestroyImagePtr(_display->_eglDisplay, _eglImage);
-    }
+        }
     }
 
     static void* Processor(void* data)

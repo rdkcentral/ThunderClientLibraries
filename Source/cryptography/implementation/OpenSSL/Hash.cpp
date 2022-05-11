@@ -73,7 +73,7 @@ namespace Operation {
     // Wrappers to get around different function names for digest and HMAC calculation.
 
     struct Digest {
-        static int Init(EVP_MD_CTX* ctx, EVP_PKEY_CTX **pctx, const EVP_MD *type, EVP_PKEY *pkey) {
+        static int Init(EVP_MD_CTX* ctx VARIABLE_IS_NOT_USED, EVP_PKEY_CTX **pctx VARIABLE_IS_NOT_USED, const EVP_MD *type VARIABLE_IS_NOT_USED, EVP_PKEY *pkey VARIABLE_IS_NOT_USED) {
             return (1);
         }
         static int Update(EVP_MD_CTX* ctx, const void* d, size_t cnt) {
