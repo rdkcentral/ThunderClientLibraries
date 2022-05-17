@@ -20,6 +20,7 @@ set(TARGET displayinfo)
 set(PUBLIC_HEADERS 
         "include/displayinfo.h"
         "include/ExtendedDisplayIdentification.h"
+        "include/EDIDTimings.h"
         )
 
 add_library(${TARGET}  SHARED 
