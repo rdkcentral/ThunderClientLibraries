@@ -23,8 +23,6 @@
 #include <string>
 #include <vector>
 
-#define ASSERT(params) assert(params)
-
 
 namespace WPEFramework {
 namespace Plugin {

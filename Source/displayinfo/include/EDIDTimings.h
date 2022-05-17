@@ -345,3 +345,4 @@ namespace EDID {
 } // EDID
 } // Plugin
 } // WPEFramework
+
