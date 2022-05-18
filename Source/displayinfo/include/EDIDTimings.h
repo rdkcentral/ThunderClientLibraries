@@ -170,8 +170,7 @@ namespace EDID {
         uint16_t activeWidth;
     };
 
-    static constexpr uint8_t standardTimingMapSize = 155;
-    static constexpr StandardTiming standardTimingMap[standardTimingMapSize] =
+    static constexpr StandardTiming standardTimingMap[] =
     {
          {1, timingshortnametype::TSN_DMT0659, displayaspectratiotype::DAR_4_TO_3, verticalfrequencytype::VF_59940, 640, 480},
          {2, timingshortnametype::TSN_480P, displayaspectratiotype::DAR_4_TO_3, verticalfrequencytype::VF_59940, 720, 480},
@@ -333,7 +332,7 @@ namespace EDID {
     {
         const StandardTiming* result = nullptr;
 
-        for(uint8_t index = 0; index < standardTimingMapSize; ++index) {
+        for(uint8_t index = 0; index < (sizeof(standardTimingMap)/sizeof(StandardTiming)); ++index) {
             if(standardTimingMap[index].vic == vic) {
                 result = &standardTimingMap[index];
                 break;
