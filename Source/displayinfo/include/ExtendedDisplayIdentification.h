@@ -37,7 +37,7 @@ namespace Plugin {
             DisplayPort = 5
         };
 
-        enum class AudioFormatType : uint32_t {
+        enum class audioformattype : uint32_t {
             LPCM = (1 << 0),
             AC3 = (1 << 1),
             MPEG1 = (1 << 2),
@@ -65,7 +65,7 @@ namespace Plugin {
         };
 
 
-        enum class ColorSpaceType : uint16_t {
+        enum class colorspacetype : uint16_t {
             SRGB = (1 << 0),
             XVYCC_601 = (1 << 1), // ITU-R BT.601
             XVYCC_709 = (1 << 2), // ITU-R BT.709
@@ -78,7 +78,7 @@ namespace Plugin {
             DCI_P3 = (1 << 9),
         };
 
-        enum class ColorDepthType : uint8_t {
+        enum class colordepthtype : uint8_t {
             BPC_UNDEFINED = (0 << 0),
             BPC_6 = (1 << 0),
             BPC_8 = (1 << 1),
@@ -88,7 +88,7 @@ namespace Plugin {
             BPC_16 = (1 << 5),
         };
 
-        enum class ColorFormatType : uint8_t {
+        enum class colorformattype : uint8_t {
             UNDEFINED = (0 << 0),
             RGB = (1 << 0),
             YCBCR_4_2_2 = (1 << 1),
@@ -300,39 +300,39 @@ namespace Plugin {
                         // HDMI Licensing, LLC -- HDMI 1.4 info
                         if(registrationId == 0x000C03) {
                             if(dataBlock.Current()[6] & (1 << 6)) {
-                                colorDepthMap |= static_cast<uint8_t>(ColorDepthType::BPC_16);
+                                colorDepthMap |= static_cast<uint8_t>(colordepthtype::BPC_16);
                             }
                             if(dataBlock.Current()[6] & (1 << 5)) {
-                                colorDepthMap |= static_cast<uint8_t>(ColorDepthType::BPC_12);
+                                colorDepthMap |= static_cast<uint8_t>(colordepthtype::BPC_12);
                             }
                             if(dataBlock.Current()[6] & (1 << 4)) {
-                                colorDepthMap |= static_cast<uint8_t>(ColorDepthType::BPC_10);
+                                colorDepthMap |= static_cast<uint8_t>(colordepthtype::BPC_10);
                             }
                         }
                     }
                 }
             }
 
-            ColorFormatType SupportedColorFormat() const
+            colorformattype SupportedColorFormat() const
             {
-                ColorFormatType result = ColorFormatType::UNDEFINED;
+                colorformattype result = colorformattype::UNDEFINED;
                 if(Version() > 2) {
                     uint8_t colorFormat = (_segment[3] & 0x07) >> 4;
                     switch(colorFormat) {
                         case 0x00:
-                            result = ColorFormatType::RGB;
+                            result = colorformattype::RGB;
                             break;
                         case 0x01:
-                            result = ColorFormatType::YCBCR_4_2_2;
+                            result = colorformattype::YCBCR_4_2_2;
                             break;
                         case 0x02:
-                            result = ColorFormatType::YCBCR_4_4_4;
+                            result = colorformattype::YCBCR_4_4_4;
                             break;
                         case 0x03:
-                            result = ColorFormatType::YCBCR_4_2_0;
+                            result = colorformattype::YCBCR_4_2_0;
                             break;
                         default:
-                            result = ColorFormatType::UNDEFINED;
+                            result = colorformattype::UNDEFINED;
                             break;
                     }
                 }
@@ -348,13 +348,13 @@ namespace Plugin {
                         // HDMI Forum -- HDMI 2.0 info
                         if(registrationId == 0xC45DD8) {
                             if((dataBlock.Current()[3]) & (1 << 1)) {
-                                colorFormatMap |= static_cast<uint8_t>(ColorFormatType::YCBCR_4_2_0);
+                                colorFormatMap |= static_cast<uint8_t>(colorformattype::YCBCR_4_2_0);
                             }
                             if((dataBlock.Current()[3]) & (1 << 2)) {
-                                colorFormatMap |= static_cast<uint8_t>(ColorFormatType::YCBCR_4_2_0);
+                                colorFormatMap |= static_cast<uint8_t>(colorformattype::YCBCR_4_2_0);
                             }
                             if((dataBlock.Current()[3]) & (1 << 3)) {
-                                colorFormatMap |= static_cast<uint8_t>(ColorFormatType::YCBCR_4_2_0);
+                                colorFormatMap |= static_cast<uint8_t>(colorformattype::YCBCR_4_2_0);
                             }
                         }
                     }
@@ -369,31 +369,31 @@ namespace Plugin {
                         const uint8_t extendedTag = dataBlock.Current()[1];
                         if((extendedTag == 0x05) && (dataBlock.BlockSize() >= 3)) {
                             if(dataBlock.Current()[2]  & (1 << 0)) {
-                                colorSpaceMap |= static_cast<uint16_t>(ColorSpaceType::XVYCC_601);
+                                colorSpaceMap |= static_cast<uint16_t>(colorspacetype::XVYCC_601);
                             }
                             if(dataBlock.Current()[2]  & (1 << 1)) {
-                                colorSpaceMap |= static_cast<uint16_t>(ColorSpaceType::XVYCC_709);
+                                colorSpaceMap |= static_cast<uint16_t>(colorspacetype::XVYCC_709);
                             }
                             if(dataBlock.Current()[2]  & (1 << 2)) {
-                                colorSpaceMap |= static_cast<uint16_t>(ColorSpaceType::SYCC_601);
+                                colorSpaceMap |= static_cast<uint16_t>(colorspacetype::SYCC_601);
                             }
                             if(dataBlock.Current()[2]  & (1 << 3)) {
-                                colorSpaceMap |= static_cast<uint16_t>(ColorSpaceType::OP_YCC_601);
+                                colorSpaceMap |= static_cast<uint16_t>(colorspacetype::OP_YCC_601);
                             }
                             if(dataBlock.Current()[2]  & (1 << 4)) {
-                                colorSpaceMap |= static_cast<uint16_t>(ColorSpaceType::OP_RGB);
+                                colorSpaceMap |= static_cast<uint16_t>(colorspacetype::OP_RGB);
                             }
                             if(dataBlock.Current()[2]  & (1 << 5)) {
-                                colorSpaceMap |= static_cast<uint16_t>(ColorSpaceType::ITUR_BT_2020_CYCC);
+                                colorSpaceMap |= static_cast<uint16_t>(colorspacetype::ITUR_BT_2020_CYCC);
                             }
                             if(dataBlock.Current()[2]  & (1 << 6)) {
-                                colorSpaceMap |= static_cast<uint16_t>(ColorSpaceType::ITUR_BT_2020_YCC);
+                                colorSpaceMap |= static_cast<uint16_t>(colorspacetype::ITUR_BT_2020_YCC);
                             }
                             if(dataBlock.Current()[2]  & (1 << 7)) {
-                                colorSpaceMap |= static_cast<uint16_t>(ColorSpaceType::ITUR_BT_2020_RGB);
+                                colorSpaceMap |= static_cast<uint16_t>(colorspacetype::ITUR_BT_2020_RGB);
                             }
                             if(dataBlock.Current()[3]  & (1 << 7)) {
-                                colorSpaceMap |= static_cast<uint16_t>(ColorSpaceType::DCI_P3);
+                                colorSpaceMap |= static_cast<uint16_t>(colorspacetype::DCI_P3);
                             }
                         }
                     }
@@ -424,79 +424,79 @@ namespace Plugin {
                             // switch(((blockStart[sadStart + 1] & 0x78) >> 3)) {
                             switch(sad){
                             case 0x01:
-                                audioFormatMap |= static_cast<uint32_t>(AudioFormatType::LPCM);
+                                audioFormatMap |= static_cast<uint32_t>(audioformattype::LPCM);
                                 break;
                             case 0x02:
-                                audioFormatMap |= static_cast<uint32_t>(AudioFormatType::AC3);
+                                audioFormatMap |= static_cast<uint32_t>(audioformattype::AC3);
                                 break;
                             case 0x03:
-                                audioFormatMap |= static_cast<uint32_t>(AudioFormatType::MPEG1);
+                                audioFormatMap |= static_cast<uint32_t>(audioformattype::MPEG1);
                                 break;
                             case 0x04:
-                                audioFormatMap |= static_cast<uint32_t>(AudioFormatType::MP3);
+                                audioFormatMap |= static_cast<uint32_t>(audioformattype::MP3);
                                 break;
                             case 0x05:
-                                audioFormatMap |= static_cast<uint32_t>(AudioFormatType::MPEG2);
+                                audioFormatMap |= static_cast<uint32_t>(audioformattype::MPEG2);
                                 break;
                             case 0x06:
-                                audioFormatMap |= static_cast<uint32_t>(AudioFormatType::AAC_LC);
+                                audioFormatMap |= static_cast<uint32_t>(audioformattype::AAC_LC);
                                 break;
                             case 0x07:
-                                audioFormatMap |= static_cast<uint32_t>(AudioFormatType::DTS);
+                                audioFormatMap |= static_cast<uint32_t>(audioformattype::DTS);
                                 break;
                             case 0x08:
-                                audioFormatMap |= static_cast<uint32_t>(AudioFormatType::ATRAC);
+                                audioFormatMap |= static_cast<uint32_t>(audioformattype::ATRAC);
                                 break;
                             case 0x09:
-                                audioFormatMap |= static_cast<uint32_t>(AudioFormatType::SUPER_AUDIO_CD);
+                                audioFormatMap |= static_cast<uint32_t>(audioformattype::SUPER_AUDIO_CD);
                                 break;
                             case 0x0A:
-                                audioFormatMap |= static_cast<uint32_t>(AudioFormatType::EAC3);
+                                audioFormatMap |= static_cast<uint32_t>(audioformattype::EAC3);
                                 // if MPEG surround implicitly and explicitly supported: assume ATMOS
                                 if((dataBlock.Current()[index + 3] & 0x01)) {
-                                    audioFormatMap |= static_cast<uint32_t>(AudioFormatType::DOLBY_ATMOS);
+                                    audioFormatMap |= static_cast<uint32_t>(audioformattype::DOLBY_ATMOS);
                                 }
                                 break;
                             case 0x0B:
-                                audioFormatMap |= static_cast<uint32_t>(AudioFormatType::DTSHD);
+                                audioFormatMap |= static_cast<uint32_t>(audioformattype::DTSHD);
                                 break;
                             case 0x0C:
-                                audioFormatMap |= static_cast<uint32_t>(AudioFormatType::DOLBY_TRUEHD);
+                                audioFormatMap |= static_cast<uint32_t>(audioformattype::DOLBY_TRUEHD);
                                 break;
                             case 0x0D:
-                                audioFormatMap |= static_cast<uint32_t>(AudioFormatType::DST_AUDIO);
+                                audioFormatMap |= static_cast<uint32_t>(audioformattype::DST_AUDIO);
                                 break;
                             case 0x0E:
-                                audioFormatMap |= static_cast<uint32_t>(AudioFormatType::MS_WMA_PRO);
+                                audioFormatMap |= static_cast<uint32_t>(audioformattype::MS_WMA_PRO);
                                 break;
                             case 0x0F:
                                 switch((dataBlock.Current()[index + 3] & 0xF8) >> 3) {
                                     case 0x04:
-                                        audioFormatMap |= static_cast<uint32_t>(AudioFormatType::MPEG4_HEAAC);
+                                        audioFormatMap |= static_cast<uint32_t>(audioformattype::MPEG4_HEAAC);
                                         break;
                                     case 0x05:
-                                        audioFormatMap |= static_cast<uint32_t>(AudioFormatType::MPEG4_HEAAC_V2);
+                                        audioFormatMap |= static_cast<uint32_t>(audioformattype::MPEG4_HEAAC_V2);
                                         break;
                                     case 0x06:
-                                        audioFormatMap |= static_cast<uint32_t>(AudioFormatType::MPEG4_ACC_LC);
+                                        audioFormatMap |= static_cast<uint32_t>(audioformattype::MPEG4_ACC_LC);
                                         break;
                                     case 0x07:
-                                        audioFormatMap |= static_cast<uint32_t>(AudioFormatType::DRA);
+                                        audioFormatMap |= static_cast<uint32_t>(audioformattype::DRA);
                                         break;
                                     case 0x08:
-                                        audioFormatMap |= static_cast<uint32_t>(AudioFormatType::MPEG4_HEAAC_MPEG_SURROUND);
+                                        audioFormatMap |= static_cast<uint32_t>(audioformattype::MPEG4_HEAAC_MPEG_SURROUND);
                                         break;
                                     case 0x0A:
-                                        audioFormatMap |= static_cast<uint32_t>(AudioFormatType::MPEG4_HEAAC_LC_MPEG_SURROUND);
+                                        audioFormatMap |= static_cast<uint32_t>(audioformattype::MPEG4_HEAAC_LC_MPEG_SURROUND);
                                         break;
                                     case 0x0B:
-                                        audioFormatMap |= static_cast<uint32_t>(AudioFormatType::MPEGH_3DAUDIO);
+                                        audioFormatMap |= static_cast<uint32_t>(audioformattype::MPEGH_3DAUDIO);
                                         break;
                                     case 0x0C:
-                                        audioFormatMap |= static_cast<uint32_t>(AudioFormatType::AC4);
+                                        audioFormatMap |= static_cast<uint32_t>(audioformattype::AC4);
                                         break;
                                     case 0x0D:
-                                        audioFormatMap |= static_cast<uint32_t>(AudioFormatType::LPCM_3DAUDIO);
+                                        audioFormatMap |= static_cast<uint32_t>(audioformattype::LPCM_3DAUDIO);
                                         break;
                                     default:
                                         break;
@@ -620,30 +620,30 @@ namespace Plugin {
             return (bitsPerColor[(_base[0x14] >> 4) & 0x7]);
         }
 
-        ColorDepthType ColorDepth() const {
-            ColorDepthType colorDepth = ColorDepthType::BPC_UNDEFINED;
+        colordepthtype ColorDepth() const {
+            colordepthtype colorDepth = colordepthtype::BPC_UNDEFINED;
             if((_base[0x14] >> 7) & 0x01) {
                 switch((_base[0x14] >> 4) & 0x07) {
                     case 0x01:
-                        colorDepth = ColorDepthType::BPC_6;
+                        colorDepth = colordepthtype::BPC_6;
                         break;
                     case 0x02:
-                        colorDepth = ColorDepthType::BPC_8;
+                        colorDepth = colordepthtype::BPC_8;
                         break;
                     case 0x03:
-                        colorDepth = ColorDepthType::BPC_10;
+                        colorDepth = colordepthtype::BPC_10;
                         break;
                     case 0x04:
-                        colorDepth = ColorDepthType::BPC_12;
+                        colorDepth = colordepthtype::BPC_12;
                         break;
                     case 0x05:
-                        colorDepth = ColorDepthType::BPC_14;
+                        colorDepth = colordepthtype::BPC_14;
                         break;
                     case 0x06:
-                        colorDepth = ColorDepthType::BPC_16;
+                        colorDepth = colordepthtype::BPC_16;
                         break;
                     default:
-                        colorDepth = ColorDepthType::BPC_UNDEFINED;
+                        colorDepth = colordepthtype::BPC_UNDEFINED;
                         break;
                 }
             }
@@ -732,8 +732,8 @@ namespace Plugin {
             }
         }
 
-        ColorFormatType SupportedColorFormat() const {
-            ColorFormatType result = ColorFormatType::UNDEFINED;
+        colorformattype SupportedColorFormat() const {
+            colorformattype result = colorformattype::UNDEFINED;
 
             Iterator segment = Iterator(_segments);
             while(segment.Next() == true) {
@@ -750,20 +750,20 @@ namespace Plugin {
             if((_base[0x14] >> 7) & 0x01){
                 switch((_base[0x18] >> 3) & 0x07) {
                     case 0x00:
-                        colorFormatMap |= static_cast<uint8_t>(ColorFormatType::RGB);
+                        colorFormatMap |= static_cast<uint8_t>(colorformattype::RGB);
                         break;
                     case 0x01:
-                        colorFormatMap |= static_cast<uint8_t>(ColorFormatType::RGB);
-                        colorFormatMap |= static_cast<uint8_t>(ColorFormatType::YCBCR_4_4_4);
+                        colorFormatMap |= static_cast<uint8_t>(colorformattype::RGB);
+                        colorFormatMap |= static_cast<uint8_t>(colorformattype::YCBCR_4_4_4);
                         break;
                     case 0x02:
-                        colorFormatMap |= static_cast<uint8_t>(ColorFormatType::RGB);
-                        colorFormatMap |= static_cast<uint8_t>(ColorFormatType::YCBCR_4_2_2);
+                        colorFormatMap |= static_cast<uint8_t>(colorformattype::RGB);
+                        colorFormatMap |= static_cast<uint8_t>(colorformattype::YCBCR_4_2_2);
                         break;
                     case 0x03:
-                        colorFormatMap |= static_cast<uint8_t>(ColorFormatType::RGB);
-                        colorFormatMap |= static_cast<uint8_t>(ColorFormatType::YCBCR_4_2_2);
-                        colorFormatMap |= static_cast<uint8_t>(ColorFormatType::YCBCR_4_4_4);
+                        colorFormatMap |= static_cast<uint8_t>(colorformattype::RGB);
+                        colorFormatMap |= static_cast<uint8_t>(colorformattype::YCBCR_4_2_2);
+                        colorFormatMap |= static_cast<uint8_t>(colorformattype::YCBCR_4_4_4);
                         break;
                 }
             }
@@ -783,7 +783,7 @@ namespace Plugin {
 
         void SupportedColorSpace(uint16_t& colorSpaceMap) const {
             if((_base[0x18] & (1 << 2))) {
-                colorSpaceMap |= static_cast<uint16_t>(ColorSpaceType::SRGB);
+                colorSpaceMap |= static_cast<uint16_t>(colorspacetype::SRGB);
             }
 
             Iterator segment = Iterator(_segments);
