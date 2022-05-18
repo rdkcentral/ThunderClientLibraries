@@ -422,8 +422,8 @@ namespace Plugin {
                 DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
                 while(dataBlock.Next()) {
                     if(dataBlock.IsValid() && (dataBlock.BlockTag() == 0x01)) {
-                        for(uint8_t index = 0; index < dataBlock.BlockSize(); index+=3) {
-                            const uint8_t sad = (dataBlock.Current()[index + 1] & 0x78) >> 3;
+                        for(uint8_t index = 1; index < dataBlock.BlockSize(); index += 3) {
+                            const uint8_t sad = (dataBlock.Current()[index] & 0x78) >> 3;
                             switch(sad){
                             case 0x01:
                                 audioFormatMap |= static_cast<uint32_t>(audioformattype::LPCM);
@@ -455,7 +455,7 @@ namespace Plugin {
                             case 0x0A:
                                 audioFormatMap |= static_cast<uint32_t>(audioformattype::EAC3);
                                 // if MPEG surround implicitly and explicitly supported: assume ATMOS
-                                if((dataBlock.Current()[index + 3] & 0x01)) {
+                                if((dataBlock.Current()[index + 2] & 0x01)) {
                                     audioFormatMap |= static_cast<uint32_t>(audioformattype::DOLBY_ATMOS);
                                 }
                                 break;
@@ -472,7 +472,7 @@ namespace Plugin {
                                 audioFormatMap |= static_cast<uint32_t>(audioformattype::MS_WMA_PRO);
                                 break;
                             case 0x0F:
-                                switch((dataBlock.Current()[index + 3] & 0xF8) >> 3) {
+                                switch((dataBlock.Current()[index + 2] & 0xF8) >> 3) {
                                     case 0x04:
                                         audioFormatMap |= static_cast<uint32_t>(audioformattype::MPEG4_HEAAC);
                                         break;
