@@ -308,6 +308,7 @@ namespace Plugin {
                             if(dataBlock.Current()[6] & (1 << 4)) {
                                 colorDepthMap |= static_cast<uint8_t>(colordepthtype::BPC_10);
                             }
+                            break;
                         }
                     }
                 }
@@ -356,6 +357,7 @@ namespace Plugin {
                             if((dataBlock.Current()[3]) & (1 << 3)) {
                                 colorFormatMap |= static_cast<uint8_t>(colorformattype::YCBCR_4_2_0);
                             }
+                            break;
                         }
                     }
                 }
@@ -396,6 +398,7 @@ namespace Plugin {
                                 colorSpaceMap |= static_cast<uint16_t>(colorspacetype::DCI_P3);
                             }
                         }
+                        break;
                     }
                 }
             }
@@ -409,6 +412,7 @@ namespace Plugin {
                             const uint8_t vic = dataBlock.Current()[index] & 0x7F;
                             vicList.push_back(vic);
                         }
+                        break;
                     }
                 }
             }
@@ -418,10 +422,8 @@ namespace Plugin {
                 DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
                 while(dataBlock.Next()) {
                     if(dataBlock.IsValid() && (dataBlock.BlockTag() == 0x01)) {
-                        uint8_t sadCount = dataBlock.BlockSize() % 3;
                         for(uint8_t index = 0; index < dataBlock.BlockSize(); index+=3) {
                             const uint8_t sad = (dataBlock.Current()[index + 1] & 0x78) >> 3;
-                            // switch(((blockStart[sadStart + 1] & 0x78) >> 3)) {
                             switch(sad){
                             case 0x01:
                                 audioFormatMap |= static_cast<uint32_t>(audioformattype::LPCM);
@@ -505,6 +507,7 @@ namespace Plugin {
                                 break;
                         }
                     }
+                    break;
                 }
             }
         }
@@ -728,6 +731,7 @@ namespace Plugin {
                 if(segment.Type() == CEA::extension_tag) {
                     CEA cae(segment.Current());
                     cae.SupportedColorDepths(colorDepthMap);
+                    break;
                 }
             }
         }
@@ -740,6 +744,7 @@ namespace Plugin {
                 if(segment.Type() == CEA::extension_tag) {
                     CEA cae(segment.Current());
                     result = cae.SupportedColorFormat();
+                    break;
                 }
             }
 
@@ -776,6 +781,7 @@ namespace Plugin {
                     CEA cae(segment.Current());
                     colorFormatMap |= static_cast<uint8_t>(cae.SupportedColorFormat());
                     cae.SupportedColorFormats(colorFormatMap);
+                    break;
                 }
             }
             SupportedDigitalDisplayTypes(colorFormatMap);
@@ -791,6 +797,7 @@ namespace Plugin {
                 if(segment.Type() == CEA::extension_tag) {
                     CEA cae(segment.Current());
                     cae.SupportedColorSpaces(colorSpaceMap);
+                    break;
                 }
             }
         }
@@ -801,6 +808,7 @@ namespace Plugin {
                 if(segment.Type() == CEA::extension_tag) {
                     CEA cae(segment.Current());
                     cae.SupportedTimings(vicList);
+                    break;
                 }
             }
         }
@@ -811,6 +819,7 @@ namespace Plugin {
                 if(segment.Type() == CEA::extension_tag) {
                     CEA cae(segment.Current());
                     cae.SupportedAudioFormats(audioFormatMap);
+                    break;
                 }
             }
         }
