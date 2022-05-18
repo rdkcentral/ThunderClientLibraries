@@ -291,8 +291,9 @@ namespace Plugin {
                 return(_segment[2]);
             }
 
-            void SupportedColorDepths(uint8_t& colorDepthMap) const
+            uint8_t SupportedColorDepths() const
             {
+                uint8_t colorDepthMap = 0;
                 DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
                 while(dataBlock.Next()) {
                     if(dataBlock.IsValid() && (dataBlock.BlockTag() == 0x03) && (dataBlock.BlockSize() > 6)) {
@@ -312,6 +313,7 @@ namespace Plugin {
                         }
                     }
                 }
+                return colorDepthMap;
             }
 
             colorformattype SupportedColorFormat() const
@@ -340,8 +342,10 @@ namespace Plugin {
                 return result;
             }
 
-            void SupportedColorFormats(uint8_t& colorFormatMap) const
+            uint8_t SupportedColorFormats() const
             {
+                uint8_t colorFormatMap = 0;
+
                 DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
                 while(dataBlock.Next()) {
                     if(dataBlock.IsValid() && (dataBlock.BlockTag() == 0x03) && (dataBlock.BlockSize() > 3)) {
@@ -361,10 +365,13 @@ namespace Plugin {
                         }
                     }
                 }
+                return colorFormatMap;
             }
 
-            void SupportedColorSpaces(uint16_t& colorSpaceMap)
+            uint16_t SupportedColorSpaces() const
             {
+                uint16_t colorSpaceMap = 0;
+
                 DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
                 while(dataBlock.Next()) {
                     if(dataBlock.IsValid() && (dataBlock.BlockTag() == 0x07) && (dataBlock.BlockSize() > 1)) {
@@ -401,9 +408,10 @@ namespace Plugin {
                         break;
                     }
                 }
+                return colorSpaceMap;
             }
 
-            void SupportedTimings(std::vector<uint8_t>& vicList)
+            void SupportedTimings(std::vector<uint8_t>& vicList) const
             {
                 DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
                 while(dataBlock.Next()) {
@@ -417,8 +425,10 @@ namespace Plugin {
                 }
             }
 
-            void SupportedAudioFormats(uint32_t& audioFormatMap)
+            uint32_t SupportedAudioFormats() const
             {
+                uint32_t audioFormatMap = 0;
+
                 DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
                 while(dataBlock.Next()) {
                     if(dataBlock.IsValid() && (dataBlock.BlockTag() == 0x01)) {
@@ -510,6 +520,7 @@ namespace Plugin {
                     break;
                 }
             }
+            return audioFormatMap;
         }
 
         private:
@@ -723,17 +734,18 @@ namespace Plugin {
             return IsValid() ? (((_base[0x3D] & 0xF0 ) << 4) + _base[0x3B]) : 0;
         }
 
-        void SupportedColorDepths(uint8_t& colorDepthMap) const {
-            colorDepthMap |= static_cast<uint8_t>(ColorDepth());
+        uint8_t SupportedColorDepths() const {
+            uint8_t colorDepthMap = static_cast<uint8_t>(ColorDepth());
 
             Iterator segment = Iterator(_segments);
             while(segment.Next() == true) {
                 if(segment.Type() == CEA::extension_tag) {
                     CEA cae(segment.Current());
-                    cae.SupportedColorDepths(colorDepthMap);
+                    colorDepthMap = cae.SupportedColorDepths();
                     break;
                 }
             }
+            return colorDepthMap;
         }
 
         colorformattype SupportedColorFormat() const {
@@ -751,7 +763,9 @@ namespace Plugin {
             return result;
         }
 
-        void SupportedDigitalDisplayTypes(uint8_t& colorFormatMap) const {
+        uint8_t SupportedDigitalDisplayTypes() const {
+            uint8_t colorFormatMap = static_cast<uint8_t>(colorformattype::RGB);
+
             if((_base[0x14] >> 7) & 0x01){
                 switch((_base[0x18] >> 3) & 0x07) {
                     case 0x00:
@@ -772,22 +786,29 @@ namespace Plugin {
                         break;
                 }
             }
+            return colorFormatMap;
         }
 
-        void SupportedColorFormats(uint8_t& colorFormatMap) const {
+        uint8_t SupportedColorFormats() const {
+            uint8_t colorFormatMap = 0;
+
             Iterator segment = Iterator(_segments);
             while(segment.Next() == true) {
                 if(segment.Type() == CEA::extension_tag) {
                     CEA cae(segment.Current());
                     colorFormatMap |= static_cast<uint8_t>(cae.SupportedColorFormat());
-                    cae.SupportedColorFormats(colorFormatMap);
+                    colorFormatMap |= cae.SupportedColorFormats();
                     break;
                 }
             }
-            SupportedDigitalDisplayTypes(colorFormatMap);
+            colorFormatMap |= SupportedDigitalDisplayTypes();
+
+            return colorFormatMap;
         }
 
-        void SupportedColorSpace(uint16_t& colorSpaceMap) const {
+        uint16_t SupportedColorSpace() const {
+            uint16_t colorSpaceMap = 0;
+
             if((_base[0x18] & (1 << 2))) {
                 colorSpaceMap |= static_cast<uint16_t>(colorspacetype::SRGB);
             }
@@ -796,10 +817,12 @@ namespace Plugin {
             while(segment.Next() == true) {
                 if(segment.Type() == CEA::extension_tag) {
                     CEA cae(segment.Current());
-                    cae.SupportedColorSpaces(colorSpaceMap);
+                    colorSpaceMap = cae.SupportedColorSpaces();
                     break;
                 }
             }
+
+            return colorSpaceMap;
         }
 
         void SupportedTimings(std::vector<uint8_t>& vicList) const {
@@ -813,15 +836,18 @@ namespace Plugin {
             }
         }
 
-        void SupportedAudioFormats(uint32_t& audioFormatMap) const {
+        uint32_t SupportedAudioFormats() const {
+            uint32_t audioFormatMap = 0;
+
             Iterator segment = Iterator(_segments);
             while(segment.Next() == true) {
                 if(segment.Type() == CEA::extension_tag) {
                     CEA cae(segment.Current());
-                    cae.SupportedAudioFormats(audioFormatMap);
+                    audioFormatMap = cae.SupportedAudioFormats();
                     break;
                 }
             }
+            return audioFormatMap;
         }
 
         void Clear() {
