@@ -17,6 +17,8 @@
  * limitations under the License.
  */
 
+#pragma once
+
 namespace WPEFramework {
 namespace Plugin {
 namespace EDID {
