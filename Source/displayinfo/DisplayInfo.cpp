@@ -430,15 +430,21 @@ public:
                      Exchange::IConnectionProperties::HDCPProtectionType::HDCP_Unencrypted ) :
                    Exchange::IConnectionProperties::HDCPProtectionType::HDCP_Unencrypted );
     }
-    uint64_t TotalGpuRam() const 
+    uint64_t TotalGpuRam() const
     {
-        uint64_t memory(0);
-        return _graphicsProperties != nullptr ? _graphicsProperties->TotalGpuRam(memory) : memory;
+        uint64_t result = 0;
+        if(_graphicsProperties != nullptr){
+            _graphicsProperties->TotalGpuRam(result);
+        }
+        return result;
     }
-    uint64_t FreeGpuRam() const 
+    uint64_t FreeGpuRam() const
     {
-        uint64_t memory(0);
-        return _graphicsProperties != nullptr ? _graphicsProperties->FreeGpuRam(memory) : memory;
+        uint64_t result = 0;
+        if(_graphicsProperties != nullptr){
+            _graphicsProperties->FreeGpuRam(result);
+        }
+        return result;
     }
 
 private:
