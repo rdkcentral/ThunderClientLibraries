@@ -18,6 +18,7 @@
  */
 
 #pragma once
+#include "Module.h"
 
 #include <list>
 #include <string>
@@ -597,8 +598,8 @@ namespace Plugin {
         // -------------------------------------------------------------
         // Accessors to the base information of the EDID raw buffer.
         // -------------------------------------------------------------
-        std::string Manufacturer() const {
-            std::string result;
+        string Manufacturer() const {
+            string result;
             if (IsValid() == true) {
                 uint16_t value = ((_base[0x08] << 8) | (_base[0x09]));
                 result  = ManufactereChar(value >> 10);
@@ -872,8 +873,8 @@ namespace Plugin {
         }
 
     private:
-        inline char ManufactereChar(uint8_t value) const {
-            return static_cast<char>('A' + ((value - 1) & 0x1F));
+        inline TCHAR ManufactereChar(uint8_t value) const {
+            return static_cast<TCHAR>('A' + ((value - 1) & 0x1F));
         }
 
     private:
