@@ -107,7 +107,10 @@ namespace Plugin {
             }
             ~Buffer() = default;
 
-            Buffer& operator= (const Buffer& copy) = delete;
+            Buffer& operator=(const Buffer& copy) {
+                ::memcpy(_data, copy._data, sizeof(copy._data));
+                return (*this);
+            }
 
         public:
             uint16_t Length() const {
@@ -149,6 +152,11 @@ namespace Plugin {
             ~Iterator() = default;
 
             Iterator& operator= (const Iterator& rhs) {
+                _segments = rhs._segments;
+                if(_segments != nullptr) {
+                    _index = rhs._segments->cbegin();
+                }
+                _reset = true;
 
                 return (*this);
             }
@@ -209,7 +217,14 @@ namespace Plugin {
                 }
                 ~DataBlockIterator() = default;
 
-                DataBlockIterator& operator= (const DataBlockIterator& rhs) {
+                const DataBlockIterator& operator=(const DataBlockIterator& rhs)
+                {
+                    _segment = rhs._segment;
+                    _index = rhs._index;
+                    ASSERT(_index >= 4);
+                    _dtdBegin = rhs._dtdBegin;
+                    _reset = rhs._reset;
+
                     return (*this);
                 }
 
@@ -262,7 +277,7 @@ namespace Plugin {
                 }
 
             private:
-                const Buffer& _segment;
+                Buffer _segment;
                 uint16_t _index;
                 uint8_t _dtdBegin;
                 bool _reset;
@@ -295,6 +310,7 @@ namespace Plugin {
             {
                 uint8_t colorDepthMap = 0;
                 DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
+
                 while(dataBlock.Next()) {
                     if(dataBlock.IsValid() && (dataBlock.BlockTag() == 0x03) && (dataBlock.BlockSize() > 6)) {
                         const uint32_t registrationId = (dataBlock.Current()[1]) + (dataBlock.Current()[2] << 8) + (dataBlock.Current()[3] << 16);
