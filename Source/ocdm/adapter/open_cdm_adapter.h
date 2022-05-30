@@ -88,7 +88,7 @@ extern "C" {
  * \return Zero on success, non-zero on error.
  */
     
-    EXTERNAL OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* session, GstBuffer* buffer);
+    EXTERNAL OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* session, GstBuffer* buffer, GstCaps* caps);
 
 
 #ifdef __cplusplus
