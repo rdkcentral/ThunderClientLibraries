@@ -66,6 +66,31 @@ extern "C" {
     EXTERNAL OpenCDMError opencdm_gstreamer_session_decrypt_v2(struct OpenCDMSession* session, GstBuffer* buffer, GstBuffer* subSampleBuffer, const uint32_t subSampleCount,
                                                const EncryptionScheme encScheme, const EncryptionPattern pattern,
                                                GstBuffer* IV, GstBuffer* keyID, uint32_t initWithLast15);
+
+/**
+ * \brief Performs decryption based on adapter implementation.
+ *
+ * This version 3 method accepts encrypted data and will typically decrypt it out-of-process (for security reasons). The actual data copying is performed
+ * using a memory-mapped file (for performance reasons). If the DRM system allows access to decrypted data (i.e. decrypting is not
+ * performed in a TEE), the decryption is performed in-place. 
+ * This version assumes all data required is attached as metadata to the buffer. Specification for this data is as follows:
+ * gst_structure [application/x-cbcs] or [application/x-cenc]
+ *      "iv"                  GST_TYPE_BUFFER
+ *      "kid"                 GST_TYPE_BUFFER
+ *      "subsample_count"     G_TYPE_UINT
+ *      "subsamples"          GST_TYPE_BUFFER
+ * gst_structure [application/x-cenc]
+ *      "crypt_byte_block"    G_TYPE_UINT
+ *      "skip_byte_block"     G_TYPE_UINT	
+ *
+ * \param session \ref OpenCDMSession instance.
+ * \param buffer Gstreamer buffer containing encrypted data and related meta data. If applicable, decrypted data will be stored here after this call returns.
+ * \return Zero on success, non-zero on error.
+ */
+    
+    EXTERNAL OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* session, GstBuffer* buffer);
+
+
 #ifdef __cplusplus
 }
 #endif
