@@ -55,6 +55,64 @@ typedef enum displayinfo_hdcp_protection_type {
     DISPLAYINFO_HDCP_UNKNOWN
 } displayinfo_hdcp_protection_t;
 
+
+typedef enum displayinfo_edid_video_interface {
+    DISPLAYINFO_EDID_VIDEO_INTERFACE_UNDEFINED = 0,
+    DISPLAYINFO_EDID_VIDEO_INTERFACE_HDMI_A = 2,
+    DISPLAYINFO_EDID_VIDEO_INTERFACE_HDMI_B = 3,
+    DISPLAYINFO_EDID_VIDEO_INTERFACE_MDDI = 4,
+    DISPLAYINFO_EDID_VIDEO_INTERFACE_DISPLAYPORT = 5
+} displayinfo_edid_video_interface_t;
+
+#define DISPLAYINFO_EDID_BLOCK_SIZE 128
+
+typedef struct displayinfo_edid_extension{
+    uint8_t tag;
+    uint8_t data[DISPLAYINFO_EDID_BLOCK_SIZE];
+} displayinfo_edid_extension_t;
+
+typedef struct displayinfo_edid_info {
+
+    /* e.g, SAM - Samsung Electric Company*/
+    char manufacturer_id[3];
+
+    uint16_t product_code;
+    uint32_t serial_number;
+
+    /*Week of manufacture; or FF model year flag*/
+    uint8_t manufacture_week;
+
+    /*Year of manufacture, or year of model, if model year flag is set. Year = datavalue + 1990.*/
+    uint16_t manufacture_year;
+
+    /*EDID version, usually 01 (for 1.3 and 1.4)*/
+    uint8_t version;
+
+    /*	EDID revision, usually 03 (for 1.3) or 04 (for 1.4)*/
+    uint8_t revision;
+
+    /* Digital input flag*/
+    bool digital;
+
+     /* If Digital input flag is set, then bits_per_color and video_interface apply*/
+    uint8_t bits_per_color;
+    displayinfo_edid_video_interface_t video_interface;
+
+    uint8_t width_in_centimeters;
+    uint8_t height_in_centimeters;
+
+    uint8_t extension_block_count;
+    displayinfo_edid_extension_t* edid_extensions;
+
+} displayinfo_edid_info_t;
+
+typedef struct displayinfo_edid_cea_extn {
+
+    uint8_t version;
+
+} displayinfo_edid_cea_extn_t;
+
+
 /**
 * @brief Will be called if there are changes regarding operational state of the
 *        instance - if it is not operational that means any function calls using it 
@@ -239,8 +297,45 @@ EXTERNAL uint32_t displayinfo_free_gpu_ram( uint64_t* free_ram);
 EXTERNAL uint32_t displayinfo_edid( uint8_t buffer[], uint16_t* length);
 
 /**
+ * @brief Parses EDID data.
+ *
+ * @param instance Instance of @ref displayinfo_type
+ * @param buffer Buffer that will contain the data.
+ * @param length Size of @ref buffer.
+ * @param edid_info Pointer to @ref displayinfo_edid_info_t containing parsed information. Memory must be freed using
+ *                  @ref displayinfo_edid_info_free()
+ * @return  ERROR_NONE on success,
+ *          ERROR_GENERAL on parsing error
+ *
+ */
+EXTERNAL uint32_t displayinfo_parse_edid( uint8_t buffer[], uint16_t length, displayinfo_edid_info_t* edid_info);
+
+/**
+ * @brief Returns info from CEA Extension Block if available.
+ *
+ * @param instance Instance of @ref displayinfo_type
+ * @param edid_info Pointer to @ref displayinfo_edid_info_t containing parsed information.
+ * @param cea_info  Returns the parsed CEA Information in @ref displayinfo_edid_cea_extn_t
+ * @return  ERROR_NONE on success,
+ *          ERROR_UNAVAILABLE if CEA extension block is not available in edid_info
+ *          ERROR_GENERAL on parsing error
+ *
+ */
+EXTERNAL uint32_t displayinfo_edid_cea_extn_info(displayinfo_edid_info_t* edid_info, displayinfo_edid_cea_extn_t *cea_info);
+
+/**
+ * @brief Frees EDID info memory.
+ *
+ * @param instance Instance of @ref displayinfo_type
+ * @param edid_info Pointer to @ref displayinfo_edid_info_t
+ * @return  ERROR_NONE on success.
+ *
+ */
+EXTERNAL uint32_t displayinfo_edid_info_free(displayinfo_edid_info_t* edid_info);
+
+/**
  * @brief Get the width of the connected display in centimaters
- * 
+ *
  * @param instance Instance of @ref displayinfo_type
  * @param width The current width in centimeters
  * @return ERROR_NONE on succes,
