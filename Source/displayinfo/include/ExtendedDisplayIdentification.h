@@ -725,6 +725,16 @@ namespace Plugin {
             return (result);
         }
 
+        Iterator CEASegment() const {
+            Iterator index = Iterator(_segments);
+            while(index.Next() == true) {
+                if(index.Type() == CEA::extension_tag) {
+                    break;
+                }
+            }
+            return index;
+        }
+
         uint8_t WidthInCentimeters() const {
             return IsValid() ? _base[21] : 0;
         }
@@ -753,28 +763,21 @@ namespace Plugin {
 
         uint8_t SupportedColorDepths() const {
             uint8_t colorDepthMap = static_cast<uint8_t>(ColorDepth());
-
-            Iterator segment = Iterator(_segments);
-            while(segment.Next() == true) {
-                if(segment.Type() == CEA::extension_tag) {
-                    CEA cae(segment.Current());
-                    colorDepthMap = cae.SupportedColorDepths();
-                    break;
-                }
+            Iterator segment = CEASegment();
+            if(segment.IsValid() == true) {
+                CEA cae(segment.Current());
+                colorDepthMap = cae.SupportedColorDepths();
             }
+
             return colorDepthMap;
         }
 
         colorformattype SupportedColorFormat() const {
             colorformattype result = colorformattype::UNDEFINED;
-
-            Iterator segment = Iterator(_segments);
-            while(segment.Next() == true) {
-                if(segment.Type() == CEA::extension_tag) {
-                    CEA cae(segment.Current());
-                    result = cae.SupportedColorFormat();
-                    break;
-                }
+            Iterator segment = CEASegment();
+            if(segment.IsValid() == true) {
+                CEA cae(segment.Current());
+                result = cae.SupportedColorFormat();
             }
 
             return result;
@@ -809,16 +812,13 @@ namespace Plugin {
         uint8_t SupportedColorFormats() const {
             uint8_t colorFormatMap = 0;
 
-            Iterator segment = Iterator(_segments);
-            while(segment.Next() == true) {
-                if(segment.Type() == CEA::extension_tag) {
-                    CEA cae(segment.Current());
-                    colorFormatMap |= static_cast<uint8_t>(cae.SupportedColorFormat());
-                    colorFormatMap |= cae.SupportedColorFormats();
-                    break;
-                }
+            Iterator segment = CEASegment();
+            if(segment.IsValid() == true) {
+                CEA cae(segment.Current());
+                colorFormatMap |= static_cast<uint8_t>(cae.SupportedColorFormat());
+                colorFormatMap |= cae.SupportedColorFormats();
+                colorFormatMap |= SupportedDigitalDisplayTypes();
             }
-            colorFormatMap |= SupportedDigitalDisplayTypes();
 
             return colorFormatMap;
         }
@@ -830,40 +830,32 @@ namespace Plugin {
                 colorSpaceMap |= static_cast<uint16_t>(colorspacetype::SRGB);
             }
 
-            Iterator segment = Iterator(_segments);
-            while(segment.Next() == true) {
-                if(segment.Type() == CEA::extension_tag) {
-                    CEA cae(segment.Current());
-                    colorSpaceMap = cae.SupportedColorSpaces();
-                    break;
-                }
+            Iterator segment = CEASegment();
+            if(segment.IsValid() == true) {
+                CEA cae(segment.Current());
+                colorSpaceMap = cae.SupportedColorSpaces();
             }
 
             return colorSpaceMap;
         }
 
         void SupportedTimings(std::vector<uint8_t>& vicList) const {
-            Iterator segment = Iterator(_segments);
-            while(segment.Next() == true) {
-                if(segment.Type() == CEA::extension_tag) {
-                    CEA cae(segment.Current());
-                    cae.SupportedTimings(vicList);
-                    break;
-                }
+            Iterator segment = CEASegment();
+            if(segment.IsValid() == true) {
+                CEA cae(segment.Current());
+                cae.SupportedTimings(vicList);
             }
         }
 
         uint32_t SupportedAudioFormats() const {
             uint32_t audioFormatMap = 0;
 
-            Iterator segment = Iterator(_segments);
-            while(segment.Next() == true) {
-                if(segment.Type() == CEA::extension_tag) {
-                    CEA cae(segment.Current());
-                    audioFormatMap = cae.SupportedAudioFormats();
-                    break;
-                }
+            Iterator segment = CEASegment();
+            if(segment.IsValid() == true) {
+                CEA cae(segment.Current());
+                audioFormatMap = cae.SupportedAudioFormats();
             }
+
             return audioFormatMap;
         }
 
