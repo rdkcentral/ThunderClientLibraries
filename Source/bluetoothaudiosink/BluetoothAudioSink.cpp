@@ -77,7 +77,6 @@ namespace BluetoothAudioSinkClient {
     private:
         using OperationalStateUpdateCallbacks = std::map<const bluetoothaudiosink_operational_state_update_cb, void*>;
         using SinkStateUpdateCallbacks = std::map<const bluetoothaudiosink_state_update_cb, void *>;
-        friend class WPEFramework::Core::SingletonType<AudioSink>;
 
     private:
         AudioSink(const string& callsign)
@@ -91,6 +90,9 @@ namespace BluetoothAudioSinkClient {
             , _callback(*this)
             , _buffer(nullptr)
         {
+            ASSERT(_singleton==nullptr);
+            _singleton=this;
+
             if (SmartInterfaceType::Open(RPC::CommunicationTimeOut, SmartInterfaceType::Connector(), callsign) != Core::ERROR_NONE) {
                 PRINT(_T("Failed to open the smart interface!"));
             }
@@ -101,6 +103,7 @@ namespace BluetoothAudioSinkClient {
         AudioSink(const AudioSink&) = delete;
         AudioSink& operator=(const AudioSink&) = delete;
 
+    private:
         ~AudioSink() override
         {
             TRACE_L1("Bluetooth audio sink is closing...");
@@ -130,6 +133,9 @@ namespace BluetoothAudioSinkClient {
             _lock.Unlock();
 
             SmartInterfaceType::Close(Core::infinite);
+
+            ASSERT(_singleton!=nullptr);
+            _singleton=nullptr;
         }
 
     private:
@@ -244,7 +250,17 @@ namespace BluetoothAudioSinkClient {
     public:
         static AudioSink& Instance()
         {
-            return Core::SingletonType<AudioSink>::Instance(_T("BluetoothAudioSink"));
+            static AudioSink* instance = new AudioSink("BluetoothAudioSink");
+            ASSERT(instance!=nullptr);
+            return *instance;
+        }
+        static void Dispose()
+        {
+            ASSERT(_singleton!=nullptr);
+            if(_singleton != nullptr)
+            {
+                delete _singleton;
+            }
         }
 
     public:
@@ -511,7 +527,10 @@ namespace BluetoothAudioSinkClient {
         Exchange::IBluetoothAudioSink::IControl* _sinkControl;
         Core::Sink<Callback> _callback;
         SendBuffer* _buffer;
+        static AudioSink* _singleton;
     };
+
+    AudioSink* AudioSink::_singleton=nullptr;
 
 } // namespace BluetoothAudioSinkClient
 
@@ -647,7 +666,7 @@ uint32_t bluetoothaudiosink_frame(const uint16_t length, const uint8_t data[], u
 
 uint32_t bluetoothaudiosink_dispose(void)
 {
-    Core::Singleton::Dispose();
+    BluetoothAudioSinkClient::AudioSink::Dispose();
     return (Core::ERROR_NONE);
 }
 

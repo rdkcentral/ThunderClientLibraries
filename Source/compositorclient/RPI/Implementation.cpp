@@ -147,7 +147,7 @@ public:
     {
         return (_platform.Height());
     }
-    EGLSurface CreateSurface (const EGLNativeDisplayType& display, const uint32_t width, const uint32_t height) 
+    EGLSurface CreateSurface(const EGLNativeDisplayType& display VARIABLE_IS_NOT_USED, const uint32_t width, const uint32_t height)
     {
         // A Native surface that acts as a native window
         EGLSurface result = reinterpret_cast<EGLSurface>(_platform.CreateRenderTarget(width, height));
@@ -532,6 +532,18 @@ private:
         {
             if (_touchpanel != nullptr) {
                 _touchpanel->Direct(index, state, x, y);
+            }
+        }
+        inline void Opacity(const uint32_t opacity) override
+        {
+            _remoteAccess->Opacity(opacity);
+        }
+        inline void Visibility(const bool visible) override
+        {
+            if (visible == true) {
+                _remoteAccess->Opacity(255);
+            } else {
+                _remoteAccess->Opacity(0);
             }
         }
 
