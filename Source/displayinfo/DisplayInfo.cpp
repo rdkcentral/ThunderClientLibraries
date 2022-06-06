@@ -718,7 +718,7 @@ uint32_t displayinfo_parse_edid(const uint8_t buffer[], uint16_t length, display
     if (buffer != nullptr && length != 0 && edid_info != nullptr) {
         Plugin::ExtendedDisplayIdentification edid;
         uint32_t len = (length > edid.Length()) ? edid.Length() : length;
-        memcpy((edid.Segment(0)), buffer, edid.Length());
+        memcpy((edid.Segment(0)), buffer, len);
 
         if(edid.IsValid()) {
             memcpy(edid_info->manufacturer_id, edid.Manufacturer().c_str(), sizeof(edid_info->manufacturer_id));
