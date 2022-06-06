@@ -203,7 +203,7 @@ void print_edid_info(displayinfo_edid_base_info_t* edid_info) {
     Trace("Preferred height in pixels : %u" , edid_info->preferred_height_in_pixels);
     Trace("Digital : %s" , (edid_info->digital == true) ? "Yes" : "No");
     Trace("Bits per color : %u" , edid_info->bits_per_color);
-    fprintf(stdout, "<< Supported digital Display types : \n");
+    fprintf(stdout, "<< Supported digital Display types : ");
     binary_print(sizeof(edid_info->supported_digital_display_types), &(edid_info->supported_digital_display_types));
 }
 
@@ -380,7 +380,10 @@ int main()
                     displayinfo_edid_cea_extension_t cea_info;
                     if(displayinfo_edid_cea_extension_info(edid_dell, sizeof(edid_dell), &cea_info) == 0) {
                         print_cea_info(&cea_info);
+                    } else {
+                        Trace("No CEA Block Available");
                     }
+
                 }
 
             } else {
@@ -396,6 +399,8 @@ int main()
                 displayinfo_edid_cea_extension_t cea_info;
                 if(displayinfo_edid_cea_extension_info(edid_dell, sizeof(edid_dell), &cea_info) == 0) {
                     print_cea_info(&cea_info);
+                } else {
+                    Trace("No CEA Block Available");
                 }
             } else {
                 Trace("buffer or length is NULL, or invalid EDID");
@@ -407,6 +412,8 @@ int main()
                 displayinfo_edid_cea_extension_t cea_info;
                 if(displayinfo_edid_cea_extension_info(edid_lg, sizeof(edid_lg), &cea_info) == 0) {
                     print_cea_info(&cea_info);
+                } else {
+                    Trace("No CEA Block Available");
                 }
             } else {
                 Trace("buffer or length is NULL, or invalid EDID");
