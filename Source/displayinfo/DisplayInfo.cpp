@@ -717,6 +717,7 @@ uint32_t displayinfo_parse_edid(const uint8_t buffer[], uint16_t length, display
 
     if (buffer != nullptr && length != 0 && edid_info != nullptr) {
         Plugin::ExtendedDisplayIdentification edid;
+        uint32_t len = (length > edid.Length()) ? edid.Length() : length;
         memcpy((edid.Segment(0)), buffer, edid.Length());
 
         if(edid.IsValid()) {
@@ -741,7 +742,7 @@ uint32_t displayinfo_parse_edid(const uint8_t buffer[], uint16_t length, display
     return errorCode;
 }
 
-uint32_t displayinfo_edid_cea_extension_info(const uint8_t buffer[], uint16_t length, displayinfo_edid_cea_extension_t *cea_info)
+uint32_t displayinfo_edid_cea_extension_info(const uint8_t buffer[], const uint16_t length, displayinfo_edid_cea_extension_t *cea_info)
 {
     uint32_t errorCode = Core::ERROR_GENERAL;
 
@@ -754,7 +755,7 @@ uint32_t displayinfo_edid_cea_extension_info(const uint8_t buffer[], uint16_t le
             segments += 1;
         }
         uint32_t copied = 0;
-        for(uint32_t seg_iter=0; seg_iter < segments; seg_iter++) {
+        for(uint32_t seg_iter=0; seg_iter < segments; ++seg_iter) {
             uint32_t begin = seg_iter * max_seg_len;
             uint32_t seg_len = ((length - copied) > max_seg_len) ? max_seg_len : (length - copied);
             memcpy((edid.Segment(seg_iter)), buffer + begin, seg_len);
@@ -775,7 +776,7 @@ uint32_t displayinfo_edid_cea_extension_info(const uint8_t buffer[], uint16_t le
                 cea_info->supported_audio_formats = cae.SupportedAudioFormats();
                 std::vector<uint8_t> vic_list;
                 cae.SupportedTimings(vic_list);
-                for (uint8_t i = 0; i < vic_list.size(); i++) {
+                for (uint8_t i = 0; i < vic_list.size(); ++i) {
                     cea_info->supported_timings[i] = vic_list[i];
                 }
                 cea_info->number_of_supported_timings = vic_list.size();

@@ -546,7 +546,7 @@ EXTERNAL uint32_t displayinfo_edid( uint8_t buffer[], uint16_t* length);
  *          ERROR_GENERAL on parsing error or invalid params
  *
  */
-EXTERNAL uint32_t displayinfo_parse_edid(const uint8_t buffer[], uint16_t length, displayinfo_edid_base_info_t* edid_info);
+EXTERNAL uint32_t displayinfo_parse_edid(const uint8_t buffer[], const uint16_t length, displayinfo_edid_base_info_t* edid_info);
 
 /**
  * @brief Returns info from CEA Extension Block if available.
@@ -559,7 +559,7 @@ EXTERNAL uint32_t displayinfo_parse_edid(const uint8_t buffer[], uint16_t length
  *          ERROR_GENERAL on parsing error
  *
  */
-EXTERNAL uint32_t displayinfo_edid_cea_extension_info(const uint8_t buffer[], uint16_t length, displayinfo_edid_cea_extension_t *cea_info);
+EXTERNAL uint32_t displayinfo_edid_cea_extension_info(const uint8_t buffer[], const uint16_t length, displayinfo_edid_cea_extension_t *cea_info);
 
 /**
  * @brief Returns the corresponding displayinfo_edid_standardtiming_t for a given Video Idendification Code (VIC).
@@ -571,7 +571,7 @@ EXTERNAL uint32_t displayinfo_edid_cea_extension_info(const uint8_t buffer[], ui
  *          ERROR_UNAVAILABLE if no mapping is available for VIC
  *
  */
-EXTERNAL uint32_t displayinfo_edid_vic_to_standard_timing(uint8_t vic, displayinfo_edid_standardtiming_t* result);
+EXTERNAL uint32_t displayinfo_edid_vic_to_standard_timing(const uint8_t vic, displayinfo_edid_standardtiming_t* result);
 
 /**
  * @brief Get the width of the connected display in centimaters

@@ -172,7 +172,6 @@ void ShowMenu()
         __TIMESTAMP__);
 }
 
-
 void binary_print(size_t const size, void const * const ptr)
 {
     unsigned char *b = (unsigned char*) ptr;
@@ -182,22 +181,15 @@ void binary_print(size_t const size, void const * const ptr)
     for (i = size-1; i >= 0; i--) {
         for (j = 7; j >= 0; j--) {
             byte = (b[i] >> j) & 1;
-            printf("%u", byte);
+            fprintf(stdout,"%u", byte);
         }
     }
-    printf("\n");
-}
-void bitstream_8(uint8_t byte)
-{
-    int i = sizeof(byte) * 8;
-    while(i--) {
-        putchar('0' + ((byte >> i) & 1));
-    }
+    fprintf(stdout,"\n");
+    fflush(stdout);
 }
 
 void print_edid_info(displayinfo_edid_base_info_t* edid_info) {
-    Trace("*********************************************************************************************************");
-    Trace("EDID Base Info : ");
+    Trace("\n\nEDID Base Info : ");
     Trace("Manufacturer ID: %.*s", sizeof(edid_info->manufacturer_id), edid_info->manufacturer_id);
     Trace("Serial Number: %u" , edid_info->serial_number);
     Trace("Product Code : %u" , edid_info->product_code);
@@ -211,36 +203,31 @@ void print_edid_info(displayinfo_edid_base_info_t* edid_info) {
     Trace("Preferred height in pixels : %u" , edid_info->preferred_height_in_pixels);
     Trace("Digital : %s" , (edid_info->digital == true) ? "Yes" : "No");
     Trace("Bits per color : %u" , edid_info->bits_per_color);
-    printf("Supported digital Display types : ");
+    fprintf(stdout, "<< Supported digital Display types : \n");
     binary_print(sizeof(edid_info->supported_digital_display_types), &(edid_info->supported_digital_display_types));
-    Trace("*********************************************************************************************************");
-
 }
 
 void print_cea_info(displayinfo_edid_cea_extension_t* cea_info) {
-    Trace("*********************************************************************************************************");
-    Trace("EDID CEA Info : ");
+    Trace("\nEDID CEA Info : ");
     Trace("Version : %02X" , cea_info->version);
-    Trace("Supported Color Depths : ");
+    fprintf(stdout, "<< Supported Color Depths : ");
     binary_print(sizeof(cea_info->supported_color_depths), &(cea_info->supported_color_depths));
     Trace("Supported Color Format : %d",cea_info->supported_color_format);
-    Trace("All Supported Color Formats : ");
+    fprintf(stdout, "<< All Supported Color Formats : ");
     binary_print(sizeof(cea_info->supported_color_formats), &(cea_info->supported_color_formats));
-    Trace("Supported Color Spaces : ");
+    fprintf(stdout, "<< Supported Color Spaces : ");
     binary_print(sizeof(cea_info->supported_color_spaces), &(cea_info->supported_color_spaces));
-    Trace("Supported Audio Formats : ");
+    fprintf(stdout, "<< Supported Audio Formats : ");
     binary_print(sizeof(cea_info->supported_audio_formats), &(cea_info->supported_audio_formats));
 
     Trace("Supported Timings : ");
-    Trace("*********************************************************************************************************");
     displayinfo_edid_standardtiming_t ts;
-    printf("VIC\tTSN\tVF\tAR\tActive Height\tActive Width\n");
+    fprintf(stdout, "<< VIC\tTSN\tVF\tAR\tActive Height\tActive Width\n");
     for (uint8_t i = 0; i < cea_info->number_of_supported_timings; ++i) {
         if(displayinfo_edid_vic_to_standard_timing(cea_info->supported_timings[i], &ts) == 0) {
-            printf("%u\t%u\t%u\t%u\t%u\t%u\n",ts.vic,ts.short_name,ts.vertical_frequency,ts.dar,ts.active_height,ts.active_width);
+            fprintf(stdout, "<< %u\t%u\t%u\t%u\t\t%u\t\t%u\n",ts.vic,ts.short_name,ts.vertical_frequency,ts.dar,ts.active_height,ts.active_width);
         }
     }
-    Trace("*********************************************************************************************************");
 }
 
 int main()
@@ -411,18 +398,18 @@ int main()
                     print_cea_info(&cea_info);
                 }
             } else {
-                Trace("Instance or buffer or length is NULL, or invalid connection");
+                Trace("buffer or length is NULL, or invalid EDID");
             }
 
             if (displayinfo_parse_edid(edid_lg, sizeof(edid_lg), &edid_info) == 0) {
-                printf("\n");
+                Trace("");
                 print_edid_info(&edid_info);
                 displayinfo_edid_cea_extension_t cea_info;
                 if(displayinfo_edid_cea_extension_info(edid_lg, sizeof(edid_lg), &cea_info) == 0) {
                     print_cea_info(&cea_info);
                 }
             } else {
-                Trace("Instance or buffer or length is NULL, or invalid connection");
+                Trace("buffer or length is NULL, or invalid EDID");
             }
             break;
         }
