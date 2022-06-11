@@ -32,7 +32,7 @@ namespace WPEFramework {
             CapsParser& operator= (const CapsParser&) = delete;
 
             CapsParser();
-            ~CapsParser() override;
+            ~CapsParser();
 
         public:
             void Parse(const uint8_t* info, const uint16_t infoLength); 
@@ -43,7 +43,7 @@ namespace WPEFramework {
             uint16_t GetWidth() const { 
                 return _width; 
             } 
-            const CDMi::MediaType GetMediaType() const { 
+            CDMi::MediaType GetMediaType() const { 
                 return _mediaType; 
             } 
         

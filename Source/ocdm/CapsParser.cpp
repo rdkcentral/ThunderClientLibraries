@@ -41,7 +41,7 @@ namespace WPEFramework {
         void CapsParser::Parse(const uint8_t* info, const uint16_t infoLength) /* override */ 
         {
             if(infoLength > 0) {
-                std::string infoStr(static_cast<const char*>(info), infoLength);
+                std::string infoStr(reinterpret_cast<const char*>(info), infoLength);
 
                 std::hash<::string> hash_fn;
                 size_t info_hash = hash_fn(infoStr);
@@ -58,12 +58,12 @@ namespace WPEFramework {
                             _mediaType = CDMi::Audio;
                         }
                         else {
-                            LOG(eError, "Found and unknown media type %s\n", media);
+                            TRACE(Trace::Error, (Core::Format(_T("Found and unknown media type %s\n"), result.c_str())));
                             _mediaType = CDMi::Unknown;
                         }
                     }
                     else {
-                        TRACE(eError, "No result for media type\n");
+                        TRACE(Trace::Warning, (_T("No result for media type")));
                     }
 
                     if(_mediaType == CDMi::Video) {
@@ -71,21 +71,21 @@ namespace WPEFramework {
                         result = FindMarker(infoStr, WidthTag);
 
                         if (result.length() > 0) {
-                            _width = Core::NumberType<uint16_t>(result.c_str(), result.length(), Core::NumberBase::BASE_DECIMAL);
+                            _width = Core::NumberType<uint16_t>(result.c_str(), result.length(), NumberBase::BASE_DECIMAL);
                         }
                         else {
                             _width = 0;
-                            LOG(eError, "No result for width\n");
+                            TRACE(Trace::Warning, (_T("No result for width")));
                         }
 
                         result = FindMarker(infoStr, HeightTag);
 
                         if (result.length() > 0) {
-                            _width = Core::NumberType<uint16_t>(result.c_str(), result.length(), Core::NumberBase::BASE_DECIMAL);
+                            _height = Core::NumberType<uint16_t>(result.c_str(), result.length(), NumberBase::BASE_DECIMAL);
                         }
                         else {
                             _height = 0;
-                            LOG(eError, "No result for height\n");
+                            TRACE(Trace::Warning, (_T("No result for height")));
                         }
                     }
                     else {
@@ -102,7 +102,7 @@ namespace WPEFramework {
             std::string retVal;
 
             size_t found = data.find(tag);
-            LOG(eTrace, "Found tag <%s> in <%s> at location %d\n", tag.c_str(), data.c_str(), (int)found);
+            TRACE(Trace::Warning, (Core::Format(_T("Found tag <%s> in <%s> at location %d"), tag, data.c_str(), found)));
             if(found != ::string::npos) {
                 // Found the marker
                 // Find the end of the gst caps type identifier
@@ -113,7 +113,7 @@ namespace WPEFramework {
                     end = data.length();
                 }
                 retVal = data.substr(start, end - start);
-                LOG(eTrace, "Found substr <%s>\n", retVal.c_str());
+                TRACE(Trace::Warning, (Core::Format(_T("Found substr <%s>"), retVal.c_str())));
             }
             return retVal;
         }
