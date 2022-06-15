@@ -104,9 +104,9 @@ static void VirtualTouchScreenCallback(touchactiontype type, unsigned short inde
 
 namespace {
 
-#ifdef VC6
-
 using namespace WPEFramework;
+
+#ifdef VC6
 
 class Platform {
 private:
@@ -281,7 +281,8 @@ private:
     Platform()
     {
         bcm_host_init();
-        if (std::getenv("WPE_BCMRPI_CURSOR")) {
+        string cursor;
+        if (Core::SystemInfo::GetEnvironment(_T("WPE_BCMRPI_CURSOR"), cursor)) {
             if (!_cursor) {
                 _cursor = new Cursor(Width(), Height());
             }
