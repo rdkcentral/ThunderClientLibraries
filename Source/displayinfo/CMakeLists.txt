@@ -34,7 +34,7 @@ find_package(${NAMESPACE}COM REQUIRED)
 
 set(PUBLIC_HEADERS 
         "include/displayinfo.h"
-        "include/ExtendedDisplayIdentification.h")
+        )
 
 add_library(${TARGET}  SHARED 
     Module.cpp
