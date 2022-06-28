@@ -65,7 +65,6 @@ namespace Plugin {
             DOLBY_ATMOS = (1 << 23),
         };
 
-
         enum class colorspacetype : uint16_t {
             SRGB = (1 << 0),
             XVYCC_601 = (1 << 1), // ITU-R BT.601
@@ -232,12 +231,12 @@ namespace Plugin {
             public:
                 uint8_t BlockSize() const
                 {
-                    return (IsValid() ? _segment[_index] & 0x1F : 0);
+                    return (IsValid() ? ((_segment[_index] & 0x1F) + 1) : 0);
                 }
 
                 uint8_t BlockTag() const
                 {
-                    return (IsValid() ? ((_segment[_index] & 0xE0 ) >> 5) : 0x00);
+                    return (IsValid() ? (_segment[_index] >> 5) : 0x00);
                 }
 
                 bool IsValid() const
@@ -262,7 +261,7 @@ namespace Plugin {
                         _reset = false;
                     }
                     else if(IsInRange()){
-                        _index += BlockSize() + 1;
+                        _index += BlockSize();
                     }
                     if(BlockSize() == 0) {
                        success = false;
@@ -291,6 +290,7 @@ namespace Plugin {
 
             CEA(const Buffer& data)
                 : _segment(data)
+                , _colorFormats(InternalSupportedColorFormats())
             {
                 ASSERT(_segment[0] == extension_tag);
             }
@@ -302,14 +302,15 @@ namespace Plugin {
             {
                 return (_segment[1]);
             }
+
             uint8_t DetailedTimingDescriptorStart() const
             {
                 return(_segment[2]);
             }
 
-            uint8_t SupportedColorDepths() const
+            uint8_t SupportedRGBColorDepths() const
             {
-                uint8_t colorDepthMap = 0;
+                uint8_t colorDepthMap = static_cast<uint8_t>(colordepthtype::BPC_8);
                 DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
 
                 while(dataBlock.Next()) {
@@ -333,56 +334,120 @@ namespace Plugin {
                 return colorDepthMap;
             }
 
-            colorformattype SupportedColorFormat() const
-            {
-                colorformattype result = colorformattype::UNDEFINED;
-                if(Version() > 2) {
-                    uint8_t colorFormat = (_segment[3] & 0x07) >> 4;
-                    switch(colorFormat) {
-                        case 0x00:
-                            result = colorformattype::RGB;
-                            break;
-                        case 0x01:
-                            result = colorformattype::YCBCR_4_2_2;
-                            break;
-                        case 0x02:
-                            result = colorformattype::YCBCR_4_4_4;
-                            break;
-                        case 0x03:
-                            result = colorformattype::YCBCR_4_2_0;
-                            break;
-                        default:
-                            result = colorformattype::UNDEFINED;
-                            break;
-                    }
-                }
-                return result;
-            }
-
             uint8_t SupportedColorFormats() const
             {
-                uint8_t colorFormatMap = 0;
+                return (_colorFormats);
+            }
+
+            uint8_t InternalSupportedColorFormats() const
+            {
+                uint8_t colorFormatMap = static_cast<uint8_t>(colorformattype::RGB);
+
+                if(Version() >= 2) {
+                    if (_segment[3] & (1 << 4)) {
+                        colorFormatMap |= static_cast<uint8_t>(colorformattype::YCBCR_4_2_2);
+                    }
+                    if (_segment[3] & (1 << 5)) {
+                        colorFormatMap |= static_cast<uint8_t>(colorformattype::YCBCR_4_4_4);
+                    }
+                }
 
                 DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
                 while(dataBlock.Next()) {
-                    if(dataBlock.IsValid() && (dataBlock.BlockTag() == 0x03) && (dataBlock.BlockSize() > 3)) {
+                    if(dataBlock.IsValid() && (dataBlock.BlockTag() == 0x03) && (dataBlock.BlockSize() > 7)) {
                         const uint32_t registrationId = (dataBlock.Current()[1]) + (dataBlock.Current()[2] << 8) + (dataBlock.Current()[3] << 16);
                         // HDMI Forum -- HDMI 2.0 info
                         if(registrationId == 0xC45DD8) {
-                            if((dataBlock.Current()[3]) & (1 << 1)) {
+                            if((dataBlock.Current()[7]) & 7) {
                                 colorFormatMap |= static_cast<uint8_t>(colorformattype::YCBCR_4_2_0);
+                                break;
                             }
-                            if((dataBlock.Current()[3]) & (1 << 2)) {
-                                colorFormatMap |= static_cast<uint8_t>(colorformattype::YCBCR_4_2_0);
-                            }
-                            if((dataBlock.Current()[3]) & (1 << 3)) {
-                                colorFormatMap |= static_cast<uint8_t>(colorformattype::YCBCR_4_2_0);
-                            }
+                        }
+                    } else if((dataBlock.BlockTag() == 0x07) && (dataBlock.BlockSize() > 1)) {
+                        const uint8_t extendedTag = dataBlock.Current()[1];
+                        if (extendedTag == 0x0f) {
+                            // YCBCR 4:2:0 capability map
+                            colorFormatMap |= static_cast<uint8_t>(colorformattype::YCBCR_4_2_0);
                             break;
                         }
                     }
                 }
                 return colorFormatMap;
+            }
+
+            uint8_t SupportedYCbCr444ColorDepths() const
+            {
+                uint8_t colorDepthMap = static_cast<uint8_t>(colordepthtype::BPC_UNDEFINED);
+                if (_colorFormats & static_cast<uint8_t>(colorformattype::YCBCR_4_4_4)) {
+                    DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
+                    colorDepthMap |= static_cast<uint8_t>(colordepthtype::BPC_8);
+
+                    while(dataBlock.Next()) {
+                        if(dataBlock.IsValid() && (dataBlock.BlockTag() == 0x03) && (dataBlock.BlockSize() > 6)) {
+                            const uint32_t registrationId = (dataBlock.Current()[1]) + (dataBlock.Current()[2] << 8) + (dataBlock.Current()[3] << 16);
+                            // HDMI Licensing, LLC -- HDMI 1.4 info
+                            if(registrationId == 0x000C03) {
+                                if(dataBlock.Current()[6] & (1 << 3)) {
+                                    if(dataBlock.Current()[6] & (1 << 6)) {
+                                        colorDepthMap |= static_cast<uint8_t>(colordepthtype::BPC_16);
+                                    }
+                                    if(dataBlock.Current()[6] & (1 << 5)) {
+                                        colorDepthMap |= static_cast<uint8_t>(colordepthtype::BPC_12);
+                                    }
+                                    if(dataBlock.Current()[6] & (1 << 4)) {
+                                        colorDepthMap |= static_cast<uint8_t>(colordepthtype::BPC_10);
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+                return colorDepthMap;
+            }
+
+            uint8_t SupportedYCbCr422ColorDepths() const
+            {
+                uint8_t colorDepthMap = static_cast<uint8_t>(colordepthtype::BPC_UNDEFINED);
+                if (_colorFormats & static_cast<uint8_t>(colorformattype::YCBCR_4_2_2)) {
+                    colorDepthMap = (static_cast<uint8_t>(colordepthtype::BPC_8)
+                                        | static_cast<uint8_t>(colordepthtype::BPC_10)
+                                        | static_cast<uint8_t>(colordepthtype::BPC_12));
+                }
+                return colorDepthMap;
+            }
+
+            uint8_t SupportedYCbCr420ColorDepths() const
+            {
+                uint8_t colorDepthMap = static_cast<uint8_t>(colordepthtype::BPC_UNDEFINED);
+                if (_colorFormats & static_cast<uint8_t>(colorformattype::YCBCR_4_2_0)) {
+                    DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
+                    colorDepthMap |= static_cast<uint8_t>(colordepthtype::BPC_8);
+
+                    while(dataBlock.Next()) {
+                        if(dataBlock.IsValid()) {
+                            if ((dataBlock.BlockTag() == 0x3) && (dataBlock.BlockSize() > 7)) {
+                                const uint32_t registrationId = (dataBlock.Current()[1]) + (dataBlock.Current()[2] << 8) + (dataBlock.Current()[3] << 16);
+                                // HDMI Forum -- HDMI 2.0 info
+                                if(registrationId == 0xC45DD8) {
+                                    if(dataBlock.Current()[7] & (1 << 3)) {
+                                        if(dataBlock.Current()[6] & (1 << 2)) {
+                                            colorDepthMap |= static_cast<uint8_t>(colordepthtype::BPC_16);
+                                        }
+                                        if(dataBlock.Current()[7] & (1 << 1)) {
+                                            colorDepthMap |= static_cast<uint8_t>(colordepthtype::BPC_12);
+                                        }
+                                        if(dataBlock.Current()[7] & (1 << 0)) {
+                                            colorDepthMap |= static_cast<uint8_t>(colordepthtype::BPC_10);
+                                        }
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                return colorDepthMap;
             }
 
             uint16_t SupportedColorSpaces() const
@@ -393,7 +458,7 @@ namespace Plugin {
                 while(dataBlock.Next()) {
                     if(dataBlock.IsValid() && (dataBlock.BlockTag() == 0x07) && (dataBlock.BlockSize() > 1)) {
                         const uint8_t extendedTag = dataBlock.Current()[1];
-                        if((extendedTag == 0x05) && (dataBlock.BlockSize() >= 3)) {
+                        if((extendedTag == 0x05) && (dataBlock.BlockSize() > 3)) {
                             if(dataBlock.Current()[2]  & (1 << 0)) {
                                 colorSpaceMap |= static_cast<uint16_t>(colorspacetype::XVYCC_601);
                             }
@@ -421,8 +486,8 @@ namespace Plugin {
                             if(dataBlock.Current()[3]  & (1 << 7)) {
                                 colorSpaceMap |= static_cast<uint16_t>(colorspacetype::DCI_P3);
                             }
+                            break;
                         }
-                        break;
                     }
                 }
                 return colorSpaceMap;
@@ -433,9 +498,13 @@ namespace Plugin {
                 DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
                 while(dataBlock.Next()) {
                     if(dataBlock.IsValid() && (dataBlock.BlockTag() == 0x02)) {
-                        for(uint8_t index = 0; index < dataBlock.BlockSize(); index++) {
-                            const uint8_t vic = dataBlock.Current()[index] & 0x7F;
-                            vicList.push_back(vic);
+                        for(uint8_t index = 1; index < dataBlock.BlockSize(); index++) {
+                            const uint8_t vic = dataBlock.Current()[index];
+                            if ((vic >= 128) && (vic <= 192)) {
+                                vicList.push_back(vic & 0x7F);
+                            } else {
+                                vicList.push_back(vic);
+                            }
                         }
                         break;
                     }
@@ -532,18 +601,18 @@ namespace Plugin {
                                 }
                             default:
                                 break;
+                            }
                         }
+                        break;
                     }
-                    break;
                 }
+                return audioFormatMap;
             }
-            return audioFormatMap;
-        }
 
         private:
             Buffer _segment;
+            uint8_t _colorFormats;
         };
-
 
     public:
         ExtendedDisplayIdentification (const ExtendedDisplayIdentification&) = delete;
@@ -644,7 +713,7 @@ namespace Plugin {
         }
 
         bool Digital() const {
-            return ((_base[14] & 0x80) != 0);
+            return ((_base[0x14] & 0x80) != 0);
         }
         uint8_t BitsPerColor() const {
             static uint8_t bitsPerColor[] = { 0, 6, 8, 10, 12, 14, 16, 255 };
@@ -653,7 +722,7 @@ namespace Plugin {
 
         colordepthtype ColorDepth() const {
             colordepthtype colorDepth = colordepthtype::BPC_UNDEFINED;
-            if((_base[0x14] >> 7) & 0x01) {
+            if(Digital() && (Minor() >= 4)) {
                 switch((_base[0x14] >> 4) & 0x07) {
                     case 0x01:
                         colorDepth = colordepthtype::BPC_6;
@@ -683,7 +752,7 @@ namespace Plugin {
         }
 
         Type VideoInterface() const {
-            return (static_cast<Type> (_base[0x14] & 0x0F));
+            return (Minor() >= 4? static_cast<Type>(_base[0x14] & 0x0F) : Undefined);
         }
 
         Iterator Extensions() const {
@@ -752,78 +821,104 @@ namespace Plugin {
         }
 
         uint8_t SupportedColorDepths() const {
-            uint8_t colorDepthMap = static_cast<uint8_t>(ColorDepth());
+            return SupportedRGBColorDepths();
+        }
+
+        uint8_t SupportedRGBColorDepths() const {
+            uint8_t colorDepthMap = static_cast<uint8_t>(colordepthtype::BPC_8);
+
+            colorDepthMap |= static_cast<uint8_t>(ColorDepth());
 
             Iterator segment = Iterator(_segments);
             while(segment.Next() == true) {
                 if(segment.Type() == CEA::extension_tag) {
-                    CEA cae(segment.Current());
-                    colorDepthMap = cae.SupportedColorDepths();
+                    CEA cea(segment.Current());
+                    colorDepthMap |= cea.SupportedRGBColorDepths();
                     break;
                 }
             }
             return colorDepthMap;
         }
 
-        colorformattype SupportedColorFormat() const {
-            colorformattype result = colorformattype::UNDEFINED;
+        uint8_t SupportedColorFormats() const {
+            uint8_t colorFormatMap = SupportedDigitalDisplayTypes();
 
             Iterator segment = Iterator(_segments);
             while(segment.Next() == true) {
                 if(segment.Type() == CEA::extension_tag) {
-                    CEA cae(segment.Current());
-                    result = cae.SupportedColorFormat();
+                    CEA cea(segment.Current());
+                    colorFormatMap |= cea.SupportedColorFormats();
                     break;
                 }
             }
 
-            return result;
+            return colorFormatMap;
         }
 
         uint8_t SupportedDigitalDisplayTypes() const {
-            uint8_t colorFormatMap = static_cast<uint8_t>(colorformattype::RGB);
-
-            if((_base[0x14] >> 7) & 0x01){
-                switch((_base[0x18] >> 3) & 0x07) {
-                    case 0x00:
-                        colorFormatMap |= static_cast<uint8_t>(colorformattype::RGB);
-                        break;
-                    case 0x01:
-                        colorFormatMap |= static_cast<uint8_t>(colorformattype::RGB);
+            uint8_t colorFormatMap = static_cast<uint8_t>(colorformattype::UNDEFINED);
+            if(Digital()){
+                if (Minor() >= 4) {
+                    colorFormatMap = static_cast<uint8_t>(colorformattype::RGB);
+                    if(_base[0x18] & 8) {
                         colorFormatMap |= static_cast<uint8_t>(colorformattype::YCBCR_4_4_4);
-                        break;
-                    case 0x02:
-                        colorFormatMap |= static_cast<uint8_t>(colorformattype::RGB);
+                    }
+                    if(_base[0x18] & 16) {
                         colorFormatMap |= static_cast<uint8_t>(colorformattype::YCBCR_4_2_2);
-                        break;
-                    case 0x03:
-                        colorFormatMap |= static_cast<uint8_t>(colorformattype::RGB);
-                        colorFormatMap |= static_cast<uint8_t>(colorformattype::YCBCR_4_2_2);
-                        colorFormatMap |= static_cast<uint8_t>(colorformattype::YCBCR_4_4_4);
-                        break;
+                    }
+                } else {
+                    if (_base[0x18] & 8) {
+                        colorFormatMap = static_cast<uint8_t>(colorformattype::RGB);
+                    }
                 }
             }
+
             return colorFormatMap;
         }
 
-        uint8_t SupportedColorFormats() const {
-            uint8_t colorFormatMap = 0;
+        uint8_t SupportedYCbCr444ColorDepths() const {
+            uint8_t colorDepthMap = static_cast<uint8_t>(colordepthtype::BPC_UNDEFINED);
 
             Iterator segment = Iterator(_segments);
             while(segment.Next() == true) {
                 if(segment.Type() == CEA::extension_tag) {
-                    CEA cae(segment.Current());
-                    colorFormatMap |= static_cast<uint8_t>(cae.SupportedColorFormat());
-                    colorFormatMap |= cae.SupportedColorFormats();
+                    CEA cea(segment.Current());
+                    colorDepthMap |= cea.SupportedYCbCr444ColorDepths();
                     break;
                 }
             }
-            colorFormatMap |= SupportedDigitalDisplayTypes();
-
-            return colorFormatMap;
+            return colorDepthMap;
         }
 
-        uint16_t SupportedColorSpace() const {
+        uint8_t SupportedYCbCr422ColorDepths() const {
+            uint8_t colorDepthMap = static_cast<uint8_t>(colordepthtype::BPC_UNDEFINED);
+
+            Iterator segment = Iterator(_segments);
+            while(segment.Next() == true) {
+                if(segment.Type() == CEA::extension_tag) {
+                    CEA cea(segment.Current());
+                    colorDepthMap |= cea.SupportedYCbCr422ColorDepths();
+                    break;
+                }
+            }
+            return colorDepthMap;
+        }
+
+        uint8_t SupportedYCbCr420ColorDepths() const {
+            uint8_t colorDepthMap = static_cast<uint8_t>(colordepthtype::BPC_UNDEFINED);
+
+            Iterator segment = Iterator(_segments);
+            while(segment.Next() == true) {
+                if(segment.Type() == CEA::extension_tag) {
+                    CEA cea(segment.Current());
+                    colorDepthMap |= cea.SupportedYCbCr420ColorDepths();
+                    break;
+                }
+            }
+            return colorDepthMap;
+        }
+
+        uint16_t SupportedColorSpaces() const {
             uint16_t colorSpaceMap = 0;
 
             if((_base[0x18] & (1 << 2))) {
@@ -833,8 +928,8 @@ namespace Plugin {
             Iterator segment = Iterator(_segments);
             while(segment.Next() == true) {
                 if(segment.Type() == CEA::extension_tag) {
-                    CEA cae(segment.Current());
-                    colorSpaceMap = cae.SupportedColorSpaces();
+                    CEA cea(segment.Current());
+                    colorSpaceMap |= cea.SupportedColorSpaces();
                     break;
                 }
             }
@@ -843,11 +938,12 @@ namespace Plugin {
         }
 
         void SupportedTimings(std::vector<uint8_t>& vicList) const {
+            vicList.clear();
             Iterator segment = Iterator(_segments);
             while(segment.Next() == true) {
                 if(segment.Type() == CEA::extension_tag) {
-                    CEA cae(segment.Current());
-                    cae.SupportedTimings(vicList);
+                    CEA cea(segment.Current());
+                    cea.SupportedTimings(vicList);
                     break;
                 }
             }
@@ -859,8 +955,8 @@ namespace Plugin {
             Iterator segment = Iterator(_segments);
             while(segment.Next() == true) {
                 if(segment.Type() == CEA::extension_tag) {
-                    CEA cae(segment.Current());
-                    audioFormatMap = cae.SupportedAudioFormats();
+                    CEA cea(segment.Current());
+                    audioFormatMap |= cea.SupportedAudioFormats();
                     break;
                 }
             }
