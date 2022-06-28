@@ -32,6 +32,8 @@ namespace Plugin {
 
     class ExtendedDisplayIdentification {
     public:
+        static constexpr uint32_t OUI_HDMI_LICENSING = 0x000C03;
+        static constexpr uint32_t OUI_HDMI_FORUM = 0xC45DD8;
 
         class Buffer {
         public:
@@ -137,6 +139,27 @@ namespace Plugin {
         public:
             class DataBlockIterator {
             public:
+                enum blocktype : uint16_t {
+                    INVALID = 0,
+                    AUDIO = 1,
+                    VIDEO = 2,
+                    VENDOR_SPECIFIC = 3,
+                    SPEAKER_ALLOCATION = 4,
+                    VESA = 5,
+                    EXTENDED = 7,
+                    MARKER = 256,
+                    VIDEO_CAPABILITY = (MARKER | 0),
+                    VENDOR_SPECIFIC_VIDEO = (MARKER | 1),
+                    VESA_DISPLAY_DEVICE = (MARKER | 2),
+                    COLORIMETRY = (MARKER | 5),
+                    HDR_STATIC_METADATA = (MARKER | 6),
+                    HDR_DYNAMIC_METADATA = (MARKER | 7),
+                    VIDEO_FORMAT_PREFERENCE = (MARKER | 13),
+                    YCBCR420_VIDEO = (MARKER | 14),
+                    YCBCR420_CAPABILITY_MAP = (MARKER | 15)
+                };
+
+            public:
                 DataBlockIterator() = delete;
                 DataBlockIterator(const Buffer& rhs, uint8_t dtdBegin)
                     : _segment(rhs)
@@ -168,12 +191,35 @@ namespace Plugin {
             public:
                 uint8_t BlockSize() const
                 {
-                    return (IsValid() ? _segment[_index] & 0x1F : 0);
+                    return (IsValid() ? ((_segment[_index] & 0x1F) + 1) : 0);
                 }
 
-                uint8_t BlockTag() const
+                blocktype BlockTag() const
                 {
-                    return (IsValid() ? ((_segment[_index] & 0xE0 ) >> 5) : 0x00);
+                    blocktype type = INVALID;
+
+                    if (IsValid()) {
+                        const uint8_t tag = (_segment[_index] >> 5);
+                        if (tag == EXTENDED) {
+                            if (BlockSize() >= 2) {
+                                type = static_cast<blocktype>(MARKER | _segment[_index + 1]);
+                            }
+                        } else {
+                            type = static_cast<blocktype>(tag);
+                        }
+                    }
+
+                    return (type);
+                }
+
+                uint32_t OUI() const
+                {
+                    // for vendor specific only
+                    if (BlockSize() >= 4) {
+                        return ((_segment[_index + 1]) + (_segment[_index + 2] << 8) + (_segment[_index + 3] << 16));
+                    } else {
+                        return 0;
+                    }
                 }
 
                 bool IsValid() const
@@ -191,6 +237,7 @@ namespace Plugin {
                     _reset = true;
                     _index = 4;
                 }
+
                 bool Next()
                 {
                     bool success = true;
@@ -198,7 +245,7 @@ namespace Plugin {
                         _reset = false;
                     }
                     else if(IsInRange()){
-                        _index += BlockSize() + 1;
+                        _index += BlockSize();
                     }
                     if(BlockSize() == 0) {
                        success = false;
@@ -227,136 +274,157 @@ namespace Plugin {
 
             CEA(const Buffer& data)
                 : _segment(data)
+                , _colorFormats(GetColorFormats())
             {
                 ASSERT(_segment[0] == extension_tag);
             }
-            ~CEA() {
-            }
+            ~CEA() = default;
 
         public:
             uint8_t Version() const
             {
                 return (_segment[1]);
             }
-            uint8_t DetailedTimingDescriptorStart() const
+
+            displayinfo_edid_color_format_map_t ColorFormats() const
             {
-                return(_segment[2]);
+                return (_colorFormats);
             }
 
-            uint8_t SupportedColorDepths() const
+            displayinfo_edid_color_depth_map_t RGBColorDepths() const
             {
-                uint8_t colorDepthMap = 0;
+                displayinfo_edid_color_depth_map_t colorDepthMap = DISPLAYINFO_EDID_COLOR_DEPTH_8_BPC;
                 DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
 
                 while(dataBlock.Next()) {
-                    if(dataBlock.IsValid() && (dataBlock.BlockTag() == 0x03) && (dataBlock.BlockSize() > 6)) {
-                        const uint32_t registrationId = (dataBlock.Current()[1]) + (dataBlock.Current()[2] << 8) + (dataBlock.Current()[3] << 16);
-                        // HDMI Licensing, LLC -- HDMI 1.4 info
-                        if(registrationId == 0x000C03) {
+                    if(dataBlock.IsValid() && (dataBlock.BlockTag() == DataBlockIterator::VENDOR_SPECIFIC) && (dataBlock.BlockSize() > 6)) {
+                        if(dataBlock.OUI() == OUI_HDMI_LICENSING) {
                             if(dataBlock.Current()[6] & (1 << 6)) {
-                                colorDepthMap |= static_cast<uint8_t>(DISPLAYINFO_EDID_BPC_16);
+                                colorDepthMap |= DISPLAYINFO_EDID_COLOR_DEPTH_16_BPC;
                             }
                             if(dataBlock.Current()[6] & (1 << 5)) {
-                                colorDepthMap |= static_cast<uint8_t>(DISPLAYINFO_EDID_BPC_12);
+                                colorDepthMap |= DISPLAYINFO_EDID_COLOR_DEPTH_12_BPC;
                             }
                             if(dataBlock.Current()[6] & (1 << 4)) {
-                                colorDepthMap |= static_cast<uint8_t>(DISPLAYINFO_EDID_BPC_10);
+                                colorDepthMap |= DISPLAYINFO_EDID_COLOR_DEPTH_10_BPC;
                             }
                             break;
                         }
                     }
                 }
+
                 return colorDepthMap;
             }
 
-             displayinfo_edid_colorformattype_t SupportedColorFormat() const
+            displayinfo_edid_color_depth_map_t YCbCr444ColorDepths() const
             {
-                 displayinfo_edid_colorformattype_t result =  DISPLAYINFO_EDID_COLOR_FORMAT_UNDEFINED;
-                if(Version() > 2) {
-                    uint8_t colorFormat = (_segment[3] & 0x07) >> 4;
-                    switch(colorFormat) {
-                        case 0x00:
-                            result =  DISPLAYINFO_EDID_COLOR_FORMAT_RGB;
-                            break;
-                        case 0x01:
-                            result =  DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR_4_2_2;
-                            break;
-                        case 0x02:
-                            result =  DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR_4_4_4;
-                            break;
-                        case 0x03:
-                            result =  DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR_4_2_0;
-                            break;
-                        default:
-                            result =  DISPLAYINFO_EDID_COLOR_FORMAT_UNDEFINED;
-                            break;
-                    }
-                }
-                return result;
-            }
+                displayinfo_edid_color_depth_map_t colorDepthMap = DISPLAYINFO_EDID_COLOR_DEPTH_UNDEFINED;
 
-            uint8_t SupportedColorFormats() const
-            {
-                uint8_t colorFormatMap = 0;
+                if (_colorFormats & DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR444) {
+                    colorDepthMap = DISPLAYINFO_EDID_COLOR_DEPTH_8_BPC;
+                    DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
 
-                DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
-                while(dataBlock.Next()) {
-                    if(dataBlock.IsValid() && (dataBlock.BlockTag() == 0x03) && (dataBlock.BlockSize() > 3)) {
-                        const uint32_t registrationId = (dataBlock.Current()[1]) + (dataBlock.Current()[2] << 8) + (dataBlock.Current()[3] << 16);
-                        // HDMI Forum -- HDMI 2.0 info
-                        if(registrationId == 0xC45DD8) {
-                            if((dataBlock.Current()[3]) & (1 << 1)) {
-                                colorFormatMap |= static_cast<uint8_t>( DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR_4_2_0);
+                    while(dataBlock.Next()) {
+                        if(dataBlock.IsValid() && (dataBlock.BlockTag() == DataBlockIterator::VENDOR_SPECIFIC) && (dataBlock.BlockSize() > 6)) {
+                            if(dataBlock.OUI() == OUI_HDMI_LICENSING) {
+                                if(dataBlock.Current()[6] & (1 << 3)) {
+                                    if(dataBlock.Current()[6] & (1 << 6)) {
+                                        colorDepthMap |= DISPLAYINFO_EDID_COLOR_DEPTH_16_BPC;
+                                    }
+                                    if(dataBlock.Current()[6] & (1 << 5)) {
+                                        colorDepthMap |= DISPLAYINFO_EDID_COLOR_DEPTH_12_BPC;
+                                    }
+                                    if(dataBlock.Current()[6] & (1 << 4)) {
+                                        colorDepthMap |= DISPLAYINFO_EDID_COLOR_DEPTH_10_BPC;
+                                    }
+                                }
+                                break;
                             }
-                            if((dataBlock.Current()[3]) & (1 << 2)) {
-                                colorFormatMap |= static_cast<uint8_t>( DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR_4_2_0);
-                            }
-                            if((dataBlock.Current()[3]) & (1 << 3)) {
-                                colorFormatMap |= static_cast<uint8_t>( DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR_4_2_0);
-                            }
-                            break;
                         }
                     }
                 }
-                return colorFormatMap;
+
+                return colorDepthMap;
             }
 
-            uint16_t SupportedColorSpaces() const
+            displayinfo_edid_color_depth_map_t YCbCr422ColorDepths() const
             {
-                uint16_t colorSpaceMap = 0;
+                displayinfo_edid_color_depth_map_t colorDepthMap = DISPLAYINFO_EDID_COLOR_DEPTH_UNDEFINED;
+
+                if (_colorFormats & DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR422) {
+                    colorDepthMap = (DISPLAYINFO_EDID_COLOR_DEPTH_8_BPC | DISPLAYINFO_EDID_COLOR_DEPTH_10_BPC | DISPLAYINFO_EDID_COLOR_DEPTH_12_BPC);
+                }
+
+                return colorDepthMap;
+            }
+
+            displayinfo_edid_color_depth_map_t YCbCr420ColorDepths() const
+            {
+                displayinfo_edid_color_depth_map_t colorDepthMap = DISPLAYINFO_EDID_COLOR_DEPTH_UNDEFINED;
+
+                if (_colorFormats & DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR420) {
+                    colorDepthMap = DISPLAYINFO_EDID_COLOR_DEPTH_8_BPC;
+                    DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
+
+                    while(dataBlock.Next()) {
+                        if(dataBlock.IsValid()) {
+                            if ((dataBlock.BlockTag() == DataBlockIterator::VENDOR_SPECIFIC) && (dataBlock.BlockSize() > 7)) {
+                                if(dataBlock.OUI() == OUI_HDMI_FORUM) {
+                                    if((dataBlock.Current()[7]) & 1) {
+                                        colorDepthMap |= DISPLAYINFO_EDID_COLOR_DEPTH_10_BPC;
+                                        break;
+                                    }
+                                    if((dataBlock.Current()[7]) & 2) {
+                                        colorDepthMap |= DISPLAYINFO_EDID_COLOR_DEPTH_12_BPC;
+                                        break;
+                                    }
+                                    if((dataBlock.Current()[7]) & 4) {
+                                        colorDepthMap |= DISPLAYINFO_EDID_COLOR_DEPTH_16_BPC;
+                                        break;
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                return colorDepthMap;
+            }
+
+            displayinfo_edid_color_space_map_t ColorSpaces() const
+            {
+                displayinfo_edid_color_space_map_t colorSpaceMap = DISPLAYINFO_EDID_COLOR_SPACE_UNDEFINED;
 
                 DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
                 while(dataBlock.Next()) {
-                    if(dataBlock.IsValid() && (dataBlock.BlockTag() == 0x07) && (dataBlock.BlockSize() > 1)) {
-                        const uint8_t extendedTag = dataBlock.Current()[1];
-                        if((extendedTag == 0x05) && (dataBlock.BlockSize() >= 3)) {
-                            if(dataBlock.Current()[2]  & (1 << 0)) {
-                                colorSpaceMap |= static_cast<uint16_t>(DISPLAYINFO_EDID_COLOR_SPACE_XVYCC_601);
-                            }
-                            if(dataBlock.Current()[2]  & (1 << 1)) {
-                                colorSpaceMap |= static_cast<uint16_t>(DISPLAYINFO_EDID_COLOR_SPACE_XVYCC_709);
-                            }
-                            if(dataBlock.Current()[2]  & (1 << 2)) {
-                                colorSpaceMap |= static_cast<uint16_t>(DISPLAYINFO_EDID_COLOR_SPACE_SYCC_601);
-                            }
-                            if(dataBlock.Current()[2]  & (1 << 3)) {
-                                colorSpaceMap |= static_cast<uint16_t>(DISPLAYINFO_EDID_COLOR_SPACE_OP_YCC_601);
-                            }
-                            if(dataBlock.Current()[2]  & (1 << 4)) {
-                                colorSpaceMap |= static_cast<uint16_t>(DISPLAYINFO_EDID_COLOR_SPACE_OP_RGB);
-                            }
-                            if(dataBlock.Current()[2]  & (1 << 5)) {
-                                colorSpaceMap |= static_cast<uint16_t>(DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_CYCC);
-                            }
-                            if(dataBlock.Current()[2]  & (1 << 6)) {
-                                colorSpaceMap |= static_cast<uint16_t>(DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_YCC);
-                            }
-                            if(dataBlock.Current()[2]  & (1 << 7)) {
-                                colorSpaceMap |= static_cast<uint16_t>(DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_RGB);
-                            }
-                            if(dataBlock.Current()[3]  & (1 << 7)) {
-                                colorSpaceMap |= static_cast<uint16_t>(DISPLAYINFO_EDID_COLOR_SPACE_DCI_P3);
-                            }
+                    if(dataBlock.IsValid() && (dataBlock.BlockTag() == DataBlockIterator::COLORIMETRY) && (dataBlock.BlockSize() > 3)) {
+                        if(dataBlock.Current()[2]  & (1 << 0)) {
+                            colorSpaceMap |= DISPLAYINFO_EDID_COLOR_SPACE_XVYCC_601;
+                        }
+                        if(dataBlock.Current()[2]  & (1 << 1)) {
+                            colorSpaceMap |= DISPLAYINFO_EDID_COLOR_SPACE_XVYCC_709;
+                        }
+                        if(dataBlock.Current()[2]  & (1 << 2)) {
+                            colorSpaceMap |= DISPLAYINFO_EDID_COLOR_SPACE_SYCC_601;
+                        }
+                        if(dataBlock.Current()[2]  & (1 << 3)) {
+                            colorSpaceMap |= DISPLAYINFO_EDID_COLOR_SPACE_OP_YCC_601;
+                        }
+                        if(dataBlock.Current()[2]  & (1 << 4)) {
+                            colorSpaceMap |= DISPLAYINFO_EDID_COLOR_SPACE_OP_RGB;
+                        }
+                        if(dataBlock.Current()[2]  & (1 << 5)) {
+                            colorSpaceMap |= DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_CYCC;
+                        }
+                        if(dataBlock.Current()[2]  & (1 << 6)) {
+                            colorSpaceMap |= DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_YCC;
+                        }
+                        if(dataBlock.Current()[2]  & (1 << 7)) {
+                            colorSpaceMap |= DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_RGB;
+                        }
+                        if(dataBlock.Current()[3]  & (1 << 7)) {
+                            colorSpaceMap |= DISPLAYINFO_EDID_COLOR_SPACE_DCI_P3;
                         }
                         break;
                     }
@@ -364,122 +432,164 @@ namespace Plugin {
                 return colorSpaceMap;
             }
 
-            void SupportedTimings(std::vector<uint8_t>& vicList) const
+            void Timings(std::vector<uint8_t>& vicList) const
             {
                 DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
                 while(dataBlock.Next()) {
-                    if(dataBlock.IsValid() && (dataBlock.BlockTag() == 0x02)) {
-                        for(uint8_t index = 0; index < dataBlock.BlockSize(); index++) {
-                            const uint8_t vic = dataBlock.Current()[index] & 0x7F;
-                            vicList.push_back(vic);
+                    if(dataBlock.IsValid() && (dataBlock.BlockTag() == DataBlockIterator::VIDEO)) {
+                        for(uint8_t index = 1; index < dataBlock.BlockSize(); index++) {
+                            const uint8_t vic = dataBlock.Current()[index];
+                            if ((vic >= 128) && (vic <= 192)) {
+                                vicList.push_back(vic & 0x7F);
+                            } else {
+                                vicList.push_back(vic);
+                            }
                         }
                         break;
                     }
                 }
             }
 
-            uint32_t SupportedAudioFormats() const
+            displayinfo_edid_audio_format_map_t AudioFormats() const
             {
-                uint32_t audioFormatMap = 0;
+                displayinfo_edid_audio_format_map_t audioFormatMap = 0;
 
                 DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
                 while(dataBlock.Next()) {
-                    if(dataBlock.IsValid() && (dataBlock.BlockTag() == 0x01)) {
+                    if(dataBlock.IsValid() && (dataBlock.BlockTag() == DataBlockIterator::AUDIO)) {
                         for(uint8_t index = 1; index < dataBlock.BlockSize(); index += 3) {
                             const uint8_t sad = (dataBlock.Current()[index] & 0x78) >> 3;
                             switch(sad){
                             case 0x01:
-                                audioFormatMap |= static_cast<uint32_t>(DISPLAYINFO_EDID_AUDIOFORMAT_LPCM);
+                                audioFormatMap |= DISPLAYINFO_EDID_AUDIO_FORMAT_LPCM;
                                 break;
                             case 0x02:
-                                audioFormatMap |= static_cast<uint32_t>(DISPLAYINFO_EDID_AUDIOFORMAT_AC3);
+                                audioFormatMap |= DISPLAYINFO_EDID_AUDIO_FORMAT_AC3;
                                 break;
                             case 0x03:
-                                audioFormatMap |= static_cast<uint32_t>(DISPLAYINFO_EDID_AUDIOFORMAT_MPEG1);
+                                audioFormatMap |= DISPLAYINFO_EDID_AUDIO_FORMAT_MPEG1;
                                 break;
                             case 0x04:
-                                audioFormatMap |= static_cast<uint32_t>(DISPLAYINFO_EDID_AUDIOFORMAT_MP3);
+                                audioFormatMap |= DISPLAYINFO_EDID_AUDIO_FORMAT_MP3;
                                 break;
                             case 0x05:
-                                audioFormatMap |= static_cast<uint32_t>(DISPLAYINFO_EDID_AUDIOFORMAT_MPEG2);
+                                audioFormatMap |= DISPLAYINFO_EDID_AUDIO_FORMAT_MPEG2;
                                 break;
                             case 0x06:
-                                audioFormatMap |= static_cast<uint32_t>(DISPLAYINFO_EDID_AUDIOFORMAT_AAC_LC);
+                                audioFormatMap |= DISPLAYINFO_EDID_AUDIO_FORMAT_AAC_LC;
                                 break;
                             case 0x07:
-                                audioFormatMap |= static_cast<uint32_t>(DISPLAYINFO_EDID_AUDIOFORMAT_DTS);
+                                audioFormatMap |= DISPLAYINFO_EDID_AUDIO_FORMAT_DTS;
                                 break;
                             case 0x08:
-                                audioFormatMap |= static_cast<uint32_t>(DISPLAYINFO_EDID_AUDIOFORMAT_ATRAC);
+                                audioFormatMap |= DISPLAYINFO_EDID_AUDIO_FORMAT_ATRAC;
                                 break;
                             case 0x09:
-                                audioFormatMap |= static_cast<uint32_t>(DISPLAYINFO_EDID_AUDIOFORMAT_SUPER_AUDIO_CD);
+                                audioFormatMap |= DISPLAYINFO_EDID_AUDIO_FORMAT_SUPER_AUDIO_CD;
                                 break;
                             case 0x0A:
-                                audioFormatMap |= static_cast<uint32_t>(DISPLAYINFO_EDID_AUDIOFORMAT_EAC3);
+                                audioFormatMap |= DISPLAYINFO_EDID_AUDIO_FORMAT_EAC3;
                                 // if MPEG surround implicitly and explicitly supported: assume ATMOS
                                 if((dataBlock.Current()[index + 2] & 0x01)) {
-                                    audioFormatMap |= static_cast<uint32_t>(DISPLAYINFO_EDID_AUDIOFORMAT_DOLBY_ATMOS);
+                                    audioFormatMap |= DISPLAYINFO_EDID_AUDIO_FORMAT_DOLBY_ATMOS;
                                 }
                                 break;
                             case 0x0B:
-                                audioFormatMap |= static_cast<uint32_t>(DISPLAYINFO_EDID_AUDIOFORMAT_DTSHD);
+                                audioFormatMap |= DISPLAYINFO_EDID_AUDIO_FORMAT_DTSHD;
                                 break;
                             case 0x0C:
-                                audioFormatMap |= static_cast<uint32_t>(DISPLAYINFO_EDID_AUDIOFORMAT_DOLBY_TRUEHD);
+                                audioFormatMap |= DISPLAYINFO_EDID_AUDIO_FORMAT_DOLBY_TRUEHD;
                                 break;
                             case 0x0D:
-                                audioFormatMap |= static_cast<uint32_t>(DISPLAYINFO_EDID_AUDIOFORMAT_DST_AUDIO);
+                                audioFormatMap |= DISPLAYINFO_EDID_AUDIO_FORMAT_DST_AUDIO;
                                 break;
                             case 0x0E:
-                                audioFormatMap |= static_cast<uint32_t>(DISPLAYINFO_EDID_AUDIOFORMAT_MS_WMA_PRO);
+                                audioFormatMap |= DISPLAYINFO_EDID_AUDIO_FORMAT_MS_WMA_PRO;
                                 break;
                             case 0x0F:
                                 switch((dataBlock.Current()[index + 2] & 0xF8) >> 3) {
-                                    case 0x04:
-                                        audioFormatMap |= static_cast<uint32_t>(DISPLAYINFO_EDID_AUDIOFORMAT_MPEG4_HEAAC);
-                                        break;
-                                    case 0x05:
-                                        audioFormatMap |= static_cast<uint32_t>(DISPLAYINFO_EDID_AUDIOFORMAT_MPEG4_HEAAC_V2);
-                                        break;
-                                    case 0x06:
-                                        audioFormatMap |= static_cast<uint32_t>(DISPLAYINFO_EDID_AUDIOFORMAT_MPEG4_ACC_LC);
-                                        break;
-                                    case 0x07:
-                                        audioFormatMap |= static_cast<uint32_t>(DISPLAYINFO_EDID_AUDIOFORMAT_DRA);
-                                        break;
-                                    case 0x08:
-                                        audioFormatMap |= static_cast<uint32_t>(DISPLAYINFO_EDID_AUDIOFORMAT_MPEG4_HEAAC_MPEG_SURROUND);
-                                        break;
-                                    case 0x0A:
-                                        audioFormatMap |= static_cast<uint32_t>(DISPLAYINFO_EDID_AUDIOFORMAT_MPEG4_HEAAC_LC_MPEG_SURROUND);
-                                        break;
-                                    case 0x0B:
-                                        audioFormatMap |= static_cast<uint32_t>(DISPLAYINFO_EDID_AUDIOFORMAT_MPEGH_3DAUDIO);
-                                        break;
-                                    case 0x0C:
-                                        audioFormatMap |= static_cast<uint32_t>(DISPLAYINFO_EDID_AUDIOFORMAT_AC4);
-                                        break;
-                                    case 0x0D:
-                                        audioFormatMap |= static_cast<uint32_t>(DISPLAYINFO_EDID_AUDIOFORMAT_LPCM_3DAUDIO);
-                                        break;
-                                    default:
-                                        break;
+                                case 0x04:
+                                    audioFormatMap |= DISPLAYINFO_EDID_AUDIO_FORMAT_MPEG4_HEAAC;
+                                    break;
+                                case 0x05:
+                                    audioFormatMap |= DISPLAYINFO_EDID_AUDIO_FORMAT_MPEG4_HEAAC_V2;
+                                    break;
+                                case 0x06:
+                                    audioFormatMap |= DISPLAYINFO_EDID_AUDIO_FORMAT_MPEG4_ACC_LC;
+                                    break;
+                                case 0x07:
+                                    audioFormatMap |= DISPLAYINFO_EDID_AUDIO_FORMAT_DRA;
+                                    break;
+                                case 0x08:
+                                    audioFormatMap |= DISPLAYINFO_EDID_AUDIO_FORMAT_MPEG4_HEAAC_MPEG_SURROUND;
+                                    break;
+                                case 0x0A:
+                                    audioFormatMap |= DISPLAYINFO_EDID_AUDIO_FORMAT_MPEG4_HEAAC_LC_MPEG_SURROUND;
+                                    break;
+                                case 0x0B:
+                                    audioFormatMap |= DISPLAYINFO_EDID_AUDIO_FORMAT_MPEGH_3DAUDIO;
+                                    break;
+                                case 0x0C:
+                                    audioFormatMap |= DISPLAYINFO_EDID_AUDIO_FORMAT_AC4;
+                                    break;
+                                case 0x0D:
+                                    audioFormatMap |= DISPLAYINFO_EDID_AUDIO_FORMAT_LPCM_3DAUDIO;
+                                    break;
+                                default:
+                                    break;
                                 }
                             default:
                                 break;
+                            }
+                        }
+                        break;
+                    }
+                }
+                return audioFormatMap;
+            }
+
+        private:
+            uint8_t DetailedTimingDescriptorStart() const
+            {
+                return(_segment[2]);
+            }
+
+            displayinfo_edid_color_format_map_t GetColorFormats() const
+            {
+                displayinfo_edid_color_format_map_t colorFormatMap = DISPLAYINFO_EDID_COLOR_FORMAT_RGB;
+
+                if(Version() >= 2) {
+                    if(_segment[3] & (1 << 4)) {
+                        colorFormatMap |= DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR444;
+                    }
+                    if(_segment[3] & (1 << 5)) {
+                        colorFormatMap |= DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR422;
+                    }
+                }
+
+                DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
+                while(dataBlock.Next()) {
+                    if(dataBlock.IsValid()) {
+                        if((dataBlock.BlockTag() == DataBlockIterator::VENDOR_SPECIFIC) && (dataBlock.BlockSize() > 7)) {
+                            if(dataBlock.OUI() == OUI_HDMI_FORUM) {
+                                if((dataBlock.Current()[7]) & 7) {
+                                    colorFormatMap |= DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR420;
+                                    break;
+                                }
+                            }
+                        } else if(dataBlock.BlockTag() == DataBlockIterator::YCBCR420_CAPABILITY_MAP) {
+                            colorFormatMap |= DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR420;
+                            break;
                         }
                     }
-                    break;
                 }
+                return colorFormatMap;
             }
-            return audioFormatMap;
-        }
 
         private:
             Buffer _segment;
+            displayinfo_edid_color_format_map_t _colorFormats;
         };
-
 
     public:
         ExtendedDisplayIdentification (const ExtendedDisplayIdentification&) = delete;
@@ -578,48 +688,70 @@ namespace Plugin {
         uint8_t Minor() const {
             return (IsValid() ? _base[0x13] : 0x00);
         }
-
         bool Digital() const {
-            return ((_base[14] & 0x80) != 0);
+            return ((_base[0x14] & 0x80) != 0);
         }
+
         uint8_t BitsPerColor() const {
             static uint8_t bitsPerColor[] = { 0, 6, 8, 10, 12, 14, 16, 255 };
             return (bitsPerColor[(_base[0x14] >> 4) & 0x7]);
         }
 
-        displayinfo_edid_colordepthtype_t ColorDepth() const {
-            displayinfo_edid_colordepthtype_t colorDepth =   DISPLAYINFO_EDID_BPC_UNDEFINED;
-            if((_base[0x14] >> 7) & 0x01) {
+        uint8_t ColorDepth() const {
+            uint8_t colorDepth = DISPLAYINFO_EDID_COLOR_DEPTH_UNDEFINED;
+            if(Digital() && (Minor() >= 4)) {
                 switch((_base[0x14] >> 4) & 0x07) {
-                    case 0x01:
-                        colorDepth =   DISPLAYINFO_EDID_BPC_6;
-                        break;
-                    case 0x02:
-                        colorDepth =   DISPLAYINFO_EDID_BPC_8;
-                        break;
-                    case 0x03:
-                        colorDepth =   DISPLAYINFO_EDID_BPC_10;
-                        break;
-                    case 0x04:
-                        colorDepth =   DISPLAYINFO_EDID_BPC_12;
-                        break;
-                    case 0x05:
-                        colorDepth =   DISPLAYINFO_EDID_BPC_14;
-                        break;
-                    case 0x06:
-                        colorDepth =   DISPLAYINFO_EDID_BPC_16;
-                        break;
-                    default:
-                        colorDepth =   DISPLAYINFO_EDID_BPC_UNDEFINED;
-                        break;
+                case 0x01:
+                    colorDepth = DISPLAYINFO_EDID_COLOR_DEPTH_6_BPC;
+                    break;
+                case 0x02:
+                    colorDepth = DISPLAYINFO_EDID_COLOR_DEPTH_8_BPC;
+                    break;
+                case 0x03:
+                    colorDepth = DISPLAYINFO_EDID_COLOR_DEPTH_10_BPC;
+                    break;
+                case 0x04:
+                    colorDepth = DISPLAYINFO_EDID_COLOR_DEPTH_12_BPC;
+                    break;
+                case 0x05:
+                    colorDepth = DISPLAYINFO_EDID_COLOR_DEPTH_14_BPC;
+                    break;
+                case 0x06:
+                    colorDepth = DISPLAYINFO_EDID_COLOR_DEPTH_16_BPC;
+                    break;
+                default:
+                    colorDepth = DISPLAYINFO_EDID_COLOR_DEPTH_UNDEFINED;
+                    break;
                 }
             }
 
             return colorDepth;
         }
 
+        uint8_t DisplayType() const {
+            uint8_t displayType = 0;
+
+            if(Digital()){
+                if (Minor() >= 4) {
+                    displayType = static_cast<uint8_t>(DISPLAYINFO_EDID_COLOR_FORMAT_RGB);
+                    if(_base[0x18] & 8) {
+                        displayType |= static_cast<uint8_t>(DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR444);
+                    }
+                    if(_base[0x18] & 16) {
+                        displayType |= static_cast<uint8_t>(DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR422);
+                    }
+                } else {
+                    if (_base[0x18] & 8) {
+                        displayType = static_cast<uint8_t>(DISPLAYINFO_EDID_COLOR_FORMAT_RGB);
+                    }
+                }
+            }
+
+            return displayType;
+        }
+
         displayinfo_edid_video_interface_t VideoInterface() const {
-            return (static_cast<displayinfo_edid_video_interface_t> (_base[0x14] & 0x0F));
+            return (Minor() >= 4? static_cast<displayinfo_edid_video_interface_t> (_base[0x14] & 0x0F) : DISPLAYINFO_EDID_VIDEO_INTERFACE_UNDEFINED);
         }
 
         Iterator Extensions() const {
@@ -695,104 +827,6 @@ namespace Plugin {
 
         uint16_t PreferredHeightInPixels() const {
             return IsValid() ? (((_base[0x3D] & 0xF0 ) << 4) + _base[0x3B]) : 0;
-        }
-
-        uint8_t SupportedColorDepths() const {
-            uint8_t colorDepthMap = static_cast<uint8_t>(ColorDepth());
-            Iterator segment = CEASegment();
-            if(segment.IsValid() == true) {
-                CEA cae(segment.Current());
-                colorDepthMap = cae.SupportedColorDepths();
-            }
-
-            return colorDepthMap;
-        }
-
-        displayinfo_edid_colorformattype_t SupportedColorFormat() const {
-            displayinfo_edid_colorformattype_t result = DISPLAYINFO_EDID_COLOR_FORMAT_UNDEFINED;
-            Iterator segment = CEASegment();
-            if(segment.IsValid() == true) {
-                CEA cae(segment.Current());
-                result = cae.SupportedColorFormat();
-            }
-
-            return result;
-        }
-
-        uint8_t SupportedDigitalDisplayTypes() const {
-            uint8_t colorFormatMap = static_cast<uint8_t>( DISPLAYINFO_EDID_COLOR_FORMAT_RGB);
-
-            if((_base[0x14] >> 7) & 0x01){
-                switch((_base[0x18] >> 3) & 0x07) {
-                    case 0x00:
-                        colorFormatMap |= static_cast<uint8_t>( DISPLAYINFO_EDID_COLOR_FORMAT_RGB);
-                        break;
-                    case 0x01:
-                        colorFormatMap |= static_cast<uint8_t>( DISPLAYINFO_EDID_COLOR_FORMAT_RGB);
-                        colorFormatMap |= static_cast<uint8_t>( DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR_4_4_4);
-                        break;
-                    case 0x02:
-                        colorFormatMap |= static_cast<uint8_t>( DISPLAYINFO_EDID_COLOR_FORMAT_RGB);
-                        colorFormatMap |= static_cast<uint8_t>( DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR_4_2_2);
-                        break;
-                    case 0x03:
-                        colorFormatMap |= static_cast<uint8_t>( DISPLAYINFO_EDID_COLOR_FORMAT_RGB);
-                        colorFormatMap |= static_cast<uint8_t>( DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR_4_2_2);
-                        colorFormatMap |= static_cast<uint8_t>( DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR_4_4_4);
-                        break;
-                }
-            }
-            return colorFormatMap;
-        }
-
-        uint8_t SupportedColorFormats() const {
-            uint8_t colorFormatMap = 0;
-
-            Iterator segment = CEASegment();
-            if(segment.IsValid() == true) {
-                CEA cae(segment.Current());
-                colorFormatMap |= static_cast<uint8_t>(cae.SupportedColorFormat());
-                colorFormatMap |= cae.SupportedColorFormats();
-                colorFormatMap |= SupportedDigitalDisplayTypes();
-            }
-
-            return colorFormatMap;
-        }
-
-        uint16_t SupportedColorSpace() const {
-            uint16_t colorSpaceMap = 0;
-
-            if((_base[0x18] & (1 << 2))) {
-                colorSpaceMap |= static_cast<uint16_t>(DISPLAYINFO_EDID_COLOR_SPACE_SRGB);
-            }
-
-            Iterator segment = CEASegment();
-            if(segment.IsValid() == true) {
-                CEA cae(segment.Current());
-                colorSpaceMap = cae.SupportedColorSpaces();
-            }
-
-            return colorSpaceMap;
-        }
-
-        void SupportedTimings(std::vector<uint8_t>& vicList) const {
-            Iterator segment = CEASegment();
-            if(segment.IsValid() == true) {
-                CEA cae(segment.Current());
-                cae.SupportedTimings(vicList);
-            }
-        }
-
-        uint32_t SupportedAudioFormats() const {
-            uint32_t audioFormatMap = 0;
-
-            Iterator segment = CEASegment();
-            if(segment.IsValid() == true) {
-                CEA cae(segment.Current());
-                audioFormatMap = cae.SupportedAudioFormats();
-            }
-
-            return audioFormatMap;
         }
 
         void Clear() {
