@@ -34,6 +34,8 @@
 #define EXTERNAL __attribute__((visibility("default")))
 #endif
 
+#define DISPLAYINFO_VERSION 2
+
 #ifdef __cplusplus
 extern "C" {
 #endif
