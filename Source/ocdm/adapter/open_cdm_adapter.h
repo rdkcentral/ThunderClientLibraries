@@ -83,10 +83,10 @@ extern "C" {
  * gst_buffer_add_protection_meta function.
  *
  * gst_structure [application/x-cenc]
- *      "iv"                  GST_TYPE_BUFFER
- *      "kid"                 GST_TYPE_BUFFER
+ *      "iv"                  GST_TYPE_ARRAY
+ *      "kid"                 GST_TYPE_ARRAY
  *      "subsample_count"     G_TYPE_UINT
- *      "subsamples"          GST_TYPE_BUFFER
+ *      "subsamples"          GST_TYPE_ARRAY
  *      "cipher-mode"         G_TYPE_STRING   (One of the Four Character Code (FOURCC) Protection schemes as defined in https://www.iso.org/obp/ui/#iso:std:iso-iec:23001:-7:ed-3:v1:en)
  *      "crypt_byte_block"    G_TYPE_UINT     (Present only if cipher-mode is "cbcs")
  *      "skip_byte_block"     G_TYPE_UINT     (Present only cipher-mode is "cbcs")
