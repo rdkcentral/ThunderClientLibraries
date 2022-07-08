@@ -77,14 +77,19 @@ extern "C" {
  * using a memory-mapped file (for performance reasons). If the DRM system allows access to decrypted data (i.e. decrypting is not
  * performed in a TEE), the decryption is performed in-place. 
  * This version assumes all data required is attached as metadata to the buffer. Specification for this data is as follows:
- * gst_structure [application/x-cbcs] or [application/x-cenc]
+ *
+ * Typically, the caller would parse the protection information for a video/audio frame from its input data and use this information to populate the
+ * GstStructure info field, which is then encapsulated in a GstProtectionMeta object and attached to the corresponding GstBuffer using the
+ * gst_buffer_add_protection_meta function.
+ *
+ * gst_structure [application/x-cenc]
  *      "iv"                  GST_TYPE_BUFFER
  *      "kid"                 GST_TYPE_BUFFER
  *      "subsample_count"     G_TYPE_UINT
  *      "subsamples"          GST_TYPE_BUFFER
- * gst_structure [application/x-cenc]
- *      "crypt_byte_block"    G_TYPE_UINT
- *      "skip_byte_block"     G_TYPE_UINT	
+ *      "cipher-mode"         G_TYPE_STRING   (One of the Four Character Code (FOURCC) Protection schemes as defined in https://www.iso.org/obp/ui/#iso:std:iso-iec:23001:-7:ed-3:v1:en)
+ *      "crypt_byte_block"    G_TYPE_UINT     (Present only if cipher-mode is "cbcs")
+ *      "skip_byte_block"     G_TYPE_UINT     (Present only cipher-mode is "cbcs")
  *
  * \param session \ref OpenCDMSession instance.
  * \param buffer Gstreamer buffer containing encrypted data and related meta data. If applicable, decrypted data will be stored here after this call returns.
