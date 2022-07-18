@@ -162,6 +162,11 @@ private:
                     std::list<DisplayInfo*>::erase(index);
                 }
                 delete const_cast<DisplayInfo*>(displayInfo);
+
+                if (_comChannel.IsValid()) {
+                    _comChannel.Release();
+                }
+
                 result = Core::ERROR_DESTRUCTION_SUCCEEDED;
             }
 
