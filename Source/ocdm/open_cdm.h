@@ -120,10 +120,10 @@ typedef enum {
 
 typedef enum
 {
-    Unknown = 0,
-    Video,
-    Audio,
-    Data
+    MediaType_Unknown = 0,
+    MediaType_Video,
+    MediaType_Audio,
+    MediaType_Data
 } MediaType;
 
 //CENC3.0 pattern is a number of encrypted blocks followed a number of clear blocks after which the pattern repeats.
@@ -137,7 +137,7 @@ typedef struct {
     uint16_t height;
     uint16_t width;
     MediaType media_type;
-} StreamProperties;
+} MediaProperties;
 
 
 /**
@@ -588,7 +588,7 @@ EXTERNAL OpenCDMError opencdm_session_decrypt_v2(struct OpenCDMSession* session,
     const EncryptionPattern pattern,
     const uint8_t* IV, uint16_t IVLength,
     const uint8_t* keyId, const uint16_t keyIdLength,
-    const StreamProperties* streamProperties);
+    const MediaProperties* streamProperties);
 
 /**
  * @brief Close the cached open connection if it exists.

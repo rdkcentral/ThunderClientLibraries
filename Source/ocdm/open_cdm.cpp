@@ -483,11 +483,38 @@ OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
     OpenCDMError result(ERROR_INVALID_SESSION);
 
     if (session != nullptr) {
+        const uint32_t* subSample = nullptr;
+        uint16_t subSampleCount = 0;
         result = encryptedLength > 0 ? static_cast<OpenCDMError>(session->Decrypt(
-            encrypted, encryptedLength, encScheme, pattern, IV, IVLength, keyId, keyIdLength, initWithLast15)) : ERROR_NONE;
+            encrypted, encryptedLength, subSample, subSampleCount, encScheme, pattern, IV, IVLength, keyId, keyIdLength, initWithLast15, nullptr)) : ERROR_NONE;
     }
 
     return (result);
+}
+
+
+OpenCDMError opencdm_session_decrypt_v2(struct OpenCDMSession* session,
+    uint8_t encrypted[],
+    const uint32_t encryptedLength,
+    const uint32_t subSample[],
+    const uint16_t subSampleCount,
+    const EncryptionScheme encScheme,
+    const EncryptionPattern pattern,
+    const uint8_t* IV, uint16_t IVLength,
+    const uint8_t* keyId, const uint16_t keyIdLength,
+    const MediaProperties* properties) {
+
+
+    OpenCDMError result(ERROR_INVALID_SESSION);
+
+    if (session != nullptr) {
+        uint32_t initWithLast15 = 0;
+        result = encryptedLength > 0 ? static_cast<OpenCDMError>(session->Decrypt(
+            encrypted, encryptedLength, subSample, subSampleCount, encScheme, pattern, IV, IVLength, keyId, keyIdLength, initWithLast15, properties)) : ERROR_NONE;
+    }
+
+    return (result);
+
 }
 
 
