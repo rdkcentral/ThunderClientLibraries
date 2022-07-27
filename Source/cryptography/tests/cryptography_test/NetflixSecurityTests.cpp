@@ -19,10 +19,11 @@
 
 #include "Module.h"
 
-#include <cryptography.h>
 #include <core/core.h>
-#include <string.h>
+#include <cryptography.h>
+
 #include <climits>
+#include <string.h>
 
 #include <openssl/sha.h>
 #include <openssl/hmac.h>

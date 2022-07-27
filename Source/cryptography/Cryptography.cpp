@@ -18,6 +18,7 @@
  */
 
 #include "Module.h"
+#include "cryptography.h"
 
 #include <ICryptography.h>
 
@@ -822,3 +823,9 @@ namespace Implementation {
 }
 
 } // namespace WPEFramework
+
+extern "C" {
+    void cryptography_dispose() {
+        WPEFramework::Implementation::CryptographyLink::Dispose();
+    }
+}

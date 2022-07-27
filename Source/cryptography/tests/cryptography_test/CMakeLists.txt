@@ -89,7 +89,7 @@ target_link_libraries(cgnfsecuritytests
         ${NAMESPACE}Cryptography
         ssl
         crypto
-         -Wl,--warn-unresolved-symbols
+        -Wl,--warn-unresolved-symbols
     )
 
 install(TARGETS cgimptests DESTINATION bin)

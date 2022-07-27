@@ -57,25 +57,7 @@ TEST(Vault, ImportExport)
     }
 }
 
-/*This test is added to test vault->Set and vault->Get for backends apart from OpenSSL*/
-TEST(Vault, JustSetGet)
-{
-    const uint32_t MAX_SIZE = 16384;
-    uint32_t id = vault->Set(sizeof(testVector), testVector);
-    EXPECT_GT(id, 0x80000000U);
-    EXPECT_EQ(vault->Size(id), USHRT_MAX);
-    if (id != 0) {
-        uint8_t* sealed = new uint8_t[MAX_SIZE];
-        uint16_t sealedSize = vault->Get(id, MAX_SIZE, sealed);
-        DumpBuffer(sealed, sealedSize);
-        EXPECT_NE(sealedSize, 0);
-        EXPECT_EQ(::memcmp(testVector, sealed, sizeof(testVector)), 0);
-        EXPECT_EQ(vault->Delete(id), true);
-        EXPECT_EQ(vault->Size(id), 0);
-        delete[] sealed;
-    }
-}
-
+#ifdef OpenSSL
 TEST(Vault, SetGet)
 {
     const uint32_t MAX_SIZE = 16384;
@@ -104,6 +86,26 @@ TEST(Vault, SetGet)
     }
 }
 
+#else
+/*This test is added to test vault->Set and vault->Get for backends apart from OpenSSL*/
+TEST(Vault, JustSetGet)
+{
+    const uint32_t MAX_SIZE = 16384;
+    uint32_t id = vault->Set(sizeof(testVector), testVector);
+    EXPECT_GT(id, 0x80000000U);
+    EXPECT_EQ(vault->Size(id), USHRT_MAX);
+    if (id != 0) {
+        uint8_t* sealed = new uint8_t[MAX_SIZE];
+        uint16_t sealedSize = vault->Get(id, MAX_SIZE, sealed);
+        DumpBuffer(sealed, sealedSize);
+        EXPECT_NE(sealedSize, 0);
+        EXPECT_EQ(::memcmp(testVector, sealed, sizeof(testVector)), 0);
+        EXPECT_EQ(vault->Delete(id), true);
+        EXPECT_EQ(vault->Size(id), 0);
+        delete[] sealed;
+    }
+}
+#endif
 
 TEST(Hash, Hash)
 {
