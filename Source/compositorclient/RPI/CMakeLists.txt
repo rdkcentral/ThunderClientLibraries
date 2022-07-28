@@ -15,13 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(TARGET compositorclient)
-
 find_package(EGL REQUIRED)
-
-find_package(CompileSettingsDebug CONFIG REQUIRED)
-find_package(${NAMESPACE}Core REQUIRED)
-find_package(${NAMESPACE}COM REQUIRED)
 
 if(VC6)
     find_package(GBM REQUIRED)
@@ -35,18 +29,19 @@ if(VC6)
         message(FATAL_ERROR "The libDRM library and its headers cannot be found.")
     endif()
 
-    add_library(${TARGET} SHARED ModeSet.cpp Implementation.cpp)
+    target_sources(${TARGET}
+        PRIVATE
+            ${CMAKE_CURRENT_LIST_DIR}/ModeSet.cpp
+            ${CMAKE_CURRENT_LIST_DIR}/Implementation.cpp)
     target_compile_definitions(${TARGET} PRIVATE VC6)
 else()
-    add_library(${TARGET} SHARED Implementation.cpp)
+    target_sources(${TARGET}
+        PRIVATE
+            ${CMAKE_CURRENT_LIST_DIR}/Implementation.cpp)
 endif()
 
 target_link_libraries(${TARGET}
     PRIVATE
-        CompileSettingsDebug::CompileSettingsDebug
-        ${NAMESPACE}Core::${NAMESPACE}Core
-        ${NAMESPACE}VirtualInput::${NAMESPACE}VirtualInput
-        ${NAMESPACE}COM::${NAMESPACE}COM
         ${EGL_LIBRARIES}
 )
 
@@ -57,33 +52,10 @@ if(VC6)
     )
 endif()
 
-set_target_properties(${TARGET} PROPERTIES
-        CXX_STANDARD 11
-        CXX_STANDARD_REQUIRED YES
-        VERSION ${PROJECT_VERSION}
-        SOVERSION ${PROJECT_VERSION_MAJOR}
-)
-
 target_include_directories(${TARGET}
-    PUBLIC
-        $<INSTALL_INTERFACE:include/${NAMESPACE}>
     PRIVATE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/..>
         ${EGL_INCLUDE_DIRS})
 
 target_compile_definitions(${TARGET}
     PRIVATE
         ${EGL_DEFINITIONS})
-
-install(
-        TARGETS ${TARGET}  EXPORT ${TARGET}Targets  # for downstream dependencies
-        ARCHIVE DESTINATION lib COMPONENT libs      # static lib
-        LIBRARY DESTINATION lib COMPONENT libs      # shared lib
-        FRAMEWORK DESTINATION bin COMPONENT libs    # for mac
-)
-
-InstallPackageConfig(
-        TARGETS ${TARGET}
-        DESCRIPTION "A compositor implementation wrapper for RPI and key handling.")
-
-InstallCMakeConfig(TARGETS ${TARGET})
