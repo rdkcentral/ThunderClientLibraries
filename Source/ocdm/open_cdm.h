@@ -132,6 +132,17 @@ typedef struct {
     uint32_t clear_blocks;
 } EncryptionPattern;
 
+typedef struct {
+    EncryptionScheme   scheme;          // Encryption scheme used in this sample
+    EncryptionPattern pattern;   // Encryption Pattern used in this sample
+    uint8_t*           iv;              // Initialization vector(IV) to decrypt this sample. Can be NULL, in that case and IV of all zeroes is assumed.
+    uint8_t            ivLength;        // Length of IV
+    uint8_t*           keyId;           // ID of Key required to decrypt this sample
+    uint8_t            keyIdLength;     // Length of KeyId
+    uint8_t            subSampleCount; // Number or Sub-Samples in this sample
+    uint32_t*          subSample;       // SubSample mapping - Repeating pair of Clear bytes and Encrypted Bytes representing each subsample.
+} SampleInfo;
+
 // Provides information about the current stream
 typedef struct {
     uint16_t height;
@@ -564,30 +575,15 @@ EXTERNAL OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
  * \param encrypted Buffer containing encrypted data. If applicable, decrypted
  * data will be stored here after this call returns.
  * \param encryptedLength Length of encrypted data buffer (in bytes).
- * \param subSample SubSample Encryption Info with repeating pattern of
- * BytesOfClearData and BytesOfEncryptedData
- * \param subSampleCount specifies the number of subsample encryption entries
- * present for this sample.
- * \param encScheme CENC Schemes as defined in EncryptionScheme enum
- * \param pattern Encryption pattern containing number of Encrypted and Clear blocks.
- * \param IV Initial vector (IV) used during decryption. Can be NULL, in that
- * case and IV of all zeroes is assumed.
- * \param IVLength Length of IV buffer (in bytes).
- * \param keyID keyID to use for decryption
+ * \param sampleInfo Per Sample information needed to decrypt this sample
  * \param streamProperties Provides info about current stream
- * \param keyIDLength Length of keyID buffer (in bytes).
  * \return Zero on success, non-zero on error.
  */
 
 EXTERNAL OpenCDMError opencdm_session_decrypt_v2(struct OpenCDMSession* session,
     uint8_t encrypted[],
     const uint32_t encryptedLength,
-    const uint32_t subSample[],
-    const uint16_t subSampleCount,
-    const EncryptionScheme encScheme,
-    const EncryptionPattern pattern,
-    const uint8_t* IV, uint16_t IVLength,
-    const uint8_t* keyId, const uint16_t keyIdLength,
+    const SampleInfo* sampleInfo,
     const MediaProperties* streamProperties);
 
 /**

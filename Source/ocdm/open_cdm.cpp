@@ -483,10 +483,18 @@ OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
     OpenCDMError result(ERROR_INVALID_SESSION);
 
     if (session != nullptr) {
-        const uint32_t* subSample = nullptr;
-        uint16_t subSampleCount = 0;
+        SampleInfo sampleInfo;
+        sampleInfo.subSample = nullptr;
+        sampleInfo.subSampleCount = 0;
+        sampleInfo.scheme = encScheme;
+        sampleInfo.pattern.clear_blocks = pattern.clear_blocks;
+        sampleInfo.pattern.encrypted_blocks = pattern.encrypted_blocks;
+        sampleInfo.iv = const_cast<uint8_t*>(IV);
+        sampleInfo.ivLength = IVLength;
+        sampleInfo.keyId = const_cast<uint8_t*>(keyId);
+        sampleInfo.keyIdLength = keyIdLength;
         result = encryptedLength > 0 ? static_cast<OpenCDMError>(session->Decrypt(
-            encrypted, encryptedLength, subSample, subSampleCount, encScheme, pattern, IV, IVLength, keyId, keyIdLength, initWithLast15, nullptr)) : ERROR_NONE;
+            encrypted, encryptedLength, const_cast<const SampleInfo*>(&sampleInfo), initWithLast15, nullptr)) : ERROR_NONE;
     }
 
     return (result);
@@ -496,12 +504,7 @@ OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
 OpenCDMError opencdm_session_decrypt_v2(struct OpenCDMSession* session,
     uint8_t encrypted[],
     const uint32_t encryptedLength,
-    const uint32_t subSample[],
-    const uint16_t subSampleCount,
-    const EncryptionScheme encScheme,
-    const EncryptionPattern pattern,
-    const uint8_t* IV, uint16_t IVLength,
-    const uint8_t* keyId, const uint16_t keyIdLength,
+    const SampleInfo* sampleInfo,
     const MediaProperties* properties) {
 
 
@@ -510,11 +513,10 @@ OpenCDMError opencdm_session_decrypt_v2(struct OpenCDMSession* session,
     if (session != nullptr) {
         uint32_t initWithLast15 = 0;
         result = encryptedLength > 0 ? static_cast<OpenCDMError>(session->Decrypt(
-            encrypted, encryptedLength, subSample, subSampleCount, encScheme, pattern, IV, IVLength, keyId, keyIdLength, initWithLast15, properties)) : ERROR_NONE;
+            encrypted, encryptedLength, sampleInfo, initWithLast15, properties)) : ERROR_NONE;
     }
 
     return (result);
-
 }
 
 

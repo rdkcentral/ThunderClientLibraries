@@ -308,17 +308,21 @@ OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* ses
                 }
             }
 
+            SampleInfo sampleInfo;
+            sampleInfo.subSample = subSampleInfoPtr;
+            sampleInfo.subSampleCount = subSampleCount;
+            sampleInfo.scheme = encScheme;
+            sampleInfo.pattern.clear_blocks = pattern.clear_blocks;
+            sampleInfo.pattern.encrypted_blocks = pattern.encrypted_blocks;
+            sampleInfo.iv = mappedIV;
+            sampleInfo.ivLength = mappedIVSize;
+            sampleInfo.keyId = mappedKeyID;
+            sampleInfo.keyIdLength = mappedKeyIDSize;
+
             result = opencdm_session_decrypt_v2(session,
                                                 mappedData,
                                                 mappedDataSize,
-                                                subSampleInfoPtr,
-                                                subSampleCount,
-                                                encScheme,
-                                                pattern,
-                                                mappedIV,
-                                                mappedIVSize,
-                                                mappedKeyID,
-                                                mappedKeyIDSize,
+                                                &sampleInfo,
                                                 spPtr);
 
             //Clean up

@@ -399,11 +399,7 @@ private:
 
     public:
         uint32_t Decrypt(uint8_t* encryptedData, uint32_t encryptedDataLength,
-            const uint32_t subSample[], const uint16_t subSampleCount,
-            const ::EncryptionScheme encScheme,
-            const ::EncryptionPattern& pattern,
-            const uint8_t* ivData, uint16_t ivDataLength,
-            const uint8_t* keyId, uint16_t keyIdLength,
+            const ::SampleInfo* sampleInfo,
             uint32_t initWithLast15,
             const ::MediaProperties* properties)
         {
@@ -422,6 +418,27 @@ private:
             _busy = true;
 
             if (RequestProduce(Core::infinite) == Core::ERROR_NONE) {
+
+                uint32_t* subSample = nullptr;
+                uint8_t subSampleCount = 0;
+                ::EncryptionScheme encScheme = AesCtr_Cenc;
+                ::EncryptionPattern pattern = {0 , 0};
+                uint8_t* ivData = nullptr;
+                uint8_t ivDataLength = 0;
+                uint8_t* keyId = nullptr;
+                uint8_t keyIdLength = 0;
+
+                if(sampleInfo != nullptr) {
+                    subSample = sampleInfo->subSample;
+                    subSampleCount = sampleInfo->subSampleCount;
+                    ivData = sampleInfo->iv;
+                    ivDataLength = sampleInfo->ivLength;
+                    keyId = sampleInfo->keyId;
+                    keyIdLength = sampleInfo->keyIdLength;
+                    encScheme = sampleInfo->scheme;
+                    pattern.clear_blocks = sampleInfo->pattern.clear_blocks;
+                    pattern.encrypted_blocks = sampleInfo->pattern.encrypted_blocks;
+                }
 
                 SetIV(static_cast<uint8_t>(ivDataLength), ivData);
                 KeyId(static_cast<uint8_t>(keyIdLength), keyId);
@@ -608,11 +625,7 @@ public:
         _session->Update(pbResponse, cbResponse);
     }
     uint32_t Decrypt(uint8_t* encryptedData, const uint32_t encryptedDataLength,
-        const uint32_t subSample[], const uint16_t subSampleCount,
-        const ::EncryptionScheme encScheme,
-        const ::EncryptionPattern& pattern,
-        const uint8_t* ivData, uint16_t ivDataLength,
-        const uint8_t* keyId, const uint16_t keyIdLength,
+        const ::SampleInfo* sampleInfo,
         uint32_t initWithLast15,
         const ::MediaProperties* properties)
     {
@@ -628,10 +641,7 @@ public:
 
         if (decryptSession != nullptr) {
             result = decryptSession->Decrypt(encryptedData, encryptedDataLength, 
-                subSample, subSampleCount,
-                encScheme,pattern,
-                ivData,ivDataLength,
-                keyId, keyIdLength,
+                sampleInfo,
                 initWithLast15,
                 properties);
             if(result)
