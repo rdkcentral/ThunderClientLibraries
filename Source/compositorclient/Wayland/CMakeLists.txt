@@ -31,11 +31,16 @@ find_package(${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}Client REQUIRED)
 find_package(NXCLIENT)
 
 if ("${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}" STREQUAL "Westeros")
-    add_library(${TARGET} SHARED ${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}.cpp)
+    target_sources(${TARGET}
+        PRIVATE
+            ${CMAKE_CURRENT_LIST_DIR}/${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}.cpp)
 endif ()
 
 if ("${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}" STREQUAL "Weston")
-    add_library(${TARGET} SHARED  ${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}.cpp xdg-shell-client-protocol.c)
+    target_sources(${TARGET}
+        PRIVATE
+            ${CMAKE_CURRENT_LIST_DIR}/${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}.cpp
+            ${CMAKE_CURRENT_LIST_DIR}/xdg-shell-client-protocol.c)
 
     find_package(GLESv2 REQUIRED)
     if (GLESV2_FOUND)
@@ -48,18 +53,9 @@ endif ()
 
 target_link_libraries(${TARGET}
     PRIVATE
-        CompileSettingsDebug::CompileSettingsDebug
         WaylandEGL::WaylandEGL
         ${EGL_LIBRARIES}
-        ${NAMESPACE}Core::${NAMESPACE}Core
         WaylandClient::WaylandClient)
-
-set_target_properties(${TARGET} PROPERTIES
-        CXX_STANDARD 11
-        CXX_STANDARD_REQUIRED YES
-        VERSION ${PROJECT_VERSION}
-        SOVERSION ${PROJECT_VERSION_MAJOR}
-)
 
 if ("${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}" STREQUAL "Westeros")
     target_link_libraries(${TARGET}
@@ -96,9 +92,6 @@ if (PLUGIN_COMPOSITOR_NXSERVER)
 endif ()
 
 target_include_directories(${TARGET}
-    PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/..>
-        $<INSTALL_INTERFACE:include/${NAMESPACE}>
     PRIVATE
         ${EGL_INCLUDE_DIRS}
 )
@@ -113,19 +106,6 @@ set_target_properties(${TARGET} PROPERTIES
         FRAMEWORK FALSE
         DEFINE_SYMBOL WPEFRAMEWORK_WAYLAND_EGL_CLIENT
 )
-
-install(
-        TARGETS ${TARGET}  EXPORT ${TARGET}Targets  # for downstream dependencies
-        ARCHIVE DESTINATION lib COMPONENT libs      # static lib
-        LIBRARY DESTINATION lib COMPONENT libs      # shared lib
-        FRAMEWORK DESTINATION bin COMPONENT libs    # for mac
-)
-
-InstallPackageConfig(
-        TARGETS ${TARGET}
-        DESCRIPTION "A compositor implementation wrapper for EGL and key handling.")
-
-InstallCMakeConfig(TARGETS ${TARGET})
 
 install(
 	FILES Implementation.h

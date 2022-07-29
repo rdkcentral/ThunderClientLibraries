@@ -90,6 +90,6 @@ install(
 
 InstallPackageConfig(
         TARGETS ${TARGET}
-        DESCRIPTION "A compositor implementation wrapper for RPI and key handling.")
+        DESCRIPTION "A compositor implementation wrapper for EGL and key handling.")
 
 InstallCMakeConfig(TARGETS ${TARGET})
