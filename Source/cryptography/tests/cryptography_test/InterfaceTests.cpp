@@ -380,16 +380,16 @@ int main(int argc, char **argv)
             CALL(Cipher, AES);
 
             CALL(DH, Generate);
+            vault->Release();
         } else {
             printf("FATAL: Failed to acquire IVault, Vault tests can't be performed\n");
         }
-   } else {
+        cg->Release();
+    } else {
         printf("FATAL: Failed to acquire ICryptographic, no tests can't be performed\n");
     }
 
     printf("TOTAL: %i tests; %i PASSED, %i FAILED\n", TotalTests, TotalTestsPassed, (TotalTests - TotalTestsPassed));
-
-    Teardown();
 
     return (TotalTests - TotalTestsPassed);
 }

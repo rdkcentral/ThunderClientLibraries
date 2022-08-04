@@ -198,9 +198,4 @@ bool DHAuthenticatedDerive(DH* dh VARIABLE_IS_NOT_USED, const uint16_t secretSiz
     return (true);
 }
 
-void Teardown()
-{
-    cryptography_dispose();
-}
-
 } // extern "C"

@@ -823,9 +823,3 @@ namespace Implementation {
 }
 
 } // namespace WPEFramework
-
-extern "C" {
-    void cryptography_dispose() {
-        WPEFramework::Implementation::CryptographyLink::Dispose();
-    }
-}
