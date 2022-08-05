@@ -20,7 +20,6 @@
 #include "Module.h"
 
 #include <core/core.h>
-#include <cryptography.h>
 
 #include <climits>
 #include <string.h>
@@ -29,6 +28,8 @@
 #include <openssl/hmac.h>
 #include <openssl/bn.h>
 
+#include "ICryptography.h"
+#include "INetflixSecurity.h"
 #include "Helpers.h"
 #include "Test.h"
 

@@ -29,7 +29,8 @@
 #include "Test.h"
 
 #include "core/core.h"
-#include "cryptography.h"
+#include "ICryptography.h"
+#include "INetflixSecurity.h"
 
 extern "C" {
 
