@@ -18,7 +18,6 @@
  */
 
 #include "Module.h"
-#include "cryptography.h"
 
 #include <ICryptography.h>
 
