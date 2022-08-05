@@ -19,13 +19,11 @@
 
 #include <climits>
 
-
 #include "Helpers.h"
 #include "Test.h"
 #include "ICryptography.h"
 #include "INetflixSecurity.h"
 #include <core/core.h>
-
 
 static WPEFramework::Cryptography::ICryptography* cg;
 static WPEFramework::Cryptography::IVault *vault = nullptr;
