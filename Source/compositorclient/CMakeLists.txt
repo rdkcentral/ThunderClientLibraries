@@ -17,7 +17,7 @@
 
 project(compositorclient)
 
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.13)
 
 find_package(WPEFramework)
 
@@ -60,7 +60,7 @@ target_include_directories(${TARGET}
 
 if("${PLUGIN_COMPOSITOR_IMPLEMENTATION}" STREQUAL "Nexus")
     if (COMPOSITORCLIENT_IMPLEMENTATION_PATH)
-        include(${COMPOSITORCLIENT_IMPLEMENTATION_PATH}/CMakeLists.txt)
+        add_subdirectory(${COMPOSITORCLIENT_IMPLEMENTATION_PATH})
     else()
         include(GetExternalCode)
         set(COMPOSITORCLIENT_IMPLEMENTATION_VERSION "master" CACHE STRING "compositorclient implementation version: commit_id_or_tag_or_branch_name")
@@ -70,10 +70,10 @@ if("${PLUGIN_COMPOSITOR_IMPLEMENTATION}" STREQUAL "Nexus")
             GIT_VERSION ${COMPOSITORCLIENT_IMPLEMENTATION_VERSION}
             SOURCE_DIR "Nexus"
         )
-        include(Nexus/CMakeLists.txt)
+        add_subdirectory(Nexus)
     endif()
 else()
-    include(${PLUGIN_COMPOSITOR_IMPLEMENTATION}/CMakeLists.txt)
+    add_subdirectory (${PLUGIN_COMPOSITOR_IMPLEMENTATION})
 endif()
 
 install(

@@ -31,16 +31,11 @@ find_package(${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}Client REQUIRED)
 find_package(NXCLIENT)
 
 if ("${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}" STREQUAL "Westeros")
-    target_sources(${TARGET}
-        PRIVATE
-            ${CMAKE_CURRENT_LIST_DIR}/${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}.cpp)
+    target_sources(${TARGET} PRIVATE ${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}.cpp)
 endif ()
 
 if ("${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}" STREQUAL "Weston")
-    target_sources(${TARGET}
-        PRIVATE
-            ${CMAKE_CURRENT_LIST_DIR}/${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}.cpp
-            ${CMAKE_CURRENT_LIST_DIR}/xdg-shell-client-protocol.c)
+    target_sources(${TARGET} PRIVATE ${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}.cpp xdg-shell-client-protocol.c)
 
     find_package(GLESv2 REQUIRED)
     if (GLESV2_FOUND)

@@ -29,15 +29,10 @@ if(VC6)
         message(FATAL_ERROR "The libDRM library and its headers cannot be found.")
     endif()
 
-    target_sources(${TARGET}
-        PRIVATE
-            ${CMAKE_CURRENT_LIST_DIR}/ModeSet.cpp
-            ${CMAKE_CURRENT_LIST_DIR}/Implementation.cpp)
+    target_sources(${TARGET} PRIVATE ModeSet.cpp Implementation.cpp)
     target_compile_definitions(${TARGET} PRIVATE VC6)
 else()
-    target_sources(${TARGET}
-        PRIVATE
-            ${CMAKE_CURRENT_LIST_DIR}/Implementation.cpp)
+    target_sources(${TARGET} PRIVATE Implementation.cpp)
 endif()
 
 target_link_libraries(${TARGET}
