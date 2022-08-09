@@ -435,6 +435,8 @@ namespace RPI {
 
         bool PrimeFor ( Exchange::IComposition::IClient const & , WPEFramework::RPI_INTERNAL::GLResourceMediator::native_t::prime_t & );
 
+        DisplayResolution Resolution () const override;
+
     private :
 
         class SurfaceImplementation;
@@ -1627,6 +1629,40 @@ namespace RPI {
         }
 
         return ret;
+    }
+
+    template < typename Key , typename Value , std::size_t Size >
+    class ResolutionMap {
+        public :
+            std::array < std::pair < Key , Value > , Size > _map;
+
+            /* constexpr */ Value const & at ( Key const & key ) const {
+                // std::find_if is not yet constexpr, but is since c++ 20
+                auto it = std::find_if ( begin ( _map ) , end ( _map ) , [ & key ] ( std::pair < Key, Value > const & p ) { return p . first == key ; } );
+
+                static_assert ( Size > 0 );
+                return ( it != end ( _map ) ? it -> second : _map [ 0 ] . second );
+            }
+    };
+
+    WPEFramework::Compositor::IDisplay::DisplayResolution WPEFramework::RPI::Display::Resolution () const {
+        static constexpr auto map = ResolutionMap < Exchange::IComposition::ScreenResolution , Compositor::IDisplay::DisplayResolution , 11 >
+        { { {
+            // First pair should contain a value (also) representative for 'key was not found'
+            { WPEFramework::Exchange::IComposition::ScreenResolution_Unknown   , WPEFramework::Compositor::IDisplay::DisplayResolution_Unknown } ,
+            { WPEFramework::Exchange::IComposition::ScreenResolution_480i      , WPEFramework::Compositor::IDisplay::DisplayResolution_480i } ,
+            { WPEFramework::Exchange::IComposition::ScreenResolution_480p      , WPEFramework::Compositor::IDisplay::DisplayResolution_480p } ,
+            { WPEFramework::Exchange::IComposition::ScreenResolution_720p      , WPEFramework::Compositor::IDisplay::DisplayResolution_720p } ,
+            { WPEFramework::Exchange::IComposition::ScreenResolution_720p50Hz  , WPEFramework::Compositor::IDisplay::DisplayResolution_720p50Hz } ,
+            { WPEFramework::Exchange::IComposition::ScreenResolution_1080p24Hz , WPEFramework::Compositor::IDisplay::DisplayResolution_1080p24Hz } ,
+            { WPEFramework::Exchange::IComposition::ScreenResolution_1080i50Hz , WPEFramework::Compositor::IDisplay::DisplayResolution_1080i50Hz } ,
+            { WPEFramework::Exchange::IComposition::ScreenResolution_1080p50Hz , WPEFramework::Compositor::IDisplay::DisplayResolution_1080p50Hz } ,
+            { WPEFramework::Exchange::IComposition::ScreenResolution_1080p60Hz , WPEFramework::Compositor::IDisplay::DisplayResolution_1080p60Hz } ,
+            { WPEFramework::Exchange::IComposition::ScreenResolution_2160p50Hz , WPEFramework::Compositor::IDisplay::DisplayResolution_2160p50Hz } ,
+            { WPEFramework::Exchange::IComposition::ScreenResolution_2160p60Hz , WPEFramework::Compositor::IDisplay::DisplayResolution_2160p60Hz }
+        } } };
+
+        return map . at ( _remoteDisplay -> Resolution () );
     }
 
     /* static */ void WPEFramework::RPI::Display::VirtualKeyboardCallback ( keyactiontype type , unsigned int code ) {

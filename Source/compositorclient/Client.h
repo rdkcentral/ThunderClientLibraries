@@ -197,6 +197,23 @@ namespace Compositor {
         virtual int Process(const uint32_t data) = 0;
         virtual int FileDescriptor() const = 0;
         virtual ISurface* SurfaceByName(const std::string& name) = 0;
+
+        enum DisplayResolution : uint8_t {
+            DisplayResolution_Unknown = 0,
+            DisplayResolution_480i = 1,
+            DisplayResolution_480p = 2,
+            DisplayResolution_720p = 3,
+            DisplayResolution_720p50Hz = 4,
+            DisplayResolution_1080p24Hz = 5,
+            DisplayResolution_1080i50Hz = 6,
+            DisplayResolution_1080p50Hz = 7,
+            DisplayResolution_1080p60Hz = 8,
+            DisplayResolution_2160p50Hz = 9,
+            DisplayResolution_2160p60Hz = 10
+        };
+
+	// A display has dimensions or a resolution
+	virtual DisplayResolution Resolution () const = 0;
     };
 } // Compositor
 } // WPEFramework
