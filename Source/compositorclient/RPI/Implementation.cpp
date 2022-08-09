@@ -175,7 +175,10 @@ public:
     {
         TRACE_L1(_T("Currently not supported"));
     }
- 
+    void CursorPosition (uint32_t, uint32_t )
+    {
+    }
+
 private:
     ModeSet _platform;
 };
