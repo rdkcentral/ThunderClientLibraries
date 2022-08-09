@@ -71,7 +71,7 @@ int GetToken(unsigned short maxLength, unsigned short inLength, unsigned char bu
                 if (result <= maxLength) {
                     std::copy(std::begin(token), std::end(token), buffer);
                 } else {
-                    printf("%s:%d [%s] Received token is too long [%d].\n", __FILE__, __LINE__, __func__, result);
+                    TRACE_L1(_T("Received token is too long [%d]."), result);
                     result = -result;
                 }
             } else {
@@ -84,7 +84,7 @@ int GetToken(unsigned short maxLength, unsigned short inLength, unsigned char bu
 
         client.Release();
     } else {
-        printf("%s:%d [%s] Could not open link. error=%d\n", __FILE__, __LINE__, __func__, result);
+        TRACE_L1(_T("Could not open link. error=%d"), result);
     }
 
     return (result);

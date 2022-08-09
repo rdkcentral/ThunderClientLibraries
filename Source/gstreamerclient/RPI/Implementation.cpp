@@ -179,7 +179,7 @@ private:
         if (g_strrstr(name, "audio/x-"))
         {
             if (gst_element_link(self->_audioDecodeBin, self->_audioSink) == FALSE) {
-                printf("Could not make link audio sink to bin\n");
+                TRACE_L1(_T("Could not make link audio sink to bin"));
             }
         }
         gst_caps_unref(caps);

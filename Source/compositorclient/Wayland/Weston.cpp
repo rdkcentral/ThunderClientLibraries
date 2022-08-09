@@ -1104,7 +1104,7 @@ namespace Wayland {
 
     void Display::Signal()
     {
-        printf("Received Signal, killing thread %p.\n", &_thread);
+        TRACE_L1(_T("Received Signal, killing thread %p"), &_thread);
         ::pthread_kill(_thread, SIGINT);
     }
 }
