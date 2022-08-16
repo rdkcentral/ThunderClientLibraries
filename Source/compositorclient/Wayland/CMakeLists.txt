@@ -27,26 +27,24 @@ endif ()
 find_package(WaylandClient REQUIRED)
 find_package(EGL REQUIRED)
 find_package(WaylandEGL REQUIRED)
-find_package(${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}Client REQUIRED)
+
 find_package(NXCLIENT)
 
-if ("${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}" STREQUAL "Westeros")
-    add_library(${TARGET} SHARED ${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}.cpp)
-endif ()
+add_library(${PLUGIN_COMPOSITOR_IMPLEMENTATION} OBJECT ${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}.cpp)
 
 if ("${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}" STREQUAL "Weston")
-    add_library(${TARGET} SHARED  ${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}.cpp xdg-shell-client-protocol.c)
+    target_sources(${PLUGIN_COMPOSITOR_IMPLEMENTATION} xdg-shell-client-protocol.c)
 
     find_package(GLESv2 REQUIRED)
     if (GLESV2_FOUND)
-        target_link_libraries(${TARGET}
+        target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
             PRIVATE
                 GLESv2::GLESv2
         )
     endif (GLESV2_FOUND)
 endif ()
 
-target_link_libraries(${TARGET}
+target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
     PRIVATE
         CompileSettingsDebug::CompileSettingsDebug
         WaylandEGL::WaylandEGL
@@ -54,7 +52,7 @@ target_link_libraries(${TARGET}
         ${NAMESPACE}Core::${NAMESPACE}Core
         WaylandClient::WaylandClient)
 
-set_target_properties(${TARGET} PROPERTIES
+set_target_properties(${PLUGIN_COMPOSITOR_IMPLEMENTATION} PROPERTIES
         CXX_STANDARD 11
         CXX_STANDARD_REQUIRED YES
         VERSION ${PROJECT_VERSION}
@@ -62,23 +60,25 @@ set_target_properties(${TARGET} PROPERTIES
 )
 
 if ("${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}" STREQUAL "Westeros")
-    target_link_libraries(${TARGET}
+    find_package(${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}Client REQUIRED)
+
+    target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
         PRIVATE
             ${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}Client::${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}Client)
-endif ()
+endif()
 
 if (NXCLIENT_FOUND)
-    target_link_libraries(${TARGET}
+    target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
         PRIVATE
             NXCLIENT::NXCLIENT)
 endif ()
 
 find_package(BCM_HOST QUIET)
 if(BCM_HOST_FOUND)
-    target_link_libraries(${TARGET}
+    target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
         PRIVATE
             BCM_HOST::BCM_HOST)
-    target_compile_definitions(${TARGET}
+    target_compile_definitions(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
         PRIVATE
             BCM_HOST=ON)
 endif(BCM_HOST_FOUND)
@@ -89,13 +89,13 @@ endif(EGL_FOUND)
 
 if (PLUGIN_COMPOSITOR_NXSERVER)
     if (V3D_DRM_DISABLE)
-        target_compile_definitions(${TARGET}
+        target_compile_definitions(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
             PRIVATE
                 V3D_DRM_DISABLE=1)
     endif ()
 endif ()
 
-target_include_directories(${TARGET}
+target_include_directories(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/..>
         $<INSTALL_INTERFACE:include/${NAMESPACE}>
@@ -103,11 +103,11 @@ target_include_directories(${TARGET}
         ${EGL_INCLUDE_DIRS}
 )
 
-target_compile_definitions(${TARGET}
+target_compile_definitions(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
     PRIVATE
         ${EGL_DEFINITIONS})
 
-set_target_properties(${TARGET} PROPERTIES
+set_target_properties(${PLUGIN_COMPOSITOR_IMPLEMENTATION} PROPERTIES
         CXX_STANDARD 11
         CXX_STANDARD_REQUIRED YES
         FRAMEWORK FALSE
@@ -115,20 +115,6 @@ set_target_properties(${TARGET} PROPERTIES
 )
 
 install(
-        TARGETS ${TARGET}  EXPORT ${TARGET}Targets  # for downstream dependencies
-        ARCHIVE DESTINATION lib COMPONENT libs      # static lib
-        LIBRARY DESTINATION lib COMPONENT libs      # shared lib
-        FRAMEWORK DESTINATION bin COMPONENT libs    # for mac
-)
-
-InstallPackageConfig(
-        TARGETS ${TARGET}
-        DESCRIPTION "A compositor implementation wrapper for EGL and key handling.")
-
-InstallCMakeConfig(TARGETS ${TARGET})
-
-install(
 	FILES Implementation.h
         DESTINATION include/${NAMESPACE}/compositorclient
 )
-
