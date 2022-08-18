@@ -58,11 +58,12 @@ endif()
 add_library(${TARGET} SHARED $<TARGET_OBJECTS:${PLUGIN_COMPOSITOR_IMPLEMENTATION}> Module.cpp) 
 
 target_link_libraries(${TARGET}
-        PRIVATE
-          ${NAMESPACE}Core::${NAMESPACE}Core
-          ${NAMESPACE}Tracing::${NAMESPACE}Tracing
-          CompileSettingsDebug::CompileSettingsDebug
-        )
+    PRIVATE
+        ${PLUGIN_COMPOSITOR_IMPLEMENTATION}
+        ${NAMESPACE}Core::${NAMESPACE}Core
+        ${NAMESPACE}Tracing::${NAMESPACE}Tracing
+        CompileSettingsDebug::CompileSettingsDebug
+    )
 
 set(PUBLIC_HEADERS "Client.h")
 
@@ -77,7 +78,7 @@ set_target_properties(${TARGET} PROPERTIES
 )
 
 install(
-    TARGETS ${TARGET}  EXPORT ${TARGET}Targets
+    TARGETS ${TARGET} ${PLUGIN_COMPOSITOR_IMPLEMENTATION}  EXPORT ${TARGET}Targets 
     LIBRARY DESTINATION lib COMPONENT libs
     PUBLIC_HEADER DESTINATION include/${NAMESPACE}/compositor
     INCLUDES DESTINATION include/${NAMESPACE}
