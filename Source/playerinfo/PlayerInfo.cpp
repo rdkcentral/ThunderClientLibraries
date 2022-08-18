@@ -273,7 +273,7 @@ public:
                         newArray[numberOfCodecs] = PLAYERINFO_VIDEO_VP10;
                         break;
                     default:
-                        fprintf(stderr, "New video codec in the interface, not handled in client library!\n");
+                        TRACE_L1(_T("New video codec in the interface, not handled in client library!"));
                         ASSERT(false && "Invalid enum");
                         newArray[numberOfCodecs] = PLAYERINFO_VIDEO_UNDEFINED;
                         break;
@@ -347,7 +347,7 @@ public:
                         newArray[numberOfCodecs] = PLAYERINFO_AUDIO_WAV;
                         break;
                     default:
-                        fprintf(stderr, "New audio codec in the interface, not handled in client library!\n");
+                        TRACE_L1(_T("New audio codec in the interface, not handled in client library!"));
                         ASSERT(false && "Invalid enum");
                         newArray[numberOfCodecs] = PLAYERINFO_AUDIO_UNDEFINED;
                         break;

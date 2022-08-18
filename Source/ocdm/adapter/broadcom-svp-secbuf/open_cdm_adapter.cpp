@@ -17,6 +17,9 @@
  * limitations under the License.
  */
 
+#define MODULE_NAME OCDMAdapter_SVP
+
+#include <core/core.h>
 #include "open_cdm_adapter.h"
 
 #include <gst/gst.h>
@@ -42,14 +45,14 @@ OpenCDMError opencdm_gstreamer_session_decrypt_v2(struct OpenCDMSession* session
     if (session != nullptr) {
         GstMapInfo dataMap;
         if (gst_buffer_map(buffer, &dataMap, (GstMapFlags) GST_MAP_READWRITE) == false) {
-            fprintf(stderr, "Invalid buffer.\n");
+            TRACE_L1(_T("Invalid buffer."));
             return (ERROR_INVALID_DECRYPT_BUFFER);
         }
 
         GstMapInfo ivMap;
         if (gst_buffer_map(IV, &ivMap, (GstMapFlags) GST_MAP_READ) == false) {
             gst_buffer_unmap(buffer, &dataMap);
-            fprintf(stderr, "Invalid IV buffer.\n");
+            TRACE_L1(_T("Invalid IV buffer."));
             return (ERROR_INVALID_DECRYPT_BUFFER);
         }
 
@@ -57,7 +60,7 @@ OpenCDMError opencdm_gstreamer_session_decrypt_v2(struct OpenCDMSession* session
         if (gst_buffer_map(keyID, &keyIDMap, (GstMapFlags) GST_MAP_READ) == false) {
             gst_buffer_unmap(buffer, &dataMap);
             gst_buffer_unmap(IV, &ivMap);
-            fprintf(stderr, "Invalid keyID buffer.\n");
+            TRACE_L1(_T("Invalid keyID buffer."));
             return (ERROR_INVALID_DECRYPT_BUFFER);
         }
 
@@ -72,7 +75,7 @@ OpenCDMError opencdm_gstreamer_session_decrypt_v2(struct OpenCDMSession* session
             GstMapInfo sampleMap;
 
             if (gst_buffer_map(subSampleBuffer, &sampleMap, GST_MAP_READ) == false) {
-                fprintf(stderr, "Invalid subsample buffer.\n");
+                TRACE_L1(_T("Invalid subsample buffer."));
                 gst_buffer_unmap(keyID, &keyIDMap);
                 gst_buffer_unmap(IV, &ivMap);
                 gst_buffer_unmap(buffer, &dataMap);
@@ -139,8 +142,8 @@ OpenCDMError opencdm_gstreamer_session_decrypt_v2(struct OpenCDMSession* session
                 if(ptr && (result == ERROR_NONE)) {
                     memcpy(&sb_info, encryptedData, sizeof(Rpc_Secbuf_Info));
                     if (B_Secbuf_AllocWithToken(sb_info.size, (B_Secbuf_Type)sb_info.type, sb_info.token, (void**)&sb_info.ptr)) {
-                        fprintf(stderr, "B_Secbuf_AllocWithToken() failed!\n");
-                        fprintf(stderr, "%u subsamples, totalEncrypted: %u, sb_inf: ptr=%p, type=%i, size=%i, token=%p\n", subSampleCount, totalEncrypted, sb_info.ptr, sb_info.type, sb_info.size, sb_info.token);
+                        TRACE_L1(_T("B_Secbuf_AllocWithToken() failed!"));
+                        TRACE_L1(_T("%u subsamples, totalEncrypted: %u, sb_inf: ptr=%p, type=%i, size=%i, token=%p"), subSampleCount, totalEncrypted, sb_info.ptr, sb_info.type, sb_info.size, sb_info.token);
                     }
 
                     ptr->secure_memory_ptr = (uintptr_t) sb_info.ptr; //assign the handle here!
@@ -184,8 +187,8 @@ OpenCDMError opencdm_gstreamer_session_decrypt_v2(struct OpenCDMSession* session
                 if(result == ERROR_NONE){
                     memcpy(&sb_info, fEncryptedData, sizeof(Rpc_Secbuf_Info));
                     if (B_Secbuf_AllocWithToken(sb_info.size, (B_Secbuf_Type)sb_info.type, sb_info.token, (void**)&sb_info.ptr)) {
-                        fprintf(stderr, "B_Secbuf_AllocWithToken() failed!\n");
-                        fprintf(stderr, "no subsamples, encrypted size: %u, sb_inf: ptr=%p, type=%i, size=%i, token=%p\n", totalEncryptedSize, sb_info.ptr, sb_info.type, sb_info.size, sb_info.token);
+                        TRACE_L1(_T("B_Secbuf_AllocWithToken() failed!"));
+                        TRACE_L1(_T("no subsamples, encrypted size: %u, sb_inf: ptr=%p, type=%i, size=%i, token=%p"), totalEncryptedSize, sb_info.ptr, sb_info.type, sb_info.size, sb_info.token);
                     }
 
                     ptr->secure_memory_ptr = (uintptr_t) sb_info.ptr; //assign the handle here!

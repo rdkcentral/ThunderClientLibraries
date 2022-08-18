@@ -17,6 +17,9 @@
  * limitations under the License.
  */
  
+#define MODULE_NAME OCDMAdapter_GStreamer
+
+#include <core/core.h>
 #include "open_cdm_adapter.h"
 
 #include <stdlib.h>
@@ -32,14 +35,14 @@ OpenCDMError opencdm_gstreamer_session_decrypt_v2(struct OpenCDMSession* session
     if (session != nullptr) {
         GstMapInfo dataMap;
         if (gst_buffer_map(buffer, &dataMap, (GstMapFlags) GST_MAP_READWRITE) == false) {
-            printf("Invalid buffer.\n");
+            TRACE_L1(_T("Invalid buffer."));
             return (ERROR_INVALID_DECRYPT_BUFFER);
         }
 
         GstMapInfo ivMap;
         if (gst_buffer_map(IV, &ivMap, (GstMapFlags) GST_MAP_READ) == false) {
             gst_buffer_unmap(buffer, &dataMap);
-            printf("Invalid IV buffer.\n");
+            TRACE_L1(_T("Invalid IV buffer."));
             return (ERROR_INVALID_DECRYPT_BUFFER);
         }
 
@@ -51,7 +54,7 @@ OpenCDMError opencdm_gstreamer_session_decrypt_v2(struct OpenCDMSession* session
            if (gst_buffer_map(keyID, &keyIDMap, (GstMapFlags) GST_MAP_READ) == false) {
                gst_buffer_unmap(buffer, &dataMap);
                gst_buffer_unmap(IV, &ivMap);
-               printf("Invalid keyID buffer.\n");
+               TRACE_L1(_T("Invalid keyID buffer."));
                return (ERROR_INVALID_DECRYPT_BUFFER);
            }
 
@@ -66,7 +69,7 @@ OpenCDMError opencdm_gstreamer_session_decrypt_v2(struct OpenCDMSession* session
         if (subSampleBuffer != nullptr) {
             GstMapInfo sampleMap;
             if (gst_buffer_map(subSampleBuffer, &sampleMap, GST_MAP_READ) == false) {
-                printf("Invalid subsample buffer.\n");
+                TRACE_L1(_T("Invalid subsample buffer."));
                 if (keyID != nullptr) {
                    gst_buffer_unmap(keyID, &keyIDMap);
                 }

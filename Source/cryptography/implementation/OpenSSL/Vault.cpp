@@ -85,7 +85,7 @@ namespace Netflix {
 
                 if (label.empty()) {
                     label = "netflix";
-                    printf("%s:%d [%s] Set label to default \"%s\"\n", __FILE__, __LINE__, __func__, label.c_str());
+                    TRACE_L1(_T("Set label to default \"%s\""), label.c_str());
                 }
 
 PUSH_WARNING(DISABLE_WARNING_NON_STANDARD_EXTENSION_USED)
@@ -109,7 +109,7 @@ POP_WARNING()
                     netflix_data_size = ClearBlob(encrypted_data_size, reinterpret_cast<const char*>(encrypted_data), sizeof(netflix_data), reinterpret_cast<char*>(netflix_data));
 
                     if (netflix_data_size > 0) {
-                        printf("%s:%d [%s] Received Provision Info for '%s' with length [%d].\n", __FILE__, __LINE__, __func__, label.c_str(), netflix_data_size);
+                        TRACE_L1(_T("Received Provision Info for '%s' with length [%d]."), label.c_str(), netflix_data_size);
 
                         NetflixData* data = reinterpret_cast<NetflixData*>(netflix_data);
 
@@ -133,10 +133,10 @@ POP_WARNING()
                         TRACE_L1("Imported pre-shared keys and ESN () into the Netflix vault");
 
                     } else {
-                        printf("%s:%d [%s] Failed to get %s\n", __FILE__, __LINE__, __func__, label.c_str());
+                        TRACE_L1(_T("Failed to get %s"), label.c_str());
                     }
                 } else {
-                    printf("%s:%d [%s] Failed to extract %s provisioning. Error code %d.\n", __FILE__, __LINE__, __func__, label.c_str(), error);
+                    TRACE_L1(_T("Failed to extract %s provisioning. Error code %d."), label.c_str(), error);
                 }
 
                 provisioning->Release();
