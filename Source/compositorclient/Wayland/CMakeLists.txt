@@ -47,6 +47,7 @@ endif ()
 target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
     PRIVATE
         CompileSettingsDebug::CompileSettingsDebug
+    PUBLIC
         WaylandEGL::WaylandEGL
         ${EGL_LIBRARIES}
         ${NAMESPACE}Core::${NAMESPACE}Core
@@ -63,7 +64,7 @@ if ("${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}" STREQUAL "Westeros")
     find_package(${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}Client REQUIRED)
 
     target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
-        PRIVATE
+        PUBLIC
             ${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}Client::${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}Client)
 endif()
 

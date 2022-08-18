@@ -34,6 +34,7 @@ endif()
 target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
     PRIVATE
         CompileSettingsDebug::CompileSettingsDebug
+    PUBLIC
         ${NAMESPACE}Core::${NAMESPACE}Core
         ${NAMESPACE}VirtualInput::${NAMESPACE}VirtualInput
         ${NAMESPACE}COM::${NAMESPACE}COM
@@ -42,7 +43,7 @@ target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
 
 if(VC6)
     target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
-        PRIVATE
+        PUBLIC
             LibDRM::LibDRM
     )
 endif()
