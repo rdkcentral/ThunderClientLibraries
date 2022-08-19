@@ -20,6 +20,8 @@
 #include <interfaces/IOCDM.h>
 #include "open_cdm_impl.h"
 
+#include <unordered_map>
+
 MODULE_NAME_DECLARATION(BUILD_REFERENCE)
 
 using namespace WPEFramework;
@@ -114,12 +116,24 @@ OpenCDMError opencdm_destruct_system(struct OpenCDMSystem* system)
 OpenCDMError opencdm_is_type_supported(const char keySystem[],
     const char mimeType[])
 {
+    static std::unordered_map<std::string, OpenCDMError> typesCache;
+
+    std::string cacheKey(keySystem);
+    if (mimeType) {
+      cacheKey += "|";
+      cacheKey += mimeType;
+    }
+    auto it = typesCache.find(cacheKey);
+    if (it != typesCache.end()) {
+      return it->second;
+    }
     OpenCDMAccessor * accessor = OpenCDMAccessor::Instance();
     OpenCDMError result(OpenCDMError::ERROR_KEYSYSTEM_NOT_SUPPORTED);
 
     if ((accessor != nullptr) && (accessor->IsTypeSupported(std::string(keySystem), std::string(mimeType)) == true)) {
         result = OpenCDMError::ERROR_NONE;
     }
+    typesCache.insert({ cacheKey, result });
     return (result);
 }
 
