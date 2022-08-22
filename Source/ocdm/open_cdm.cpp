@@ -481,6 +481,7 @@ OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
     uint32_t initWithLast15 /* = 0 */)
 {
     OpenCDMError result(ERROR_INVALID_SESSION);
+    printf("opencdm_session_decrypt \n");
 
     if (session != nullptr) {
         SampleInfo sampleInfo;
@@ -509,6 +510,7 @@ OpenCDMError opencdm_session_decrypt_v2(struct OpenCDMSession* session,
 
 
     OpenCDMError result(ERROR_INVALID_SESSION);
+    printf("opencdm_session_decrypt_v2 \n");
 
     if (session != nullptr) {
         uint32_t initWithLast15 = 0;

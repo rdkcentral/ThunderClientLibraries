@@ -133,6 +133,11 @@ typedef struct {
 } EncryptionPattern;
 
 typedef struct {
+    uint16_t clear_bytes;
+    uint32_t encrypted_bytes;
+} SubSampleInfo;
+
+typedef struct {
     EncryptionScheme   scheme;          // Encryption scheme used in this sample
     EncryptionPattern pattern;   // Encryption Pattern used in this sample
     uint8_t*           iv;              // Initialization vector(IV) to decrypt this sample. Can be NULL, in that case and IV of all zeroes is assumed.
@@ -140,7 +145,7 @@ typedef struct {
     uint8_t*           keyId;           // ID of Key required to decrypt this sample
     uint8_t            keyIdLength;     // Length of KeyId
     uint8_t            subSampleCount; // Number or Sub-Samples in this sample
-    uint32_t*          subSample;       // SubSample mapping - Repeating pair of Clear bytes and Encrypted Bytes representing each subsample.
+    SubSampleInfo*     subSample;       // SubSample mapping - Repeating pair of Clear bytes and Encrypted Bytes representing each subsample.
 } SampleInfo;
 
 // Provides information about the current stream

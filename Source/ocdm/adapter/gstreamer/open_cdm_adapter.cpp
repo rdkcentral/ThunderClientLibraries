@@ -45,6 +45,9 @@ OpenCDMError opencdm_gstreamer_session_decrypt(struct OpenCDMSession* session, G
 {
     OpenCDMError result (ERROR_INVALID_SESSION);
 
+    printf("opencdm_gstreamer_session_decrypt\n");
+    TRACE_L1("opencdm_gstreamer_session");
+
     if (session != nullptr) {
         GstMapInfo dataMap;
         if (gst_buffer_map(buffer, &dataMap, (GstMapFlags) GST_MAP_READWRITE) == false) {
@@ -256,19 +259,14 @@ OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* ses
             gst_structure_get_uint(protectionMeta->info, "skip_byte_block", &pattern.clear_blocks);
 
             //Create a SubSampleInfo Array with mapping
-            uint32_t * subSampleInfoPtr = nullptr;
+            SubSampleInfo * subSampleInfoPtr = nullptr;
             if (subSample != nullptr) {
                 GstByteReader* reader = gst_byte_reader_new(mappedSubSample, mappedSubSampleSize);
-                uint16_t inClear = 0;
-                uint32_t inEncrypted = 0;
-                subSampleInfoPtr = reinterpret_cast<uint32_t*>(malloc(mappedSubSampleSize * sizeof(uint32_t)));
-                for (unsigned int position = 0, index = 0; position < subSampleCount; position++) {
+                subSampleInfoPtr = reinterpret_cast<SubSampleInfo*>(malloc(subSampleCount * sizeof(SubSampleInfo)));
+                for (unsigned int position = 0; position < subSampleCount; position++) {
 
-                    gst_byte_reader_get_uint16_be(reader, &inClear);
-                    gst_byte_reader_get_uint32_be(reader, &inEncrypted);
-                    subSampleInfoPtr[index] = inClear;
-                    subSampleInfoPtr[index+1] = inEncrypted;
-                    index += 2;
+                    gst_byte_reader_get_uint16_be(reader, &subSampleInfoPtr[position].clear_bytes);
+                    gst_byte_reader_get_uint32_be(reader, &subSampleInfoPtr[position].encrypted_bytes);
                 }
                 gst_byte_reader_set_pos(reader, 0);
                 gst_byte_reader_free(reader);

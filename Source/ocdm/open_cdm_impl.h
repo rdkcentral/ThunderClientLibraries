@@ -405,6 +405,29 @@ private:
         {
             int ret = 0;
 
+    printf("********************************************************");
+    printf("DataBuffer::Decrypt - SampleInfo \n");
+    printf(" Scheme - %d Pattern - %d,%d\n", sampleInfo->scheme, sampleInfo->pattern.encrypted_blocks,sampleInfo->pattern.clear_blocks);
+    printf(" IV Length - %d [ ", sampleInfo->ivLength);
+    for(int i = 0; i < sampleInfo->ivLength; ++i)
+        printf("%02x", sampleInfo->iv[i]);
+    printf("  ]\n");
+    printf("keyIDLength - %d [ ", sampleInfo->keyIdLength);
+    for(int i = 0; i < sampleInfo->keyIdLength; ++i)
+        printf("%02x", sampleInfo->keyId[i]);
+    printf("  ]\n");
+    printf("SubSampleCount - %d [ ", sampleInfo->subSampleCount);
+    for(int i = 0; i < sampleInfo->subSampleCount; ++i)
+        printf(" %d,%d ", sampleInfo->subSample[i].clear_bytes, sampleInfo->subSample[i].encrypted_bytes);
+    printf("  ]\n");
+
+    printf("DataBuffer::Decrypt - StreamProperties \n");
+    if(properties != nullptr) {
+        printf("Height - %d Width - %d Type - %d\n", properties->height, properties->width, static_cast<uint32_t>(properties->media_type));
+    }
+    printf("********************************************************");
+
+
             // This works, because we know that the Audio and the Video streams are
             // fed from
             // the same process, so they will use the same critial section and thus
@@ -419,23 +442,23 @@ private:
 
             if (RequestProduce(Core::infinite) == Core::ERROR_NONE) {
 
-                uint32_t* subSample = nullptr;
+                CDMi::SubSampleInfo* subSample = nullptr;
                 uint8_t subSampleCount = 0;
-                ::EncryptionScheme encScheme = AesCtr_Cenc;
-                ::EncryptionPattern pattern = {0 , 0};
+                CDMi::EncryptionScheme encScheme = CDMi::EncryptionScheme::AesCtr_Cenc;
+                CDMi::EncryptionPattern pattern = {0 , 0};
                 uint8_t* ivData = nullptr;
                 uint8_t ivDataLength = 0;
                 uint8_t* keyId = nullptr;
                 uint8_t keyIdLength = 0;
 
                 if(sampleInfo != nullptr) {
-                    subSample = sampleInfo->subSample;
+                    subSample = reinterpret_cast<CDMi::SubSampleInfo*>(sampleInfo->subSample);
                     subSampleCount = sampleInfo->subSampleCount;
                     ivData = sampleInfo->iv;
                     ivDataLength = sampleInfo->ivLength;
                     keyId = sampleInfo->keyId;
                     keyIdLength = sampleInfo->keyIdLength;
-                    encScheme = sampleInfo->scheme;
+                    encScheme = static_cast<CDMi::EncryptionScheme>(sampleInfo->scheme);
                     pattern.clear_blocks = sampleInfo->pattern.clear_blocks;
                     pattern.encrypted_blocks = sampleInfo->pattern.encrypted_blocks;
                 }
@@ -630,6 +653,7 @@ public:
         const ::MediaProperties* properties)
     {
         uint32_t result = OpenCDMError::ERROR_INVALID_DECRYPT_BUFFER;
+        printf("OpenCDMSession::Decrypt \n");
 
         // lazy create decryptbuffer
         if(_decryptSession == nullptr) {
