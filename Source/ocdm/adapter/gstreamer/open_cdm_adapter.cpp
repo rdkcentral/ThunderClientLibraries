@@ -45,9 +45,6 @@ OpenCDMError opencdm_gstreamer_session_decrypt(struct OpenCDMSession* session, G
 {
     OpenCDMError result (ERROR_INVALID_SESSION);
 
-    printf("opencdm_gstreamer_session_decrypt\n");
-    TRACE_L1("opencdm_gstreamer_session");
-
     if (session != nullptr) {
         GstMapInfo dataMap;
         if (gst_buffer_map(buffer, &dataMap, (GstMapFlags) GST_MAP_READWRITE) == false) {
@@ -207,8 +204,8 @@ OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* ses
                     result = ERROR_INVALID_DECRYPT_BUFFER;
                     goto exit;
                 }
-                GstBuffer* subSample = gst_value_get_buffer(value);
-               if (subSample != nullptr && mappedBuffer(subSample, false, &mappedSubSample, &mappedSubSampleSize) == false) {
+                subSample = gst_value_get_buffer(value);
+                if (subSample != nullptr && mappedBuffer(subSample, false, &mappedSubSample, &mappedSubSampleSize) == false) {
                     TRACE_L1("opencdm_gstreamer_session_decrypt_buffer: Invalid subsample buffer.");
                     result = ERROR_INVALID_DECRYPT_BUFFER;
                     goto exit;
@@ -274,11 +271,11 @@ OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* ses
 
             //Get Stream Properties from GstCaps
             MediaProperties *spPtr = nullptr;
-            MediaProperties streamProperties;
             if(caps != nullptr){
                 gchar *capsStr = gst_caps_to_string (caps);
                 if (capsStr != nullptr) {
                     WPEFramework::Plugin::CapsParser capsParser;
+                    MediaProperties streamProperties;
                     capsParser.Parse(reinterpret_cast<const uint8_t*>(capsStr), strlen(capsStr));
                     streamProperties.height = capsParser.GetHeight();
                     streamProperties.width = capsParser.GetWidth();

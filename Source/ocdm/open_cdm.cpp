@@ -481,8 +481,6 @@ OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
     uint32_t initWithLast15 /* = 0 */)
 {
     OpenCDMError result(ERROR_INVALID_SESSION);
-    printf("opencdm_session_decrypt \n");
-
     if (session != nullptr) {
         SampleInfo sampleInfo;
         sampleInfo.subSample = nullptr;
@@ -508,10 +506,7 @@ OpenCDMError opencdm_session_decrypt_v2(struct OpenCDMSession* session,
     const SampleInfo* sampleInfo,
     const MediaProperties* properties) {
 
-
     OpenCDMError result(ERROR_INVALID_SESSION);
-    printf("opencdm_session_decrypt_v2 \n");
-
     if (session != nullptr) {
         uint32_t initWithLast15 = 0;
         result = encryptedLength > 0 ? static_cast<OpenCDMError>(session->Decrypt(
