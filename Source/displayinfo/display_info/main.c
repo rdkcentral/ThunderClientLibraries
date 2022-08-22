@@ -31,7 +31,6 @@
 #endif
 
 static uint8_t edid_lg[] = {
-
         /* Base block */
 	0x00,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x00,
 	0x1E,0x6D,0x06,0x77,0x0A,0xAC,0x0A,0x00,
@@ -49,7 +48,6 @@ static uint8_t edid_lg[] = {
 	0x20,0x20,0x20,0x20,0x00,0x00,0x00,0xFC,
 	0x00,0x4C,0x47,0x20,0x48,0x44,0x52,0x20,
 	0x34,0x4B,0x0A,0x20,0x20,0x20,0x01,0x29,
-
 	/* CEA Extension block */
 	0x02,0x03,0x44,0x71,0x4D,0x90,0x22,0x20,
 	0x1F,0x12,0x03,0x04,0x01,0x61,0x60,0x5D,
@@ -69,9 +67,7 @@ static uint8_t edid_lg[] = {
 	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xF1
 };
 
-
 static uint8_t edid_dell[] = {
-
         /* Base block */
 	0x00,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x00,
 	0x10,0xAC,0xBC,0xA0,0x55,0x52,0x31,0x32,
@@ -89,7 +85,6 @@ static uint8_t edid_dell[] = {
 	0x35,0x0A,0x20,0x20,0x00,0x00,0x00,0xFD,
 	0x00,0x31,0x3D,0x1E,0x53,0x11,0x00,0x0A,
 	0x20,0x20,0x20,0x20,0x20,0x20,0x01,0x9E,
-
         /* CEA Extension block */
 	0x02,0x03,0x22,0xF1,0x4F,0x90,0x05,0x04,
 	0x03,0x02,0x07,0x16,0x01,0x14,0x1F,0x12,
@@ -189,7 +184,8 @@ void binary_print(size_t const size, void const * const ptr)
 }
 
 void print_edid_info(displayinfo_edid_base_info_t* edid_info) {
-    Trace("\n\nEDID Base Info : ");
+    puts("");
+    Trace("EDID Base Info : ");
     Trace("Manufacturer ID: %.*s", sizeof(edid_info->manufacturer_id), edid_info->manufacturer_id);
     Trace("Serial Number: %u" , edid_info->serial_number);
     Trace("Product Code : %u" , edid_info->product_code);
@@ -202,30 +198,50 @@ void print_edid_info(displayinfo_edid_base_info_t* edid_info) {
     Trace("Preferred width in pixels : %u" , edid_info->preferred_width_in_pixels);
     Trace("Preferred height in pixels : %u" , edid_info->preferred_height_in_pixels);
     Trace("Digital : %s" , (edid_info->digital == true) ? "Yes" : "No");
-    Trace("Bits per color : %u" , edid_info->bits_per_color);
-    fprintf(stdout, "<< Supported digital Display types : ");
-    binary_print(sizeof(edid_info->supported_digital_display_types), &(edid_info->supported_digital_display_types));
+    if (edid_info->digital == true) {
+        if (edid_info->bits_per_color != 0) {
+            Trace("Bits per color : %u" , edid_info->bits_per_color);
+        }
+        fprintf(stdout, "<< Display type : ");
+        binary_print(sizeof(edid_info->display_type), &(edid_info->display_type));
+        if (edid_info->video_interface != 0) {
+            fprintf(stdout, "<< Video interface : ");
+            binary_print(sizeof(edid_info->video_interface), &(edid_info->video_interface));
+        }
+    }
 }
 
-void print_cea_info(displayinfo_edid_cea_extension_t* cea_info) {
-    Trace("\nEDID CEA Info : ");
+void print_cea_info(displayinfo_edid_cea_extension_info_t* cea_info) {
+    puts("");
+    Trace("EDID CEA Info : ");
     Trace("Version : %02X" , cea_info->version);
-    fprintf(stdout, "<< Supported Color Depths : ");
-    binary_print(sizeof(cea_info->supported_color_depths), &(cea_info->supported_color_depths));
-    Trace("Supported Color Format : %d",cea_info->supported_color_format);
-    fprintf(stdout, "<< All Supported Color Formats : ");
-    binary_print(sizeof(cea_info->supported_color_formats), &(cea_info->supported_color_formats));
-    fprintf(stdout, "<< Supported Color Spaces : ");
-    binary_print(sizeof(cea_info->supported_color_spaces), &(cea_info->supported_color_spaces));
-    fprintf(stdout, "<< Supported Audio Formats : ");
-    binary_print(sizeof(cea_info->supported_audio_formats), &(cea_info->supported_audio_formats));
+    fprintf(stdout, "<< Supported color formats : ");
+    binary_print(sizeof(cea_info->color_formats), &(cea_info->color_formats));
+    fprintf(stdout, "<< Supported color depths on RGB 4:4:4 : ");
+    binary_print(sizeof(cea_info->color_depths[DISPLAYINFO_EDID_COLOR_DEPTH_INDEX_RGB]), &cea_info->color_depths[DISPLAYINFO_EDID_COLOR_DEPTH_INDEX_RGB]);
+    if(cea_info->color_formats & DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR444) {
+        fprintf(stdout, "<< Supported color depths on YCbCr 4:4:4 : ");
+        binary_print(sizeof(cea_info->color_depths[DISPLAYINFO_EDID_COLOR_DEPTH_INDEX_YCBCR444]), &cea_info->color_depths[DISPLAYINFO_EDID_COLOR_DEPTH_INDEX_YCBCR444]);
+    }
+    if(cea_info->color_formats & DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR422) {
+        fprintf(stdout, "<< Supported color depths on YCbCr 4:2:2 : ");
+        binary_print(sizeof(cea_info->color_depths[DISPLAYINFO_EDID_COLOR_DEPTH_INDEX_YCBCR422]), &cea_info->color_depths[DISPLAYINFO_EDID_COLOR_DEPTH_INDEX_YCBCR422]);
+    }
+    if(cea_info->color_formats & DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR420) {
+        fprintf(stdout, "<< Supported color depths on YCbCr 4:2:0 : ");
+        binary_print(sizeof(cea_info->color_depths[DISPLAYINFO_EDID_COLOR_DEPTH_INDEX_YCBCR420]), &cea_info->color_depths[DISPLAYINFO_EDID_COLOR_DEPTH_INDEX_YCBCR420]);
+    }
+    fprintf(stdout, "<< Supported color spaces : ");
+    binary_print(sizeof(cea_info->color_spaces), &(cea_info->color_spaces));
+    fprintf(stdout, "<< Supported audio formats : ");
+    binary_print(sizeof(cea_info->audio_formats), &(cea_info->audio_formats));
 
-    Trace("Supported Timings : ");
-    displayinfo_edid_standardtiming_t ts;
-    fprintf(stdout, "<< VIC\tTSN\tVF\tAR\tActive Height\tActive Width\n");
-    for (uint8_t i = 0; i < cea_info->number_of_supported_timings; ++i) {
-        if(displayinfo_edid_vic_to_standard_timing(cea_info->supported_timings[i], &ts) == 0) {
-            fprintf(stdout, "<< %u\t%u\t%u\t%u\t\t%u\t\t%u\n",ts.vic,ts.short_name,ts.vertical_frequency,ts.dar,ts.active_height,ts.active_width);
+    Trace("Supported timings (%u) : ", cea_info->number_of_timings);
+    displayinfo_edid_standard_timing_t ts;
+    fprintf(stdout, "<< VIC\tActive Width\tActive Height\tVF\tDAR\n");
+    for (uint8_t i = 0; i < cea_info->number_of_timings; ++i) {
+        if(displayinfo_edid_vic_to_standard_timing(cea_info->timings[i], &ts) == 0) {
+            fprintf(stdout, "<< %u\t%u\t\t%u\t\t%u\t%u\n", ts.vic, ts.active_width, ts.active_height, ts.vertical_frequency, ts.display_aspect_ratio);
         }
     }
 }
@@ -377,7 +393,7 @@ int main()
                 displayinfo_edid_base_info_t edid_info;
                 if (displayinfo_parse_edid(edid_dell, sizeof(edid_dell), &edid_info) == 0) {
                     print_edid_info(&edid_info);
-                    displayinfo_edid_cea_extension_t cea_info;
+                    displayinfo_edid_cea_extension_info_t cea_info;
                     if(displayinfo_edid_cea_extension_info(edid_dell, sizeof(edid_dell), &cea_info) == 0) {
                         print_cea_info(&cea_info);
                     } else {
@@ -396,7 +412,7 @@ int main()
             displayinfo_edid_base_info_t edid_info;
             if (displayinfo_parse_edid(edid_dell, sizeof(edid_dell), &edid_info) == 0) {
                 print_edid_info(&edid_info);
-                displayinfo_edid_cea_extension_t cea_info;
+                displayinfo_edid_cea_extension_info_t cea_info;
                 if(displayinfo_edid_cea_extension_info(edid_dell, sizeof(edid_dell), &cea_info) == 0) {
                     print_cea_info(&cea_info);
                 } else {
@@ -409,7 +425,7 @@ int main()
             if (displayinfo_parse_edid(edid_lg, sizeof(edid_lg), &edid_info) == 0) {
                 Trace("");
                 print_edid_info(&edid_info);
-                displayinfo_edid_cea_extension_t cea_info;
+                displayinfo_edid_cea_extension_info_t cea_info;
                 if(displayinfo_edid_cea_extension_info(edid_lg, sizeof(edid_lg), &cea_info) == 0) {
                     print_cea_info(&cea_info);
                 } else {
