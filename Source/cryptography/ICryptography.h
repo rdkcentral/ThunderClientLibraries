@@ -65,7 +65,7 @@ namespace Cryptography {
         ~IHash() override = default;
 
         /* Ingest data into the hash calculator (multiple calls possible) */
-        virtual uint32_t Ingest(const uint16_t length, const uint8_t data[] /* @length:length */) = 0;
+        virtual uint32_t Ingest(const uint16_t length, const uint8_t data[] /* @in @length:length */) = 0;
 
         /* Calculate the hash from all ingested data */
         virtual uint8_t Calculate(const uint8_t maxLength, uint8_t data[] /* @out @maxlength:maxLength */) = 0;
@@ -82,13 +82,13 @@ namespace Cryptography {
         // indicates the number of bytes required in the output buffer to succefully complete.
 
         /* Encrypt data */
-        virtual int32_t Encrypt(const uint8_t ivLength, const uint8_t iv[] /* @length:ivLength */,
-                                const uint16_t inputLength, const uint8_t input[] /* @length:inputLength */,
+        virtual int32_t Encrypt(const uint8_t ivLength, const uint8_t iv[] /* @in @length:ivLength */,
+                                const uint16_t inputLength, const uint8_t input[] /* @in @length:inputLength */,
                                 const uint16_t maxOutputLength, uint8_t output[] /* @out @maxlength:maxOutputLength */) const = 0;
 
         /* Decrypt data */
-        virtual int32_t Decrypt(const uint8_t ivLength, const uint8_t iv[] /* @length:ivLength */,
-                                const uint16_t inputLength, const uint8_t input[] /* @length:inputLength */,
+        virtual int32_t Decrypt(const uint8_t ivLength, const uint8_t iv[] /* @in @length:ivLength */,
+                                const uint16_t inputLength, const uint8_t input[] /* @in @length:inputLength */,
                                 const uint16_t maxOutputLength, uint8_t output[] /* @out @maxlength:maxOutputLength */) const = 0;
     };
 
@@ -99,7 +99,7 @@ namespace Cryptography {
         ~IDiffieHellman() override = default;
 
         /* Generate DH private/public keys */
-        virtual uint32_t Generate(const uint8_t generator, const uint16_t modulusSize, const uint8_t modulus[]/* @length:modulusSize */ ,
+        virtual uint32_t Generate(const uint8_t generator, const uint16_t modulusSize, const uint8_t modulus[]/* @in @length:modulusSize */ ,
                                   uint32_t& privKeyId /* @out */, uint32_t& pubKeyId /* @out */) = 0;
 
         /* Calculate a DH shared secret */
@@ -150,13 +150,13 @@ namespace Cryptography {
 
         // Import unencrypted data blob into the vault (returns blob ID)
         // Note: User IDs are always greater than 0x80000000, values below 0x80000000 are reserved for implementation-specific internal data blobs.
-        virtual uint32_t Import(const uint16_t length, const uint8_t blob[] /* @length:length */) = 0;
+        virtual uint32_t Import(const uint16_t length, const uint8_t blob[] /* @in @length:length */) = 0;
 
         // Export unencrypted data blob out of the vault (returns blob ID), only public blobs are exportable
         virtual uint16_t Export(const uint32_t id, const uint16_t maxLength, uint8_t blob[] /* @out @maxlength:maxLength */) const = 0;
 
         // Set encrypted data blob in the vault (returns blob ID)
-        virtual uint32_t Set(const uint16_t length, const uint8_t blob[] /* @length:length */) = 0;
+        virtual uint32_t Set(const uint16_t length, const uint8_t blob[] /* @in @length:length */) = 0;
 
         // Get encrypted data blob out of the vault (data identified by ID, returns size of the retrieved data)
         virtual uint16_t Get(const uint32_t id, const uint16_t maxLength, uint8_t blob[] /* @out @maxlength:maxLength */) const = 0;
