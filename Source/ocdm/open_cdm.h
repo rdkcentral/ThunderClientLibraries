@@ -118,11 +118,42 @@ typedef enum {
     AesCbc_Cbcs     // AES-CBC mode and Sub-Sample + patterned encryption + Constant IV
 } EncryptionScheme;
 
+typedef enum
+{
+    MediaType_Unknown = 0,
+    MediaType_Video,
+    MediaType_Audio,
+    MediaType_Data
+} MediaType;
+
 //CENC3.0 pattern is a number of encrypted blocks followed a number of clear blocks after which the pattern repeats.
 typedef struct {
     uint32_t encrypted_blocks;
     uint32_t clear_blocks;
 } EncryptionPattern;
+
+typedef struct {
+    uint16_t clear_bytes;
+    uint32_t encrypted_bytes;
+} SubSampleInfo;
+
+typedef struct {
+    EncryptionScheme   scheme;          // Encryption scheme used in this sample
+    EncryptionPattern pattern;   // Encryption Pattern used in this sample
+    uint8_t*           iv;              // Initialization vector(IV) to decrypt this sample. Can be NULL, in that case and IV of all zeroes is assumed.
+    uint8_t            ivLength;        // Length of IV
+    uint8_t*           keyId;           // ID of Key required to decrypt this sample
+    uint8_t            keyIdLength;     // Length of KeyId
+    uint8_t            subSampleCount; // Number or Sub-Samples in this sample
+    SubSampleInfo*     subSample;       // SubSample mapping - Repeating pair of Clear bytes and Encrypted Bytes representing each subsample.
+} SampleInfo;
+
+// Provides information about the current stream
+typedef struct {
+    uint16_t height;
+    uint16_t width;
+    MediaType media_type;
+} MediaProperties;
 
 
 /**
@@ -524,6 +555,7 @@ EXTERNAL OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
     const uint8_t* IV, uint16_t IVLength,
     const uint8_t* keyId, const uint16_t keyIdLength,
     uint32_t initWithLast15 = 0);
+
 #else
 EXTERNAL OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
     uint8_t encrypted[],
@@ -534,6 +566,30 @@ EXTERNAL OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
     const uint8_t* keyId, const uint16_t keyIdLength,
     uint32_t initWithLast15);
 #endif // __cplusplus
+
+
+/**
+ * \brief Performs decryption.
+ *
+ * This method accepts encrypted data and will typically decrypt it
+ * out-of-process (for security reasons). The actual data copying is performed
+ * using a memory-mapped file (for performance reasons). If the DRM system
+ * allows access to decrypted data (i.e. decrypting is not
+ * performed in a TEE), the decryption is performed in-place.
+ * \param session \ref OpenCDMSession instance.
+ * \param encrypted Buffer containing encrypted data. If applicable, decrypted
+ * data will be stored here after this call returns.
+ * \param encryptedLength Length of encrypted data buffer (in bytes).
+ * \param sampleInfo Per Sample information needed to decrypt this sample
+ * \param streamProperties Provides info about current stream
+ * \return Zero on success, non-zero on error.
+ */
+
+EXTERNAL OpenCDMError opencdm_session_decrypt_v2(struct OpenCDMSession* session,
+    uint8_t encrypted[],
+    const uint32_t encryptedLength,
+    const SampleInfo* sampleInfo,
+    const MediaProperties* streamProperties);
 
 /**
  * @brief Close the cached open connection if it exists.
