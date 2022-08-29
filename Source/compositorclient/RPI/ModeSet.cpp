@@ -17,6 +17,7 @@
 * limitations under the License.
 */ 
 
+#include "Module.h"
 #include "ModeSet.h"
 
 #include <vector>
@@ -331,7 +332,7 @@ ModeSet::ModeSet()
                 if (_fd >= 0) {
                     bool success = false;
 
-                    printf("Test Card: %s\n", index->c_str());
+                    TRACE_L1(_T("Test Card: %s"), index->c_str());
                     if ( (FindProperDisplay(_fd, _crtc, _encoder, _connector, _fb) == true) && 
                          /* TODO: Changes the original fb which might not be what is intended */
                          (CreateBuffer(_fd, _connector, _device, _mode, _fb, _buffer) == true) && 
@@ -347,7 +348,7 @@ ModeSet::ModeSet()
                         }
                     }
                     if (success == true) {
-                        printf("Opened Card: %s\n", index->c_str());
+                        TRACE_L1(_T("Opened Card: %s"), index->c_str());
                     }
                     else {
                         Destruct();
@@ -356,7 +357,7 @@ ModeSet::ModeSet()
             }
             index++;
         }
-        printf("Found descriptor: %d\n", _fd); fflush(stdout); fflush(stderr);
+        TRACE_L1(_T("Found descriptor: %d"), _fd);
     }
 }
 

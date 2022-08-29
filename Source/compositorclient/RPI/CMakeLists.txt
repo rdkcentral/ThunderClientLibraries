@@ -15,35 +15,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(TARGET compositorclient)
-
 find_package(EGL REQUIRED)
 
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
 find_package(${NAMESPACE}COM REQUIRED)
 
+add_library(${PLUGIN_COMPOSITOR_IMPLEMENTATION} OBJECT Implementation.cpp)
+
 if(VC6)
     find_package(GBM REQUIRED)
     find_package(LibDRM REQUIRED)
-
-    if(NOT GBM_FOUND)
-        message(FATAL_ERROR "The GBM library and its headers cannot be found.")
-    endif()
-
-    if(NOT LIBDRM_FOUND)
-        message(FATAL_ERROR "The libDRM library and its headers cannot be found.")
-    endif()
-
-    add_library(${TARGET} SHARED ModeSet.cpp Implementation.cpp)
-    target_compile_definitions(${TARGET} PRIVATE VC6)
-else()
-    add_library(${TARGET} SHARED Implementation.cpp)
+    
+    target_sources(${PLUGIN_COMPOSITOR_IMPLEMENTATION} PRIVATE ModeSet.cpp)
+    target_compile_definitions(${PLUGIN_COMPOSITOR_IMPLEMENTATION} PRIVATE VC6)
 endif()
 
-target_link_libraries(${TARGET}
+target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
     PRIVATE
         CompileSettingsDebug::CompileSettingsDebug
+    PUBLIC
         ${NAMESPACE}Core::${NAMESPACE}Core
         ${NAMESPACE}VirtualInput::${NAMESPACE}VirtualInput
         ${NAMESPACE}COM::${NAMESPACE}COM
@@ -51,39 +42,26 @@ target_link_libraries(${TARGET}
 )
 
 if(VC6)
-    target_link_libraries(${TARGET}
-        PRIVATE
+    target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
+        PUBLIC
             LibDRM::LibDRM
     )
 endif()
 
-set_target_properties(${TARGET} PROPERTIES
+set_target_properties(${PLUGIN_COMPOSITOR_IMPLEMENTATION} PROPERTIES
         CXX_STANDARD 11
         CXX_STANDARD_REQUIRED YES
         VERSION ${PROJECT_VERSION}
         SOVERSION ${PROJECT_VERSION_MAJOR}
 )
 
-target_include_directories(${TARGET}
+target_include_directories(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
     PUBLIC
         $<INSTALL_INTERFACE:include/${NAMESPACE}>
     PRIVATE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/..>
         ${EGL_INCLUDE_DIRS})
 
-target_compile_definitions(${TARGET}
+target_compile_definitions(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
     PRIVATE
         ${EGL_DEFINITIONS})
-
-install(
-        TARGETS ${TARGET}  EXPORT ${TARGET}Targets  # for downstream dependencies
-        ARCHIVE DESTINATION lib COMPONENT libs      # static lib
-        LIBRARY DESTINATION lib COMPONENT libs      # shared lib
-        FRAMEWORK DESTINATION bin COMPONENT libs    # for mac
-)
-
-InstallPackageConfig(
-        TARGETS ${TARGET}
-        DESCRIPTION "A compositor implementation wrapper for RPI and key handling.")
-
-InstallCMakeConfig(TARGETS ${TARGET})

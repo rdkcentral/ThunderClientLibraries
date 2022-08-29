@@ -72,12 +72,12 @@ int GetDeviceId(unsigned short MaxIdLength, char Id[])
             string deviceId;
             uint32_t error = provisioningInterface->DeviceId(deviceId);
             if (error == Core::ERROR_NONE) {
-                printf("%s:%d [%s] Received deviceId '%s'.\n", __FILE__, __LINE__, __func__, deviceId.c_str());
+                TRACE_L1(_T("Received deviceId '%s'."), deviceId.c_str());
                 result = static_cast<int>(deviceId.size());
                 if (result <= MaxIdLength) {
                     std::copy(deviceId.begin(), deviceId.end(), Id);
                 } else {
-                    printf("%s:%d [%s] Received deviceId is too long [%d].\n", __FILE__, __LINE__, __func__, result);
+                    TRACE_L1(_T("Received deviceId is too long [%d]."), result);
                     result = -result;
                 }
 
@@ -90,7 +90,7 @@ int GetDeviceId(unsigned short MaxIdLength, char Id[])
         }
         client.Release();
     } else {
-        printf("%s:%d [%s] Could not open link. error=%d\n", __FILE__, __LINE__, __func__, result);
+        TRACE_L1(_T("Could not open link. error=%d"), result);
     }
 
     return result;
@@ -132,20 +132,20 @@ int GetDRMId(const char label[], const unsigned short maxIdLength, char outId[])
                 // This is a huge encrypted blob, convert it to an uencrypted required info
                 result = ClearBlob(size, reinterpret_cast<const char*>(buffer) , maxIdLength, outId);
                 if (result > 0) {
-                    printf("%s:%d [%s] Received Provision Info for '%s' with length [%d].\n", __FILE__, __LINE__, __func__, label, result);
+                    TRACE_L1(_T("Received Provision Info for '%s' with length [%d]."), label, result);
                 } else {
-                    printf("%s:%d [%s] Provisioning for %s too big. Length: %d - %d.\n", __FILE__, __LINE__, __func__, label, -result, maxIdLength);
+                    TRACE_L1(_T("Provisioning for %s too big. Length: %d - %d."), label, -result, maxIdLength);
                 }
 
             } else {
-                printf("%s:%d [%s] Failed to extract %s provisioning. Error code %d.\n", __FILE__, __LINE__, __func__, label, error);
+                TRACE_L1(_T("Failed to extract %s provisioning. Error code %d."), label, error);
             }
 
             provisioningInterface->Release();
         }
         client.Release();
     } else {
-        printf("%s:%d [%s] Could not open link. error=%d\n", __FILE__, __LINE__, __func__, result);
+        TRACE_L1(_T("Could not open link. error=%d"), result);
     }
 
     return result;

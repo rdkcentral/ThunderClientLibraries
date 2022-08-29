@@ -21,8 +21,6 @@ option(PROTOCOLS
         "Include the protocols library." ON)
 option(COMPOSITORCLIENT
         "Include a graphics backend abstraction for external applications." OFF)
-option(GSTREAMERCLIENT
-        "Include a gstreamer sink abstraction for external applications." OFF)
 option(DEVICEINFO
         "Include the deviceinfo COMRPC abstraction library." OFF)
 option(DISPLAYINFO
@@ -46,10 +44,6 @@ endif()
 
 if(COMPOSITORCLIENT)
     add_subdirectory(compositorclient)
-endif()
-
-if(GSTREAMERCLIENT)
-    add_subdirectory(gstreamerclient)
 endif()
 
 if(DEVICEINFO)
