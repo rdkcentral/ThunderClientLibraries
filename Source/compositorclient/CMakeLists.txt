@@ -17,7 +17,7 @@
 
 project(compositorclient)
 
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.15)
 
 find_package(WPEFramework)
 
@@ -33,6 +33,9 @@ set(PLUGIN_COMPOSITOR_IMPLEMENTATION "None" CACHE STRING "Defines which implemen
 
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
+find_package(${NAMESPACE}Tracing REQUIRED)
+
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 if("${PLUGIN_COMPOSITOR_IMPLEMENTATION}" STREQUAL "Nexus")
     if (COMPOSITORCLIENT_IMPLEMENTATION_PATH)
@@ -52,9 +55,37 @@ else()
     add_subdirectory (${PLUGIN_COMPOSITOR_IMPLEMENTATION})
 endif()
 
-target_sources(${TARGET} PRIVATE ../Module.cpp)
+add_library(${TARGET} SHARED $<TARGET_OBJECTS:${PLUGIN_COMPOSITOR_IMPLEMENTATION}> Module.cpp) 
+
+target_link_libraries(${TARGET}
+    PRIVATE
+        ${PLUGIN_COMPOSITOR_IMPLEMENTATION}
+        ${NAMESPACE}Core::${NAMESPACE}Core
+        ${NAMESPACE}Tracing::${NAMESPACE}Tracing
+        CompileSettingsDebug::CompileSettingsDebug
+    )
+
+set(PUBLIC_HEADERS "Client.h")
+
+set_target_properties(${TARGET} PROPERTIES
+    CXX_STANDARD 11
+    CXX_STANDARD_REQUIRED YES
+    FRAMEWORK FALSE
+    PUBLIC_HEADER "${PUBLIC_HEADERS}"
+    LINK_WHAT_YOU_USE TRUE
+    VERSION ${PROJECT_VERSION}
+    SOVERSION ${PROJECT_VERSION_MAJOR}
+)
 
 install(
-	FILES Client.h
-        DESTINATION include/${NAMESPACE}/compositor
+    TARGETS ${TARGET} EXPORT ${TARGET}Targets
+    LIBRARY DESTINATION lib COMPONENT libs
+    PUBLIC_HEADER DESTINATION include/${NAMESPACE}/compositor
+    INCLUDES DESTINATION include/${NAMESPACE}
 )
+
+InstallPackageConfig(
+        TARGETS ${TARGET}
+        DESCRIPTION "A ${PLUGIN_COMPOSITOR_IMPLEMENTATION} compositor client implemetation wrapper.")
+
+InstallCMakeConfig(TARGETS ${TARGET})

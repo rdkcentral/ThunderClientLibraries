@@ -224,7 +224,7 @@ int main(int argc, const char* argv[])
 {
     int result = 1;
 
-    printf("Plays a .wav file over a Bluetooth speaker device\n");
+    TRACE("Plays a .wav file over a Bluetooth speaker device");
 
     if (argc == 2) {
         FILE *f;
@@ -294,7 +294,7 @@ int main(int argc, const char* argv[])
                                 uint32_t playtime = 0;
 
                                 bluetoothaudiosink_time(&playtime);
-                                fprintf(stderr, "Time: %02i:%02i:%03i\r", ((playtime / 1000) / 60), ((playtime / 1000) % 60), playtime % 1000);
+                                TRACE("Time: %02i:%02i:%03i\r", ((playtime / 1000) / 60), ((playtime / 1000) % 60), playtime % 1000);
 
                                 usleep(50 * 1000);
 
