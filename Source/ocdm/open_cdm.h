@@ -242,10 +242,6 @@ typedef struct {
     void (*keys_updated_callback)(const struct OpenCDMSession* session, void* userData);
 } OpenCDMSessionCallbacks;
 
-EXTERNAL OpenCDMError opencdm_init();
-
-EXTERNAL OpenCDMError opencdm_deinit();
-
 /**
  * \brief Creates DRM system.
  *
