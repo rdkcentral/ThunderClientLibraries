@@ -15,8 +15,7 @@
  * limitations under the License.
  */
 
-#ifndef __OCDM_WRAPPER_H_
-#define __OCDM_WRAPPER_H_
+#pragma once
 
 // WPEWebkit implementation is using the following header file to integrate
 // their solution with
@@ -58,7 +57,6 @@
 #include <string.h>
 
 #include <stdio.h>
-#include <list>
 
 #ifndef EXTERNAL
 #ifdef _MSVC_LANG
@@ -110,6 +108,53 @@ typedef enum {
     PersistentLicense
 } LicenseType;
 
+// ISO/IEC 23001-7 defines two Common Encryption Schemes with Full Sample and Subsample modes
+typedef enum {
+    Clear = 0,
+    AesCtr_Cenc,    // AES-CTR mode and Sub-Sample encryption
+    AesCbc_Cbc1,    // AES-CBC mode and Sub-Sample encryption
+    AesCtr_Cens,    // AES-CTR mode and Sub-Sample + patterned encryption
+    AesCbc_Cbcs     // AES-CBC mode and Sub-Sample + patterned encryption + Constant IV
+} EncryptionScheme;
+
+typedef enum
+{
+    MediaType_Unknown = 0,
+    MediaType_Video,
+    MediaType_Audio,
+    MediaType_Data
+} MediaType;
+
+//CENC3.0 pattern is a number of encrypted blocks followed a number of clear blocks after which the pattern repeats.
+typedef struct {
+    uint32_t encrypted_blocks;
+    uint32_t clear_blocks;
+} EncryptionPattern;
+
+typedef struct {
+    uint16_t clear_bytes;
+    uint32_t encrypted_bytes;
+} SubSampleInfo;
+
+typedef struct {
+    EncryptionScheme   scheme;          // Encryption scheme used in this sample
+    EncryptionPattern pattern;   // Encryption Pattern used in this sample
+    uint8_t*           iv;              // Initialization vector(IV) to decrypt this sample. Can be NULL, in that case and IV of all zeroes is assumed.
+    uint8_t            ivLength;        // Length of IV
+    uint8_t*           keyId;           // ID of Key required to decrypt this sample
+    uint8_t            keyIdLength;     // Length of KeyId
+    uint8_t            subSampleCount; // Number or Sub-Samples in this sample
+    SubSampleInfo*     subSample;       // SubSample mapping - Repeating pair of Clear bytes and Encrypted Bytes representing each subsample.
+} SampleInfo;
+
+// Provides information about the current stream
+typedef struct {
+    uint16_t height;
+    uint16_t width;
+    MediaType media_type;
+} MediaProperties;
+
+
 /**
  * Key status.
  */
@@ -143,6 +188,14 @@ typedef enum {
     ERROR_SERVER_INVALID_MESSAGE = 0x8004C601,
     ERROR_SERVER_SERVICE_SPECIFIC = 0x8004C604,
 } OpenCDMError;
+
+/**
+ * OpenCDM bool type. 0 is false, 1 is true.
+ */
+typedef enum {
+    OPENCDM_BOOL_FALSE = 0,
+    OPENCDM_BOOL_TRUE = 1
+} OpenCDMBool;
 
 /**
  * Registered callbacks with OCDM sessions.
@@ -306,6 +359,16 @@ EXTERNAL struct OpenCDMSession* opencdm_get_session(const uint8_t keyId[],
 EXTERNAL struct OpenCDMSession* opencdm_get_system_session(struct OpenCDMSystem* system, const uint8_t keyId[],
     const uint8_t length, const uint32_t waitTime);
 
+/**
+ * \brief Gets support server certificate.
+ *
+ * Some DRMs (e.g. WideVine) use a system-wide server certificate. This method
+ * gets if system has support for that certificate.
+ * \param system Instance of \ref OpenCDMAccessor.
+ * \return Non-zero on success, zero on error.
+ */
+EXTERNAL OpenCDMBool opencdm_system_supports_server_certificate(
+    struct OpenCDMSystem* system);
 
 /**
  * \brief Sets server certificate.
@@ -471,6 +534,8 @@ EXTERNAL OpenCDMError opencdm_session_close(struct OpenCDMSession* session);
  * \param encrypted Buffer containing encrypted data. If applicable, decrypted
  * data will be stored here after this call returns.
  * \param encryptedLength Length of encrypted data buffer (in bytes).
+ * \param encScheme CENC Schemes as defined in EncryptionScheme enum
+ * \param pattern Encryption pattern containing number of Encrypted and Clear blocks.
  * \param IV Initial vector (IV) used during decryption. Can be NULL, in that
  * case and IV of all zeroes is assumed.
  * \param IVLength Length of IV buffer (in bytes).
@@ -484,20 +549,55 @@ EXTERNAL OpenCDMError opencdm_session_close(struct OpenCDMSession* session);
 EXTERNAL OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
     uint8_t encrypted[],
     const uint32_t encryptedLength,
+    const EncryptionScheme encScheme,
+    const EncryptionPattern pattern, 
     const uint8_t* IV, uint16_t IVLength,
     const uint8_t* keyId, const uint16_t keyIdLength,
     uint32_t initWithLast15 = 0);
+
 #else
 EXTERNAL OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
     uint8_t encrypted[],
     const uint32_t encryptedLength,
+    const EncryptionScheme encScheme,
+    const EncryptionPattern pattern,
     const uint8_t* IV, uint16_t IVLength,
     const uint8_t* keyId, const uint16_t keyIdLength,
     uint32_t initWithLast15);
 #endif // __cplusplus
 
+
+/**
+ * \brief Performs decryption.
+ *
+ * This method accepts encrypted data and will typically decrypt it
+ * out-of-process (for security reasons). The actual data copying is performed
+ * using a memory-mapped file (for performance reasons). If the DRM system
+ * allows access to decrypted data (i.e. decrypting is not
+ * performed in a TEE), the decryption is performed in-place.
+ * \param session \ref OpenCDMSession instance.
+ * \param encrypted Buffer containing encrypted data. If applicable, decrypted
+ * data will be stored here after this call returns.
+ * \param encryptedLength Length of encrypted data buffer (in bytes).
+ * \param sampleInfo Per Sample information needed to decrypt this sample
+ * \param streamProperties Provides info about current stream
+ * \return Zero on success, non-zero on error.
+ */
+
+EXTERNAL OpenCDMError opencdm_session_decrypt_v2(struct OpenCDMSession* session,
+    uint8_t encrypted[],
+    const uint32_t encryptedLength,
+    const SampleInfo* sampleInfo,
+    const MediaProperties* streamProperties);
+
+/**
+ * @brief Close the cached open connection if it exists.
+ *
+ */
+EXTERNAL void opencdm_dispose();
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif // __OCDM_WRAPPER_H_
+

@@ -21,21 +21,22 @@ find_package(ProxyStubGenerator REQUIRED)
 
 option(CDMI_ADAPTER_IMPLEMENTATION "Defines which implementation is used." "None")
 
-ProxyStubGenerator(NAMESPACE "OCDM" INPUT "${CMAKE_CURRENT_SOURCE_DIR}" OUTDIR "${CMAKE_CURRENT_BINARY_DIR}/generated/proxystubs")
+ProxyStubGenerator(NAMESPACE "WPEFramework::Exchange" INPUT "${CMAKE_CURRENT_SOURCE_DIR}" OUTDIR "${CMAKE_CURRENT_BINARY_DIR}/generated/proxystubs")
 
 add_library(${TARGET} SHARED
         open_cdm.cpp
         open_cdm_ext.cpp
         "${CMAKE_CURRENT_BINARY_DIR}/generated/proxystubs/ProxyStubs_OCDM.cpp"
+        CapsParser.cpp
         )
 
 set(PUBLIC_HEADERS
-        DataExchange.h
         IOCDM.h
         open_cdm.h
         adapter/open_cdm_adapter.h
         open_cdm_ext.h
         Module.h
+        CapsParser.h
         )
 
 target_link_libraries(${TARGET}
