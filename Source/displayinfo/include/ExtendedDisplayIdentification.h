@@ -39,6 +39,7 @@ namespace Plugin {
         };
 
         enum class audioformattype : uint32_t {
+            NONE_OR_UNKNOWN = 0,
             LPCM = (1 << 0),
             AC3 = (1 << 1),
             MPEG1 = (1 << 2),
@@ -444,7 +445,7 @@ namespace Plugin {
 
             uint32_t SupportedAudioFormats() const
             {
-                uint32_t audioFormatMap = 0;
+                uint32_t audioFormatMap = static_cast <uint32_t>(audioformattype::NONE_OR_UNKNOWN);
 
                 DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
                 while(dataBlock.Next()) {
@@ -848,7 +849,7 @@ namespace Plugin {
         }
 
         uint32_t SupportedAudioFormats() const {
-            uint32_t audioFormatMap = 0;
+            uint32_t audioFormatMap = static_cast<uint32_t>(audioformattype::NONE_OR_UNKNOWN);
 
             Iterator segment = CEASegment();
             if(segment.IsValid() == true) {
