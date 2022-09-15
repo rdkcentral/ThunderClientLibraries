@@ -33,6 +33,7 @@ find_package(${NAMESPACE}Tracing REQUIRED)
 find_package(${NAMESPACE}COM REQUIRED)
 
 set(PUBLIC_HEADERS 
+        "Module.h"
         "include/displayinfo.h"
         "include/ExtendedDisplayIdentification.h"
         "include/EDIDTimings.h"
