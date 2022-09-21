@@ -1,6 +1,7 @@
 /*
  * Copyright 2016-2017 TATA ELXSI
  * Copyright 2016-2017 Metrological
+ * Copyright 2020 RDK Management
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +18,6 @@
 
 #include "Module.h"
 #include "open_cdm.h"
-#include "DataExchange.h"
 #include "IOCDM.h"
 #include "open_cdm_impl.h"
 
@@ -27,17 +27,6 @@ using namespace WPEFramework;
 
 Core::CriticalSection _systemLock;
 const char EmptyString[] = { '\0' };
-
-/* static */ const OCDM::KeyId OCDM::KeyId::InvalidKey;
-
-#ifdef _MSVC_LANG
-extern "C" {
-	void ForceLinkingOfOpenCDM() 
-	{
-        printf("Forcefully linked in the OCDM library for the ProxyStubs in this library!!\n");
-	}
-}
-#endif
 
 namespace 
 {
@@ -69,27 +58,27 @@ OpenCDMError StringToAllocatedBuffer(const std::string& source, char* destinatio
 
 } // namespace
 
-KeyStatus CDMState(const OCDM::ISession::KeyStatus state)
+KeyStatus CDMState(const Exchange::ISession::KeyStatus state)
 {
 
     switch (state) {
-    case OCDM::ISession::StatusPending:
+    case Exchange::ISession::StatusPending:
         return KeyStatus::StatusPending;
-    case OCDM::ISession::Usable:
+    case Exchange::ISession::Usable:
         return KeyStatus::Usable;
-    case OCDM::ISession::InternalError:
+    case Exchange::ISession::InternalError:
         return KeyStatus::InternalError;
-    case OCDM::ISession::Released:
+    case Exchange::ISession::Released:
         return KeyStatus::Released;
-    case OCDM::ISession::Expired:
+    case Exchange::ISession::Expired:
         return KeyStatus::Expired;
-    case OCDM::ISession::OutputRestricted:
+    case Exchange::ISession::OutputRestricted:
         return KeyStatus::OutputRestricted;
-    case OCDM::ISession::OutputRestrictedHDCP22:
+    case Exchange::ISession::OutputRestrictedHDCP22:
         return KeyStatus::OutputRestrictedHDCP22;
-    case OCDM::ISession::OutputDownscaled:
+    case Exchange::ISession::OutputDownscaled:
         return KeyStatus::OutputDownscaled;
-    case OCDM::ISession::HWError:
+    case Exchange::ISession::HWError:
         return KeyStatus::HWError;
     default:
         assert(false);
@@ -98,7 +87,6 @@ KeyStatus CDMState(const OCDM::ISession::KeyStatus state)
     return KeyStatus::InternalError;
 }
 
-/* static */ OpenCDMAccessor* OpenCDMAccessor::_singleton = nullptr;
 
 /**
  * Destructs an \ref OpenCDMAccessor instance.
@@ -130,7 +118,7 @@ OpenCDMError opencdm_is_type_supported(const char keySystem[],
     OpenCDMAccessor * accessor = OpenCDMAccessor::Instance();
     OpenCDMError result(OpenCDMError::ERROR_KEYSYSTEM_NOT_SUPPORTED);
 
-    if ((accessor != nullptr) && (accessor->IsTypeSupported(std::string(keySystem), std::string(mimeType)) == 0)) {
+    if ((accessor != nullptr) && (accessor->IsTypeSupported(std::string(keySystem), std::string(mimeType)) == true)) {
         result = OpenCDMError::ERROR_NONE;
     }
     return (result);
@@ -191,13 +179,26 @@ struct OpenCDMSession* opencdm_get_system_session(struct OpenCDMSystem* system, 
     struct OpenCDMSession* result = nullptr;
 
     std::string sessionId;
-    if ((accessor != nullptr) && (accessor->WaitForKey(length, keyId, waitTime, OCDM::ISession::Usable, sessionId, system) == true)) {
+    if ((accessor != nullptr) && (accessor->WaitForKey(length, keyId, waitTime, Exchange::ISession::Usable, sessionId, system) == true)) {
         result = accessor->Session(sessionId);
     }
 
     return (result);
 }
 
+/**
+ * \brief Gets support server certificate.
+ *
+ * Some DRMs (e.g. WideVine) use a system-wide server certificate. This method
+ * gets if system has support for that certificate.
+ * \param system Instance of \ref OpenCDMAccessor.
+ * \return Non-zero on success, zero on error.
+ */
+EXTERNAL OpenCDMBool opencdm_system_supports_server_certificate(
+    struct OpenCDMSystem*)
+{
+  return OPENCDM_BOOL_FALSE;
+}
 
 /**
  * \brief Sets server certificate.
@@ -474,24 +475,56 @@ OpenCDMError opencdm_session_close(struct OpenCDMSession* session)
 OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
     uint8_t encrypted[],
     const uint32_t encryptedLength,
+    const EncryptionScheme encScheme,
+    const EncryptionPattern pattern,
     const uint8_t* IV, const uint16_t IVLength,
     const uint8_t* keyId, const uint16_t keyIdLength,
     uint32_t initWithLast15 /* = 0 */)
 {
     OpenCDMError result(ERROR_INVALID_SESSION);
-
     if (session != nullptr) {
+        SampleInfo sampleInfo;
+        sampleInfo.subSample = nullptr;
+        sampleInfo.subSampleCount = 0;
+        sampleInfo.scheme = encScheme;
+        sampleInfo.pattern.clear_blocks = pattern.clear_blocks;
+        sampleInfo.pattern.encrypted_blocks = pattern.encrypted_blocks;
+        sampleInfo.iv = const_cast<uint8_t*>(IV);
+        sampleInfo.ivLength = IVLength;
+        sampleInfo.keyId = const_cast<uint8_t*>(keyId);
+        sampleInfo.keyIdLength = keyIdLength;
         result = encryptedLength > 0 ? static_cast<OpenCDMError>(session->Decrypt(
-            encrypted, encryptedLength, IV, IVLength, keyId, keyIdLength, initWithLast15)) : ERROR_NONE;
+            encrypted, encryptedLength, const_cast<const SampleInfo*>(&sampleInfo), initWithLast15, nullptr)) : ERROR_NONE;
     }
 
     return (result);
 }
 
 
+OpenCDMError opencdm_session_decrypt_v2(struct OpenCDMSession* session,
+    uint8_t encrypted[],
+    const uint32_t encryptedLength,
+    const SampleInfo* sampleInfo,
+    const MediaProperties* properties) {
+
+    OpenCDMError result(ERROR_INVALID_SESSION);
+    if (session != nullptr) {
+        uint32_t initWithLast15 = 0;
+        result = encryptedLength > 0 ? static_cast<OpenCDMError>(session->Decrypt(
+            encrypted, encryptedLength, sampleInfo, initWithLast15, properties)) : ERROR_NONE;
+    }
+
+    return (result);
+}
+
+
+void opencdm_dispose() {
+    Core::Singleton::Dispose();
+}
+
 bool OpenCDMAccessor::WaitForKey(const uint8_t keyLength, const uint8_t keyId[],
         const uint32_t waitTime,
-        const OCDM::ISession::KeyStatus status,
+        const Exchange::ISession::KeyStatus status,
         std::string& sessionId, OpenCDMSystem* system) const
     {
         bool result = false;
@@ -512,7 +545,7 @@ bool OpenCDMAccessor::WaitForKey(const uint8_t keyLength, const uint8_t keyId[],
             }
 
             if (result == false) {
-                OCDM::KeyId paramKey(keyId, keyLength);
+                Exchange::KeyId paramKey(keyId, keyLength);
                 _interested++;
 
                 _adminLock.Unlock();
@@ -591,3 +624,4 @@ bool OpenCDMAccessor::WaitForKey(const uint8_t keyLength, const uint8_t keyId[],
         }
         _adminLock.Unlock();
     }
+

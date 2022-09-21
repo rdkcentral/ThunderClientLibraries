@@ -17,15 +17,17 @@
  * limitations under the License.
  */
  
-#ifndef __IOPENCDMI_H
-#define __IOPENCDMI_H
+#pragma once
+
 
 #include "Module.h"
-#include "DataExchange.h"
 
-namespace OCDM {
 
-typedef enum : uint32_t {
+namespace WPEFramework {
+namespace Exchange {
+
+
+enum OCDM_RESULT : uint32_t {
     OCDM_SUCCESS = 0,
     OCDM_S_FALSE = 1,
     OCDM_KEYSYSTEM_NOT_SUPPORTED = 0x80000002,
@@ -37,11 +39,11 @@ typedef enum : uint32_t {
     OCDM_SERVER_INTERNAL_ERROR = 0x8004C600,
     OCDM_SERVER_INVALID_MESSAGE = 0x8004C601,
     OCDM_SERVER_SERVICE_SPECIFIC = 0x8004C604,
-} OCDM_RESULT;
+};
 
 // ISession defines the interface towards a DRM context that can decrypt data
 // using a given key.
-struct ISession : virtual public WPEFramework::Core::IUnknown {
+struct ISession : virtual public Core::IUnknown {
     enum KeyStatus : uint32_t {
         Usable = 0,
         Expired,
@@ -56,10 +58,10 @@ struct ISession : virtual public WPEFramework::Core::IUnknown {
 
     // ICallback defines the callback interface to receive
     // events originated from the session.
-    struct ICallback : virtual public WPEFramework::Core::IUnknown {
+    struct ICallback : virtual public Core::IUnknown {
         enum { ID = WPEFramework::RPC::ID_SESSION_CALLBACK };
 
-        virtual ~ICallback() {}
+        ~ICallback() override = default;
 
         // Event fired when a key message is successfully created.
         virtual void OnKeyMessage(const uint8_t* keyMessage /* @length:keyLength */, //__in_bcount(f_cbKeyMessage)
@@ -79,7 +81,7 @@ struct ISession : virtual public WPEFramework::Core::IUnknown {
 
     enum { ID = WPEFramework::RPC::ID_SESSION };
 
-    virtual ~ISession(void) {}
+    ~ISession(void) override = default;
 
     // Loads the data stored for the specified session into the cdm object
     virtual OCDM_RESULT Load() = 0;
@@ -118,10 +120,10 @@ struct ISession : virtual public WPEFramework::Core::IUnknown {
     virtual void ResetOutputProtection() = 0;
 
     // During instantiation a callback is set, here we can decouple.
-    virtual void Revoke(OCDM::ISession::ICallback* callback) = 0;
+    virtual void Revoke(ISession::ICallback* callback) = 0;
 };
 
-struct ISessionExt : virtual public WPEFramework::Core::IUnknown {
+struct ISessionExt : virtual public Core::IUnknown {
     enum { ID = WPEFramework::RPC::ID_SESSION_EXTENSION };
 
     enum LicenseTypeExt { Invalid = 0,
@@ -142,18 +144,18 @@ struct ISessionExt : virtual public WPEFramework::Core::IUnknown {
     virtual std::string BufferIdExt() const = 0;
 
     virtual OCDM_RESULT SetDrmHeader(const uint8_t drmHeader[] /* @length:drmHeaderLength */,
-        uint32_t drmHeaderLength)
+        uint16_t drmHeaderLength)
         = 0;
 
     virtual OCDM_RESULT GetChallengeDataExt(uint8_t* challenge /* @inout @length:challengeSize */,
-        uint32_t& challengeSize /* @inout */,
+        uint16_t& challengeSize /* @inout */,
         uint32_t isLDL)
         = 0;
 
     virtual OCDM_RESULT CancelChallengeDataExt() = 0;
 
     virtual OCDM_RESULT StoreLicenseData(const uint8_t licenseData[] /* @length:licenseDataSize */,
-        uint32_t licenseDataSize,
+        uint16_t licenseDataSize,
         uint8_t* secureStopId /* @out @length:16 */)
         = 0;
 
@@ -165,11 +167,11 @@ struct ISessionExt : virtual public WPEFramework::Core::IUnknown {
     virtual OCDM_RESULT CleanDecryptContext() = 0;
 };
 
-struct IAccessorOCDM : virtual public WPEFramework::Core::IUnknown {
+struct IAccessorOCDM : virtual public Core::IUnknown {
 
     enum { ID = WPEFramework::RPC::ID_ACCESSOROCDM };
 
-    virtual ~IAccessorOCDM() {}
+    ~IAccessorOCDM() override = default;
 
     virtual bool IsTypeSupported(const std::string& keySystem,
         const std::string& mimeType) const = 0;
@@ -213,15 +215,15 @@ struct IAccessorOCDM : virtual public WPEFramework::Core::IUnknown {
 
     virtual OCDM_RESULT GetSecureStop(const std::string& keySystem,
         const uint8_t sessionID[] /* @length:sessionIDLength */,
-        uint32_t sessionIDLength, uint8_t* rawData /* @out @length:rawSize */,
+        uint16_t sessionIDLength, uint8_t* rawData /* @out @length:rawSize */,
         uint16_t& rawSize /* @inout */)
         = 0;
 
     virtual OCDM_RESULT CommitSecureStop(const std::string& keySystem,
         const uint8_t sessionID[] /* @length:sessionIDLength */,
-        uint32_t sessionIDLength,
+        uint16_t sessionIDLength,
         const uint8_t serverResponse[] /* @length:serverResponseLength */,
-        uint32_t serverResponseLength)
+        uint16_t serverResponseLength)
         = 0;
 
     virtual OCDM_RESULT DeleteKeyStore(const std::string& keySystem) = 0;
@@ -230,29 +232,27 @@ struct IAccessorOCDM : virtual public WPEFramework::Core::IUnknown {
 
     virtual OCDM_RESULT GetKeyStoreHash(const std::string& keySystem,
         uint8_t keyStoreHash[] /* @out @length:keyStoreHashLength */,
-        uint32_t keyStoreHashLength)
+        uint16_t keyStoreHashLength)
         = 0;
 
     virtual OCDM_RESULT GetSecureStoreHash(const std::string& keySystem,
         uint8_t secureStoreHash[] /* @out @length:secureStoreHashLength */,
-        uint32_t secureStoreHashLength)
+        uint16_t secureStoreHashLength)
         = 0;
+
 };
 
 class EXTERNAL KeyId {
-private:
-    static const KeyId InvalidKey;
-
 public:
     static constexpr uint8_t KEY_LENGTH = 16;
 
     inline KeyId()
-        : _status(::OCDM::ISession::StatusPending)
+        : _status(ISession::StatusPending)
     {
         ::memset(_kid, ~0, sizeof(_kid));
     }
     inline KeyId(const uint8_t kid[], const uint8_t length)
-        : _status(::OCDM::ISession::StatusPending)
+        : _status(ISession::StatusPending)
     {
         uint8_t copyLength(length > sizeof(_kid) ? sizeof(_kid) : length);
 
@@ -264,7 +264,7 @@ public:
     }
     // Microsoft playready XML flavor retrieval of KID
     inline KeyId(const uint32_t a, const uint16_t b, const uint16_t c, const uint8_t d[])
-        : _status(::OCDM::ISession::StatusPending)
+        : _status(ISession::StatusPending)
     {
         // A bit confused on how the mapping of the Microsoft KeyId's should go, looking at the spec:
         // https://msdn.microsoft.com/nl-nl/library/windows/desktop/aa379358(v=vs.85).aspx
@@ -285,9 +285,7 @@ public:
     {
         ::memcpy(_kid, copy._kid, sizeof(_kid));
     }
-    inline ~KeyId()
-    {
-    }
+    ~KeyId() = default;
 
     inline KeyId& operator=(const KeyId& rhs)
     {
@@ -299,6 +297,7 @@ public:
 public:
     inline bool IsValid() const
     {
+        const KeyId InvalidKey;
         return (operator!=(InvalidKey));
     }
     inline bool operator==(const uint8_t rhs[]) const
@@ -353,7 +352,7 @@ public:
     }
     inline string ToString() const
     {
-        static const uint8_t HexArray[] = "0123456789ABCDEF";
+        const uint8_t HexArray[] = "0123456789ABCDEF";
 
         string result;
         for (uint8_t teller = 0; teller < sizeof(_kid); teller++) {
@@ -362,21 +361,21 @@ public:
         }
         return (result);
     }
-    void Status(::OCDM::ISession::KeyStatus status)
+    void Status(ISession::KeyStatus status)
     {
         _status = status;
     }
-    ::OCDM::ISession::KeyStatus Status() const
+    ISession::KeyStatus Status() const
     {
         return (_status);
     }
 
 private:
     uint8_t _kid[KEY_LENGTH];
-    ::OCDM::ISession::KeyStatus _status;
+    ISession::KeyStatus _status;
 };
 
 
-}
+} //namespace Exchange
+} //namespace WPEFramework
 
-#endif // __OPENCDMI_
