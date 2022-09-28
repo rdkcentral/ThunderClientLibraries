@@ -633,7 +633,7 @@ uint32_t displayinfo_edid_cea_extension_info(const uint8_t buffer[], const uint1
                     cea_info->timings[i] = vic_list[i];
                 }
 
-                cea_info->number_of_timings = vic_list.size();
+                cea_info->number_of_timings = static_cast<uint8_t>(vic_list.size());
 
                 errorCode = Core::ERROR_NONE;
             } else {

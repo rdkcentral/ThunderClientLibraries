@@ -650,7 +650,7 @@ namespace Plugin {
                 uint16_t value = ((_base[0x08] << 8) | (_base[0x09]));
                 result  = ManufactereChar(value >> 10);
                 result += ManufactereChar(value >> 5);
-                result += ManufactereChar(value);
+                result += ManufactereChar(static_cast<uint8_t>(value));
             }
             return (result);
         }
