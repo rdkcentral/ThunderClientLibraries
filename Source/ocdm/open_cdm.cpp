@@ -489,9 +489,9 @@ OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
         sampleInfo.pattern.clear_blocks = pattern.clear_blocks;
         sampleInfo.pattern.encrypted_blocks = pattern.encrypted_blocks;
         sampleInfo.iv = const_cast<uint8_t*>(IV);
-        sampleInfo.ivLength = IVLength;
+        sampleInfo.ivLength = static_cast<uint8_t>(IVLength);
         sampleInfo.keyId = const_cast<uint8_t*>(keyId);
-        sampleInfo.keyIdLength = keyIdLength;
+        sampleInfo.keyIdLength = static_cast<uint8_t>(keyIdLength);
         result = encryptedLength > 0 ? static_cast<OpenCDMError>(session->Decrypt(
             encrypted, encryptedLength, const_cast<const SampleInfo*>(&sampleInfo), initWithLast15, nullptr)) : ERROR_NONE;
     }
