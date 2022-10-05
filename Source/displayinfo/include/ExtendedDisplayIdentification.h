@@ -764,6 +764,8 @@ namespace Plugin {
         uint16_t Length () const {
             return (_base.Length());
         }
+
+        // Total segments including the base EDID
         uint8_t Segments() const {
             return (IsValid() ? _base[0x7e] + 1 : 1);
         }
@@ -794,7 +796,12 @@ namespace Plugin {
         }
 
         Iterator CEASegment() const {
-            Iterator index = Iterator(_segments);
+            return CEASegment(Iterator(_segments));
+        }
+
+        // Multiple CEA segments may exist
+        Iterator CEASegment(const Iterator& it) const {
+            Iterator index = it;
             while(index.Next() == true) {
                 if(index.Type() == CEA::extension_tag) {
                     break;
