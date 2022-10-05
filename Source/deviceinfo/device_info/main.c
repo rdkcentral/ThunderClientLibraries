@@ -59,17 +59,22 @@ void ShowMenu()
 {
     printf("Enter\n"
            "\tI : Get ID as a string.\n"
+           "\tA : Get architecture\n"
            "\tB : Get binary ID.\n"
            "\tC : Get chipset\n"
-           "\tF : Get firmware version\n"
-           "\tA : Get architecture\n"
-           "\tM : Get Model name\n"
-           "\tY : Get Model year\n"
-           "\tX : Get System Integrator name\n"
            "\tD : Get friendly name\n"
+           "\tE : Get make \n"
+           "\tF : Get firmware version\n"
+           "\tG : Get device type\n"
+           "\tN : Get serial number\n"
+           "\tK : Get sku \n"
+           "\tM : Get model name\n"
+           "\tY : Get model year\n"
+           "\tX : Get distributor Id\n"
            "\tP : Get platform name\n"
-           "\tR : Get maximum supported resolution\n"
-           "\tS : Get summary of available outputs\n");
+           "\tS : Get summary of available audio outputs\n"
+           "\tV : Get summary of available video outputs\n"
+           );
 }
 
 int main()
@@ -155,7 +160,7 @@ int main()
             uint8_t bufferLength = sizeof(buffer);
             memset(buffer, 0, bufferLength);
 
-            result = deviceinfo_architecure(buffer, &bufferLength);
+            result = deviceinfo_architecture(buffer, &bufferLength);
             if (result==0) {
                 Trace("Architecure: %s", buffer);
                 memset(buffer, 0, bufferLength);
@@ -168,67 +173,169 @@ int main()
         }
         case 'R': {
             deviceinfo_output_resolution_t res = DEVICEINFO_RESOLUTION_UNKNOWN;
-            deviceinfo_maximum_output_resolution(&res);
+            deviceinfo_maximum_output_resolution(DEVICEINFO_VIDEO_HDMI, &res);
             Trace("Output Resolution: %d", res);
             break;
         }
         case 'S': {
-            bool atmos = false;
-            bool hdr = false;
-            bool cec = false;
-            uint8_t vidMaxLen = 0;
             uint8_t audMaxLen = 0;
-            uint8_t resMaxLen = 0;
             uint8_t index = 0;
-
-            deviceinfo_hdcp_t hdcp = DEVICEINFO_HDCP_UNAVAILABLE;
-
-            deviceinfo_output_resolution_t resolutions[DEVICEINFO_RESOLUTION_LENGTH];
-            memset(resolutions, 0, sizeof(resolutions));
-
-            deviceinfo_video_output_t video_outputs[DEVICEINFO_VIDEO_LENGTH];
-            memset(video_outputs, 0, sizeof(video_outputs));
 
             deviceinfo_audio_output_t audio_outputs[DEVICEINFO_AUDIO_LENGTH];
             memset(audio_outputs, 0, sizeof(audio_outputs));
 
-            memset(resolutions, 0, sizeof(resolutions));
+            audMaxLen = sizeof(audio_outputs) / sizeof(deviceinfo_audio_output_t);
+            deviceinfo_audio_outputs(audio_outputs, &audMaxLen);
 
-            resMaxLen = sizeof(resolutions) / sizeof(deviceinfo_output_resolution_t);
-            deviceinfo_output_resolutions(resolutions, &resMaxLen);
+            Trace("\n audio outputs: [");
+            for (index = 0; index < audMaxLen; index++) {
+                Trace("\b %d", audio_outputs[index]);
+                deviceinfo_audio_capability_t audioCapabilities[10];
+                uint8_t audCapabilitiesMaxLen = sizeof(audioCapabilities);
+                deviceinfo_audio_capabilities(audio_outputs[index], audioCapabilities, &audCapabilitiesMaxLen);
 
-            audMaxLen = sizeof(video_outputs) / sizeof(deviceinfo_video_output_t);
-            deviceinfo_video_outputs(video_outputs, &audMaxLen);
+                Trace("\b audio capabilities:");
+                for (uint8_t i = 0; i < audCapabilitiesMaxLen; ++i) {
+                    Trace("\b %d", audioCapabilities[i]);
+                }
+                deviceinfo_audio_ms12_capability_t ms12Capabilities[10];
+                uint8_t ms12CapabilitiesMaxLen = sizeof(ms12Capabilities);
+                deviceinfo_audio_ms12_capabilities(audio_outputs[index], ms12Capabilities, &ms12CapabilitiesMaxLen);
 
-            vidMaxLen = sizeof(audio_outputs) / sizeof(deviceinfo_audio_output_t);
-            deviceinfo_audio_outputs(audio_outputs, &vidMaxLen);
+                Trace("\b ms12 capabilities:");
+                for (uint8_t i = 0; i < ms12CapabilitiesMaxLen; ++i) {
+                    Trace("\b %d", ms12Capabilities[i]);
+                }
+
+                deviceinfo_audio_ms12_profile_t ms12Profiles[10];
+                uint8_t ms12ProfilesMaxLen = sizeof(ms12Profiles);
+                deviceinfo_audio_ms12_audio_profiles(audio_outputs[index], ms12Profiles, &ms12ProfilesMaxLen);
+                Trace("\b ms12 profiles:");
+                for (uint8_t i = 0; i < ms12ProfilesMaxLen; ++i) {
+                    Trace("\b %d", ms12Profiles[i]);
+                }
+            }
+            Trace("\b ]\n");
+
+            break;
+        }
+
+        case 'V': {
+            bool atmos = false;
+            bool hdr = false;
+            bool cec = false;
+            uint8_t vidMaxLen = 0;
+            uint8_t index = 0;
+            char edid[50];
+            uint8_t edidMaxLen = sizeof(edid);
+            memset(edid, 0, edidMaxLen);
+
+            deviceinfo_video_output_t video_outputs[DEVICEINFO_VIDEO_LENGTH];
+            memset(video_outputs, 0, sizeof(video_outputs));
+
+            vidMaxLen = sizeof(video_outputs) / sizeof(deviceinfo_video_output_t);
+            deviceinfo_video_outputs(video_outputs, &vidMaxLen);
 
             deviceinfo_cec(&cec);
             deviceinfo_hdr(&hdr);
             deviceinfo_atmos(&atmos);
-            deviceinfo_hdcp(&hdcp);
+            deviceinfo_host_edid(edid, &edidMaxLen);
 
-            Trace("Summary:\n atmos: %s \nhdr: %s, \ncec: %s \nhdcp: %d", atmos ? "available" : "unavailable", hdr ? "available" : "unavailable", cec ? "available" : "unavailable", hdcp);
+            Trace("Summary:\n atmos: %s \nhdr: %s, \ncec: %s \nedid: %s", atmos ? "available" : "unavailable", hdr ? "available" : "unavailable", cec ? "available" : "unavailable", edid);
             Trace("\nvideo outputs: [");
-            for(index = 0; index < vidMaxLen; index++)
-            {
-                Trace("\b%d ", video_outputs[index]);
-            }
+            for (index = 0; index < vidMaxLen; index++) {
+                Trace("\b %d ", video_outputs[index]);
 
-            Trace("\b]\naudio outputs: [");
-            for(index = 0; index < audMaxLen; index++)
-            {
-                Trace("\b%d ", audio_outputs[index]);
-            }
-            Trace("\b]\nres outputs: [");
-            for(index = 0; index < resMaxLen ; index++)
-            {
-                Trace("%d ", resolutions[index]);
-            }
-            Trace("\b");
+                deviceinfo_hdcp_t hdcp = DEVICEINFO_HDCP_UNAVAILABLE;
+                deviceinfo_hdcp(video_outputs[index], &hdcp);
 
+                Trace("\b hdcp : %d", hdcp);
+
+                deviceinfo_output_resolution_t resolutions[DEVICEINFO_RESOLUTION_LENGTH];
+                memset(resolutions, 0, sizeof(resolutions));
+                uint8_t resMaxLen = sizeof(resolutions) / sizeof(deviceinfo_output_resolution_t);
+                deviceinfo_output_resolutions(video_outputs[index], resolutions, &resMaxLen);
+
+                Trace("\b supported resolutions: ");
+                for (uint8_t i = 0; i < resMaxLen; ++i) {
+                    Trace(" %d", resolutions[i]);
+                }
+                deviceinfo_output_resolution_t defaultResolution;
+                deviceinfo_default_output_resolution(video_outputs[index], &defaultResolution);
+                Trace("\b default resolution: %d", defaultResolution);
+
+                deviceinfo_output_resolution_t maxResolution;
+                deviceinfo_maximum_output_resolution(video_outputs[index], &maxResolution);
+                Trace("\b maximum resolution: %d", maxResolution);
+            }
+            Trace("\b ]\n");
             break;
         }
+        case 'G': {
+            char buffer[25];
+            uint8_t bufferLength = sizeof(buffer);
+            memset(buffer, 0, bufferLength);
+
+            result = deviceinfo_device_type(buffer, &bufferLength);
+            if (result == 0) {
+                Trace("device type: %s", buffer);
+                memset(buffer, 0, bufferLength);
+            } else if (result == 16) {
+                Trace("Buffer too small, should be at least of size %d ",bufferLength);
+            } else {
+                Trace("Instance or buffer is null.Error code = %d ", result);
+            }
+            break;
+        }
+        case 'E': {
+            char buffer[25];
+            uint8_t bufferLength = sizeof(buffer);
+            memset(buffer, 0, bufferLength);
+
+            result = deviceinfo_make(buffer, &bufferLength);
+            if (result == 0) {
+                Trace("make: %s", buffer);
+                memset(buffer, 0, bufferLength);
+            } else if (result == 16) {
+                Trace("Buffer too small, should be at least of size %d ",bufferLength);
+            } else {
+                Trace("Instance or buffer is null.Error code = %d ", result);
+            }
+            break;
+        }
+        case 'K': {
+            char buffer[25];
+            uint8_t bufferLength = sizeof(buffer);
+            memset(buffer, 0, bufferLength);
+
+            result = deviceinfo_sku(buffer, &bufferLength);
+            if (result == 0) {
+                Trace("sku: %s", buffer);
+                memset(buffer, 0, bufferLength);
+            } else if (result == 16) {
+                Trace("Buffer too small, should be at least of size %d ",bufferLength);
+            } else {
+                Trace("Instance or buffer is null.Error code = %d ", result);
+            }
+            break;
+        }
+        case 'N': {
+            char buffer[25];
+            uint8_t bufferLength = sizeof(buffer);
+            memset(buffer, 0, bufferLength);
+
+            result = deviceinfo_serial_number(buffer, &bufferLength);
+            if (result == 0) {
+                Trace("serial number: %s", buffer);
+                memset(buffer, 0, bufferLength);
+            } else if (result == 16) {
+                Trace("Buffer too small, should be at least of size %d ",bufferLength);
+            } else {
+                Trace("Instance or buffer is null.Error code = %d ", result);
+            }
+            break;
+        }
+
         case 'M': {
             char buffer[25];
             uint8_t bufferLength = sizeof(buffer);
@@ -240,7 +347,6 @@ int main()
                 memset(buffer, 0, bufferLength);
             } else if (result == 16) {
                 Trace("Buffer too small, should be at least of size %d ",bufferLength);
-                
             } else {
                 Trace("Instance or buffer is null.Error code = %d ", result);
             }
@@ -273,7 +379,6 @@ int main()
                 memset(buffer, 0, bufferLength);
             } else if (result == 16) {
                 Trace("Buffer too small, should be at least of size %d ",bufferLength);
-                
             } else {
                 Trace("Instance or buffer is null.Error code = %d ", result);
             }
@@ -290,7 +395,6 @@ int main()
                 memset(buffer, 0, bufferLength);
             } else if (result == 16) {
                 Trace("Buffer too small, should be at least of size %d ",bufferLength);
-                
             } else {
                 Trace("Instance or buffer is null.Error code = %d ", result);
             }
@@ -307,7 +411,6 @@ int main()
                 memset(buffer, 0, bufferLength);
             } else if (result == 16) {
                 Trace("Buffer too small, should be at least of size %d ",bufferLength);
-                
             } else {
                 Trace("Instance or buffer is null.Error code = %d ", result);
             }
