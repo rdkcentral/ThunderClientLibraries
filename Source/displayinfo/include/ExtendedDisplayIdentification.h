@@ -40,6 +40,8 @@ namespace Plugin {
             static constexpr uint16_t edid_block_size = 128;
         public:
             Buffer() {
+                constexpr uint8_t init_value = 0;
+                ::memcpy(_data, &init_value, sizeof(_data));
             }
             Buffer(const Buffer& copy) {
                 ::memcpy(_data, copy._data, sizeof(_data));
@@ -60,6 +62,17 @@ namespace Plugin {
             }
             operator const uint8_t* () const {
                 return (_data);
+            }
+
+            bool IsValid() const {
+                uint16_t sum;
+
+                for (uint16_t index = 0; index < Length(); index++){
+                    sum = (sum + _data[index]) % 256;
+                }
+
+                // The byte sum of each segment of 128 bytes equals 0 for base EDID and CEA segemnts
+                return sum == 0;
             }
 
         private:
@@ -120,6 +133,20 @@ namespace Plugin {
                 return ((_segments != nullptr) && (_index != _segments->cend()));
             }
             uint8_t Type() const {
+                /*
+                    0x00             : Timing Extention
+                    0x02 CEA_EXT     : CEA 861 Series Extension
+                    0x10 VTB-EXT     : Video Timing Block Extension
+                    0x20             : EDID 2.0 Extention
+                    0x40 DI-EXT      : Display Information Extension
+                    0x50 LS-EXT      : Localized String Extension
+                    0x60 DPVL-EXT    : Digital Packet Video Link Extension
+                    0XA7, 0xAF, 0xBF : Display Transfer Characteristics Data Block (DTCDB) A7 AF BF
+                    0xF0             : Extention block map
+                    0xFF             : Extentions defined by the display manufacturer / Display Device Data Block (DDDB)
+                */
+// TODO:
+                // On error anything not being a tag value previously mentioned
                 return (IsValid() ? (*_index)[0] : 0xFF);
             }
             const Buffer& Current() const {
@@ -137,8 +164,44 @@ namespace Plugin {
         public:
             static constexpr uint8_t extension_tag = 0x02;
         public:
+            // Iterator for the CTA Data Block Colection
             class DataBlockIterator {
             public:
+                /*
+                    Bits 7-5 of byte 1 describes the tag
+                    0       Reserved
+                    1       Audio Data Block (includes one or more Short Audio Descriptors)
+                    2       Video Data Block (includes one or more Short Video Descriptors)
+                    3       Vendor-Specific Data Block
+                    4       Speaker Allocation Data Block
+                    5       VESA Display Transfer Characteristic Data Block [99]
+                    6       Reserved
+                    7       Use Extended Tag
+                */
+                /*
+                    Byte 2 contains the extended tag code
+                    0       Video Capability Data Block
+                    1       Vendor-Specific Video Data Block
+                    2       VESA Display Device Data Block (100)
+                    3       VESA Video Timing Block Extension
+                    4       Reserved for HDMI Video Data Block
+                    5       Colorimetry Data Block
+                    6       HDR Static Metadata Data Block
+                    7       HDR Dynamic Metadata Data Block
+                    8..12   Reserved for video-related blocks
+                    13      Video Format Preference Data Block
+                    14      YCBCR 4:2:0 Video Data Block
+                    15      YCBCR 4:2:0 Capability Map Data Block
+                    16      Reserved for CTA Miscellaneous Audio Fields
+                    17      Vendor-Specific Audio Data Block
+                    18      Reserved for HDMI Audio Data Block
+                    19      Room Configuration Data Block
+                    20      Speaker Location Data Block
+                    21-31   Reserved for audio-related blocks
+                    32      InfoFrame Data Block (includes one or more Short InfoFrame Descriptors)
+                    33..255 Reserved
+                */
+
                 enum blocktype : uint16_t {
                     INVALID = 0,
                     AUDIO = 1,
@@ -146,7 +209,9 @@ namespace Plugin {
                     VENDOR_SPECIFIC = 3,
                     SPEAKER_ALLOCATION = 4,
                     VESA = 5,
+                    // Use extended Tag
                     EXTENDED = 7,
+                    // All subsequent values exceed the max of first byte, eg max (255) + 1 + value
                     MARKER = 256,
                     VIDEO_CAPABILITY = (MARKER | 0),
                     VENDOR_SPECIFIC_VIDEO = (MARKER | 1),
@@ -164,15 +229,13 @@ namespace Plugin {
                 DataBlockIterator(const Buffer& rhs, uint8_t dtdBegin)
                     : _segment(rhs)
                     , _index(4)
-                    , _dtdBegin(dtdBegin)
-                    , _reset(true) {
+                    , _dtdBegin(dtdBegin) {
                         ASSERT(_index >= 4);
                 }
                 DataBlockIterator(const DataBlockIterator& copy)
                     : _segment(copy._segment)
                     , _index(copy._index)
-                    , _dtdBegin(copy._dtdBegin)
-                    , _reset(true) {
+                    , _dtdBegin(copy._dtdBegin) {
                         ASSERT(_index >= 4);
                 }
                 ~DataBlockIterator() = default;
@@ -183,7 +246,6 @@ namespace Plugin {
                     _index = rhs._index;
                     ASSERT(_index >= 4);
                     _dtdBegin = rhs._dtdBegin;
-                    _reset = rhs._reset;
 
                     return (*this);
                 }
@@ -191,6 +253,7 @@ namespace Plugin {
             public:
                 uint8_t BlockSize() const
                 {
+                    // Total data block size (following bytes + this byte) is limited to 30 or 31 bytes
                     return (IsValid() ? ((_segment[_index] & 0x1F) + 1) : 0);
                 }
 
@@ -212,6 +275,7 @@ namespace Plugin {
                     return (type);
                 }
 
+                // Organizational Unique Identifier
                 uint32_t OUI() const
                 {
                     // for vendor specific only
@@ -224,7 +288,7 @@ namespace Plugin {
 
                 bool IsValid() const
                 {
-                    return ((_reset == false) && IsInRange());
+                    return (IsInRange());
                 }
 
                 bool IsInRange() const
@@ -234,17 +298,13 @@ namespace Plugin {
 
                 void Reset()
                 {
-                    _reset = true;
                     _index = 4;
                 }
 
                 bool Next()
                 {
                     bool success = true;
-                    if(_reset == true) {
-                        _reset = false;
-                    }
-                    else if(IsInRange()){
+                    if(IsInRange()){
                         _index += BlockSize();
                     }
                     if(BlockSize() == 0) {
@@ -264,7 +324,6 @@ namespace Plugin {
                 Buffer _segment;
                 uint16_t _index;
                 uint8_t _dtdBegin;
-                bool _reset;
             };
 
         public:
@@ -281,6 +340,7 @@ namespace Plugin {
             ~CEA() = default;
 
         public:
+            // Revision Number
             uint8_t Version() const
             {
                 return (_segment[1]);
@@ -296,7 +356,7 @@ namespace Plugin {
                 displayinfo_edid_color_depth_map_t colorDepthMap = DISPLAYINFO_EDID_COLOR_DEPTH_8_BPC;
                 DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
 
-                while(dataBlock.Next()) {
+                do {
                     if(dataBlock.IsValid() && (dataBlock.BlockTag() == DataBlockIterator::VENDOR_SPECIFIC) && (dataBlock.BlockSize() > 6)) {
                         if(dataBlock.OUI() == OUI_HDMI_LICENSING) {
                             if(dataBlock.Current()[6] & (1 << 6)) {
@@ -311,7 +371,7 @@ namespace Plugin {
                             break;
                         }
                     }
-                }
+                } while(dataBlock.Next());
 
                 return colorDepthMap;
             }
@@ -324,7 +384,7 @@ namespace Plugin {
                     colorDepthMap = DISPLAYINFO_EDID_COLOR_DEPTH_8_BPC;
                     DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
 
-                    while(dataBlock.Next()) {
+                    do {
                         if(dataBlock.IsValid() && (dataBlock.BlockTag() == DataBlockIterator::VENDOR_SPECIFIC) && (dataBlock.BlockSize() > 6)) {
                             if(dataBlock.OUI() == OUI_HDMI_LICENSING) {
                                 if(dataBlock.Current()[6] & (1 << 3)) {
@@ -341,7 +401,7 @@ namespace Plugin {
                                 break;
                             }
                         }
-                    }
+                    } while(dataBlock.Next());
                 }
 
                 return colorDepthMap;
@@ -366,7 +426,7 @@ namespace Plugin {
                     colorDepthMap = DISPLAYINFO_EDID_COLOR_DEPTH_8_BPC;
                     DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
 
-                    while(dataBlock.Next()) {
+                    do {
                         if(dataBlock.IsValid()) {
                             if ((dataBlock.BlockTag() == DataBlockIterator::VENDOR_SPECIFIC) && (dataBlock.BlockSize() > 7)) {
                                 if(dataBlock.OUI() == OUI_HDMI_FORUM) {
@@ -386,7 +446,7 @@ namespace Plugin {
                                 }
                             }
                         }
-                    }
+                    } while(dataBlock.Next());
                 }
 
                 return colorDepthMap;
@@ -397,7 +457,8 @@ namespace Plugin {
                 displayinfo_edid_color_space_map_t colorSpaceMap = DISPLAYINFO_EDID_COLOR_SPACE_UNDEFINED;
 
                 DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
-                while(dataBlock.Next()) {
+
+                do {
                     if(dataBlock.IsValid() && (dataBlock.BlockTag() == DataBlockIterator::COLORIMETRY) && (dataBlock.BlockSize() > 3)) {
                         if(dataBlock.Current()[2]  & (1 << 0)) {
                             colorSpaceMap |= DISPLAYINFO_EDID_COLOR_SPACE_XVYCC_601;
@@ -428,14 +489,15 @@ namespace Plugin {
                         }
                         break;
                     }
-                }
+                } while(dataBlock.Next());
                 return colorSpaceMap;
             }
 
             void Timings(std::vector<uint8_t>& vicList) const
             {
                 DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
-                while(dataBlock.Next()) {
+
+                do {
                     if(dataBlock.IsValid() && (dataBlock.BlockTag() == DataBlockIterator::VIDEO)) {
                         for(uint8_t index = 1; index < dataBlock.BlockSize(); index++) {
                             const uint8_t vic = dataBlock.Current()[index];
@@ -447,7 +509,7 @@ namespace Plugin {
                         }
                         break;
                     }
-                }
+                } while(dataBlock.Next());
             }
 
             displayinfo_edid_audio_format_map_t AudioFormats() const
@@ -455,7 +517,8 @@ namespace Plugin {
                 displayinfo_edid_audio_format_map_t audioFormatMap = 0;
 
                 DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
-                while(dataBlock.Next()) {
+
+                do {
                     if(dataBlock.IsValid() && (dataBlock.BlockTag() == DataBlockIterator::AUDIO)) {
                         for(uint8_t index = 1; index < dataBlock.BlockSize(); index += 3) {
                             const uint8_t sad = (dataBlock.Current()[index] & 0x78) >> 3;
@@ -544,11 +607,12 @@ namespace Plugin {
                         }
                         break;
                     }
-                }
+                } while(dataBlock.Next());
                 return audioFormatMap;
             }
 
         private:
+
             uint8_t DetailedTimingDescriptorStart() const
             {
                 return(_segment[2]);
@@ -568,7 +632,8 @@ namespace Plugin {
                 }
 
                 DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
-                while(dataBlock.Next()) {
+
+                do {
                     if(dataBlock.IsValid()) {
                         if((dataBlock.BlockTag() == DataBlockIterator::VENDOR_SPECIFIC) && (dataBlock.BlockSize() > 7)) {
                             if(dataBlock.OUI() == OUI_HDMI_FORUM) {
@@ -582,7 +647,7 @@ namespace Plugin {
                             break;
                         }
                     }
-                }
+                } while(dataBlock.Next());
                 return colorFormatMap;
             }
 
@@ -615,7 +680,9 @@ namespace Plugin {
                      (_base[4] == 0xFF) &&
                      (_base[5] == 0xFF) &&
                      (_base[6] == 0xFF) &&
-                     (_base[7] == 0x00) );
+                     (_base[7] == 0x00) &&
+                     // Only checksum calculation of the base EDID and CEA are known
+                     _base.IsValid() != false);
         }
 
         uint16_t Raw(const uint16_t length, uint8_t data[]) const {
@@ -764,7 +831,6 @@ namespace Plugin {
         uint16_t Length () const {
             return (_base.Length());
         }
-
         // Total segments including the base EDID
         uint8_t Segments() const {
             return (IsValid() ? _base[0x7e] + 1 : 1);
@@ -803,7 +869,7 @@ namespace Plugin {
         Iterator CEASegment(const Iterator& it) const {
             Iterator index = it;
             while(index.Next() == true) {
-                if(index.Type() == CEA::extension_tag) {
+                if(index.Type() == CEA::extension_tag && index.Current().IsValid() != false) {
                     break;
                 }
             }
