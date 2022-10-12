@@ -41,6 +41,7 @@ option(CDMI_ADAPTER_IMPLEMENTATION "Defines which implementation is used." "None
 
 
 add_library(${TARGET} SHARED
+        CapsParser.cpp
         open_cdm.cpp
         open_cdm_ext.cpp
         )
@@ -49,6 +50,7 @@ set(PUBLIC_HEADERS
         open_cdm.h
         adapter/open_cdm_adapter.h
         open_cdm_ext.h
+        CapsParser.h
         Module.h
         )
 
