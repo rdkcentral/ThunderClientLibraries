@@ -41,6 +41,57 @@ extern "C" {
 #endif
 struct displayinfo_type;
 
+typedef enum displayinfo_edid_eot_type {
+    DISPLAYINFO_EDID_EOT_UNDEFINED = 0,
+    DISPLAYINFO_EDID_EOT_TRADITIONAL_GAMMA_SDR = (1 << 0),
+    DISPLAYINFO_EDID_EOT_TRADITIONAL_GAMMA_HDR = (1 << 1),
+    DISPLAYINFO_EDID_EOT_SMPTE_ST_2084 = (1 << 2),
+    DISPLAYINFO_EDID_EOT_HYBRID_LOG_GAMMA_ITU_R_BT_2100 = (1 << 3)
+} displayinfo_edid_eot_t;
+
+typedef enum displayinfo_edid_hdr_static_metatype_type {
+    DISPLAYINFO_EDID_HDR_STATIC_METATTYPE_UNDEFINED = 0,
+    DISPLAYINFO_EDID_HDR_STATIC_METATAYPE_TYPE0 = (1 << 0)
+} displayinfo_edid_hdr_static_metatype_t;
+
+typedef uint8_t displayinfo_edid_eot_map_t;
+typedef uint8_t displayinfo_edid_hdr_static_metatype_map_t;
+
+typedef struct displayinfo_edid_hdr_static_metadata_type {
+    displayinfo_edid_eot_map_t eot;
+    displayinfo_edid_hdr_static_metatype_map_t type;
+    struct luminance {
+        uint8_t max_cv;
+        uint8_t average_cv;
+        uint8_t min_cv;
+    } luminance;
+} displayinfo_edid_hdr_static_metadata_t;
+
+typedef enum displayinfo_edid_hdr_dynamic_flag_type {
+    DISPLAYINFO_EDID_HDR_DYNAMIC_FLAG_TYPE_UNDEFINED = 0,
+    DISPLAYINFO_EDID_HDR_DYNAMIC_FLAG_TYPE_1_HDR_METADATA_VERSION = 1,
+    DISPLAYINFO_EDID_HDR_DYNAMIC_FLAG_TYPE_TS_103__433_SPEC_VERSION = 2,
+    DISPLAYINFO_EDID_HDR_DYNAMIC_FLAG_TYPE_3_HDR_METADATA_VERSION = 3,
+    DISPLAYINFO_EDID_HDR_DYNAMIC_FLAG_TYPE_4_HDR_METADATA_VERSION = 4
+} displayinfo_edid_hdr_dynamic_flag_t;
+
+typedef struct displayinfo_edid_hdr_dynamic_metatype_type {
+    displayinfo_edid_hdr_dynamic_flag_t type;
+    union {
+        uint8_t* type_1_hdr_metadata_version;
+        uint8_t* ts_103_433_spec_version;
+        uint8_t* type_4_hdr_metadata_version;
+    };
+    union {
+        uint8_t** fields;
+    };
+} displayinfo_edid_hdr_dynamic_metatype_t;
+
+typedef struct displayinfo_edid_hdr_dynamic_metadata_type {
+    displayinfo_edid_hdr_dynamic_metatype_t * type;
+    uint8_t count;
+} displayinfo_edid_hdr_dynamic_metadata_t;
+
 typedef enum displayinfo_hdr_type {
     DISPLAYINFO_HDR_OFF,
     DISPLAYINFO_HDR_10,

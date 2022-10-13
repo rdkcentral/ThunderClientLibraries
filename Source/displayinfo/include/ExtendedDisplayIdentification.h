@@ -611,6 +611,201 @@ namespace Plugin {
                 return audioFormatMap;
             }
 
+            displayinfo_edid_hdr_static_metadata_t HDRStaticMetadata() const {
+                displayinfo_edid_hdr_static_metadata_t metadata = {DISPLAYINFO_EDID_EOT_UNDEFINED, DISPLAYINFO_EDID_HDR_STATIC_METATTYPE_UNDEFINED, {0, 0, 0}};
+
+                DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
+
+                do {
+                    // Bytes 5 to 7 are optional
+                    if(dataBlock.IsValid() && (dataBlock.BlockTag() == DataBlockIterator::HDR_STATIC_METADATA) && (dataBlock.BlockSize() >= 4)) {
+                        /*
+                        dataBlock.Current()[0] Tag code 0x7 + Length of following data block
+                        dataBlock.Current()[1] Extended tag code 0x6
+                        dataBlock.Current()[2] Electro-Optical Transfer Functions
+                            bit 0 Traditional Gamma - SDR Luminance Range See section 6.9
+                            bit 1 Traditional Gamma - HDR Luminance Range See section 6.9
+                            bit 2 EOTF support as defined in SMPTE ST 2084
+                            bit 3 Hybrid Log-Gamma (HLG) defined in Recommendation ITU-R BT.2100
+                            bit 4 Set to 0
+                            bit 5 Set to 0
+                            bit 6 F37=0
+                            bit 7 F37=0
+                        dataBlock.Current()[3] Static Metadata Descriptors
+                            bit 0 if 1 Static MetaData Type 1
+                            bit 1-7 Reserved, set to 0
+
+                        dataBlock.Current()[4] Desired Content Max Luminance Data
+                            Perceptually coded value (>=0)
+                        dataBlock.Current()[5] Desired Max Frame-average Luminance
+                            Perceptually coded value (>=0)
+                        dataBlock.Current()[6] Desired Content Min Luminance
+                            Perceptually Coded Value (>=0)
+                        */
+
+                        if ((dataBlock.Current()[2] & (1 << 0)) == 1) {
+                            metadata.eot |= DISPLAYINFO_EDID_EOT_TRADITIONAL_GAMMA_SDR;
+                        }
+                        if ((dataBlock.Current()[2] & (1 << 1)) == 1) {
+                            metadata.eot |= DISPLAYINFO_EDID_EOT_TRADITIONAL_GAMMA_HDR;
+                        }
+                        if ((dataBlock.Current()[2] & (1 << 2)) == 1) {
+                            metadata.eot |= DISPLAYINFO_EDID_EOT_SMPTE_ST_2084;
+                        }
+                        if ((dataBlock.Current()[2] & (1 << 3)) == 1) {
+                            metadata.eot |= DISPLAYINFO_EDID_EOT_TRADITIONAL_GAMMA_HDR;
+                        }
+
+                        if ((dataBlock.Current()[3] & (1 << 0)) == 1) {
+                            metadata.type |= DISPLAYINFO_EDID_HDR_STATIC_METATAYPE_TYPE0;
+                        }
+
+                        // Next are optional
+
+                        if (dataBlock.BlockSize() >= 5) {
+                            metadata.luminance.max_cv = dataBlock.Current()[4];
+                        }
+                        if (dataBlock.BlockSize() >= 6) {
+                            metadata.luminance.average_cv = dataBlock.Current()[5];
+                        }
+                        if (dataBlock.BlockSize() >= 7) {
+                            metadata.luminance.min_cv = dataBlock.Current()[6];
+                        }
+
+                        break;
+                    }
+                } while(dataBlock.Next());
+
+                return metadata;
+            }
+
+            displayinfo_edid_hdr_dynamic_metadata_t HDRDynamicMetadata() const {
+                DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
+
+                // Optional fields are not present (see below)
+                std::map<uint16_t, std::vector<uint8_t>> map;
+
+                do {
+                    if(dataBlock.IsValid() && (dataBlock.BlockTag() == DataBlockIterator::HDR_DYNAMIC_METADATA) && (dataBlock.BlockSize() >= 6)) {
+                        /*
+                        dataBlock.Current()[0]  Tag code 0x7 + Length of following data block in bytes
+                        dataBlock.Current()[1]  Extended tag code 0x07
+                        dataBlock.Current()[2]  Length of following data for supported HDR Dynamic Metadata Type n
+                        dataBlock.Current()[3]  Supported HDR Dynamic Metadata Type n LSB
+                                                    Interpreted at/by Support flags
+                        dataBlock.Current()[4]  Supported HDR Dynamic Metadata Type n MSB
+                                                    Interpreted at/by Support flags
+                        dataBlock.Current()[5]  Support Flags for HDR Dynamic Metadata Type n
+                                                    bit 0-3 =   1 type_1_hdr_metadata_version
+                                                                2 ts_103_433_spec_version
+                                                                3 "No support flags or Optional Fields are defined and thus the length of following data is 2"
+                                                                4 type_4_hdr_metadata_version
+                                                    bit 4-7 Reserved
+                        dataBlock.Current()[6]  Optional Fields for HDR Dynamic Metadata Type n
+                                                    None are specified in CEA 861 hence the length of a Metatdata Type equals 3 bytes (LSB + MSB + Support flags)
+
+                        2-6 are repeated for a subsequent HDR Metadata Type until all bytes in this block are processed
+                        */
+
+                        uint16_t type = dataBlock.Current()[4] << 8 & dataBlock.Current()[4];
+
+                        switch (type) {
+                            case 0x0001 :   // type_1_hdr_metadata_version
+                            case 0x0002 :   // ts_103_433_spec_version
+                            case 0x0004 :   // type_4_hdr_metadata_version
+                                            ASSERT (dataBlock.Current()[2] == 3);
+                                            map[type].push_back(dataBlock.Current()[5] & 0x0F);
+                                            break;
+                            case 0x0003 :   // No support flags, no optional fields
+                                            ASSERT (dataBlock.Current()[2] == 2);
+                                            map[type].clear();
+                                            break;
+                            default     :   // Not specified / unknown
+                                            ASSERT(false);
+                        }
+
+                            // No break since multiple dynamic blocks may exist
+                    }
+                } while(dataBlock.Next());
+
+
+                displayinfo_edid_hdr_dynamic_metadata_t metadata = {static_cast<displayinfo_edid_hdr_dynamic_metatype_t*>(malloc(map.size() * sizeof(displayinfo_edid_hdr_dynamic_metatype_t))), map.size()};
+
+                if (metadata.type != nullptr && metadata.count > 0) {
+                    auto it = map.cbegin();
+
+                    for (size_t index = 0; index < map.size(); index++, it++) {
+                        if (it == map.cend()) {
+                            break;
+                        }
+
+                        displayinfo_edid_hdr_dynamic_metatype_t & metatype = metadata.type[index];
+
+                        metatype.type = DISPLAYINFO_EDID_HDR_DYNAMIC_FLAG_TYPE_UNDEFINED;
+
+                        auto & list = map[it->first];
+
+                        switch (it->first) {
+                            case 0x0001     :   {
+                                                using unit_t = decltype(metatype.type_1_hdr_metadata_version);
+
+                                                size_t count = list.size() * sizeof(unit_t);
+
+                                                metatype.type_1_hdr_metadata_version = static_cast<unit_t>(malloc(count));
+
+                                                if (metatype.type_1_hdr_metadata_version != nullptr) {
+                                                    memcpy(metatype.type_1_hdr_metadata_version, list.data(), count);
+                                                    metatype.type = DISPLAYINFO_EDID_HDR_DYNAMIC_FLAG_TYPE_1_HDR_METADATA_VERSION;
+                                                }
+
+                                                break;
+                                                }
+                            case 0x0002     :   {
+                                                using unit_t = decltype(metatype.ts_103_433_spec_version);
+
+                                                size_t count = list.size() * sizeof(unit_t);
+
+                                                metatype.ts_103_433_spec_version = static_cast<unit_t>(malloc(count));
+
+                                                if (metatype.ts_103_433_spec_version != nullptr) {
+                                                    memcpy(metatype.ts_103_433_spec_version, list.data(), count);
+                                                    metatype.type = DISPLAYINFO_EDID_HDR_DYNAMIC_FLAG_TYPE_TS_103__433_SPEC_VERSION;
+                                                }
+
+                                                break;
+                                                }
+                            case 0x0004     :   {
+                                                using unit_t = decltype(metatype.type_4_hdr_metadata_version);
+
+                                                size_t count = list.size() * sizeof(unit_t);
+
+                                                metatype.type_4_hdr_metadata_version = static_cast<unit_t>(malloc(count));
+
+                                                if (metatype.type_4_hdr_metadata_version != nullptr) {
+                                                    memcpy(metatype.type_4_hdr_metadata_version, list.data(), count);
+                                                    metatype.type = DISPLAYINFO_EDID_HDR_DYNAMIC_FLAG_TYPE_4_HDR_METADATA_VERSION;
+                                                }
+
+                                                break;
+                                                }
+                            case 0x0003     :   {// No interpretation specified
+                                                metatype.type = DISPLAYINFO_EDID_HDR_DYNAMIC_FLAG_TYPE_3_HDR_METADATA_VERSION;
+                                                break;
+                                                }
+                            default         :   // Unknown
+                                                ;
+                        }
+                    }
+                }
+                else {
+                    free(metadata.type);
+                    metadata.type = nullptr;
+                    metadata.count = 0;
+                }
+
+                return metadata;
+            }
+
         private:
 
             uint8_t DetailedTimingDescriptorStart() const
