@@ -80,7 +80,8 @@ static struct VideoOutLUT {
     { Exchange::IDeviceVideoCapabilities::VideoOutput::VIDEO_COMPONENT, DEVICEINFO_VIDEO_COMPONENT },
     { Exchange::IDeviceVideoCapabilities::VideoOutput::VIDEO_COMPOSITE, DEVICEINFO_VIDEO_COMPOSITE },
     { Exchange::IDeviceVideoCapabilities::VideoOutput::VIDEO_DISPLAYPORT, DEVICEINFO_VIDEO_DISPLAYPORT },
-    { Exchange::IDeviceVideoCapabilities::VideoOutput::VIDEO_HDMI, DEVICEINFO_VIDEO_HDMI },
+    { Exchange::IDeviceVideoCapabilities::VideoOutput::VIDEO_HDMI0, DEVICEINFO_VIDEO_HDMI0 },
+    { Exchange::IDeviceVideoCapabilities::VideoOutput::VIDEO_HDMI1, DEVICEINFO_VIDEO_HDMI1 },
     { Exchange::IDeviceVideoCapabilities::VideoOutput::VIDEO_RF_MODULATOR, DEVICEINFO_VIDEO_RF_MODULATOR },
     { Exchange::IDeviceVideoCapabilities::VideoOutput::VIDEO_SCART_RGB, DEVICEINFO_VIDEO_SCART_RGB },
     { Exchange::IDeviceVideoCapabilities::VideoOutput::VIDEO_SVIDEO, DEVICEINFO_VIDEO_SVIDEO }
@@ -111,7 +112,8 @@ static struct AudioOutLUT {
     { Exchange::IDeviceAudioCapabilities::AudioOutput::AUDIO_OTHER, DEVICEINFO_AUDIO_OTHER },
     { Exchange::IDeviceAudioCapabilities::AudioOutput::AUDIO_ANALOG, DEVICEINFO_AUDIO_ANALOG },
     { Exchange::IDeviceAudioCapabilities::AudioOutput::AUDIO_DISPLAYPORT, DEVICEINFO_AUDIO_DISPLAYPORT },
-    { Exchange::IDeviceAudioCapabilities::AudioOutput::AUDIO_HDMI, DEVICEINFO_AUDIO_HDMI },
+    { Exchange::IDeviceAudioCapabilities::AudioOutput::AUDIO_HDMI0, DEVICEINFO_AUDIO_HDMI0 },
+    { Exchange::IDeviceAudioCapabilities::AudioOutput::AUDIO_HDMI1, DEVICEINFO_AUDIO_HDMI1 },
     { Exchange::IDeviceAudioCapabilities::AudioOutput::AUDIO_RF_MODULATOR, DEVICEINFO_AUDIO_RF_MODULATOR },
     { Exchange::IDeviceAudioCapabilities::AudioOutput::AUDIO_SPDIF, DEVICEINFO_AUDIO_SPDIF },
 };
