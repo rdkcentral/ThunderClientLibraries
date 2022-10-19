@@ -1426,6 +1426,8 @@ namespace RPI {
             switch (resolution) {
                 case Exchange::IComposition::ScreenResolution_1080p24Hz : // 1920x1080 progressive @ 24 Hz
                                                                           rate = 24; break;
+                case Exchange::IComposition::ScreenResolution_2160p30Hz : // 4K, 3840x2160 progressive @ 30 Hz, HDMI 1.4 bandwidth limited
+                                                                          rate = 30; break;
                 case Exchange::IComposition::ScreenResolution_720p50Hz  : // 1280x720 progressive @ 50 Hz
                 case Exchange::IComposition::ScreenResolution_1080i50Hz : // 1920x1080 interlaced @ 50 Hz
                 case Exchange::IComposition::ScreenResolution_1080p50Hz : // 1920x1080 progressive @ 50 Hz
@@ -1646,7 +1648,7 @@ namespace RPI {
     };
 
     WPEFramework::Compositor::IDisplay::DisplayResolution WPEFramework::RPI::Display::Resolution () const {
-        static constexpr auto map = ResolutionMap < Exchange::IComposition::ScreenResolution , Compositor::IDisplay::DisplayResolution , 11 >
+        static constexpr auto map = ResolutionMap < Exchange::IComposition::ScreenResolution , Compositor::IDisplay::DisplayResolution , 12 >
         { { {
             // First pair should contain a value (also) representative for 'key was not found'
             { WPEFramework::Exchange::IComposition::ScreenResolution_Unknown   , WPEFramework::Compositor::IDisplay::DisplayResolution_Unknown } ,
@@ -1659,7 +1661,8 @@ namespace RPI {
             { WPEFramework::Exchange::IComposition::ScreenResolution_1080p50Hz , WPEFramework::Compositor::IDisplay::DisplayResolution_1080p50Hz } ,
             { WPEFramework::Exchange::IComposition::ScreenResolution_1080p60Hz , WPEFramework::Compositor::IDisplay::DisplayResolution_1080p60Hz } ,
             { WPEFramework::Exchange::IComposition::ScreenResolution_2160p50Hz , WPEFramework::Compositor::IDisplay::DisplayResolution_2160p50Hz } ,
-            { WPEFramework::Exchange::IComposition::ScreenResolution_2160p60Hz , WPEFramework::Compositor::IDisplay::DisplayResolution_2160p60Hz }
+            { WPEFramework::Exchange::IComposition::ScreenResolution_2160p60Hz , WPEFramework::Compositor::IDisplay::DisplayResolution_2160p60Hz } ,
+            { WPEFramework::Exchange::IComposition::ScreenResolution_2160p30Hz , WPEFramework::Compositor::IDisplay::DisplayResolution_2160p30Hz }
         } } };
 
         return map . at ( _remoteDisplay -> Resolution () );
@@ -2661,6 +2664,7 @@ namespace RPI {
             case WPEFramework::Exchange::IComposition::ScreenResolution_1080p50Hz : // 1920x1080 progressive @ 50 Hz
             case WPEFramework::Exchange::IComposition::ScreenResolution_1080p60Hz : // 1920x1080 progressive @ 60 Hz
                                                                                     width = 1920; break;
+            case WPEFramework::Exchange::IComposition::ScreenResolution_2160p30Hz : // 4K, 3840x2160 progressive @ 30 Hz, HDMI 1.4 bandwidth limited
             case WPEFramework::Exchange::IComposition::ScreenResolution_2160p50Hz : // 4K, 3840x2160 progressive @ 50 Hz
             case WPEFramework::Exchange::IComposition::ScreenResolution_2160p60Hz : // 4K, 3840x2160 progressive @ 60 Hz
                                                                                     width = 3840; break;
@@ -2689,6 +2693,7 @@ namespace RPI {
             case WPEFramework::Exchange::IComposition::ScreenResolution_1080p50Hz : // 1920x1080 progressive @ 50 Hz
             case WPEFramework::Exchange::IComposition::ScreenResolution_1080p60Hz : // 1920x1080 progressive @ 60 Hz
                                                                                     height = 1080; break;
+            case WPEFramework::Exchange::IComposition::ScreenResolution_2160p30Hz : // 4K, 3840x2160 progressive @ 30 Hz, HDMI 1.4 bandwidth limited
             case WPEFramework::Exchange::IComposition::ScreenResolution_2160p50Hz : // 4K, 3840x2160 progressive @ 50 Hz
             case WPEFramework::Exchange::IComposition::ScreenResolution_2160p60Hz : // 4K, 3840x2160 progressive @ 60 Hz
                                                                                     height = 2160; break;

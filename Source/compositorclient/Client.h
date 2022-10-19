@@ -209,7 +209,9 @@ namespace Compositor {
             DisplayResolution_1080p50Hz = 7,
             DisplayResolution_1080p60Hz = 8,
             DisplayResolution_2160p50Hz = 9,
-            DisplayResolution_2160p60Hz = 10
+            DisplayResolution_2160p60Hz = 10,
+            // Bandwidth limited in HDMI 1.4 setup
+            DisplayResolution_2160p30Hz = 11
         };
 
 	// A display has dimensions or a resolution
