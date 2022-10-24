@@ -32,8 +32,11 @@ namespace Plugin {
 
     class ExtendedDisplayIdentification {
     public:
-        static constexpr uint32_t OUI_HDMI_LICENSING = 0x000C03;
-        static constexpr uint32_t OUI_HDMI_FORUM = 0xC45DD8;
+        // http://standards-oui.ieee.org/oui/oui.txt
+        static constexpr uint32_t OUI_HDMI_LICENSING = 0x000C03;    // HDMI Licensing, LLC, data block contains HDMI 1.4 info
+        static constexpr uint32_t OUI_HDMI_FORUM = 0xC45DD8;        // HDMI Forum, data block contains HDMI 2.0 info
+        static constexpr uint32_t OUI_HDMI_HDR10PLUS = 0x90848B;    // HDR10+ Technologies, LLC, data block contains HDR10+ info as part of HDMI 2.1 Amendment A1 standard
+        static constexpr uint32_t OUI_HDMI_DOLBY = 0x00D046;        // DOLBY LABORATORIES, INC.i, data block contains Dolby Vision Info
 
         class Buffer {
         public:
@@ -804,6 +807,26 @@ namespace Plugin {
                 }
 
                 return metadata;
+            }
+
+            displayinfo_edid_hdr_licensor_map_t HDRSupportLicensors() const {
+                displayinfo_edid_hdr_licensor_map_t licensors = DISPLAYINFO_EDID_HDR_LICENSOR_NONE;
+
+                DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
+
+                do {
+                    if(dataBlock.IsValid() && (dataBlock.BlockTag() == DataBlockIterator::VENDOR_SPECIFIC) && (dataBlock.BlockSize() > 6)) {
+                        switch(dataBlock.OUI()) {
+                            case OUI_HDMI_LICENSING : licensors |= DISPLAYINFO_EDID_HDR_LICENSOR_HDMI_LICENSING_LLC; break;
+                            case OUI_HDMI_FORUM     : licensors |= DISPLAYINFO_EDID_HDR_LICENSOR_HDMI_FORUM; break;
+                            case OUI_HDMI_HDR10PLUS : licensors |= DISPLAYINFO_EDID_HDR_LICENSOR_HDR10PLUS_LLC; break;
+                            case OUI_HDMI_DOLBY     : licensors |= DISPLAYINFO_EDID_HDR_LICENSOR_DOLBY_LABORATORIES_INC; break;
+                            default:;
+                        }
+                    }
+                } while(dataBlock.Next());
+
+                return licensors;
             }
 
         private:

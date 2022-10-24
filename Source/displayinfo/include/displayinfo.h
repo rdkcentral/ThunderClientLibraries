@@ -92,6 +92,18 @@ typedef struct displayinfo_edid_hdr_dynamic_metadata_type {
     uint8_t count;
 } displayinfo_edid_hdr_dynamic_metadata_t;
 
+typedef enum displayinfo_edid_hdr_licensor {
+    DISPLAYINFO_EDID_HDR_LICENSOR_NONE = 0,
+    DISPLAYINFO_EDID_HDR_LICENSOR_UNKNOWN = (1 << 0),
+    DISPLAYINFO_EDID_HDR_LICENSOR_HDMI_LICENSING_LLC = (1 << 1),
+    DISPLAYINFO_EDID_HDR_LICENSOR_HDMI_FORUM = (1 << 2),
+    DISPLAYINFO_EDID_HDR_LICENSOR_HDR10PLUS_LLC = (1 << 3),
+    DISPLAYINFO_EDID_HDR_LICENSOR_DOLBY_LABORATORIES_INC = (1 << 4),
+//    DISPLAYINFO_EDID_HDR_LICENSOR_TECHNICOLOR = (1 << 5)
+} displayinfo_edid_hdr_licensor_t;
+
+typedef uint8_t displayinfo_edid_hdr_licensor_map_t;
+
 typedef enum displayinfo_hdr_type {
     DISPLAYINFO_HDR_OFF,
     DISPLAYINFO_HDR_10,
