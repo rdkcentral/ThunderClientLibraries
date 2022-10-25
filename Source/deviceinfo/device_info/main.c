@@ -173,7 +173,7 @@ int main()
         }
         case 'R': {
             deviceinfo_output_resolution_t res = DEVICEINFO_RESOLUTION_UNKNOWN;
-            deviceinfo_maximum_output_resolution(DEVICEINFO_VIDEO_HDMI, &res);
+            deviceinfo_maximum_output_resolution(DEVICEINFO_VIDEO_HDMI0, &res);
             Trace("Output Resolution: %d", res);
             break;
         }
