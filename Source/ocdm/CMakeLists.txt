@@ -15,24 +15,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-project(ocdm)
-
-cmake_minimum_required(VERSION 3.3 )
+cmake_minimum_required(VERSION 3.3)
 
 find_package(WPEFramework)
+
+project(ocdm)
 
 project_version(1.0.0)
 
 set(TARGET ${PROJECT_NAME})
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
-
 message("Setup ${TARGET} v${PROJECT_VERSION}")
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
 find_package(${NAMESPACE}COM REQUIRED)
+find_package(${NAMESPACE}Messaging REQUIRED)
 
 find_package(GSTREAMER REQUIRED)
 find_package(GSTREAMER_BASE REQUIRED)
@@ -55,9 +55,11 @@ set(PUBLIC_HEADERS
         )
 
 target_link_libraries(${TARGET}
-        PUBLIC
+        PRIVATE
           ${NAMESPACE}Core::${NAMESPACE}Core
           ${NAMESPACE}COM::${NAMESPACE}COM
+          ${NAMESPACE}Messaging::${NAMESPACE}Messaging
+          CompileSettingsDebug::CompileSettingsDebug
         )
 
 target_include_directories( ${TARGET}

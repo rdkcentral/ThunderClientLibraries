@@ -15,21 +15,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-project(displayinfo)
-
 cmake_minimum_required(VERSION 3.3)
 
 find_package(WPEFramework)
 
+project(DisplayInfo)
+
 project_version(1.0.0)
 
-set(TARGET ${PROJECT_NAME})
+set(TARGET ${NAMESPACE}${PROJECT_NAME})
 
 message("Setup ${TARGET} v${PROJECT_VERSION}")
 
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
-find_package(${NAMESPACE}Tracing REQUIRED)
 find_package(${NAMESPACE}COM REQUIRED)
 
 set(PUBLIC_HEADERS 
@@ -42,9 +41,8 @@ add_library(${TARGET}  SHARED
 )
 
 target_link_libraries(${TARGET}
-        PUBLIC
+        PRIVATE
           ${NAMESPACE}Core::${NAMESPACE}Core
-          ${NAMESPACE}Tracing::${NAMESPACE}Tracing
           ${NAMESPACE}COM::${NAMESPACE}COM
           CompileSettingsDebug::CompileSettingsDebug
         )

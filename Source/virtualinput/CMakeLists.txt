@@ -15,11 +15,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-project(VirtualInput)
-
 cmake_minimum_required(VERSION 3.3)
 
 find_package(WPEFramework)
+
+project(VirtualInput)
 
 project_version(1.0.0)
 
