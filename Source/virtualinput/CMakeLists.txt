@@ -54,7 +54,7 @@ set_target_properties(${TARGET} PROPERTIES
         FRAMEWORK FALSE
         PUBLIC_HEADER "${PUBLIC_HEADERS}" # specify the public headers
         VERSION ${PROJECT_VERSION}
-        SOSOVERSION ${PROJECT_VERSION_MAJOR}
+        SOVERSION ${PROJECT_VERSION_MAJOR}
         )
 
 target_include_directories(${TARGET}
