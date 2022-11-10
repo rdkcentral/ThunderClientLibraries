@@ -977,9 +977,12 @@ namespace Plugin {
             return ((_base[0x14] & 0x80) != 0);
         }
 
+        // Bits per primary color channel
         uint8_t BitsPerColor() const {
             static uint8_t bitsPerColor[] = { 0, 6, 8, 10, 12, 14, 16, 255 };
-            return (bitsPerColor[(_base[0x14] >> 4) & 0x7]);
+            // EDID 1.3 requires bits 6-1 set to 0 for bit 7 equals 1
+            // See Table 3.9 Release A Rev 1
+            return Digital() != false ? (bitsPerColor[(_base[0x14] >> 4) & 0x7]) : bitsPerColor [0 + 2 * (_base[0x14] & 0x1)];
         }
 
         uint8_t ColorDepth() const {
@@ -1004,6 +1007,7 @@ namespace Plugin {
                 case 0x06:
                     colorDepth = DISPLAYINFO_EDID_COLOR_DEPTH_16_BPC;
                     break;
+                case 0x0:
                 default:
                     colorDepth = DISPLAYINFO_EDID_COLOR_DEPTH_UNDEFINED;
                     break;
@@ -1014,25 +1018,527 @@ namespace Plugin {
         }
 
         uint8_t DisplayType() const {
-            uint8_t displayType = 0;
+            displayinfo_edid_color_format_map_t displayType = DISPLAYINFO_EDID_COLOR_FORMAT_UNDEFINED;
 
-            if(Digital()){
-                if (Minor() >= 4) {
-                    displayType = static_cast<uint8_t>(DISPLAYINFO_EDID_COLOR_FORMAT_RGB);
-                    if(_base[0x18] & 8) {
-                        displayType |= static_cast<uint8_t>(DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR444);
+            if(Digital() != false && Minor() >= 4) {
+                /*
+                    Color Endcoding Formats
+
+                    Bit 4-3
+                    00 RGB4444
+                    01 RGB4444 & YCrCb444
+                    10 RGB4444 & YCrCb422
+                    11 RGB4444 & YCrCb444 & YcrCb422
+                */
+
+                displayType = static_cast<displayinfo_edid_color_format_map_t>(DISPLAYINFO_EDID_COLOR_FORMAT_RGB);
+
+                if (_base[0x18] & 0x18 == 0x8) {
+                    // 01 RGB4444 & YCrCb444
+                    displayType |= static_cast<displayinfo_edid_color_format_map_t>(DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR444);
+                }
+
+                if (_base[0x18] & 0x18 == 0x10) {
+                    displayType |= static_cast<displayinfo_edid_color_format_map_t>(DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR422);
+                }
+            }
+            else {
+                /*
+                    Display (Color) Type
+
+                    Bit 4-3
+                    00 Monochrome yyor Grayscale display
+                    01 RGB color display
+                    10 Non-RGB color display
+                    11 Display Color Type is Undefined
+                */
+
+                switch (_base[0x18] & 0x18) {
+                    case 0x0    : // 00 Monochrome or Grayscale display
+                                    displayType = DISPLAYINFO_EDID_DISPLAY_MONOCHROME_GRAYSCALE;
+                                    break;
+                    case 0x8    : // 01 RGB_color display
+                                    displayType = DISPLAYINFO_EDID_DISPLAY_RGB;
+                                    break;
+                    case 0x10   : // 10 Non-RGB color display
+                                    displayType = DISPLAYINFO_EDID_DISPLAY_NONE_RGB;
+                                    break;
+                    case 0x18   : // 11 Display Color Type is Undefined
+                    default     : // Error
+                                    displayType = DISPLAYINFO_EDID_DISPLAY_UNDEFINED;
+                }
+            }
+
+            return static_cast<uint8_t>(displayType);
+        }
+
+        displayinfo_edid_rgb_colorspace_coordinates ColorspaceRGBCoordinates() const {
+            uint16_t Rx = (static_cast<uint16_t>(_base[0x1B]) << 2) | ((_base[0x19] & 0xC0) >> 6);
+            uint16_t Ry = (static_cast<uint16_t>(_base[0x1C]) << 2) | ((_base[0x19] & 0x30) >> 4);
+
+            uint16_t Gx = (static_cast<uint16_t>(_base[0x1D]) << 2) | ((_base[0x19] & 0xC) >> 2);
+            uint16_t Gy = (static_cast<uint16_t>(_base[0x1E]) << 2) | ((_base[0x19] & 0x3) >> 0);
+
+            uint16_t Bx = (static_cast<uint16_t>(_base[0x1F]) << 2) | ((_base[0x1A] & 0xC0) >> 6);
+            uint16_t By = (static_cast<uint16_t>(_base[0x20]) << 2) | ((_base[0x1A] & 0x30) >> 4);
+
+            uint16_t Wx = (static_cast<uint16_t>(_base[0x21]) << 2) | ((_base[0x1A] & 0xC) >> 2);
+            uint16_t Wy = (static_cast<uint16_t>(_base[0x22]) << 2) | ((_base[0x1A] & 0x3) >> 0);
+
+
+            return {Rx, Ry, Gx, Gy, Bx, By, Wx, Wy};
+        }
+
+        bool HDRProfileSupport(displayinfo_hdr_t format) const {
+            // Rounding / truncation occurs
+            using coordinate_t = struct {int64_t x; int64_t y;};
+            using vector_t = struct {coordinate_t A; coordinate_t B;};
+            // Actually minimal 3 line segments forming a closed chain
+            using polygon_t = std::vector<coordinate_t>;
+
+            auto centroid =  [](polygon_t polygon) -> coordinate_t {
+                coordinate_t result = {0, 0};
+
+                for (auto it = polygon.begin(), end = polygon.end(); it != end; it++) {
+                    result.x += it->x;
+                    result.y += it->y;
+                }
+
+                if (polygon.size() > 1) {
+                    // Integer truncation
+                    result.x /= polygon.size();
+                    result.y /= polygon.size();
+                }
+                else {
+                    result = {-1, -1};
+                }
+
+                return result;
+            };
+
+            // Counter clockwise
+            auto sort = [](coordinate_t centroid, polygon_t & polygon) -> bool {
+                std::vector<float> angles_r, angles_l;
+                polygon_t poly_r, poly_l;
+
+                // All left or all right, all top or all bottom
+                bool left = true, right = true, top = true, bottom = true;
+
+                for (auto it = polygon.begin(); it != polygon.end(); it++) {
+                    left &= (*it).x <= centroid.x;
+                    right &= (*it).x >= centroid.x;
+                    top &= (*it).y >= centroid.y;
+                    bottom &= (*it).y <= centroid.y;
+
+                    int64_t dx = it->x - centroid.x;
+                    int64_t dy = it->y - centroid.y;
+
+                    if (dx != 0) {
+                        if (dx > 0) {
+                            if (dy == 0) {
+                                // positive horizontal axis
+                                angles_r.push_back(0.0);
+                            }
+                            else {
+                                // quadrant 1 or 4
+                                angles_r.push_back(static_cast<float>(dy) / static_cast<float>(dx));
+                            }
+
+                            poly_r.push_back(*it);
+                        }
+
+                        if (dx < 0) {
+                            if (dy == 0) {
+                                // negative horizontal axis
+                                angles_l.push_back(0.0);
+                            }
+                            else {
+                                // quadrant 2 or 3
+                                angles_l.push_back(static_cast<float>(dy) / static_cast<float>(dx));
+                            }
+
+                            poly_l.push_back(*it);
+                        }
                     }
-                    if(_base[0x18] & 16) {
-                        displayType |= static_cast<uint8_t>(DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR422);
+                    else { // dx = 0
+                        if (dy > 0) {
+                            // positive vertical axis
+                            angles_r.push_back(std::numeric_limits<float>::max());
+                            poly_r.push_back(*it);
+                        }
+
+                        if (dy < 0) {
+                            // negative vertical axis
+                            angles_l.push_back(std::numeric_limits<float>::lowest());
+                            poly_l.push_back(*it);
+                        }
+
+                        if (dy == 0) {
+                            // ill-defined because point coexists with origin
+                            left = true, right = true, top = true, bottom = true;
+                            break;
+                        }
                     }
-                } else {
-                    if (_base[0x18] & 8) {
-                        displayType = static_cast<uint8_t>(DISPLAYINFO_EDID_COLOR_FORMAT_RGB);
+                }
+
+                if (!(top && bottom && left && right) != true) {
+                    angles_r.clear();
+                    angles_l.clear();
+                    poly_l.clear();
+                    poly_r.clear();
+                }
+
+                for (size_t i = 0, size = angles_l.size(); i < (size - 1); i++) {
+                    for (size_t j = i + 1; j < size; j++) {
+                        if (angles_l[j] < angles_l[i]) {
+                            std::swap(angles_l[j], angles_l[i]);
+                            std::swap(poly_l[j], poly_l[i]);
+                        }
+                    }
+                }
+
+                for (size_t i = 0, size = angles_r.size(); i < (size - 1); i++) {
+                    for (size_t j = i + 1; j < size ; j++) {
+                        if (angles_r[j] < angles_r[i]) {
+                            std::swap(angles_r[j], angles_r[i]);
+                            std::swap(poly_r[j], poly_r[i]);
+                        }
+                    }
+                }
+
+                polygon.clear();
+
+                polygon.insert(polygon.begin(), poly_l.begin(), poly_l.end());
+                polygon.insert(polygon.begin(), poly_r.begin(), poly_r.end());
+
+                return polygon.size() > 0;
+            };
+
+// TODO: allow negative coordinates, although, EDID does specify positive values
+
+            // Assume coordinates of a color space are always in a positive quadrant
+            // https://en.wikipedia.org/wiki/Line–line_intersection#Given_two_points_on_each_line_segment
+            auto intersection = [](vector_t CD, vector_t EF) -> coordinate_t {
+                // Invalid in a positive quadrant
+                coordinate_t coordinate[2] = { {-1, -1}, {-1, -1} };
+
+                int64_t num_t = ((CD.A.x - EF.A.x) * (EF.A.y - EF.B.y)) - ((EF.A.x - EF.B.x) * (CD.A.y - EF.A.y));
+                int64_t num_u = ((CD.A.x - EF.A.x) * (CD.A.y - CD.B.y)) - ((CD.A.x - CD.B.x) * (CD.A.y - EF.A.y));
+                int64_t den = ((CD.A.x - CD.B.x) * (EF.A.y - EF.B.y)) - ((EF.A.x - EF.B.x) * (CD.A.y - CD.B.y));
+
+                if (den == 0) {
+                    // parallel or coincident
+                }
+                else {
+                    // Within first line segment
+                    if (   (0 <= num_t && 0 <= den && num_t <= den)
+                        || (num_t <= 0 && den <= 0 && den <= num_t)) {
+
+                        float fraction = static_cast<float>(num_t) / static_cast<float>(den);
+
+                        float x = CD.A.x + fraction * (CD.B.x - CD.A.x);
+                        float y = CD.A.y + fraction * (CD.B.y - CD.A.y);
+
+                        // Truncation 'rounds' towards (0, 0)
+
+                        // std::round includes unwanted 0.5 and -0.5
+
+                        int64_t ix = static_cast<int64_t>(x);
+                        int64_t iy = static_cast<int64_t>(y);
+
+                       if ((ix - x) < -0.5) {
+                            ix++;
+                        }
+
+                        if ((ix - x) > 0.5) {
+                            ix--;
+                        }
+
+                        if ((iy - y) < -0.5) {
+                            iy++;
+                        }
+
+                        if ((iy - y) > 0.5) {
+                            iy--;
+                        }
+
+                        coordinate [0] = {ix, iy};
+                    }
+
+                    // Within second line segment
+                    if (   (0 <= num_u && 0 <= den && num_u <= den)
+                        || (num_u <= 0 && den <= 0 && den <= num_u)) {
+
+                        float fraction = static_cast<float>(num_u) / static_cast<float>(den);
+
+                        float x = EF.A.x + fraction * (EF.B.x - EF.A.x);
+                        float y = EF.A.y + fraction * (EF.B.y - EF.A.y);
+
+                        // Truncation 'rounds' towards (0, 0)
+
+                        // std::round includes unwanted 0.5 and -0.5
+
+                        int64_t ix = static_cast<int64_t>(x);
+                        int64_t iy = static_cast<int64_t>(y);
+
+                        if ((ix - x) < -0.5) {
+                            ix++;
+                        }
+
+                        if ((ix - x) > 0.5) {
+                            ix--;
+                        }
+
+                        if ((iy - y) < -0.5) {
+                            iy++;
+                        }
+
+                        if ((iy - y) > 0.5) {
+                            iy--;
+                        }
+
+                        coordinate [1] = {ix, iy};
+                    }
+                }
+
+                // A valid point falls on both line segments
+
+                if (   coordinate[0].x != -1 && coordinate[0].y != -1
+                    && coordinate[1].x != -1 && coordinate[1].y != -1) {
+
+                    // 'Average out' differences
+
+                    coordinate[0] = {(coordinate[0].x + coordinate[1].x) / 2, (coordinate[0].y + coordinate[1].y) / 2};
+                }
+                else {
+                    coordinate[0] = {-1, -1};
+                }
+
+                return coordinate[0];
+            };
+
+            auto convex = [&](const polygon_t & polygon) -> bool {
+                bool result = false;
+
+                switch (polygon.size()) {
+                    case 0  :
+                    case 1  :
+                    case 2  :   break;
+                    case 3  :   // A triangle is convex
+                                result = true;
+                                for (size_t i = 0; i < 2; i++) {
+                                    for (size_t j = i + 1; j < 3; j++) {
+                                        result = result && !(polygon[i].x == polygon[j].x && polygon[i].y == polygon[j].y);
+                                    }
+                                }
+                                break;
+                    default :   // Algorithm required
+                                // For now default to false
+                                ;
+                }
+
+                return result;
+            };
+
+            // Convex shape
+            // http://www.mathwords.com/a/area_convex_polygon.htm
+            auto area = [&](const polygon_t & polygon) -> float {
+                int64_t sum = 0;
+
+                polygon_t poly = polygon;
+
+                if (poly.size() > 2) {
+                    if (sort(centroid(poly), poly) != false) {
+                        poly.push_back(*poly.begin());
+
+                        for (size_t i = 1, end = poly.size(); i < end; i++) {
+                            sum += (poly[i-1].x * poly[i].y) - (poly[i].x * poly[i-1].y);
+                        }
+                    }
+                }
+
+                return sum / 2.0;
+            };
+
+            auto enclosed = [&](const coordinate_t coordinate, const polygon_t & polygon) -> bool {
+                bool result = false;
+
+                // The total is the sum of the parts
+                float total = 0, sum = 0;
+
+                switch (polygon.size()) {
+                    case 0  :
+                    case 1  :
+                    case 2  :   break;
+                    case 3  :   {
+                                    float total = area(polygon);
+                                    float sum = 0;
+
+                                    polygon_t poly = polygon;
+                                    poly.push_back(*poly.begin());
+
+                                    for (size_t i = 1, end = poly.size(); i < end; i++) {
+                                        sum += area({coordinate, poly[i-1], poly[i]});
+                                    }
+
+                                    result = static_cast<int64_t>(total) == static_cast<int64_t>(sum);
+                                }
+                                break;
+                    default :   // Algorithm
+                                ;
+                }
+
+               return result;
+            };
+
+            /*
+                https://en.wikipedia.org/wiki/Rec._2020
+                https://en.wikipedia.org/wiki/DCI-P3
+                VESA Enhanced EDID Standard
+
+                // Converted values!
+
+                Color space             White point   CCT     Primary colors
+                                        xW     yW     K       xR     yR     xG     yG     xB    yB
+                ITU-R BT.2020           0x140  0x151          0x2D5  0x12B  0xAE   0x330  0x86  0x2F
+                P3-D65 (Display)        0x140  0x151  0x1968  0x2B8  0x148  0x10F  0x2C3  0x9A  0x3D
+                P3-DCI (Theater)        0x142  0x167  0x189C  0x2B8  0x148  0x10F  0x2C3  0x9A  0x3D
+                P3-D60 (ACES Cinema)    0x149  0x15A  0x1770  0x2B8  0x148  0x10F  0x2C3  0x9A  0x3D
+
+                // Negative values cannot be represented in EDID, rounded to 0x0
+                // Positive values exceeding 0,9990234375 are rounded to 0,9990234375
+                DCI-P3+                 0x142  0x167  0x189C  0x2F6  0x114  0xE1  0x31F  0x5C  0x0
+                Cinema Gamut	        0x140  0x151  0x1968  0x2F6  0x114  0xAE  0x48F  0x52  0x0
+            */
+
+            displayinfo_edid_rgb_colorspace_coordinates xyz = ColorspaceRGBCoordinates();
+
+            // Display color space triangle
+#ifndef _TEST
+            const polygon_t gamut = {coordinate_t{xyz.Rx, xyz.Ry}, coordinate_t{xyz.Gx, xyz.Gy}, coordinate_t{xyz.Bx, xyz.By}};
+#else
+            const polygon_t gamut = {coordinate_t{900, 200}, coordinate_t{300, 800}, coordinate_t{400, 400}};
+#endif
+            const coordinate_t white_gamut = coordinate_t{xyz.Wx, xyz.Wy};
+
+            // P3-D65 colotr space triangle
+#ifndef _TEST
+            const polygon_t p3d65 = {coordinate_t{0x2B8, 0x148}, coordinate_t{0x10F, 0x2C3}, coordinate_t{0x9A, 0x3D}};
+#else
+            const polygon_t p3d65 = {coordinate_t{700, 300}, coordinate_t{300, 700}, coordinate_t{100, 100}};
+#endif
+            const coordinate_t white_pd3d65 = coordinate_t{0x140, 0x151};
+
+            // The white points relates to the spectral distribution and one can correct for color recorded under a different illuminant and hence the gamut changes under that transformation
+            // Here, it is assumed the distance between gamut white points and reference P3D65 white points is negligible, hence, they represent the same illuminant
+
+// TODO: tramsformation / correction
+
+            // A known convex shape, with the white point enclosed
+            bool result = convex(p3d65);
+
+            // No guarantuee the white point is enclosed
+            /* bool */ result = result && convex(gamut);
+
+            // Determine intersections
+            polygon_t polygon;
+
+            for (size_t i = 0, end = gamut.size(); i < end; i++) {
+                for (size_t j = 0, end = p3d65.size(); j < end; j++) {
+                    const vector_t lineA = {gamut[i], (i+1) < end ? gamut[i+1] : gamut[0]};
+                    const vector_t lineB = {p3d65[j], (j+1) < end ? p3d65[j+1] : p3d65[0] };
+
+                    // Intersecting point of two line segments
+                    coordinate_t coordinate = intersection(lineA, lineB);
+
+                    // Color space are positive coordinates only
+                    if (coordinate.x != -1 && coordinate.y != -1) {
+                        polygon.push_back(coordinate);
                     }
                 }
             }
 
-            return displayType;
+            // Add points to complete the shape
+            // Non-intersecting points that are enclosed by either gamut
+
+            for (auto it_gamut = gamut.begin(); it_gamut != gamut.end(); it_gamut++) {
+                if (enclosed(*it_gamut, p3d65) != false) {
+                    polygon.push_back(*it_gamut);
+                }
+            }
+
+            for (auto it_p3d65 = p3d65.begin(); it_p3d65 != p3d65.end(); it_p3d65++) {
+                if (enclosed(*it_p3d65, gamut) != false) {
+                    polygon.push_back(*it_p3d65);
+                }
+            }
+
+            // The combined set of polygon extended with enclosed points is convex see 'rubber band theorem'
+
+// TODO: area overlap, distance white points
+
+            uint8_t ratio = 0;
+
+            if (polygon.size() > 2) {
+                float den = area(p3d65);
+                float num = area(polygon);
+
+                // Max is 100%
+                ratio = den > num ? static_cast<uint8_t> (num / den * 100) : 100;
+            }
+
+#ifdef _0
+            // https://en.wikipedia.org/wiki/High-dynamic-range_television
+            switch (format) {
+                case DISPLAYINFO_HDR_10             :
+                                                        /*
+                                                            Developed by            : CTA
+                                                            Transfer function       : PQ
+                                                            Bit depth               : 10 bit
+                                                            Peak luminance          : Technical limit 10000 nits, common 1000-4000 nits
+                                                            Color primaries         : Technical limit Rec.2020, contents P3-D65 (common)
+                                                            Metadata                : static
+                                                        */
+                                                        break;
+                case DISPLAYINFO_HDR_10PLUS         :
+                                                        /*
+                                                            Developed by            : Samsung
+                                                            Transfer function       : PQ
+                                                            Bit depth               : 10 bit or more
+                                                            Peak luminance          : Technical limit 10000 nits, common 1000-4000 nits
+                                                            Color primaries         : Technical limit Rec.2020, contents P3-D65 (common)
+                                                            Metadata                : static and dynamic
+                                                        */
+                                                        break;
+                case DISPLAYINFO_HDR_DOLBYVISION    :
+                                                        /*
+                                                            Developed by            : Dolby
+                                                            Transfer function       : PQ (most profiles), SDR (profiles 4.8.2, and 9), HLG (profile 8.4)
+                                                            Bit depth               : 10 bit or 12 bit using FEL
+                                                            Peak luminance          : Technical limit 10000 nits, at least 1000 nits, common 4000 nits
+                                                            Color primaries         : Technical limit Rec.2020, contents P3-D65 (at least)
+                                                            Metadata                : static and dynamic
+                                                        */
+                                                     break;
+                case DISPLAYINFO_HDR_HLG    :
+                                                        /*
+                                                            Developed by            : NHK and BBC
+                                                            Transfer function       : HLG
+                                                            Bit depth               : 10 bit
+                                                            Peak luminance          : Technical limit variable nits, common 1000 nits
+                                                            Color primaries         : Technical limit Rec.2020, contents P3-D65 (common)
+                                                            Metadata                : none
+                                                        */
+                                                        break;
+                case DISPLAYINFO_HDR_TECHNICOLOR    :
+                                                        /*
+                                                        */
+                                                        break;
+                default                             :;
+            }
+#endif
+
+            return false;
         }
 
         displayinfo_edid_video_interface_t VideoInterface() const {

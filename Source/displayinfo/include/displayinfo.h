@@ -110,6 +110,7 @@ typedef enum displayinfo_hdr_type {
     DISPLAYINFO_HDR_10PLUS,
     DISPLAYINFO_HDR_DOLBYVISION,
     DISPLAYINFO_HDR_TECHNICOLOR,
+    DISPLAYINFO_HDR_HLG,
     DISPLAYINFO_HDR_UNKNOWN
 } displayinfo_hdr_t;
 
@@ -153,8 +154,24 @@ typedef enum displayinfo_edid_color_format_type {
     DISPLAYINFO_EDID_COLOR_FORMAT_RGB = (1 << 0),
     DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR444 = (1 << 1),
     DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR422 = (1 << 2),
-    DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR420 = (1 << 3)
+    DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR420 = (1 << 3),
+
+    DISPLAYINFO_EDID_DISPLAY_UNDEFINED = DISPLAYINFO_EDID_COLOR_FORMAT_UNDEFINED,
+    DISPLAYINFO_EDID_DISPLAY_RGB = DISPLAYINFO_EDID_COLOR_FORMAT_RGB,
+    DISPLAYINFO_EDID_DISPLAY_MONOCHROME_GRAYSCALE = (1 << 4),
+    DISPLAYINFO_EDID_DISPLAY_NONE_RGB = (1 << 5)
 } displayinfo_edid_color_format_t;
+
+typedef struct displayinfo_edid_rgb_colorspace_coordinates {
+    uint16_t Rx;
+    uint16_t Ry;
+    uint16_t Gx;
+    uint16_t Gy;
+    uint16_t Bx;
+    uint16_t By;
+    uint16_t Wx;
+    uint16_t Wy;
+} displayinfo_edid_rb_colorspace_coordinates_t;
 
 typedef uint16_t displayinfo_edid_color_space_map_t;
 typedef enum displayinfo_edid_color_space_type {
