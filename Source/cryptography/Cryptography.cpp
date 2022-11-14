@@ -70,9 +70,9 @@ namespace Implementation {
                 delete _singleton;
             }
         }
-        Cryptography::ICryptography* Aquire(const Core::NodeId& nodeId)
+        Cryptography::ICryptography* Acquire(const Core::NodeId& nodeId)
         {
-            return BaseClass::Aquire<Cryptography::ICryptography>(3000, nodeId, _T(""), ~0);
+            return BaseClass::Acquire<Cryptography::ICryptography>(3000, nodeId, _T(""), ~0);
         }
         Cryptography::ICryptography* Cryptography(const std::string& connectionPoint);
 
@@ -469,7 +469,7 @@ namespace Implementation {
 
     Cryptography::ICryptography* CryptographyLink::Cryptography(const std::string& connectionPoint)
     {
-        Cryptography::ICryptography* iface = BaseClass::Aquire<Cryptography::ICryptography>(3000, Core::NodeId(connectionPoint.c_str()), _T(""), ~0);
+        Cryptography::ICryptography* iface = BaseClass::Acquire<Cryptography::ICryptography>(3000, Core::NodeId(connectionPoint.c_str()), _T(""), ~0);
 
         // Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
 
