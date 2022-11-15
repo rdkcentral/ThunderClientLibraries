@@ -662,7 +662,7 @@ namespace Linux {
 
             uint32_t Process()
             {
-                TRACE(Trace::Information, (_T("Processing surface %p"), this));
+                // TRACE(Trace::Information, (_T("Processing surface %p"), this));
 
                 // Changes of currents cannot be reliably be monitored
                 EGLDisplay dpy = eglGetCurrentDisplay();
