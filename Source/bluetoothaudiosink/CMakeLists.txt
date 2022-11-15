@@ -15,21 +15,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-option(BLUETOOTHAUDIOSINK_EXAMPLEPLAYER "Build audio player" OFF)
-
 cmake_minimum_required(VERSION 3.0)
+
 find_package(WPEFramework)
 
-project(bluetoothaudiosink)
+project(BluetoothAudioSink)
+
 project_version(1.0.0)
 
-set(TARGET ${PROJECT_NAME})
+set(TARGET ${NAMESPACE}${PROJECT_NAME})
+
+message("Setup ${TARGET} v${PROJECT_VERSION}")
 
 find_package(${NAMESPACE}Core REQUIRED)
-find_package(${NAMESPACE}Tracing REQUIRED)
 find_package(${NAMESPACE}COM REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 
+option(BLUETOOTHAUDIOSINK_EXAMPLEPLAYER "Build audio player" OFF)
 set(PUBLIC_HEADERS "include/bluetoothaudiosink.h")
 
 add_library(${TARGET} SHARED
@@ -38,9 +40,8 @@ add_library(${TARGET} SHARED
 )
 
 target_link_libraries(${TARGET}
-    PUBLIC
+   PRIVATE 
         ${NAMESPACE}Core::${NAMESPACE}Core
-        ${NAMESPACE}Tracing::${NAMESPACE}Tracing
         ${NAMESPACE}COM::${NAMESPACE}COM
         CompileSettingsDebug::CompileSettingsDebug
 )
@@ -51,7 +52,7 @@ set_target_properties(${TARGET} PROPERTIES
     FRAMEWORK FALSE
     PUBLIC_HEADER "${PUBLIC_HEADERS}"
     VERSION ${PROJECT_VERSION}
-    SOSOVERSION ${PROJECT_VERSION_MAJOR}
+    SOVERSION ${PROJECT_VERSION_MAJOR}
 )
 
 target_include_directories( ${TARGET}

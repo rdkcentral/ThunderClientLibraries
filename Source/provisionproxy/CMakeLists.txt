@@ -15,15 +15,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-project(provisionproxy)
-
 cmake_minimum_required(VERSION 3.3)
 
 find_package(WPEFramework)
 
+project(ProvisionProxy)
+
 project_version(1.0.0)
 
-set(TARGET ${PROJECT_NAME})
+set(TARGET ${NAMESPACE}${PROJECT_NAME})
 
 message("Setup ${TARGET} v${PROJECT_VERSION}")
 
@@ -43,14 +43,10 @@ set(PUBLIC_HEADERS
         )
 
 target_link_libraries(${TARGET}
-        PUBLIC
+        PRIVATE
           ${NAMESPACE}Core::${NAMESPACE}Core
-          libprovision::libprovision
-        )
-
-target_link_libraries(${TARGET}
-        PUBLIC
           ${NAMESPACE}COM::${NAMESPACE}COM
+          libprovision::libprovision
         )
 
 target_link_libraries(${TARGET}
