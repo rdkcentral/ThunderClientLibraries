@@ -856,7 +856,7 @@ namespace Linux {
             uint32_t result = _compositorServerRPCConnection->Open(RPC::CommunicationTimeOut);
 
             if (result == Core::ERROR_NONE) {
-                _remoteDisplay = _compositorServerRPCConnection->Aquire<Exchange::IComposition::IDisplay>(2000, _displayName, ~0);
+                _remoteDisplay = _compositorServerRPCConnection->Acquire<Exchange::IComposition::IDisplay>(2000, _displayName, ~0);
 
                 if (_remoteDisplay == nullptr) {
                     TRACE(Trace::Error, (_T ( "Could not create remote display for Display %s!" ), Name().c_str()));
