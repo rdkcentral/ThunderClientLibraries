@@ -37,16 +37,15 @@ typedef enum {
 struct HashImplementation;
 
 
-struct HashImplementation* hash_create(const hash_type type);
+EXTERNAL struct HashImplementation* hash_create(const hash_type type);
 
-struct HashImplementation* hash_create_hmac(const struct VaultImplementation* vault, const hash_type type, const uint32_t secret_id);
+EXTERNAL struct HashImplementation* hash_create_hmac(const struct VaultImplementation* vault, const hash_type type, const uint32_t secret_id);
 
-void hash_destroy(struct HashImplementation* signing);
+EXTERNAL void hash_destroy(struct HashImplementation* signing);
 
+EXTERNAL uint32_t hash_ingest(struct HashImplementation* signing, const uint32_t length, const uint8_t data[]);
 
-uint32_t hash_ingest(struct HashImplementation* signing, const uint32_t length, const uint8_t data[]);
-
-uint8_t hash_calculate(struct HashImplementation* signing, const uint8_t max_length, uint8_t data[]);
+EXTERNAL uint8_t hash_calculate(struct HashImplementation* signing, const uint8_t max_length, uint8_t data[]);
 
 #ifdef __cplusplus
 } // extern "C"

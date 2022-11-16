@@ -17,7 +17,7 @@
 
 option(BUILD_NETFLIX_VAULT_GENERATOR "Build Netflix Vault generator" OFF)
 
-
+find_package(${NAMESPACE}Plugins REQUIRED)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../../../../Source)
 
 set(CMAKE_CXX_STANDARD 11)
@@ -35,12 +35,17 @@ include_directories(${CMAKE_CURRENT_LIST_DIR}/../../../cryptography)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../../../cryptography/implementation)
 include_directories($<INSTALL_INTERFACE:include/${NAMESPACE}>)
 
+set_target_properties(cgimptests PROPERTIES
+        CXX_STANDARD 11
+        CXX_STANDARD_REQUIRED YES
+    )
+
 target_link_libraries(cgimptests
         PRIVATE
         ${NAMESPACE}Cryptography
+        ${NAMESPACE}Plugins::${NAMESPACE}Plugins
         ssl
         crypto
-        -Wl,--warn-unresolved-symbols
     )
 
 
@@ -64,10 +69,16 @@ set_target_properties(cgfacetests PROPERTIES
 target_link_libraries(cgfacetests
         PRIVATE
         ${NAMESPACE}Cryptography
+        ${NAMESPACE}Plugins::${NAMESPACE}Plugins
         ssl
         crypto
-        -Wl,--warn-unresolved-symbols
     )
+
+target_include_directories(cgfacetests
+    PRIVATE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../../..>
+)
+
 
 add_executable(cgnfsecuritytests
         NetflixSecurityTests.cpp
@@ -87,9 +98,9 @@ set_target_properties(cgnfsecuritytests PROPERTIES
 target_link_libraries(cgnfsecuritytests
         PRIVATE
         ${NAMESPACE}Cryptography
+        ${NAMESPACE}Plugins::${NAMESPACE}Plugins
         ssl
         crypto
-        -Wl,--warn-unresolved-symbols
     )
 
 install(TARGETS cgimptests DESTINATION bin)

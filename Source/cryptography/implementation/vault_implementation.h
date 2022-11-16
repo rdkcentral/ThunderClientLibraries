@@ -23,6 +23,18 @@
 #include <stdbool.h>
 #include "cryptography_vault_ids.h"
 
+#undef EXTERNAL
+#if defined(WIN32) || defined(_WINDOWS) || defined (__CYGWIN__) || defined(_WIN64)
+#ifdef DEVICEINFO_EXPORTS
+#define EXTERNAL __declspec(dllexport)
+#else
+#define EXTERNAL __declspec(dllimport)
+#pragma comment(lib, "crypto.lib")
+#endif
+#else
+#define EXTERNAL __attribute__((visibility("default")))
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -30,19 +42,19 @@ extern "C" {
 
 struct VaultImplementation;
 
-struct VaultImplementation* vault_instance(const enum cryptographyvault id);
+EXTERNAL struct VaultImplementation* vault_instance(const enum cryptographyvault id);
 
-uint16_t vault_size(const struct VaultImplementation* vault, const uint32_t id);
+EXTERNAL uint16_t vault_size(const struct VaultImplementation* vault, const uint32_t id);
 
-uint32_t vault_import(struct VaultImplementation* vault, const uint16_t length, const uint8_t blob[]);
+EXTERNAL uint32_t vault_import(struct VaultImplementation* vault, const uint16_t length, const uint8_t blob[]);
 
-uint16_t vault_export(const struct VaultImplementation* vault, const uint32_t id, const uint16_t max_length, uint8_t blob[]);
+EXTERNAL uint16_t vault_export(const struct VaultImplementation* vault, const uint32_t id, const uint16_t max_length, uint8_t blob[]);
 
-uint32_t vault_set(struct VaultImplementation* vault, const uint16_t length, const uint8_t blob[]);
+EXTERNAL uint32_t vault_set(struct VaultImplementation* vault, const uint16_t length, const uint8_t blob[]);
 
-uint16_t vault_get(const struct VaultImplementation* vault, const uint32_t id, const uint16_t max_length, uint8_t blob[]);
+EXTERNAL uint16_t vault_get(const struct VaultImplementation* vault, const uint32_t id, const uint16_t max_length, uint8_t blob[]);
 
-bool vault_delete(struct VaultImplementation* vault, const uint32_t id);
+EXTERNAL bool vault_delete(struct VaultImplementation* vault, const uint32_t id);
 
 
 #ifdef __cplusplus
