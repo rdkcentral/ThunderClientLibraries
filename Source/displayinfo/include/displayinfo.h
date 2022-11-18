@@ -99,20 +99,31 @@ typedef enum displayinfo_edid_hdr_licensor {
     DISPLAYINFO_EDID_HDR_LICENSOR_HDMI_FORUM = (1 << 2),
     DISPLAYINFO_EDID_HDR_LICENSOR_HDR10PLUS_LLC = (1 << 3),
     DISPLAYINFO_EDID_HDR_LICENSOR_DOLBY_LABORATORIES_INC = (1 << 4),
-//    DISPLAYINFO_EDID_HDR_LICENSOR_TECHNICOLOR = (1 << 5)
+    DISPLAYINFO_EDID_HDR_LICENSOR_TECHNICOLOR = (1 << 5)
 } displayinfo_edid_hdr_licensor_t;
 
 typedef uint8_t displayinfo_edid_hdr_licensor_map_t;
 
 typedef enum displayinfo_hdr_type {
-    DISPLAYINFO_HDR_OFF,
-    DISPLAYINFO_HDR_10,
-    DISPLAYINFO_HDR_10PLUS,
-    DISPLAYINFO_HDR_DOLBYVISION,
-    DISPLAYINFO_HDR_TECHNICOLOR,
-    DISPLAYINFO_HDR_HLG,
-    DISPLAYINFO_HDR_UNKNOWN
+    DISPLAYINFO_HDR_OFF = 0,
+    DISPLAYINFO_HDR_UNKNOWN = (1 << 0),
+    DISPLAYINFO_HDR_10 = (1 << 1),
+    DISPLAYINFO_HDR_10PLUS = (1 << 2),
+    DISPLAYINFO_HDR_DOLBYVISION = (1 << 3),
+    DISPLAYINFO_HDR_TECHNICOLOR = (1 << 4),
+    DISPLAYINFO_HDR_HLG = (1 << 5),
+    // pseudo standards
+    DISPLAYINFO_HDR_400 = (1 << 8),
+    DISPLAYINFO_HDR_500 = (1 << 9),
+    DISPLAYINFO_HDR_600 = (1 << 10),
+    DISPLAYINFO_HDR_1000 = (1 << 11),
+    DISPLAYINFO_HDR_1400 = (1 << 12),
+    DISPLAYINFO_HDR_TB_400 = (1 << 13),
+    DISPLAYINFO_HDR_TB_500 = (1 << 14),
+    DISPLAYINFO_HDR_TB_600 = (1 << 15)
 } displayinfo_hdr_t;
+
+typedef uint16_t displayinfo_edid_hdr_type_map_t;
 
 typedef enum displayinfo_hdcp_protection_type {
     DISPLAYINFO_HDCP_UNENCRYPTED,
@@ -151,7 +162,7 @@ typedef enum displayinfo_edid_color_depth_index_type {
 typedef uint8_t displayinfo_edid_color_format_map_t;
 typedef enum displayinfo_edid_color_format_type {
     DISPLAYINFO_EDID_COLOR_FORMAT_UNDEFINED = 0,
-    DISPLAYINFO_EDID_COLOR_FORMAT_RGB = (1 << 0),
+    DISPLAYINFO_EDID_COLOR_FORMAT_RGB = (1 << 0), // RGB444
     DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR444 = (1 << 1),
     DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR422 = (1 << 2),
     DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR420 = (1 << 3),
@@ -185,7 +196,8 @@ typedef enum displayinfo_edid_color_space_type {
     DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_CYCC = (1 << 6), /* ITU-R BT.2020 Yc Cbc Crc */
     DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_YCC = (1 << 7), /* ITU-R BT.2020 RGB or YCbCr */
     DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_RGB = (1 << 8),
-    DISPLAYINFO_EDID_COLOR_SPACE_DCI_P3 = (1 << 9),
+    DISPLAYINFO_EDID_COLOR_SPACE_DCI_P3 = (1 << 9) /* Theater */,
+    DISPLAYINFO_EDID_COLOR_SPACE_D65_P3 = (1 << 10) /* Display */
 } displayinfo_edid_color_space_t;
 
 typedef uint32_t displayinfo_edid_audio_format_map_t;

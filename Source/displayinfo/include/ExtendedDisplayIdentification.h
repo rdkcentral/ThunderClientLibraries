@@ -356,25 +356,31 @@ namespace Plugin {
 
             displayinfo_edid_color_depth_map_t RGBColorDepths() const
             {
-                displayinfo_edid_color_depth_map_t colorDepthMap = DISPLAYINFO_EDID_COLOR_DEPTH_8_BPC;
-                DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
+                displayinfo_edid_color_depth_map_t colorDepthMap = DISPLAYINFO_EDID_COLOR_DEPTH_UNDEFINED;
 
-                do {
-                    if(dataBlock.IsValid() && (dataBlock.BlockTag() == DataBlockIterator::VENDOR_SPECIFIC) && (dataBlock.BlockSize() > 6)) {
-                        if(dataBlock.OUI() == OUI_HDMI_LICENSING) {
-                            if(dataBlock.Current()[6] & (1 << 6)) {
-                                colorDepthMap |= DISPLAYINFO_EDID_COLOR_DEPTH_16_BPC;
+                if (_colorFormats & DISPLAYINFO_EDID_COLOR_FORMAT_RGB) {
+                    DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
+
+                    do {
+                        if(dataBlock.IsValid() && (dataBlock.BlockTag() == DataBlockIterator::VENDOR_SPECIFIC) && (dataBlock.BlockSize() > 6)) {
+                            if(dataBlock.OUI() == OUI_HDMI_LICENSING) {
+                                // HDMI 1.0
+                                displayinfo_edid_color_depth_map_t colorDepthMap = DISPLAYINFO_EDID_COLOR_DEPTH_8_BPC;
+
+                                if(dataBlock.Current()[6] & (1 << 6)) {
+                                    colorDepthMap |= DISPLAYINFO_EDID_COLOR_DEPTH_16_BPC;
+                                }
+                                if(dataBlock.Current()[6] & (1 << 5)) {
+                                    colorDepthMap |= DISPLAYINFO_EDID_COLOR_DEPTH_12_BPC;
+                                }
+                                if(dataBlock.Current()[6] & (1 << 4)) {
+                                    colorDepthMap |= DISPLAYINFO_EDID_COLOR_DEPTH_10_BPC;
+                                }
+                                break;
                             }
-                            if(dataBlock.Current()[6] & (1 << 5)) {
-                                colorDepthMap |= DISPLAYINFO_EDID_COLOR_DEPTH_12_BPC;
-                            }
-                            if(dataBlock.Current()[6] & (1 << 4)) {
-                                colorDepthMap |= DISPLAYINFO_EDID_COLOR_DEPTH_10_BPC;
-                            }
-                            break;
                         }
-                    }
-                } while(dataBlock.Next());
+                    } while(dataBlock.Next());
+                }
 
                 return colorDepthMap;
             }
@@ -384,12 +390,14 @@ namespace Plugin {
                 displayinfo_edid_color_depth_map_t colorDepthMap = DISPLAYINFO_EDID_COLOR_DEPTH_UNDEFINED;
 
                 if (_colorFormats & DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR444) {
-                    colorDepthMap = DISPLAYINFO_EDID_COLOR_DEPTH_8_BPC;
                     DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
 
                     do {
                         if(dataBlock.IsValid() && (dataBlock.BlockTag() == DataBlockIterator::VENDOR_SPECIFIC) && (dataBlock.BlockSize() > 6)) {
                             if(dataBlock.OUI() == OUI_HDMI_LICENSING) {
+                                // HDMI 1.0
+                                displayinfo_edid_color_depth_map_t colorDepthMap = DISPLAYINFO_EDID_COLOR_DEPTH_8_BPC;
+
                                 if(dataBlock.Current()[6] & (1 << 3)) {
                                     if(dataBlock.Current()[6] & (1 << 6)) {
                                         colorDepthMap |= DISPLAYINFO_EDID_COLOR_DEPTH_16_BPC;
@@ -415,7 +423,30 @@ namespace Plugin {
                 displayinfo_edid_color_depth_map_t colorDepthMap = DISPLAYINFO_EDID_COLOR_DEPTH_UNDEFINED;
 
                 if (_colorFormats & DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR422) {
-                    colorDepthMap = (DISPLAYINFO_EDID_COLOR_DEPTH_8_BPC | DISPLAYINFO_EDID_COLOR_DEPTH_10_BPC | DISPLAYINFO_EDID_COLOR_DEPTH_12_BPC);
+                    DataBlockIterator dataBlock = DataBlockIterator(_segment, DetailedTimingDescriptorStart());
+
+                    do {
+                        if(dataBlock.IsValid() && (dataBlock.BlockTag() == DataBlockIterator::VENDOR_SPECIFIC) && (dataBlock.BlockSize() > 6)) {
+                            if(dataBlock.OUI() == OUI_HDMI_LICENSING) {
+                                // HDMI 1.0
+                                colorDepthMap = (DISPLAYINFO_EDID_COLOR_DEPTH_8_BPC | DISPLAYINFO_EDID_COLOR_DEPTH_10_BPC | DISPLAYINFO_EDID_COLOR_DEPTH_12_BPC);
+
+                                if(dataBlock.Current()[6] & (1 << 3)) {
+                                    if(dataBlock.Current()[6] & (1 << 6)) {
+                                        colorDepthMap |= DISPLAYINFO_EDID_COLOR_DEPTH_16_BPC;
+                                    }
+                                    if(dataBlock.Current()[6] & (1 << 5)) {
+                                        colorDepthMap |= DISPLAYINFO_EDID_COLOR_DEPTH_12_BPC;
+                                    }
+                                    if(dataBlock.Current()[6] & (1 << 4)) {
+                                        colorDepthMap |= DISPLAYINFO_EDID_COLOR_DEPTH_10_BPC;
+                                    }
+ 
+                                }
+                                break;
+                            }
+                        }
+                    } while(dataBlock.Next());
                 }
 
                 return colorDepthMap;
@@ -646,20 +677,20 @@ namespace Plugin {
                             Perceptually Coded Value (>=0)
                         */
 
-                        if ((dataBlock.Current()[2] & (1 << 0)) == 1) {
+                        if ((dataBlock.Current()[2] & (1 << 0)) == (1 << 0)) {
                             metadata.eot |= DISPLAYINFO_EDID_EOT_TRADITIONAL_GAMMA_SDR;
                         }
-                        if ((dataBlock.Current()[2] & (1 << 1)) == 1) {
+                        if ((dataBlock.Current()[2] & (1 << 1)) == (1 << 1)) {
                             metadata.eot |= DISPLAYINFO_EDID_EOT_TRADITIONAL_GAMMA_HDR;
                         }
-                        if ((dataBlock.Current()[2] & (1 << 2)) == 1) {
+                        if ((dataBlock.Current()[2] & (1 << 2)) == (1 << 2)) {
                             metadata.eot |= DISPLAYINFO_EDID_EOT_SMPTE_ST_2084;
                         }
-                        if ((dataBlock.Current()[2] & (1 << 3)) == 1) {
+                        if ((dataBlock.Current()[2] & (1 << 3)) == (1 << 3)) {
                             metadata.eot |= DISPLAYINFO_EDID_EOT_TRADITIONAL_GAMMA_HDR;
                         }
 
-                        if ((dataBlock.Current()[3] & (1 << 0)) == 1) {
+                        if ((dataBlock.Current()[3] & (1 << 0)) == (1 << 0)) {
                             metadata.type |= DISPLAYINFO_EDID_HDR_STATIC_METATAYPE_TYPE0;
                         }
 
@@ -838,7 +869,12 @@ namespace Plugin {
 
             displayinfo_edid_color_format_map_t GetColorFormats() const
             {
-                displayinfo_edid_color_format_map_t colorFormatMap = DISPLAYINFO_EDID_COLOR_FORMAT_RGB;
+                displayinfo_edid_color_format_map_t colorFormatMap = DISPLAYINFO_EDID_COLOR_FORMAT_UNDEFINED;
+
+                if (_segment.IsValid() != false) {
+                    // CEA default
+                    colorFormatMap |= DISPLAYINFO_EDID_COLOR_FORMAT_RGB;
+                }
 
                 if(Version() >= 2) {
                     if(_segment[3] & (1 << 4)) {
@@ -1017,6 +1053,10 @@ namespace Plugin {
             return colorDepth;
         }
 
+        displayinfo_edid_color_space_map_t DefaultColorSpace() const {
+            return ((IsValid() != false) && (_base[0x18] & 0x4 == 0x4)) ? DISPLAYINFO_EDID_COLOR_SPACE_SRGB : DISPLAYINFO_EDID_COLOR_SPACE_UNDEFINED;
+        }
+
         uint8_t DisplayType() const {
             displayinfo_edid_color_format_map_t displayType = DISPLAYINFO_EDID_COLOR_FORMAT_UNDEFINED;
 
@@ -1028,10 +1068,12 @@ namespace Plugin {
                     00 RGB4444
                     01 RGB4444 & YCrCb444
                     10 RGB4444 & YCrCb422
-                    11 RGB4444 & YCrCb444 & YcrCb422
+                    11 RGB4444 & YCrCb444 & YCrCb422
                 */
 
-                displayType = static_cast<displayinfo_edid_color_format_map_t>(DISPLAYINFO_EDID_COLOR_FORMAT_RGB);
+                if (_base[0x18] & 0x18 == 0x0) {
+                    displayType = static_cast<displayinfo_edid_color_format_map_t>(DISPLAYINFO_EDID_COLOR_FORMAT_RGB);
+                }
 
                 if (_base[0x18] & 0x18 == 0x8) {
                     // 01 RGB4444 & YCrCb444
@@ -1090,6 +1132,280 @@ namespace Plugin {
         }
 
         bool HDRProfileSupport(displayinfo_hdr_t format) const {
+            bool result = false;
+
+            auto it = CEASegment();
+
+            // CEA and its data blocks are optional
+            if (it.IsValid() != false) {
+                const CEA & cea = ExtendedDisplayIdentification::CEA(it.Current());
+
+                auto dc_max = [](uint8_t cv) -> uint64_t {
+                    uint64_t result = 0;
+                    /*
+                        2 ^ ( cv / 32 ) = 2 ^ ( m * 32 / 32 + n / 32 ) = 2 ^ (m + n / 32 ), where m = cv / 32, and n = cv % 32;
+                                        = 2 ^ m * 2 ^ ( n / 32 )
+                                        = 2 ^ m * 2 ^ ( 1 / 32 ) ^ n = alpha * beta
+                    */
+
+                    uint8_t m = cv / 32;
+                    uint8_t n = cv % 32;
+
+                    uint64_t alpha = 1;
+
+                    if (m > 0) {
+                        alpha = alpha << m;
+                    }
+
+                    // A very naive method
+                    float beta = 1.0;
+                    for (uint8_t i = 0; i < n; i++) {
+                        beta *= 1.021897148654117;
+                    }
+
+                    // Truncation to underestimate
+                    result = static_cast<float>(50 * alpha) * beta;
+
+                    return result;
+                };
+
+                auto dc_min = [&](uint8_t cv_min, uint8_t cv_max) -> uint64_t {
+                    float val = static_cast<float>(cv_min) / 255.0;
+                    return static_cast<float>(dc_max(cv_max)) * val * val / 100.0;
+                };
+
+                auto dynamic = [](const displayinfo_edid_hdr_dynamic_metadata_t & data) -> bool {
+                    bool result = false;
+
+                    for (uint8_t i = 0; i < data.count; i++) {
+                        result = result || data.type[i].type != DISPLAYINFO_EDID_HDR_DYNAMIC_FLAG_TYPE_UNDEFINED;
+                    }
+
+                    return result;
+                };
+
+
+                // Allow for some inaccuracies
+                constexpr uint8_t gamut_threshold = 95;
+                uint8_t gamut_match = 0;
+
+                const displayinfo_edid_color_space_map_t spaces = DefaultColorSpace() | cea.ColorSpaces();
+
+                // ITU-R BT.2020 defined 10 or 12 bits per primary and YCbCr spaces are derived from RGB values
+                if (   (spaces & DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_RGB) != DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_RGB
+                    && (spaces & DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_CYCC) != DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_CYCC
+                    && (spaces & DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_YCC) != DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_YCC) {
+
+                    gamut_match = ColorSpaceGamutMatch(DISPLAYINFO_EDID_COLOR_SPACE_D65_P3);
+                }
+                else {
+                    // Wide color gamut support
+                    gamut_match = 100; // Represent >= 100
+                }
+
+                displayinfo_edid_color_format_map_t color_format = DisplayType() | cea.ColorFormats();
+
+                displayinfo_edid_color_depth_map_t color_depth =  ColorDepth()
+                                                                  | ((color_format & DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR444) == DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR444 ? cea.YCbCr444ColorDepths() : DISPLAYINFO_EDID_COLOR_DEPTH_UNDEFINED)
+                                                                  | ((color_format & DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR422) == DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR422 ? cea.YCbCr422ColorDepths() : DISPLAYINFO_EDID_COLOR_DEPTH_UNDEFINED)
+                                                                  | ((color_format & DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR420) == DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR420 ? cea.YCbCr420ColorDepths() : DISPLAYINFO_EDID_COLOR_DEPTH_UNDEFINED)
+                                                                  | ((color_format & DISPLAYINFO_EDID_COLOR_FORMAT_RGB) == DISPLAYINFO_EDID_COLOR_FORMAT_RGB ? cea.RGBColorDepths() : DISPLAYINFO_EDID_COLOR_DEPTH_UNDEFINED);
+
+                // Transfer function and luminance
+                displayinfo_edid_hdr_static_metadata_t hdr_static = cea.HDRStaticMetadata();
+
+                displayinfo_edid_hdr_dynamic_metadata_t hdr_dynamic = cea.HDRDynamicMetadata();
+
+                // https://en.wikipedia.org/wiki/High-dynamic-range_television
+                switch (format) {
+                    case DISPLAYINFO_HDR_10             :
+                                                            /*
+                                                            Developed by            : CTA
+                                                            Transfer function       : PQ
+                                                            Bit depth               : 10 bit
+                                                            Peak luminance          : Technical limit 10000 nits, common 1000-4000 nits
+                                                            Color primaries         : Technical limit Rec.2020, contents P3-D65 (common)
+                                                            Metadata                : static
+                                                            */
+                                                            result =    (hdr_static.eot & DISPLAYINFO_EDID_EOT_SMPTE_ST_2084) == DISPLAYINFO_EDID_EOT_SMPTE_ST_2084
+                                                                     && color_depth >= static_cast<displayinfo_edid_color_depth_map_t>(DISPLAYINFO_EDID_COLOR_DEPTH_10_BPC)
+                                                                     && dc_max(hdr_static.luminance.max_cv) >= 0
+                                                                     && dc_max(hdr_static.luminance.average_cv) >= 0
+                                                                     && dc_min(hdr_static.luminance.min_cv, hdr_static.luminance.max_cv) >= 0
+                                                                     && gamut_match >= gamut_threshold;
+                                                            break;
+                    case DISPLAYINFO_HDR_400            :   /*
+                                                            DisplayHDR400, exceeds SDR, minium peak 400 nits, but may otherwise not meet HDR10 specifications
+                                                            https://displayhdr.org/performance-criteria-cts1-1/
+                                                            */
+                                                            gamut_match = (color_format & DISPLAYINFO_EDID_DISPLAY_RGB == DISPLAYINFO_EDID_DISPLAY_RGB) ? 100 : ColorSpaceGamutMatch(DISPLAYINFO_EDID_COLOR_SPACE_SRGB);
+                                                            result = color_depth >= static_cast<displayinfo_edid_color_depth_map_t>(DISPLAYINFO_EDID_COLOR_DEPTH_8_BPC)
+                                                                     && dc_max(hdr_static.luminance.max_cv) >= 400 // 320
+                                                                     && dc_max(hdr_static.luminance.average_cv) >= 400 // 320
+                                                                     && dc_min(hdr_static.luminance.min_cv, hdr_static.luminance.max_cv) >= 0
+                                                                     // Exceed SDR
+                                                                     && gamut_match >= gamut_threshold;
+                                                            break;
+                    case DISPLAYINFO_HDR_10PLUS         :
+                                                            /*
+                                                            Developed by            : Samsung
+                                                            Transfer function       : PQ
+                                                            Bit depth               : 10 bit or more
+                                                            Peak luminance          : Technical limit 10000 nits, common 1000-4000 nits
+                                                            Color primaries         : Technical limit Rec.2020, contents P3-D65 (common)
+                                                            Metadata                : static and dynamic
+                                                            */
+                                                            result =    (hdr_static.eot & DISPLAYINFO_EDID_EOT_SMPTE_ST_2084) == DISPLAYINFO_EDID_EOT_SMPTE_ST_2084
+                                                                     && dynamic(hdr_dynamic) != false
+                                                                     && color_depth >= static_cast<displayinfo_edid_color_depth_map_t>(DISPLAYINFO_EDID_COLOR_DEPTH_10_BPC)
+                                                                     && dc_max(hdr_static.luminance.max_cv) >= 0
+                                                                     && dc_max(hdr_static.luminance.average_cv) >= 0
+                                                                     && dc_min(hdr_static.luminance.min_cv, hdr_static.luminance.max_cv) >= 0
+                                                                     && gamut_match >= gamut_threshold;
+                                                            break;
+                    case DISPLAYINFO_HDR_DOLBYVISION    :
+                                                            /*
+                                                            Developed by            : Dolby
+                                                            Transfer function       : PQ (most profiles), SDR (profiles 4.8.2, and 9), HLG (profile 8.4)
+                                                            Bit depth               : 10 bit or 12 bit using FEL
+                                                            Peak luminance          : Technical limit 10000 nits, at least 1000 nits, common 4000 nits
+                                                            Color primaries         : Technical limit Rec.2020, contents P3-D65 (at least)
+                                                            Metadata                : static and dynamic
+                                                            */
+                                                            result =    ((hdr_static.eot & DISPLAYINFO_EDID_EOT_SMPTE_ST_2084) == DISPLAYINFO_EDID_EOT_SMPTE_ST_2084
+                                                                        || (hdr_static.eot & DISPLAYINFO_EDID_EOT_HYBRID_LOG_GAMMA_ITU_R_BT_2100) == DISPLAYINFO_EDID_EOT_HYBRID_LOG_GAMMA_ITU_R_BT_2100)
+                                                                     && dynamic(hdr_dynamic) != false
+                                                                     && color_depth >= static_cast<displayinfo_edid_color_depth_map_t>(DISPLAYINFO_EDID_COLOR_DEPTH_10_BPC)
+                                                                     && dc_max(hdr_static.luminance.max_cv) >= 1000
+                                                                     && dc_max(hdr_static.luminance.average_cv) >= 1000
+                                                                     && dc_min(hdr_static.luminance.min_cv, hdr_static.luminance.max_cv) >= 1000
+                                                                     && gamut_match >= 100;
+                                                            break;
+                    case DISPLAYINFO_HDR_HLG            :
+                                                            /*
+                                                            Developed by            : NHK and BBC
+                                                            Transfer function       : HLG
+                                                            Bit depth               : 10 bit
+                                                            Peak luminance          : Technical limit variable nits, common 1000 nits
+                                                            Color primaries         : Technical limit Rec.2020, contents P3-D65 (common)
+                                                            Metadata                : none
+                                                            */
+                                                            result =    (hdr_static.eot & DISPLAYINFO_EDID_EOT_HYBRID_LOG_GAMMA_ITU_R_BT_2100) == DISPLAYINFO_EDID_EOT_HYBRID_LOG_GAMMA_ITU_R_BT_2100
+                                                                     && color_depth >= static_cast<displayinfo_edid_color_depth_map_t>(DISPLAYINFO_EDID_COLOR_DEPTH_10_BPC)
+                                                                     && dc_max(hdr_static.luminance.max_cv) >= 0
+                                                                     && dc_max(hdr_static.luminance.average_cv) >= 0
+                                                                     && dc_min(hdr_static.luminance.min_cv, hdr_static.luminance.max_cv) >= 0
+                                                                     && gamut_match >= gamut_threshold;
+                                                            break;
+                    case DISPLAYINFO_HDR_TECHNICOLOR    :
+                                                            /*
+                                                            */
+                                                            break;
+                    default                             :;
+                }
+            }
+
+            return result;
+        }
+
+        displayinfo_edid_video_interface_t VideoInterface() const {
+            return (Minor() >= 4? static_cast<displayinfo_edid_video_interface_t> (_base[0x14] & 0x0F) : DISPLAYINFO_EDID_VIDEO_INTERFACE_UNDEFINED);
+        }
+
+        Iterator Extensions() const {
+            return (Iterator(_segments));
+        }
+
+        // -------------------------------------------------------------
+        // Operators to get access to the EDID strorage raw information.
+        // -------------------------------------------------------------
+        uint16_t Length () const {
+            return (_base.Length());
+        }
+        // Total segments including the base EDID
+        uint8_t Segments() const {
+            return (IsValid() ? _base[0x7e] + 1 : 1);
+        }
+        uint8_t* Segment(const uint8_t index) {
+            uint8_t* result = nullptr;
+
+            ASSERT (index <= Segments());
+
+            if (index == 0) {
+                result = _base.operator uint8_t* ();
+            }
+            else if (index <= Segments()) {
+                BufferList::iterator pointer = _segments.begin();
+                uint8_t current = 1;
+                while (current <= index) {
+                    if (pointer != _segments.end()) {
+                        pointer++;
+                    }
+                    else {
+                        _segments.emplace_back();
+                    }
+                    current++;
+                }
+                result = (pointer != _segments.end() ? pointer->operator uint8_t*() : _segments.back().operator uint8_t* ());
+            }
+
+            return (result);
+        }
+
+        Iterator CEASegment() const {
+            return CEASegment(Iterator(_segments));
+        }
+
+        // Multiple CEA segments may exist
+        Iterator CEASegment(const Iterator& it) const {
+            Iterator index = it;
+            while(index.Next() == true) {
+                if(index.Type() == CEA::extension_tag && index.Current().IsValid() != false) {
+                    break;
+                }
+            }
+            return index;
+        }
+
+        uint8_t WidthInCentimeters() const {
+            return IsValid() ? _base[21] : 0;
+        }
+
+        uint8_t HeightInCentimeters() const {
+            return IsValid() ? _base[22] : 0;
+        }
+
+        // EDID v1.3 - https://glenwing.github.io/docs/VESA-EEDID-A1.pdf
+        // EDID v1.4 - https://glenwing.github.io/docs/VESA-EEDID-A2.pdf
+        // According the VESA standard:
+        //
+        // 3.10.1 First Detailed Timing Descriptor Block
+        // The first Detailed Timing (at addresses 36h→47h) shall only be used to indicate the mode
+        // that the monitor vendor has determined will give an optimal image. For LCD monitors,
+        // this will in most cases be the panel "native timing" and “native resolution”.
+        // Use of the EDID Preferred Timing bit shall be used to indicate that the timing indeed
+        // conforms to this definition.
+        uint16_t PreferredWidthInPixels() const {
+            return IsValid() ? (((_base[0x3A] & 0xF0 ) << 4) + _base[0x38]) : 0;
+        }
+
+        uint16_t PreferredHeightInPixels() const {
+            return IsValid() ? (((_base[0x3D] & 0xF0 ) << 4) + _base[0x3B]) : 0;
+        }
+
+        void Clear() {
+            _base[0] = 0x55;
+            _segments.clear();
+        }
+
+    private:
+        inline TCHAR ManufactereChar(uint8_t value) const {
+            return static_cast<TCHAR>('A' + ((value - 1) & 0x1F));
+        }
+
+        uint8_t ColorSpaceGamutMatch(__attribute__((unused)) displayinfo_edid_color_space_t space) const {
+            // Currently only P3-D65 is considered
+
             // Rounding / truncation occurs
             using coordinate_t = struct {int64_t x; int64_t y;};
             using vector_t = struct {coordinate_t A; coordinate_t B;};
@@ -1432,7 +1748,7 @@ namespace Plugin {
             // The white points relates to the spectral distribution and one can correct for color recorded under a different illuminant and hence the gamut changes under that transformation
             // Here, it is assumed the distance between gamut white points and reference P3D65 white points is negligible, hence, they represent the same illuminant
 
-// TODO: tramsformation / correction
+// TODO: transformation / correction
 
             // A known convex shape, with the white point enclosed
             bool result = convex(p3d65);
@@ -1487,153 +1803,7 @@ namespace Plugin {
                 ratio = den > num ? static_cast<uint8_t> (num / den * 100) : 100;
             }
 
-#ifdef _0
-            // https://en.wikipedia.org/wiki/High-dynamic-range_television
-            switch (format) {
-                case DISPLAYINFO_HDR_10             :
-                                                        /*
-                                                            Developed by            : CTA
-                                                            Transfer function       : PQ
-                                                            Bit depth               : 10 bit
-                                                            Peak luminance          : Technical limit 10000 nits, common 1000-4000 nits
-                                                            Color primaries         : Technical limit Rec.2020, contents P3-D65 (common)
-                                                            Metadata                : static
-                                                        */
-                                                        break;
-                case DISPLAYINFO_HDR_10PLUS         :
-                                                        /*
-                                                            Developed by            : Samsung
-                                                            Transfer function       : PQ
-                                                            Bit depth               : 10 bit or more
-                                                            Peak luminance          : Technical limit 10000 nits, common 1000-4000 nits
-                                                            Color primaries         : Technical limit Rec.2020, contents P3-D65 (common)
-                                                            Metadata                : static and dynamic
-                                                        */
-                                                        break;
-                case DISPLAYINFO_HDR_DOLBYVISION    :
-                                                        /*
-                                                            Developed by            : Dolby
-                                                            Transfer function       : PQ (most profiles), SDR (profiles 4.8.2, and 9), HLG (profile 8.4)
-                                                            Bit depth               : 10 bit or 12 bit using FEL
-                                                            Peak luminance          : Technical limit 10000 nits, at least 1000 nits, common 4000 nits
-                                                            Color primaries         : Technical limit Rec.2020, contents P3-D65 (at least)
-                                                            Metadata                : static and dynamic
-                                                        */
-                                                     break;
-                case DISPLAYINFO_HDR_HLG    :
-                                                        /*
-                                                            Developed by            : NHK and BBC
-                                                            Transfer function       : HLG
-                                                            Bit depth               : 10 bit
-                                                            Peak luminance          : Technical limit variable nits, common 1000 nits
-                                                            Color primaries         : Technical limit Rec.2020, contents P3-D65 (common)
-                                                            Metadata                : none
-                                                        */
-                                                        break;
-                case DISPLAYINFO_HDR_TECHNICOLOR    :
-                                                        /*
-                                                        */
-                                                        break;
-                default                             :;
-            }
-#endif
-
-            return false;
-        }
-
-        displayinfo_edid_video_interface_t VideoInterface() const {
-            return (Minor() >= 4? static_cast<displayinfo_edid_video_interface_t> (_base[0x14] & 0x0F) : DISPLAYINFO_EDID_VIDEO_INTERFACE_UNDEFINED);
-        }
-
-        Iterator Extensions() const {
-            return (Iterator(_segments));
-        }
-
-        // -------------------------------------------------------------
-        // Operators to get access to the EDID strorage raw information.
-        // -------------------------------------------------------------
-        uint16_t Length () const {
-            return (_base.Length());
-        }
-        // Total segments including the base EDID
-        uint8_t Segments() const {
-            return (IsValid() ? _base[0x7e] + 1 : 1);
-        }
-        uint8_t* Segment(const uint8_t index) {
-            uint8_t* result = nullptr;
-
-            ASSERT (index <= Segments());
-
-            if (index == 0) {
-                result = _base.operator uint8_t* ();
-            }
-            else if (index <= Segments()) {
-                BufferList::iterator pointer = _segments.begin();
-                uint8_t current = 1;
-                while (current <= index) {
-                    if (pointer != _segments.end()) {
-                        pointer++;
-                    }
-                    else {
-                        _segments.emplace_back();
-                    }
-                    current++;
-                }
-                result = (pointer != _segments.end() ? pointer->operator uint8_t*() : _segments.back().operator uint8_t* ());
-            }
-
-            return (result);
-        }
-
-        Iterator CEASegment() const {
-            return CEASegment(Iterator(_segments));
-        }
-
-        // Multiple CEA segments may exist
-        Iterator CEASegment(const Iterator& it) const {
-            Iterator index = it;
-            while(index.Next() == true) {
-                if(index.Type() == CEA::extension_tag && index.Current().IsValid() != false) {
-                    break;
-                }
-            }
-            return index;
-        }
-
-        uint8_t WidthInCentimeters() const {
-            return IsValid() ? _base[21] : 0;
-        }
-
-        uint8_t HeightInCentimeters() const {
-            return IsValid() ? _base[22] : 0;
-        }
-
-        // EDID v1.3 - https://glenwing.github.io/docs/VESA-EEDID-A1.pdf
-        // EDID v1.4 - https://glenwing.github.io/docs/VESA-EEDID-A2.pdf
-        // According the VESA standard:
-        //
-        // 3.10.1 First Detailed Timing Descriptor Block
-        // The first Detailed Timing (at addresses 36h→47h) shall only be used to indicate the mode
-        // that the monitor vendor has determined will give an optimal image. For LCD monitors,
-        // this will in most cases be the panel "native timing" and “native resolution”.
-        // Use of the EDID Preferred Timing bit shall be used to indicate that the timing indeed
-        // conforms to this definition.
-        uint16_t PreferredWidthInPixels() const {
-            return IsValid() ? (((_base[0x3A] & 0xF0 ) << 4) + _base[0x38]) : 0;
-        }
-
-        uint16_t PreferredHeightInPixels() const {
-            return IsValid() ? (((_base[0x3D] & 0xF0 ) << 4) + _base[0x3B]) : 0;
-        }
-
-        void Clear() {
-            _base[0] = 0x55;
-            _segments.clear();
-        }
-
-    private:
-        inline TCHAR ManufactereChar(uint8_t value) const {
-            return static_cast<TCHAR>('A' + ((value - 1) & 0x1F));
+            return ratio;
         }
 
     private:
