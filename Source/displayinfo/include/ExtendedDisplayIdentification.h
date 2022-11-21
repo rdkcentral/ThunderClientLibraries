@@ -1227,16 +1227,24 @@ namespace Plugin {
                                                             Color primaries         : Technical limit Rec.2020, contents P3-D65 (common)
                                                             Metadata                : static
                                                             */
+                                                            __attribute__((fall_through));
+                    case DISPLAYINFO_DISPLAYHDR_400     :
+                                                            /*
+                                                                Minimal HDR_10, with maximum luminance values exceeding 400
+                                                            */
                                                             result =    (hdr_static.eot & DISPLAYINFO_EDID_EOT_SMPTE_ST_2084) == DISPLAYINFO_EDID_EOT_SMPTE_ST_2084
                                                                      && color_depth >= static_cast<displayinfo_edid_color_depth_map_t>(DISPLAYINFO_EDID_COLOR_DEPTH_10_BPC)
-                                                                     && dc_max(hdr_static.luminance.max_cv) >= 0
-                                                                     && dc_max(hdr_static.luminance.average_cv) >= 0
+                                                                     && dc_max(hdr_static.luminance.max_cv) >= (format == DISPLAYINFO_DISPLAYHDR_400 ? 400 /* 320 */ : 0)
+                                                                     && dc_max(hdr_static.luminance.average_cv) >= (format == DISPLAYINFO_DISPLAYHDR_400 ? 400 /* 320 */ : 0)
                                                                      && dc_min(hdr_static.luminance.min_cv, hdr_static.luminance.max_cv) >= 0
                                                                      && gamut_match >= gamut_threshold;
                                                             break;
+
                     case DISPLAYINFO_HDR_400            :   /*
+                                                            Minimum HDR10, with luminance values exceeding 400
                                                             DisplayHDR400, exceeds SDR, minium peak 400 nits, but may otherwise not meet HDR10 specifications
-                                                            https://displayhdr.org/performance-criteria-cts1-1/
+                                                            https://displayhdr.org/performance-criteria-cts1-1/yy
+                                                            https://displayhdr.org/not-all-hdr-is-created-equal/
                                                             */
                                                             gamut_match = (color_format & DISPLAYINFO_EDID_DISPLAY_RGB == DISPLAYINFO_EDID_DISPLAY_RGB) ? 100 : ColorSpaceGamutMatch(DISPLAYINFO_EDID_COLOR_SPACE_SRGB);
                                                             result = color_depth >= static_cast<displayinfo_edid_color_depth_map_t>(DISPLAYINFO_EDID_COLOR_DEPTH_8_BPC)

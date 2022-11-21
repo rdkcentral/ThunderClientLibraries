@@ -104,6 +104,7 @@ typedef enum displayinfo_edid_hdr_licensor {
 
 typedef uint8_t displayinfo_edid_hdr_licensor_map_t;
 
+// TODO: combine subsets
 typedef enum displayinfo_hdr_type {
     DISPLAYINFO_HDR_OFF = 0,
     DISPLAYINFO_HDR_UNKNOWN = (1 << 0),
@@ -120,10 +121,12 @@ typedef enum displayinfo_hdr_type {
     DISPLAYINFO_HDR_1400 = (1 << 12),
     DISPLAYINFO_HDR_TB_400 = (1 << 13),
     DISPLAYINFO_HDR_TB_500 = (1 << 14),
-    DISPLAYINFO_HDR_TB_600 = (1 << 15)
+    DISPLAYINFO_HDR_TB_600 = (1 << 15),
+    // VESA standards
+    DISPLAYINFO_DISPLAYHDR_400 = (1 << 17)
 } displayinfo_hdr_t;
 
-typedef uint16_t displayinfo_edid_hdr_type_map_t;
+typedef uint32_t displayinfo_edid_hdr_type_map_t;
 
 typedef enum displayinfo_hdcp_protection_type {
     DISPLAYINFO_HDCP_UNENCRYPTED,
