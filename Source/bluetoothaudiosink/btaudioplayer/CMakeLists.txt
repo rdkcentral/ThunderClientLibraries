@@ -33,7 +33,7 @@ target_include_directories(btaudioplayer
 
 target_link_libraries(${TARGET}
     PUBLIC
-        bluetoothaudiosink
+        ${NAMESPACE}BluetoothAudioSink::${NAMESPACE}BluetoothAudioSink
         pthread
 )
 
