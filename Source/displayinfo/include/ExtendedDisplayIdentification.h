@@ -1241,9 +1241,7 @@ namespace Plugin {
                                                             break;
 
                     case DISPLAYINFO_HDR_400            :   /*
-                                                            Minimum HDR10, with luminance values exceeding 400
-                                                            DisplayHDR400, exceeds SDR, minium peak 400 nits, but may otherwise not meet HDR10 specifications
-                                                            https://displayhdr.org/performance-criteria-cts1-1/yy
+                                                            Exceeds SDR, minium peak 400 nits, but may otherwise not meet HDR10 specifications
                                                             https://displayhdr.org/not-all-hdr-is-created-equal/
                                                             */
                                                             gamut_match = (color_format & DISPLAYINFO_EDID_DISPLAY_RGB == DISPLAYINFO_EDID_DISPLAY_RGB) ? 100 : ColorSpaceGamutMatch(DISPLAYINFO_EDID_COLOR_SPACE_SRGB);
