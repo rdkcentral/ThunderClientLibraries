@@ -1409,9 +1409,7 @@ namespace Plugin {
             return static_cast<TCHAR>('A' + ((value - 1) & 0x1F));
         }
 
-        uint8_t ColorSpaceGamutMatch(__attribute__((unused)) displayinfo_edid_color_space_t space) const {
-            // Currently only P3-D65 is considered
-
+        uint8_t ColorSpaceGamutMatch(displayinfo_edid_color_space_t space) const {
             // Rounding / truncation occurs
             using coordinate_t = struct {int64_t x; int64_t y;};
             using vector_t = struct {coordinate_t A; coordinate_t B;};
@@ -1716,6 +1714,7 @@ namespace Plugin {
             /*
                 https://en.wikipedia.org/wiki/Rec._2020
                 https://en.wikipedia.org/wiki/DCI-P3
+                https://en.wikipedia.org/wiki/SRGB
                 VESA Enhanced EDID Standard
 
                 // Converted values!
@@ -1729,27 +1728,62 @@ namespace Plugin {
 
                 // Negative values cannot be represented in EDID, rounded to 0x0
                 // Positive values exceeding 0,9990234375 are rounded to 0,9990234375
-                DCI-P3+                 0x142  0x167  0x189C  0x2F6  0x114  0xE1  0x31F  0x5C  0x0
-                Cinema Gamut	        0x140  0x151  0x1968  0x2F6  0x114  0xAE  0x48F  0x52  0x0
+                DCI-P3+                 0x142  0x167  0x189C  0x2F6  0x114  0xE1   0x31F  0x5C  0x0
+                Cinema Gamut	        0x140  0x151  0x1968  0x2F6  0x114  0xAE   0x48F  0x52  0x0
+
+                sRGB/ITU-R BT.709       0x140  0x151          0x28F  0x152  0x133  0x266  0x9A  0x3D
             */
+
+
+            // Color space reference gamut
+            auto triangle = [](displayinfo_edid_color_space_t space, bool& result) -> polygon_t {
+                result = false;
+
+                polygon_t gamut;
+
+                switch (space) {
+                    case DISPLAYINFO_EDID_COLOR_SPACE_D65_P3 :
+                                                                gamut = {coordinate_t{0x2B8, 0x148}, coordinate_t{0x10F, 0x2C3}, coordinate_t{0x9A, 0x3D}};
+                                                                result = true;
+                                                                break;
+                    case DISPLAYINFO_EDID_COLOR_SPACE_SRGB   :
+                                                                gamut = {coordinate_t{0x28F, 0x152}, coordinate_t{0x133, 0x266}, coordinate_t{0x9A, 0x3D}};
+                                                                result = true;
+                                                                break;
+                    default                                  :;
+                }
+
+                return gamut;
+            };
+
+            // Color space reference white point
+            auto white = [](displayinfo_edid_color_space_t space, bool& result) -> coordinate_t {
+                result = false;
+
+                coordinate_t white;
+
+                switch (space) {
+                    case DISPLAYINFO_EDID_COLOR_SPACE_D65_P3 :
+                    case DISPLAYINFO_EDID_COLOR_SPACE_SRGB   :
+                                                                white = coordinate_t{0x140, 0x151};
+                                                                result = true;
+                                                                break;
+                    default                                  :;
+                }
+
+                return white;
+            };
 
             displayinfo_edid_rgb_colorspace_coordinates xyz = ColorspaceRGBCoordinates();
 
-            // Display color space triangle
-#ifndef _TEST
+            // Display color space trianglei and white point
             const polygon_t gamut = {coordinate_t{xyz.Rx, xyz.Ry}, coordinate_t{xyz.Gx, xyz.Gy}, coordinate_t{xyz.Bx, xyz.By}};
-#else
-            const polygon_t gamut = {coordinate_t{900, 200}, coordinate_t{300, 800}, coordinate_t{400, 400}};
-#endif
             const coordinate_t white_gamut = coordinate_t{xyz.Wx, xyz.Wy};
 
-            // P3-D65 colotr space triangle
-#ifndef _TEST
-            const polygon_t p3d65 = {coordinate_t{0x2B8, 0x148}, coordinate_t{0x10F, 0x2C3}, coordinate_t{0x9A, 0x3D}};
-#else
-            const polygon_t p3d65 = {coordinate_t{700, 300}, coordinate_t{300, 700}, coordinate_t{100, 100}};
-#endif
-            const coordinate_t white_pd3d65 = coordinate_t{0x140, 0x151};
+            // Reference color space triagle and white point
+            bool populated[2] = {false, false};
+            const polygon_t gamut_ref = triangle(space, populated[0]);
+            const coordinate_t white_ref = white(space, populated[1]);
 
             // The white points relates to the spectral distribution and one can correct for color recorded under a different illuminant and hence the gamut changes under that transformation
             // Here, it is assumed the distance between gamut white points and reference P3D65 white points is negligible, hence, they represent the same illuminant
@@ -1757,7 +1791,7 @@ namespace Plugin {
 // TODO: transformation / correction
 
             // A known convex shape, with the white point enclosed
-            bool result = convex(p3d65);
+            bool result = populated[0] && populated[1] && convex(gamut_ref);
 
             // No guarantuee the white point is enclosed
             /* bool */ result = result && convex(gamut);
@@ -1766,9 +1800,9 @@ namespace Plugin {
             polygon_t polygon;
 
             for (size_t i = 0, end = gamut.size(); i < end; i++) {
-                for (size_t j = 0, end = p3d65.size(); j < end; j++) {
+                for (size_t j = 0, end = gamut_ref.size(); j < end; j++) {
                     const vector_t lineA = {gamut[i], (i+1) < end ? gamut[i+1] : gamut[0]};
-                    const vector_t lineB = {p3d65[j], (j+1) < end ? p3d65[j+1] : p3d65[0] };
+                    const vector_t lineB = {gamut_ref[j], (j+1) < end ? gamut_ref[j+1] : gamut_ref[0] };
 
                     // Intersecting point of two line segments
                     coordinate_t coordinate = intersection(lineA, lineB);
@@ -1784,14 +1818,14 @@ namespace Plugin {
             // Non-intersecting points that are enclosed by either gamut
 
             for (auto it_gamut = gamut.begin(); it_gamut != gamut.end(); it_gamut++) {
-                if (enclosed(*it_gamut, p3d65) != false) {
+                if (enclosed(*it_gamut, gamut_ref) != false) {
                     polygon.push_back(*it_gamut);
                 }
             }
 
-            for (auto it_p3d65 = p3d65.begin(); it_p3d65 != p3d65.end(); it_p3d65++) {
-                if (enclosed(*it_p3d65, gamut) != false) {
-                    polygon.push_back(*it_p3d65);
+            for (auto it_gamut_ref = gamut_ref.begin(); it_gamut_ref != gamut_ref.end(); it_gamut_ref++) {
+                if (enclosed(*it_gamut_ref, gamut) != false) {
+                    polygon.push_back(*it_gamut_ref);
                 }
             }
 
@@ -1802,7 +1836,7 @@ namespace Plugin {
             uint8_t ratio = 0;
 
             if (polygon.size() > 2) {
-                float den = area(p3d65);
+                float den = area(gamut_ref);
                 float num = area(polygon);
 
                 // Max is 100%
