@@ -41,6 +41,8 @@ extern "C" {
 
 #include "../Client.h"
 
+#include "RenderAPI.h"
+
 // Copied from previous macros
 #define XSTRINGIFY(X) STRINGIFY(X)
 #define STRINGIFY(X) #X
@@ -249,65 +251,7 @@ namespace Linux {
             }
         }
 
-        namespace Graphics {
-            class API {
-            public:
-                API(const API&) = delete;
-                API& operator=(const API&) = delete;
-
-                API()
-                    : eglGetPlatformDisplayEXT(nullptr)
-                    , glEGLImageTargetTexture2DOES(nullptr)
-                    , eglCreateImage(nullptr)
-                    , eglDestroyImage(nullptr)
-                    , eglCreateSync(nullptr)
-                    , eglDestroySync(nullptr)
-                    , eglWaitSync(nullptr)
-                    , eglClientWaitSync(nullptr)
-                {
-                    eglGetPlatformDisplayEXT = reinterpret_cast<PFNEGLGETPLATFORMDISPLAYEXTPROC>(eglGetProcAddress("eglGetPlatformDisplayEXT"));
-                    glEGLImageTargetTexture2DOES = reinterpret_cast<PFNGLEGLIMAGETARGETTEXTURE2DOESPROC>(eglGetProcAddress("glEGLImageTargetTexture2DOES"));
-
-#ifdef EGL_VERSION_1_5
-                    eglCreateImage = reinterpret_cast<PFNEGLCREATEIMAGEPROC>(eglGetProcAddress("eglCreateImage"));
-                    eglDestroyImage = reinterpret_cast<PFNEGLDESTROYIMAGEPROC>(eglGetProcAddress("eglDestroyImage"));
-                    eglCreateSync = reinterpret_cast<PFNEGLCREATESYNCPROC>(eglGetProcAddress("eglCreateSync"));
-                    eglDestroySync = reinterpret_cast<PFNEGLDESTROYSYNCPROC>(eglGetProcAddress("eglDestroySync"));
-                    eglWaitSync = reinterpret_cast<PFNEGLWAITSYNCPROC>(eglGetProcAddress("eglWaitSync"));
-                    eglClientWaitSync = reinterpret_cast<PFNEGLCLIENTWAITSYNCPROC>(eglGetProcAddress("eglClientWaitSync"));
-#else
-                    eglCreateImage = reinterpret_cast<PFNEGLCREATEIMAGEKHRPROC>(eglGetProcAddress("eglCreateImageKHR"));
-                    eglDestroyImage = reinterpret_cast<PFNEGLDESTROYIMAGEKHRPROC>(eglGetProcAddress("eglDestroyImageKHR"));
-                    eglCreateSync = reinterpret_cast<PFNEGLCREATESYNCKHRPROC>(eglGetProcAddress("eglCreateSyncKHR"));
-                    eglDestroySync = reinterpret_cast<PFNEGLDESTROYSYNCKHRPROC>(eglGetProcAddress("eglDestroySyncKHR"));
-                    eglWaitSync = reinterpret_cast<PFNEGLWAITSYNCKHRPROC>(eglGetProcAddress("eglWaitSyncKHR"));
-                    eglClientWaitSync = reinterpret_cast<PFNEGLCLIENTWAITSYNCKHRPROC>(eglGetProcAddress("eglClientWaitSyncKHR"));
-#endif
-                }
-
-            public:
-                PFNEGLGETPLATFORMDISPLAYEXTPROC eglGetPlatformDisplayEXT;
-                PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES;
-
-#ifdef EGL_VERSION_1_5
-                PFNEGLCREATEIMAGEPROC eglCreateImage;
-                PFNEGLDESTROYIMAGEPROC eglDestroyImage;
-                PFNEGLCREATESYNCPROC eglCreateSync;
-                PFNEGLDESTROYSYNCPROC eglDestroySync;
-                PFNEGLWAITSYNCPROC eglWaitSync;
-                PFNEGLCLIENTWAITSYNCPROC eglClientWaitSync;
-#else
-                PFNEGLCREATEIMAGEKHRPROC eglCreateImage;
-                PFNEGLDESTROYIMAGEKHRPROC eglDestroyImage;
-                PFNEGLCREATESYNCKHRPROC eglCreateSync;
-                PFNEGLDESTROYSYNCKHRPROC eglDestroySync;
-                PFNEGLWAITSYNCKHRPROC eglWaitSync;
-                PFNEGLCLIENTWAITSYNCKHRPROC eglClientWaitSync;
-#endif
-            }; // class API
-        } // namespace Graphics
-
-        Graphics::API graphicsAPI;
+        Render::API renderAPI;
 
         namespace EGL {
             static bool HasExtension(const EGLDisplay dpy, const std::string& extention)
@@ -325,12 +269,12 @@ namespace Linux {
             static void Fence(const EGLDisplay dpy)
             {
                 ASSERT(dpy != EGL_NO_DISPLAY);
-                EGLSync fence = graphicsAPI.eglCreateSync(dpy, EGL_SYNC_FENCE, NULL);
+                EGLSync fence = renderAPI.eglCreateSync(dpy, EGL_SYNC_FENCE, NULL);
 
                 glFlush(); // Mandatory
 
-                graphicsAPI.eglClientWaitSync(dpy, fence, EGL_SYNC_FLUSH_COMMANDS_BIT_KHR, EGL_FOREVER_KHR);
-                graphicsAPI.eglDestroySync(dpy, fence);
+                renderAPI.eglClientWaitSync(dpy, fence, EGL_SYNC_FLUSH_COMMANDS_BIT_KHR, EGL_FOREVER_KHR);
+                renderAPI.eglDestroySync(dpy, fence);
             }
         } // namespace EGL
         namespace GL {
@@ -423,7 +367,7 @@ namespace Linux {
                     EGL_NONE
                 };
 
-                _eglImage = graphicsAPI.eglCreateImage(dpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, _attrs);
+                _eglImage = renderAPI.eglCreateImage(dpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, _attrs);
                 ASSERT(_eglImage != EGL_NO_IMAGE);
 
                 close(dmaBufferFd);
@@ -461,7 +405,7 @@ namespace Linux {
                 glTexParameteri(target, GL_TEXTURE_WRAP_S, wrap);
                 glTexParameteri(target, GL_TEXTURE_WRAP_T, wrap);
 
-                graphicsAPI.glEGLImageTargetTexture2DOES(target, _eglImage);
+                renderAPI.glEGLImageTargetTexture2DOES(target, _eglImage);
 
                 if (_textureId != 0) {
                     glDeleteFramebuffers(1, &_frameBuffer);
@@ -575,7 +519,7 @@ namespace Linux {
                 EGLDisplay dpy = eglGetCurrentDisplay();
 
                 if (_eglImage != EGL_NO_IMAGE) {
-                    graphicsAPI.eglDestroyImage(dpy, _eglImage);
+                    renderAPI.eglDestroyImage(dpy, _eglImage);
                 }
 
                 if (_surface != nullptr) {
@@ -662,7 +606,7 @@ namespace Linux {
 
             uint32_t Process()
             {
-                // TRACE(Trace::Information, (_T("Processing surface %p"), this));
+                //TRACE(Trace::Information, (_T("Processing surface %p"), this));
 
                 // Changes of currents cannot be reliably be monitored
                 EGLDisplay dpy = eglGetCurrentDisplay();
@@ -675,7 +619,7 @@ namespace Linux {
 
                 // A remote ClientSurface has been created and the IRender interface is supported so the compositor is able to support scan out for this client
                 if ((status == true) && (_remoteRenderer != nullptr) && (_remoteClient != nullptr)) {
-                    EGLSync fence = graphicsAPI.eglCreateSync(dpy, EGL_SYNC_FENCE, NULL);
+                    EGLSync fence = renderAPI.eglCreateSync(dpy, EGL_SYNC_FENCE, NULL);
 
                     if (_eglImage == EGL_NO_IMAGE) {
                         CreateImage(dpy);
@@ -687,7 +631,7 @@ namespace Linux {
                     _remoteRenderer->PreScanOut();
 
                     // Wait for all EGL actions to be completed
-                    graphicsAPI.eglClientWaitSync(dpy, fence, EGL_SYNC_FLUSH_COMMANDS_BIT_KHR, EGL_FOREVER_KHR);
+                    renderAPI.eglClientWaitSync(dpy, fence, EGL_SYNC_FLUSH_COMMANDS_BIT_KHR, EGL_FOREVER_KHR);
 
                     // Render on the remote surface... eglImage -> gmb_bo
                     _adminLock.Lock();
@@ -697,7 +641,7 @@ namespace Linux {
                     // Done using the remote surface
                     _remoteRenderer->PostScanOut();
 
-                    graphicsAPI.eglDestroySync(dpy, fence);
+                    renderAPI.eglDestroySync(dpy, fence);
                 } else {
                     TRACE(Trace::Error, (_T ( "Remote scan out is not (yet) supported. Has a remote surface been created? Is the IRender interface available?" )));
                 }
