@@ -29,6 +29,10 @@ message("Setup ${TARGET} v${PROJECT_VERSION}")
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# remove the -as-needed flag because it can lead to losing dependencies when we're mixing static and shared libs 
+string(REPLACE "-Wl,--as-needed" "" CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-as-needed")
+
 option(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY "Include explicitly a software based cryptography library" OFF)
 
 find_package(ProxyStubGenerator REQUIRED)
@@ -36,7 +40,6 @@ find_package(ProxyStubGenerator REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
 find_package(${NAMESPACE}COM REQUIRED)
-find_package(CompileSettingsDebug CONFIG REQUIRED)
 
 ProxyStubGenerator(
     NAMESPACE "WPEFramework::Cryptography" 
@@ -58,7 +61,6 @@ target_link_libraries(${TARGET}
     PRIVATE
         ${NAMESPACE}Core::${NAMESPACE}Core
         ${NAMESPACE}COM::${NAMESPACE}COM
-        CompileSettingsDebug::CompileSettingsDebug
         -Wl,--whole-archive implementation -Wl,--no-whole-archive
 )
 
@@ -82,6 +84,7 @@ set_target_properties(${TARGET} PROPERTIES
     CXX_STANDARD_REQUIRED YES
     FRAMEWORK FALSE
     PUBLIC_HEADER "${PUBLIC_HEADERS}"
+    LINK_WHAT_YOU_USE TRUE
     VERSION ${PROJECT_VERSION}
     SOVERSION ${PROJECT_VERSION_MAJOR}
 )
@@ -138,6 +141,7 @@ if(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY)
         CXX_STANDARD 11
         CXX_STANDARD_REQUIRED YES
         FRAMEWORK FALSE
+        LINK_WHAT_YOU_USE TRUE
         VERSION ${PROJECT_VERSION}
         SOVERSION ${PROJECT_VERSION_MAJOR}
     )
