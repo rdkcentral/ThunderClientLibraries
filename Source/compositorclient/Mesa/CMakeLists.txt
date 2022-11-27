@@ -21,8 +21,9 @@ find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core CONFIG REQUIRED)
 find_package(${NAMESPACE}COM CONFIG REQUIRED)
 
-find_package(GBM REQUIRED)
-find_package(LibDRM REQUIRED)
+find_package(gbm REQUIRED)
+find_package(libdrm REQUIRED)
+
 find_package(EGL REQUIRED)
 find_package(GLESv2 REQUIRED)
 
@@ -34,8 +35,8 @@ target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
         ${NAMESPACE}Core::${NAMESPACE}Core
         ${NAMESPACE}VirtualInput::${NAMESPACE}VirtualInput
         ${NAMESPACE}COM::${NAMESPACE}COM
-        LibDRM::LibDRM
-        GBM::GBM
+        libdrm::libdrm
+        gbm::gbm
         EGL::EGL
         GLESv2::GLESv2
 )
