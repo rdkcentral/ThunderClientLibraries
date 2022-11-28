@@ -29,7 +29,7 @@ message("Setup ${TARGET} v${PROJECT_VERSION}")
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# remove the -as-needed flag because it can lead to losing dependencies when we're mixing static and shared libs 
+# remove the -as-needed flag because it can lead to losing dependencies when we're mixing static and shared libs
 string(REPLACE "-Wl,--as-needed" "" CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-as-needed")
 
@@ -61,6 +61,7 @@ target_link_libraries(${TARGET}
     PRIVATE
         ${NAMESPACE}Core::${NAMESPACE}Core
         ${NAMESPACE}COM::${NAMESPACE}COM
+        CompileSettingsDebug::CompileSettingsDebug
         -Wl,--whole-archive implementation -Wl,--no-whole-archive
 )
 
