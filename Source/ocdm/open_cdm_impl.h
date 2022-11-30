@@ -88,7 +88,7 @@ protected:
     }
 
 public:
-    OpenCDMAccessor() = delete;
+    OpenCDMAccessor() : _signal(false, true) { ASSERT(false); }
     OpenCDMAccessor(const OpenCDMAccessor&) = delete;
     OpenCDMAccessor& operator=(const OpenCDMAccessor&) = delete;
 
