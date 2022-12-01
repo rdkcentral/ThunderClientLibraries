@@ -1467,10 +1467,14 @@ namespace Plugin {
                 }
 
                 bool IsValid() const {
-                    bool result = _poly.size() > 2;
+                    const size_t count = Count();
 
-                    for (size_t i = 0, end = _poly.size(); i < end; i++) {
-                        result = result && _poly[i].IsValid();
+                    // Gamut condition
+                    bool result = count > 2;
+
+                    for (size_t i = 0; i < count; i++) {
+                        result =     result
+                                 && _poly[i].IsValid();
                     }
 
                     return result;
@@ -1489,9 +1493,12 @@ namespace Plugin {
                 bool Next(Coordinate& point) {
                     bool result = false;
 
-                    size_t count = _poly.size();
+                    size_t count = Count();
 
-                    if (count > 0 && _index < count) {
+                    if (   0 < count
+                        && _index < count
+                       )
+                    {
                         point = _poly[_index];
                         _index = (_index + 1) % count;
                         result = true;
@@ -1507,28 +1514,27 @@ namespace Plugin {
                 bool Area(float& sum) const {
                     bool result = false;
 
-                    sum = 0.0;
-
-                    int64_t total = 0;
-
                     Polygon poly;
 
-                    result =    IsValid() != false
-                             && SortCounterClockWise(poly) != false
-                             && poly.IsValid() != false
-                             && poly.Convex() != false;
+                    result =    IsValid()
+                             && SortCounterClockWise(poly)
+                             && poly.IsValid()
+                             && poly.Convex();
 
                     if (result != false) {
                         Coordinate A{-1, -1}, B{-1, -1};
 
-                        result = result && poly.Next(A) != false;
+                        result =    result
+                                 && poly.Next(A)
+                                 && A.IsValid();
+
+                        uint64_t total = 0;
 
                         // http://www.mathwords.com/a/area_convex_polygon.htm
                         for (size_t i = 1, end = poly.Count(); i <= end; i++) {
                             result =    result
-                                     && A.IsValid() != false
-                                     && poly.Next(B) != false
-                                     && B.IsValid() != false;
+                                     && poly.Next(B)
+                                     && B.IsValid();
 
                             if (result != false) {
                                 total += (A.X() * B.Y()) - (B.X() * A.Y());
@@ -1544,45 +1550,50 @@ namespace Plugin {
                 }
 
                 bool Enclosed(const Coordinate& point) const {
-                    bool result = IsValid() && point.IsValid();
+                    bool result =    IsValid()
+                                  && point.IsValid();
 
                     if (result != false) {
-                        // The total is the sum of the parts
-                        float total = 0, sum = 0;
+                        const size_t count = Count();
 
-                        switch (_poly.size()) {
+                        // The total is the sum of the parts
+                        switch (count) {
                             case 0  :
                             case 1  :
                             case 2  :   break;
                             case 3  :   {
-                                            float total = 0.0, sum = 0.0, delta = 0.0;
+                                            float sum = 0.0;
 
-                                            result = result && Area(total);
-
-                                            for (size_t i = 0, end = _poly.size(); i < end; i++) {
+                                            for (size_t i = 0; i < count; i++) {
                                                 Polygon poly;
 
-                                                const Coordinate A = _poly[i % end];
-                                                const Coordinate B = _poly[(i+1) % end];
+                                                const Coordinate& A = _poly[i % count];
+                                                const Coordinate& B = _poly[(i + 1) % count];
+
+                                                float delta = 0.0;
 
                                                 result =    result
-                                                         && poly.Add(point) != false
-                                                         && poly.Add(A) != false
-                                                         && poly.Add(B) != false
-                                                         && poly.IsValid() != false
-                                                         && poly.Area(delta) != false;
+                                                         && poly.Add(point)
+                                                         && poly.Add(A)
+                                                         && poly.Add(B)
+                                                         && poly.IsValid()
+                                                         && poly.Area(delta);
 
                                                 if (result != false) {
                                                     sum += delta;
                                                 }
                                             }
 
+                                            float total = 0.0;
+
                                             result =    result
+                                                     && Area(total)
                                                      && static_cast<int64_t>(total) > 0
                                                      && static_cast<int64_t>(total) == static_cast<int64_t>(sum);
                                         }
                                         break;
                             default :   // Algorithm
+                                        // For now default to false
                                         ;
                         }
                     }
@@ -1594,15 +1605,18 @@ namespace Plugin {
                     bool result = IsValid();
 
                     if (result != false) {
-                        switch (_poly.size()) {
+                        const size_t count = Count();
+
+                        switch (count) {
                             case 0  :
                             case 1  :
                             case 2  :   break;
                             case 3  :   // A triangle is convex
                                         result = true;
-                                        for (size_t i = 0; i < 2; i++) {
-                                            for (size_t j = i + 1; j < 3; j++) {
-                                                result = result && !_poly[i].Equal(_poly[j]);
+                                        for (size_t i = 0; i < (count - 1); i++) {
+                                            for (size_t j = i + 1; j < count; j++) {
+                                                result =    result
+                                                         && !_poly[i].Equal(_poly[j]);
                                             }
                                         }
                                         break;
@@ -1616,27 +1630,29 @@ namespace Plugin {
                 }
 
                 Coordinate Centroid() const {
-                    uint64_t x = 0;
-                    uint64_t y = 0;
+                    int64_t x = 0;
+                    int64_t y = 0;
 
                     if (IsValid() != false) {
-                        for (size_t i = 0, end = _poly.size(); i < end; i++) {
-                            Coordinate A = _poly[i];
+                        const size_t count = Count();
 
-                            x += A.X();
-                            y += A.Y();
+                        for (size_t i = 0; i < count; i++) {
+                            Coordinate point = _poly[i];
+
+                            x += point.X();
+                            y += point.Y();
                         }
 
                         // Integer truncation
-                        x /= _poly.size();
-                        y /= _poly.size();
+                        x /= count;
+                        y /= count;
                     }
                     else {
                         x = -1;
                         y = -1;
                     }
 
-                    return Coordinate(x, y);
+                    return Coordinate{x, y};
                 }
 
                 Coordinate Intersection(const Polygon& poly) const {
@@ -1653,18 +1669,24 @@ namespace Plugin {
                         Coordinate coordinate[2] = { Coordinate{-1, -1}, Coordinate{-1, -1} };
 
                         int64_t num_t = ((CD[0].X() - EF[0].X()) * (EF[0].Y() - EF[1].Y())) - ((EF[0].X() - EF[1].X()) * (CD[0].Y() - EF[0].Y()));
-                        int64_t num_t = ((CD[0].X() - EF[0].X()) * (EF[0].Y() - EF[1].Y())) - ((EF[0].X() - EF[1].X()) * (CD[0].Y() - EF[0].Y()));
                         int64_t num_u = ((CD[0].X() - EF[0].X()) * (CD[0].Y() - CD[1].Y())) - ((CD[0].X() - CD[1].X()) * (CD[0].Y() - EF[0].Y()));
                         int64_t den = ((CD[0].X() - CD[1].X()) * (EF[0].Y() - EF[1].Y())) - ((EF[0].X() - EF[1].X()) * (CD[0].Y() - CD[1].Y()));
 
                         if (den == 0) {
-                        // parallel or coincident
+                            // parallel or coincident
                         }
                         else {
                             // Within first line segment
-                            if (   (0 <= num_t && 0 <= den && num_t <= den)
-                                || (num_t <= 0 && den <= 0 && den <= num_t)) {
-
+                            if (   (  0 <= num_t
+                                    && 0 <= den
+                                    && num_t <= den
+                                   ) != false
+                                || (   num_t <= 0
+                                    && den <= 0
+                                    && den <= num_t
+                                   ) != false
+                               )
+                            {
                                 float fraction = static_cast<float>(num_t) / static_cast<float>(den);
 
                                 float x = CD[0].X() + fraction * (CD[1].X() - CD[0].X());
@@ -1697,8 +1719,16 @@ namespace Plugin {
                             }
 
                             // Within second line segment
-                            if (   (0 <= num_u && 0 <= den && num_u <= den)
-                                || (num_u <= 0 && den <= 0 && den <= num_u)) {
+                            if (   (   0 <= num_u
+                                    && 0 <= den
+                                    && num_u <= den
+                                   ) != false
+                                || (   num_u <= 0
+                                    && den <= 0
+                                    && den <= num_u
+                                   ) != false
+                               )
+                            {
 
                                 float fraction = static_cast<float>(num_u) / static_cast<float>(den);
 
@@ -1734,7 +1764,7 @@ namespace Plugin {
 
                         // A valid point falls on both line segments
 
-                        if ( coordinate[0].IsValid() != false && coordinate[1].IsValid() != false) {
+                        if ((coordinate[0].IsValid() && coordinate[1].IsValid()) != false) {
                             // 'Average out' differences
 
                             coordinate[0] = Coordinate{(coordinate[0].X() + coordinate[1].X()) / 2, (coordinate[0].Y() + coordinate[1].Y()) / 2};
@@ -1752,13 +1782,12 @@ namespace Plugin {
             private:
 
                 bool SortCounterClockWise(Polygon& poly) const {
-                    Coordinate centroid = Centroid();
+                    const Coordinate centroid = Centroid();
 
-                    bool result = IsValid() != false && centroid.IsValid() != false;
+                    bool result =    IsValid()
+                                  && centroid.IsValid();
 
                     if (result != false) {
-                        // Counter clockwise
-
                         std::vector<float> angles_r, angles_l;
                         std::vector<Coordinate> poly_r, poly_l;
 
@@ -1766,7 +1795,7 @@ namespace Plugin {
                         bool left = true, right = true, top = true, bottom = true;
 
                         for (size_t i = 0, end = _poly.size(); i < end; i++) {
-                            Coordinate point = _poly[i];
+                            const Coordinate& point = _poly[i];
 
                             left &= point.X() <= centroid.X();
                             right &= point.X() >= centroid.X();
@@ -1818,17 +1847,21 @@ namespace Plugin {
 
                                 if (dy == 0) {
                                     // ill-defined because point coexists with origin
-                                    left = true, right = true, top = true, bottom = true;
+                                    left = true; right = true; top = true; bottom = true;
                                     break;
                                 }
                             }
                         }
 
-                        result = !(top && bottom && left && right);
+                        result = !(   top
+                                   && bottom
+                                   && left
+                                   && right
+                                  );
 
                         if (result != false) {
-                            for (size_t i = 0, size = angles_l.size(); i < (size - 1); i++) {
-                                for (size_t j = i + 1; j < size; j++) {
+                            for (size_t i = 0, count = angles_l.size(); i < (count - 1); i++) {
+                                for (size_t j = i + 1; j < count; j++) {
                                     if (angles_l[j] < angles_l[i]) {
                                         std::swap(angles_l[j], angles_l[i]);
                                         std::swap(poly_l[j], poly_l[i]);
@@ -1836,8 +1869,8 @@ namespace Plugin {
                                 }
                             }
 
-                            for (size_t i = 0, size = angles_r.size(); i < (size - 1); i++) {
-                                for (size_t j = i + 1; j < size ; j++) {
+                            for (size_t i = 0, count = angles_r.size(); i < (count - 1); i++) {
+                                for (size_t j = i + 1; j < count; j++) {
                                     if (angles_r[j] < angles_r[i]) {
                                         std::swap(angles_r[j], angles_r[i]);
                                         std::swap(poly_r[j], poly_r[i]);
@@ -1846,22 +1879,28 @@ namespace Plugin {
                             }
                         }
 
-                        result = result && (poly_l.size() + poly_r.size()) > 0;
+                        result =    result
+                                 && (poly_l.size() + poly_r.size()) > 0;
 
                         if (result != false){
                             for (size_t i = 0, end = poly_l.size(); i < end; i++) {
-                                const Coordinate point = poly_l[i];
-                                result = result && point.IsValid() && poly.Add(point);
+                                const Coordinate& point = poly_l[i];
+                                result =    result
+                                         && point.IsValid()
+                                         && poly.Add(point);
                             }
 
                             for (size_t i = 0, end = poly_r.size(); i < end; i++) {
-                                const Coordinate point = poly_r[i];
-                                result = result && point.IsValid() && poly.Add(point);
+                                const Coordinate& point = poly_r[i];
+                                result =    result
+                                         && point.IsValid()
+                                         && poly.Add(point);
                             }
                         }
                     }
 
-                    return result && poly.IsValid();
+                    return    result
+                           && poly.IsValid();
                 }
 
                 std::vector<Coordinate> _poly;
@@ -1906,10 +1945,10 @@ namespace Plugin {
             bool status =    gamut.Add(Coordinate{xyz.Rx, xyz.Ry})
                           && gamut.Add(Coordinate{xyz.Gx, xyz.Gy})
                           && gamut.Add(Coordinate{xyz.Bx, xyz.By})
-                          && gamut.IsValid() != false
-                          && white_gamut.IsValid() != false
-                          && gamut_ref.IsValid() != false
-                          && white_ref.IsValid() != false;
+                          && gamut.IsValid()
+                          && white_gamut.IsValid()
+                          && gamut_ref.IsValid()
+                          && white_ref.IsValid();
 
             // The white points relates to the spectral distribution and one can correct for color recorded under a different illuminant and hence the gamut changes under that transformation
             // Here, it is assumed the distance between gamut white points and reference P3D65 white points is negligible, hence, they represent the same illuminant
@@ -1928,12 +1967,21 @@ namespace Plugin {
                         if (gamut.Next(B) != false) {
                             Polygon lineA;
 
-                            if (lineA.Add(A) != false && lineA.Add(B) != false && gamut_ref.Next(C) != false) {
+                            if ((   lineA.Add(A)
+                                 && lineA.Add(B)
+                                 && gamut_ref.Next(C)
+                                ) != false
+                               )
+                            {
                                 for (size_t j = 0, end = gamut_ref.Count(); j < end; j++) {
                                     if (gamut_ref.Next(D) != false) {
                                         Polygon lineB;
 
-                                        if(lineB.Add(C) != false && lineB.Add(D) != false) {
+                                        if((   lineB.Add(C)
+                                            && lineB.Add(D)
+                                           ) != false
+                                          )
+                                        {
                                             const Coordinate coordinate(lineA.Intersection(lineB));
 
                                             if (coordinate.IsValid() != false) {
@@ -1957,20 +2005,26 @@ namespace Plugin {
                 for (size_t i = 0, end = gamut.Count(); i < end; i++) {
                     Coordinate A{-1, -1};
 
-                    if (  gamut.Next(A) != false
-                        && A.IsValid() != false
-                        && gamut_ref.Enclosed(A) != false) {
-                            polygon.Add(A);
+                    if ((   gamut.Next(A)
+                         && A.IsValid()
+                         && gamut_ref.Enclosed(A)
+                        ) != false
+                       )
+                    {
+                        polygon.Add(A);
                     }
                 }
 
                 for (size_t i = 0, end = gamut_ref.Count(); i < end; i++) {
                     Coordinate A{-1, -1};
 
-                    if (  gamut_ref.Next(A) != false
-                        && A.IsValid() != false
-                        && gamut.Enclosed(A) != false) {
-                            polygon.Add(A);
+                    if ((  gamut_ref.Next(A)
+                         && A.IsValid()
+                         && gamut.Enclosed(A)
+                       ) != false
+                      )
+                    {
+                        polygon.Add(A);
                     }
                 }
             }
@@ -1981,11 +2035,20 @@ namespace Plugin {
 
             uint8_t ratio = 0;
 
-            if (polygon.IsValid() != false && polygon.Count() > 2) {
+            if ((   polygon.IsValid()
+                 && polygon.Count() > 2
+                ) != false
+              )
+            {
+
                 float den = 0.0;
                 float num = 0.0;
 
-                if (gamut_ref.Area(den) != false && polygon.Area(num) != false) {
+                if ((   gamut_ref.Area(den)
+                     && polygon.Area(num)
+                   ) != false
+                  )
+                {
                     // Max is 100%
                     ratio = den > num ? static_cast<uint8_t> (num / den * 100) : 100;
                 }
