@@ -1409,308 +1409,467 @@ namespace Plugin {
             return static_cast<TCHAR>('A' + ((value - 1) & 0x1F));
         }
 
+        class Coordinate {
+            public:
+                Coordinate() = delete;
+
+                // White point
+                Coordinate(displayinfo_edid_color_space_t space) {
+                    switch (space) {
+                        case DISPLAYINFO_EDID_COLOR_SPACE_D65_P3 :
+                        case DISPLAYINFO_EDID_COLOR_SPACE_SRGB   :
+                                                                   _x = 0x140; _y = 0x151;
+                                                                   break;
+                        default                                  : _x = -1; _y = -1;
+                    }
+                }
+
+                Coordinate(int64_t x, int64_t y) : _x{x}, _y{y} {};
+
+                bool Equal(const Coordinate& rhs) const {
+                    return _x == rhs._x && _y == rhs._y;
+                }
+
+                bool IsValid() const {
+                    // EDID condition
+                    return _x > -1 && _y > -1;
+                }
+
+                const int64_t& X() const {
+                    return _x;
+                }
+
+                const int64_t& Y() const {
+                    return _y;
+                }
+
+            private:
+                int64_t _x;
+                int64_t _y;
+        };
+
+        class Polygon {
+            public:
+                // Empty
+                Polygon() {}
+
+                // Predefined (reference) gamut
+                Polygon(displayinfo_edid_color_space_t space) {
+                    switch (space) {
+                        case DISPLAYINFO_EDID_COLOR_SPACE_D65_P3 :
+                                                                    _poly = {Coordinate{0x2B8, 0x148}, Coordinate{0x10F, 0x2C3}, Coordinate{0x9A, 0x3D}};
+                                                                    break;
+                        case DISPLAYINFO_EDID_COLOR_SPACE_SRGB   :
+                                                                    _poly = {Coordinate{0x28F, 0x152}, Coordinate{0x133, 0x266}, Coordinate{0x9A, 0x3D}};
+                                                                    break;
+                        default                                  :;
+                    }
+                }
+
+                bool IsValid() const {
+                    bool result = _poly.size() > 2;
+
+                    for (size_t i = 0, end = _poly.size(); i < end; i++) {
+                        result = result && _poly[i].IsValid();
+                    }
+
+                    return result;
+                }
+
+                bool Add(const Coordinate& point) {
+                    bool result = point.IsValid();
+
+                    if (result != false) {
+                        _poly.push_back(point);
+                    }
+
+                    return result;
+                }
+
+                bool Next(Coordinate& point) {
+                    bool result = false;
+
+                    size_t count = _poly.size();
+
+                    if (count > 0 && _index < count) {
+                        point = _poly[_index];
+                        _index = (_index + 1) % count;
+                        result = true;
+                    }
+
+                    return result;
+                }
+
+                size_t Count() const {
+                    return _poly.size();
+                }
+
+                bool Area(float& sum) const {
+                    bool result = false;
+
+                    sum = 0.0;
+
+                    int64_t total = 0;
+
+                    Polygon poly;
+
+                    result =    IsValid() != false
+                             && SortCounterClockWise(poly) != false
+                             && poly.IsValid() != false
+                             && poly.Convex() != false;
+
+                    if (result != false) {
+                        Coordinate A{-1, -1}, B{-1, -1};
+
+                        result = result && poly.Next(A) != false;
+
+                        // http://www.mathwords.com/a/area_convex_polygon.htm
+                        for (size_t i = 1, end = poly.Count(); i <= end; i++) {
+                            result =    result
+                                     && A.IsValid() != false
+                                     && poly.Next(B) != false
+                                     && B.IsValid() != false;
+
+                            if (result != false) {
+                                total += (A.X() * B.Y()) - (B.X() * A.Y());
+                            }
+
+                            A = B;
+                        }
+
+                        sum = total / 2.0;
+                    }
+
+                    return result;
+                }
+
+                bool Enclosed(const Coordinate& point) const {
+                    bool result = IsValid() && point.IsValid();
+
+                    if (result != false) {
+                        // The total is the sum of the parts
+                        float total = 0, sum = 0;
+
+                        switch (_poly.size()) {
+                            case 0  :
+                            case 1  :
+                            case 2  :   break;
+                            case 3  :   {
+                                            float total = 0.0, sum = 0.0, delta = 0.0;
+
+                                            result = result && Area(total);
+
+                                            for (size_t i = 0, end = _poly.size(); i < end; i++) {
+                                                Polygon poly;
+
+                                                const Coordinate A = _poly[i % end];
+                                                const Coordinate B = _poly[(i+1) % end];
+
+                                                result =    result
+                                                         && poly.Add(point) != false
+                                                         && poly.Add(A) != false
+                                                         && poly.Add(B) != false
+                                                         && poly.IsValid() != false
+                                                         && poly.Area(delta) != false;
+
+                                                if (result != false) {
+                                                    sum += delta;
+                                                }
+                                            }
+
+                                            result =    result
+                                                     && static_cast<int64_t>(total) > 0
+                                                     && static_cast<int64_t>(total) == static_cast<int64_t>(sum);
+                                        }
+                                        break;
+                            default :   // Algorithm
+                                        ;
+                        }
+                    }
+
+                    return result;
+                }
+
+                bool Convex() const {
+                    bool result = IsValid();
+
+                    if (result != false) {
+                        switch (_poly.size()) {
+                            case 0  :
+                            case 1  :
+                            case 2  :   break;
+                            case 3  :   // A triangle is convex
+                                        result = true;
+                                        for (size_t i = 0; i < 2; i++) {
+                                            for (size_t j = i + 1; j < 3; j++) {
+                                                result = result && !_poly[i].Equal(_poly[j]);
+                                            }
+                                        }
+                                        break;
+                            default :   // Algorithm required
+                                        // For now default to false
+                                        ;
+                        }
+                    }
+
+                    return result;
+                }
+
+                Coordinate Centroid() const {
+                    uint64_t x = 0;
+                    uint64_t y = 0;
+
+                    if (IsValid() != false) {
+                        for (size_t i = 0, end = _poly.size(); i < end; i++) {
+                            Coordinate A = _poly[i];
+
+                            x += A.X();
+                            y += A.Y();
+                        }
+
+                        // Integer truncation
+                        x /= _poly.size();
+                        y /= _poly.size();
+                    }
+                    else {
+                        x = -1;
+                        y = -1;
+                    }
+
+                    return Coordinate(x, y);
+                }
+
+                Coordinate Intersection(const Polygon& poly) const {
+                    using Vector = const std::array<const Coordinate, 2>;
+
+                    Coordinate point = {-1, -1};
+
+// TODO: allow multipoint with Count > 2
+                    if (Count() == 2 && poly.Count() == 2) {
+                        const Vector CD{_poly[0], _poly[1]};
+                        const Vector EF{poly._poly[0], poly._poly[1]};
+
+                        // Invalid in a positive quadrant
+                        Coordinate coordinate[2] = { Coordinate{-1, -1}, Coordinate{-1, -1} };
+
+                        int64_t num_t = ((CD[0].X() - EF[0].X()) * (EF[0].Y() - EF[1].Y())) - ((EF[0].X() - EF[1].X()) * (CD[0].Y() - EF[0].Y()));
+                        int64_t num_t = ((CD[0].X() - EF[0].X()) * (EF[0].Y() - EF[1].Y())) - ((EF[0].X() - EF[1].X()) * (CD[0].Y() - EF[0].Y()));
+                        int64_t num_u = ((CD[0].X() - EF[0].X()) * (CD[0].Y() - CD[1].Y())) - ((CD[0].X() - CD[1].X()) * (CD[0].Y() - EF[0].Y()));
+                        int64_t den = ((CD[0].X() - CD[1].X()) * (EF[0].Y() - EF[1].Y())) - ((EF[0].X() - EF[1].X()) * (CD[0].Y() - CD[1].Y()));
+
+                        if (den == 0) {
+                        // parallel or coincident
+                        }
+                        else {
+                            // Within first line segment
+                            if (   (0 <= num_t && 0 <= den && num_t <= den)
+                                || (num_t <= 0 && den <= 0 && den <= num_t)) {
+
+                                float fraction = static_cast<float>(num_t) / static_cast<float>(den);
+
+                                float x = CD[0].X() + fraction * (CD[1].X() - CD[0].X());
+                                float y = CD[0].Y() + fraction * (CD[1].Y() - CD[0].Y());
+
+                                // Truncation 'rounds' towards (0, 0)
+
+                                // std::round includes unwanted 0.5 and -0.5
+
+                                int64_t ix = static_cast<int64_t>(x);
+                                int64_t iy = static_cast<int64_t>(y);
+
+                                if ((ix - x) < -0.5) {
+                                    ix++;
+                                }
+
+                                if ((ix - x) > 0.5) {
+                                    ix--;
+                                }
+
+                                if ((iy - y) < -0.5) {
+                                    iy++;
+                                }
+
+                                if ((iy - y) > 0.5) {
+                                    iy--;
+                                }
+
+                                coordinate [0] = Coordinate{ix, iy};
+                            }
+
+                            // Within second line segment
+                            if (   (0 <= num_u && 0 <= den && num_u <= den)
+                                || (num_u <= 0 && den <= 0 && den <= num_u)) {
+
+                                float fraction = static_cast<float>(num_u) / static_cast<float>(den);
+
+                                float x = EF[0].X() + fraction * (EF[1].X() - EF[0].X());
+                                float y = EF[0].Y() + fraction * (EF[1].Y() - EF[0].Y());
+
+                                // Truncation 'rounds' towards (0, 0)
+
+                                // std::round includes unwanted 0.5 and -0.5
+
+                                int64_t ix = static_cast<int64_t>(x);
+                                int64_t iy = static_cast<int64_t>(y);
+
+                                if ((ix - x) < -0.5) {
+                                    ix++;
+                                }
+
+                                if ((ix - x) > 0.5) {
+                                    ix--;
+                                }
+
+                                if ((iy - y) < -0.5) {
+                                    iy++;
+                                }
+
+                                if ((iy - y) > 0.5) {
+                                    iy--;
+                                }
+
+                                coordinate [1] = Coordinate{ix, iy};
+                            }
+                        }
+
+                        // A valid point falls on both line segments
+
+                        if ( coordinate[0].IsValid() != false && coordinate[1].IsValid() != false) {
+                            // 'Average out' differences
+
+                            coordinate[0] = Coordinate{(coordinate[0].X() + coordinate[1].X()) / 2, (coordinate[0].Y() + coordinate[1].Y()) / 2};
+                        }
+                        else {
+                            coordinate[0] = Coordinate{-1, -1};
+                        }
+
+                        point = coordinate[0];
+                    }
+
+                    return point;
+                }
+
+            private:
+
+                bool SortCounterClockWise(Polygon& poly) const {
+                    Coordinate centroid = Centroid();
+
+                    bool result = IsValid() != false && centroid.IsValid() != false;
+
+                    if (result != false) {
+                        // Counter clockwise
+
+                        std::vector<float> angles_r, angles_l;
+                        std::vector<Coordinate> poly_r, poly_l;
+
+                        // All left or all right, all top or all bottom
+                        bool left = true, right = true, top = true, bottom = true;
+
+                        for (size_t i = 0, end = _poly.size(); i < end; i++) {
+                            Coordinate point = _poly[i];
+
+                            left &= point.X() <= centroid.X();
+                            right &= point.X() >= centroid.X();
+                            top &= point.Y() >= centroid.Y();
+                            bottom &= point.Y() <= centroid.Y();
+
+                            int64_t dx = point.X() - centroid.X();
+                            int64_t dy = point.Y() - centroid.Y();
+
+                            if (dx != 0) {
+                                if (dx > 0) {
+                                    if (dy == 0) {
+                                        // positive horizontal axis
+                                        angles_r.push_back(0.0);
+                                    }
+                                    else {
+                                        // quadrant 1 or 4
+                                        angles_r.push_back(static_cast<float>(dy) / static_cast<float>(dx));
+                                    }
+
+                                    poly_r.push_back(point);
+                                }
+
+                                if (dx < 0) {
+                                    if (dy == 0) {
+                                        // negative horizontal axis
+                                        angles_l.push_back(0.0);
+                                    }
+                                    else {
+                                        // quadrant 2 or 3
+                                        angles_l.push_back(static_cast<float>(dy) / static_cast<float>(dx));
+                                    }
+
+                                    poly_l.push_back(point);
+                                }
+                            }
+                            else { // dx = 0
+                                if (dy > 0) {
+                                    // positive vertical axis
+                                    angles_r.push_back(std::numeric_limits<float>::max());
+                                    poly_r.push_back(point);
+                                }
+
+                                if (dy < 0) {
+                                    // negative vertical axis
+                                    angles_l.push_back(std::numeric_limits<float>::lowest());
+                                    poly_l.push_back(point);
+                                }
+
+                                if (dy == 0) {
+                                    // ill-defined because point coexists with origin
+                                    left = true, right = true, top = true, bottom = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        result = !(top && bottom && left && right);
+
+                        if (result != false) {
+                            for (size_t i = 0, size = angles_l.size(); i < (size - 1); i++) {
+                                for (size_t j = i + 1; j < size; j++) {
+                                    if (angles_l[j] < angles_l[i]) {
+                                        std::swap(angles_l[j], angles_l[i]);
+                                        std::swap(poly_l[j], poly_l[i]);
+                                    }
+                                }
+                            }
+
+                            for (size_t i = 0, size = angles_r.size(); i < (size - 1); i++) {
+                                for (size_t j = i + 1; j < size ; j++) {
+                                    if (angles_r[j] < angles_r[i]) {
+                                        std::swap(angles_r[j], angles_r[i]);
+                                        std::swap(poly_r[j], poly_r[i]);
+                                    }
+                                }
+                            }
+                        }
+
+                        result = result && (poly_l.size() + poly_r.size()) > 0;
+
+                        if (result != false){
+                            for (size_t i = 0, end = poly_l.size(); i < end; i++) {
+                                const Coordinate point = poly_l[i];
+                                result = result && point.IsValid() && poly.Add(point);
+                            }
+
+                            for (size_t i = 0, end = poly_r.size(); i < end; i++) {
+                                const Coordinate point = poly_r[i];
+                                result = result && point.IsValid() && poly.Add(point);
+                            }
+                        }
+                    }
+
+                    return result && poly.IsValid();
+                }
+
+                std::vector<Coordinate> _poly;
+                size_t _index = 0;
+        };
+
+
         uint8_t ColorSpaceGamutMatch(displayinfo_edid_color_space_t space) const {
-            // Rounding / truncation occurs
-            using coordinate_t = struct {int64_t x; int64_t y;};
-            using vector_t = struct {coordinate_t A; coordinate_t B;};
-            // Actually minimal 3 line segments forming a closed chain
-            using polygon_t = std::vector<coordinate_t>;
-
-            auto centroid =  [](polygon_t polygon) -> coordinate_t {
-                coordinate_t result = {0, 0};
-
-                for (auto it = polygon.begin(), end = polygon.end(); it != end; it++) {
-                    result.x += it->x;
-                    result.y += it->y;
-                }
-
-                if (polygon.size() > 1) {
-                    // Integer truncation
-                    result.x /= polygon.size();
-                    result.y /= polygon.size();
-                }
-                else {
-                    result = {-1, -1};
-                }
-
-                return result;
-            };
-
-            // Counter clockwise
-            auto sort = [](coordinate_t centroid, polygon_t & polygon) -> bool {
-                std::vector<float> angles_r, angles_l;
-                polygon_t poly_r, poly_l;
-
-                // All left or all right, all top or all bottom
-                bool left = true, right = true, top = true, bottom = true;
-
-                for (auto it = polygon.begin(); it != polygon.end(); it++) {
-                    left &= (*it).x <= centroid.x;
-                    right &= (*it).x >= centroid.x;
-                    top &= (*it).y >= centroid.y;
-                    bottom &= (*it).y <= centroid.y;
-
-                    int64_t dx = it->x - centroid.x;
-                    int64_t dy = it->y - centroid.y;
-
-                    if (dx != 0) {
-                        if (dx > 0) {
-                            if (dy == 0) {
-                                // positive horizontal axis
-                                angles_r.push_back(0.0);
-                            }
-                            else {
-                                // quadrant 1 or 4
-                                angles_r.push_back(static_cast<float>(dy) / static_cast<float>(dx));
-                            }
-
-                            poly_r.push_back(*it);
-                        }
-
-                        if (dx < 0) {
-                            if (dy == 0) {
-                                // negative horizontal axis
-                                angles_l.push_back(0.0);
-                            }
-                            else {
-                                // quadrant 2 or 3
-                                angles_l.push_back(static_cast<float>(dy) / static_cast<float>(dx));
-                            }
-
-                            poly_l.push_back(*it);
-                        }
-                    }
-                    else { // dx = 0
-                        if (dy > 0) {
-                            // positive vertical axis
-                            angles_r.push_back(std::numeric_limits<float>::max());
-                            poly_r.push_back(*it);
-                        }
-
-                        if (dy < 0) {
-                            // negative vertical axis
-                            angles_l.push_back(std::numeric_limits<float>::lowest());
-                            poly_l.push_back(*it);
-                        }
-
-                        if (dy == 0) {
-                            // ill-defined because point coexists with origin
-                            left = true, right = true, top = true, bottom = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (!(top && bottom && left && right) != true) {
-                    angles_r.clear();
-                    angles_l.clear();
-                    poly_l.clear();
-                    poly_r.clear();
-                }
-
-                for (size_t i = 0, size = angles_l.size(); i < (size - 1); i++) {
-                    for (size_t j = i + 1; j < size; j++) {
-                        if (angles_l[j] < angles_l[i]) {
-                            std::swap(angles_l[j], angles_l[i]);
-                            std::swap(poly_l[j], poly_l[i]);
-                        }
-                    }
-                }
-
-                for (size_t i = 0, size = angles_r.size(); i < (size - 1); i++) {
-                    for (size_t j = i + 1; j < size ; j++) {
-                        if (angles_r[j] < angles_r[i]) {
-                            std::swap(angles_r[j], angles_r[i]);
-                            std::swap(poly_r[j], poly_r[i]);
-                        }
-                    }
-                }
-
-                polygon.clear();
-
-                polygon.insert(polygon.begin(), poly_l.begin(), poly_l.end());
-                polygon.insert(polygon.begin(), poly_r.begin(), poly_r.end());
-
-                return polygon.size() > 0;
-            };
-
-// TODO: allow negative coordinates, although, EDID does specify positive values
-
-            // Assume coordinates of a color space are always in a positive quadrant
-            // https://en.wikipedia.org/wiki/Line–line_intersection#Given_two_points_on_each_line_segment
-            auto intersection = [](vector_t CD, vector_t EF) -> coordinate_t {
-                // Invalid in a positive quadrant
-                coordinate_t coordinate[2] = { {-1, -1}, {-1, -1} };
-
-                int64_t num_t = ((CD.A.x - EF.A.x) * (EF.A.y - EF.B.y)) - ((EF.A.x - EF.B.x) * (CD.A.y - EF.A.y));
-                int64_t num_u = ((CD.A.x - EF.A.x) * (CD.A.y - CD.B.y)) - ((CD.A.x - CD.B.x) * (CD.A.y - EF.A.y));
-                int64_t den = ((CD.A.x - CD.B.x) * (EF.A.y - EF.B.y)) - ((EF.A.x - EF.B.x) * (CD.A.y - CD.B.y));
-
-                if (den == 0) {
-                    // parallel or coincident
-                }
-                else {
-                    // Within first line segment
-                    if (   (0 <= num_t && 0 <= den && num_t <= den)
-                        || (num_t <= 0 && den <= 0 && den <= num_t)) {
-
-                        float fraction = static_cast<float>(num_t) / static_cast<float>(den);
-
-                        float x = CD.A.x + fraction * (CD.B.x - CD.A.x);
-                        float y = CD.A.y + fraction * (CD.B.y - CD.A.y);
-
-                        // Truncation 'rounds' towards (0, 0)
-
-                        // std::round includes unwanted 0.5 and -0.5
-
-                        int64_t ix = static_cast<int64_t>(x);
-                        int64_t iy = static_cast<int64_t>(y);
-
-                       if ((ix - x) < -0.5) {
-                            ix++;
-                        }
-
-                        if ((ix - x) > 0.5) {
-                            ix--;
-                        }
-
-                        if ((iy - y) < -0.5) {
-                            iy++;
-                        }
-
-                        if ((iy - y) > 0.5) {
-                            iy--;
-                        }
-
-                        coordinate [0] = {ix, iy};
-                    }
-
-                    // Within second line segment
-                    if (   (0 <= num_u && 0 <= den && num_u <= den)
-                        || (num_u <= 0 && den <= 0 && den <= num_u)) {
-
-                        float fraction = static_cast<float>(num_u) / static_cast<float>(den);
-
-                        float x = EF.A.x + fraction * (EF.B.x - EF.A.x);
-                        float y = EF.A.y + fraction * (EF.B.y - EF.A.y);
-
-                        // Truncation 'rounds' towards (0, 0)
-
-                        // std::round includes unwanted 0.5 and -0.5
-
-                        int64_t ix = static_cast<int64_t>(x);
-                        int64_t iy = static_cast<int64_t>(y);
-
-                        if ((ix - x) < -0.5) {
-                            ix++;
-                        }
-
-                        if ((ix - x) > 0.5) {
-                            ix--;
-                        }
-
-                        if ((iy - y) < -0.5) {
-                            iy++;
-                        }
-
-                        if ((iy - y) > 0.5) {
-                            iy--;
-                        }
-
-                        coordinate [1] = {ix, iy};
-                    }
-                }
-
-                // A valid point falls on both line segments
-
-                if (   coordinate[0].x != -1 && coordinate[0].y != -1
-                    && coordinate[1].x != -1 && coordinate[1].y != -1) {
-
-                    // 'Average out' differences
-
-                    coordinate[0] = {(coordinate[0].x + coordinate[1].x) / 2, (coordinate[0].y + coordinate[1].y) / 2};
-                }
-                else {
-                    coordinate[0] = {-1, -1};
-                }
-
-                return coordinate[0];
-            };
-
-            auto convex = [&](const polygon_t & polygon) -> bool {
-                bool result = false;
-
-                switch (polygon.size()) {
-                    case 0  :
-                    case 1  :
-                    case 2  :   break;
-                    case 3  :   // A triangle is convex
-                                result = true;
-                                for (size_t i = 0; i < 2; i++) {
-                                    for (size_t j = i + 1; j < 3; j++) {
-                                        result = result && !(polygon[i].x == polygon[j].x && polygon[i].y == polygon[j].y);
-                                    }
-                                }
-                                break;
-                    default :   // Algorithm required
-                                // For now default to false
-                                ;
-                }
-
-                return result;
-            };
-
-            // Convex shape
-            // http://www.mathwords.com/a/area_convex_polygon.htm
-            auto area = [&](const polygon_t & polygon) -> float {
-                int64_t sum = 0;
-
-                polygon_t poly = polygon;
-
-                if (poly.size() > 2) {
-                    if (sort(centroid(poly), poly) != false) {
-                        poly.push_back(*poly.begin());
-
-                        for (size_t i = 1, end = poly.size(); i < end; i++) {
-                            sum += (poly[i-1].x * poly[i].y) - (poly[i].x * poly[i-1].y);
-                        }
-                    }
-                }
-
-                return sum / 2.0;
-            };
-
-            auto enclosed = [&](const coordinate_t coordinate, const polygon_t & polygon) -> bool {
-                bool result = false;
-
-                // The total is the sum of the parts
-                float total = 0, sum = 0;
-
-                switch (polygon.size()) {
-                    case 0  :
-                    case 1  :
-                    case 2  :   break;
-                    case 3  :   {
-                                    float total = area(polygon);
-                                    float sum = 0;
-
-                                    polygon_t poly = polygon;
-                                    poly.push_back(*poly.begin());
-
-                                    for (size_t i = 1, end = poly.size(); i < end; i++) {
-                                        sum += area({coordinate, poly[i-1], poly[i]});
-                                    }
-
-                                    result = static_cast<int64_t>(total) == static_cast<int64_t>(sum);
-                                }
-                                break;
-                    default :   // Algorithm
-                                ;
-                }
-
-               return result;
-            };
-
             /*
                 https://en.wikipedia.org/wiki/Rec._2020
                 https://en.wikipedia.org/wiki/DCI-P3
@@ -1734,98 +1893,85 @@ namespace Plugin {
                 sRGB/ITU-R BT.709       0x140  0x151          0x28F  0x152  0x133  0x266  0x9A  0x3D
             */
 
-
-            // Color space reference gamut
-            auto triangle = [](displayinfo_edid_color_space_t space, bool& result) -> polygon_t {
-                result = false;
-
-                polygon_t gamut;
-
-                switch (space) {
-                    case DISPLAYINFO_EDID_COLOR_SPACE_D65_P3 :
-                                                                gamut = {coordinate_t{0x2B8, 0x148}, coordinate_t{0x10F, 0x2C3}, coordinate_t{0x9A, 0x3D}};
-                                                                result = true;
-                                                                break;
-                    case DISPLAYINFO_EDID_COLOR_SPACE_SRGB   :
-                                                                gamut = {coordinate_t{0x28F, 0x152}, coordinate_t{0x133, 0x266}, coordinate_t{0x9A, 0x3D}};
-                                                                result = true;
-                                                                break;
-                    default                                  :;
-                }
-
-                return gamut;
-            };
-
-            // Color space reference white point
-            auto white = [](displayinfo_edid_color_space_t space, bool& result) -> coordinate_t {
-                result = false;
-
-                coordinate_t white;
-
-                switch (space) {
-                    case DISPLAYINFO_EDID_COLOR_SPACE_D65_P3 :
-                    case DISPLAYINFO_EDID_COLOR_SPACE_SRGB   :
-                                                                white = coordinate_t{0x140, 0x151};
-                                                                result = true;
-                                                                break;
-                    default                                  :;
-                }
-
-                return white;
-            };
-
             displayinfo_edid_rgb_colorspace_coordinates xyz = ColorspaceRGBCoordinates();
 
             // Display color space trianglei and white point
-            const polygon_t gamut = {coordinate_t{xyz.Rx, xyz.Ry}, coordinate_t{xyz.Gx, xyz.Gy}, coordinate_t{xyz.Bx, xyz.By}};
-            const coordinate_t white_gamut = coordinate_t{xyz.Wx, xyz.Wy};
+            Polygon gamut;
+            const Coordinate white_gamut(xyz.Wx, xyz.Wy);
 
             // Reference color space triagle and white point
-            bool populated[2] = {false, false};
-            const polygon_t gamut_ref = triangle(space, populated[0]);
-            const coordinate_t white_ref = white(space, populated[1]);
+            Polygon gamut_ref(space);
+            const Coordinate white_ref(space);
+
+            bool status =    gamut.Add(Coordinate{xyz.Rx, xyz.Ry})
+                          && gamut.Add(Coordinate{xyz.Gx, xyz.Gy})
+                          && gamut.Add(Coordinate{xyz.Bx, xyz.By})
+                          && gamut.IsValid() != false
+                          && white_gamut.IsValid() != false
+                          && gamut_ref.IsValid() != false
+                          && white_ref.IsValid() != false;
 
             // The white points relates to the spectral distribution and one can correct for color recorded under a different illuminant and hence the gamut changes under that transformation
             // Here, it is assumed the distance between gamut white points and reference P3D65 white points is negligible, hence, they represent the same illuminant
+            // No guarantuee the white point is enclosed
 
 // TODO: transformation / correction
 
-            // A known convex shape, with the white point enclosed
-            bool result = populated[0] && populated[1] && convex(gamut_ref);
-
-            // No guarantuee the white point is enclosed
-            /* bool */ result = result && convex(gamut);
-
             // Determine intersections
-            polygon_t polygon;
+            Polygon polygon;
 
-            for (size_t i = 0, end = gamut.size(); i < end; i++) {
-                for (size_t j = 0, end = gamut_ref.size(); j < end; j++) {
-                    const vector_t lineA = {gamut[i], (i+1) < end ? gamut[i+1] : gamut[0]};
-                    const vector_t lineB = {gamut_ref[j], (j+1) < end ? gamut_ref[j+1] : gamut_ref[0] };
+            if (status != false) {
+                Coordinate A{-1, -1}, B{-1, -1}, C{-1, -1}, D{-1, -1};
 
-                    // Intersecting point of two line segments
-                    coordinate_t coordinate = intersection(lineA, lineB);
+                if (gamut.Next(A) != false) {
+                    for (size_t i = 0, end = gamut.Count(); i < end; i++) {
+                        if (gamut.Next(B) != false) {
+                            Polygon lineA;
 
-                    // Color space are positive coordinates only
-                    if (coordinate.x != -1 && coordinate.y != -1) {
-                        polygon.push_back(coordinate);
+                            if (lineA.Add(A) != false && lineA.Add(B) != false && gamut_ref.Next(C) != false) {
+                                for (size_t j = 0, end = gamut_ref.Count(); j < end; j++) {
+                                    if (gamut_ref.Next(D) != false) {
+                                        Polygon lineB;
+
+                                        if(lineB.Add(C) != false && lineB.Add(D) != false) {
+                                            const Coordinate coordinate(lineA.Intersection(lineB));
+
+                                            if (coordinate.IsValid() != false) {
+                                                polygon.Add(coordinate);
+                                            }
+                                        }
+                                    }
+
+                                    C = D;
+                                }
+                            }
+
+                            A = B;
+                        }
                     }
                 }
-            }
 
-            // Add points to complete the shape
-            // Non-intersecting points that are enclosed by either gamut
+                // Add points to complete the shape
+                // Non-intersecting points that are enclosed by either gamut
 
-            for (auto it_gamut = gamut.begin(); it_gamut != gamut.end(); it_gamut++) {
-                if (enclosed(*it_gamut, gamut_ref) != false) {
-                    polygon.push_back(*it_gamut);
+                for (size_t i = 0, end = gamut.Count(); i < end; i++) {
+                    Coordinate A{-1, -1};
+
+                    if (  gamut.Next(A) != false
+                        && A.IsValid() != false
+                        && gamut_ref.Enclosed(A) != false) {
+                            polygon.Add(A);
+                    }
                 }
-            }
 
-            for (auto it_gamut_ref = gamut_ref.begin(); it_gamut_ref != gamut_ref.end(); it_gamut_ref++) {
-                if (enclosed(*it_gamut_ref, gamut) != false) {
-                    polygon.push_back(*it_gamut_ref);
+                for (size_t i = 0, end = gamut_ref.Count(); i < end; i++) {
+                    Coordinate A{-1, -1};
+
+                    if (  gamut_ref.Next(A) != false
+                        && A.IsValid() != false
+                        && gamut.Enclosed(A) != false) {
+                            polygon.Add(A);
+                    }
                 }
             }
 
@@ -1835,15 +1981,18 @@ namespace Plugin {
 
             uint8_t ratio = 0;
 
-            if (polygon.size() > 2) {
-                float den = area(gamut_ref);
-                float num = area(polygon);
+            if (polygon.IsValid() != false && polygon.Count() > 2) {
+                float den = 0.0;
+                float num = 0.0;
 
-                // Max is 100%
-                ratio = den > num ? static_cast<uint8_t> (num / den * 100) : 100;
+                if (gamut_ref.Area(den) != false && polygon.Area(num) != false) {
+                    // Max is 100%
+                    ratio = den > num ? static_cast<uint8_t> (num / den * 100) : 100;
+                }
             }
 
             return ratio;
+
         }
 
     private:
