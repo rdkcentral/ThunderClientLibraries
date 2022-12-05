@@ -1655,128 +1655,177 @@ namespace Plugin {
                     return Coordinate{x, y};
                 }
 
-                Coordinate Intersection(const Polygon& poly) const {
-                    using Vector = const std::array<const Coordinate, 2>;
+                Polygon Intersection(const Polygon& poly) const {
+                    auto LineIntersection = [](const Polygon& polyL, const Polygon& polyR) -> Coordinate {
+                        Coordinate point = {-1, -1};
 
-                    Coordinate point = {-1, -1};
+                        if ((   polyL.Count() == 2
+                             && polyR.Count() == 2
+                            ) != false
+                           )
+                        {
+                            const Coordinate &C = polyL._poly[0], &D = polyL._poly[1], &E = polyR._poly[0], &F = polyR._poly[1];;
 
-// TODO: allow multipoint with Count > 2
-                    if (Count() == 2 && poly.Count() == 2) {
-                        const Vector CD{_poly[0], _poly[1]};
-                        const Vector EF{poly._poly[0], poly._poly[1]};
+                            // Invalid in a positive quadrant
+                            Coordinate coordinate[2] = { Coordinate{-1, -1}, Coordinate{-1, -1} };
 
-                        // Invalid in a positive quadrant
-                        Coordinate coordinate[2] = { Coordinate{-1, -1}, Coordinate{-1, -1} };
+                            int64_t num_t = ((C.X() - E.X()) * (E.Y() - F.Y())) - ((E.X() - F.X()) * (C.Y() - E.Y()));
+                            int64_t num_u = ((C.X() - E.X()) * (C.Y() - D.Y())) - ((C.X() - D.X()) * (C.Y() - E.Y()));
+                            int64_t den = ((C.X() - D.X()) * (E.Y() - F.Y())) - ((E.X() - F.X()) * (C.Y() - D.Y()));
 
-                        int64_t num_t = ((CD[0].X() - EF[0].X()) * (EF[0].Y() - EF[1].Y())) - ((EF[0].X() - EF[1].X()) * (CD[0].Y() - EF[0].Y()));
-                        int64_t num_u = ((CD[0].X() - EF[0].X()) * (CD[0].Y() - CD[1].Y())) - ((CD[0].X() - CD[1].X()) * (CD[0].Y() - EF[0].Y()));
-                        int64_t den = ((CD[0].X() - CD[1].X()) * (EF[0].Y() - EF[1].Y())) - ((EF[0].X() - EF[1].X()) * (CD[0].Y() - CD[1].Y()));
+                            if (den == 0) {
+                                // parallel or coincident
+                            }
+                            else {
+                                // Within first line segment
+                                if (   (  0 <= num_t
+                                        && 0 <= den
+                                        && num_t <= den
+                                       ) != false
+                                    || (   num_t <= 0
+                                        && den <= 0
+                                        && den <= num_t
+                                       ) != false
+                                   )
+                                {
+                                    float fraction = static_cast<float>(num_t) / static_cast<float>(den);
 
-                        if (den == 0) {
-                            // parallel or coincident
-                        }
-                        else {
-                            // Within first line segment
-                            if (   (  0 <= num_t
-                                    && 0 <= den
-                                    && num_t <= den
-                                   ) != false
-                                || (   num_t <= 0
-                                    && den <= 0
-                                    && den <= num_t
-                                   ) != false
-                               )
-                            {
-                                float fraction = static_cast<float>(num_t) / static_cast<float>(den);
+                                    float x = C.X() + fraction * (D.X() - C.X());
+                                    float y = C.Y() + fraction * (D.Y() - C.Y());
 
-                                float x = CD[0].X() + fraction * (CD[1].X() - CD[0].X());
-                                float y = CD[0].Y() + fraction * (CD[1].Y() - CD[0].Y());
+                                    // Truncation 'rounds' towards (0, 0)
 
-                                // Truncation 'rounds' towards (0, 0)
+                                    // std::round includes unwanted 0.5 and -0.5
 
-                                // std::round includes unwanted 0.5 and -0.5
+                                    int64_t ix = static_cast<int64_t>(x);
+                                    int64_t iy = static_cast<int64_t>(y);
 
-                                int64_t ix = static_cast<int64_t>(x);
-                                int64_t iy = static_cast<int64_t>(y);
+                                    if ((ix - x) < -0.5) {
+                                        ix++;
+                                    }
 
-                                if ((ix - x) < -0.5) {
-                                    ix++;
+                                    if ((ix - x) > 0.5) {
+                                        ix--;
+                                    }
+
+                                    if ((iy - y) < -0.5) {
+                                        iy++;
+                                    }
+
+                                    if ((iy - y) > 0.5) {
+                                        iy--;
+                                    }
+
+                                    coordinate [0] = Coordinate{ix, iy};
                                 }
 
-                                if ((ix - x) > 0.5) {
-                                    ix--;
-                                }
+                                // Within second line segment
+                                if (   (   0 <= num_u
+                                        && 0 <= den
+                                        && num_u <= den
+                                       ) != false
+                                    || (   num_u <= 0
+                                        && den <= 0
+                                        && den <= num_u
+                                       ) != false
+                                   )
+                                {
 
-                                if ((iy - y) < -0.5) {
-                                    iy++;
-                                }
+                                    float fraction = static_cast<float>(num_u) / static_cast<float>(den);
 
-                                if ((iy - y) > 0.5) {
-                                    iy--;
-                                }
+                                    float x = E.X() + fraction * (F.X() - E.X());
+                                    float y = E.Y() + fraction * (F.Y() - E.Y());
 
-                                coordinate [0] = Coordinate{ix, iy};
+                                    // Truncation 'rounds' towards (0, 0)
+
+                                    // std::round includes unwanted 0.5 and -0.5
+
+                                    int64_t ix = static_cast<int64_t>(x);
+                                    int64_t iy = static_cast<int64_t>(y);
+
+                                    if ((ix - x) < -0.5) {
+                                        ix++;
+                                    }
+
+                                    if ((ix - x) > 0.5) {
+                                        ix--;
+                                    }
+
+                                    if ((iy - y) < -0.5) {
+                                        iy++;
+                                    }
+
+                                    if ((iy - y) > 0.5) {
+                                        iy--;
+                                    }
+
+                                    coordinate [1] = Coordinate{ix, iy};
+                                }
                             }
 
-                            // Within second line segment
-                            if (   (   0 <= num_u
-                                    && 0 <= den
-                                    && num_u <= den
-                                   ) != false
-                                || (   num_u <= 0
-                                    && den <= 0
-                                    && den <= num_u
-                                   ) != false
+                            // A valid point falls on both line segments
+
+                            if ((   coordinate[0].IsValid()
+                                 && coordinate[1].IsValid()
+                                ) != false
                                )
                             {
-
-                                float fraction = static_cast<float>(num_u) / static_cast<float>(den);
-
-                                float x = EF[0].X() + fraction * (EF[1].X() - EF[0].X());
-                                float y = EF[0].Y() + fraction * (EF[1].Y() - EF[0].Y());
-
-                                // Truncation 'rounds' towards (0, 0)
-
-                                // std::round includes unwanted 0.5 and -0.5
-
-                                int64_t ix = static_cast<int64_t>(x);
-                                int64_t iy = static_cast<int64_t>(y);
-
-                                if ((ix - x) < -0.5) {
-                                    ix++;
-                                }
-
-                                if ((ix - x) > 0.5) {
-                                    ix--;
-                                }
-
-                                if ((iy - y) < -0.5) {
-                                    iy++;
-                                }
-
-                                if ((iy - y) > 0.5) {
-                                    iy--;
-                                }
-
-                                coordinate [1] = Coordinate{ix, iy};
+                                // 'Average out' differences
+                                point = Coordinate{(coordinate[0].X() + coordinate[1].X()) / 2, (coordinate[0].Y() + coordinate[1].Y()) / 2};
                             }
                         }
 
-                        // A valid point falls on both line segments
+                        return point;
+                    };
 
-                        if ((coordinate[0].IsValid() && coordinate[1].IsValid()) != false) {
-                            // 'Average out' differences
 
-                            coordinate[0] = Coordinate{(coordinate[0].X() + coordinate[1].X()) / 2, (coordinate[0].Y() + coordinate[1].Y()) / 2};
+                    Polygon points, polyAB = *this, polyCD = poly;
+
+                    Coordinate A{-1, -1}, B{-1, -1}, C{-1, -1}, D{-1, -1};
+
+                    if ((   polyAB.IsValid()
+                         && polyCD.IsValid()
+                         && polyAB.Next(A)
+                        ) != false
+                       )
+                    {
+                        for (size_t i = 0, end = polyAB.Count(); i < end; i++) {
+                            if (polyAB.Next(B) != false) {
+                                Polygon lineA;
+
+                                if ((   lineA.Add(A)
+                                     && lineA.Add(B)
+                                     && polyCD.Next(C)
+                                    ) != false
+                                   )
+                                {
+                                    for (size_t j = 0, end = polyCD.Count(); j < end; j++) {
+                                        if (polyCD.Next(D) != false) {
+                                            Polygon lineB;
+
+                                            if((   lineB.Add(C)
+                                                && lineB.Add(D)
+                                               ) != false
+                                              )
+                                            {
+                                                const Coordinate coordinate(LineIntersection(lineA, lineB));
+
+                                                if (coordinate.IsValid() != false) {
+                                                    points.Add(coordinate);
+                                                }
+                                            }
+                                        }
+
+                                        C = D;
+                                    }
+                                }
+
+                                A = B;
+                            }
                         }
-                        else {
-                            coordinate[0] = Coordinate{-1, -1};
-                        }
-
-                        point = coordinate[0];
                     }
 
-                    return point;
+                    return points;
                 }
 
             private:
@@ -1960,44 +2009,7 @@ namespace Plugin {
             Polygon polygon;
 
             if (status != false) {
-                Coordinate A{-1, -1}, B{-1, -1}, C{-1, -1}, D{-1, -1};
-
-                if (gamut.Next(A) != false) {
-                    for (size_t i = 0, end = gamut.Count(); i < end; i++) {
-                        if (gamut.Next(B) != false) {
-                            Polygon lineA;
-
-                            if ((   lineA.Add(A)
-                                 && lineA.Add(B)
-                                 && gamut_ref.Next(C)
-                                ) != false
-                               )
-                            {
-                                for (size_t j = 0, end = gamut_ref.Count(); j < end; j++) {
-                                    if (gamut_ref.Next(D) != false) {
-                                        Polygon lineB;
-
-                                        if((   lineB.Add(C)
-                                            && lineB.Add(D)
-                                           ) != false
-                                          )
-                                        {
-                                            const Coordinate coordinate(lineA.Intersection(lineB));
-
-                                            if (coordinate.IsValid() != false) {
-                                                polygon.Add(coordinate);
-                                            }
-                                        }
-                                    }
-
-                                    C = D;
-                                }
-                            }
-
-                            A = B;
-                        }
-                    }
-                }
+                polygon = gamut.Intersection(gamut_ref);
 
                 // Add points to complete the shape
                 // Non-intersecting points that are enclosed by either gamut
