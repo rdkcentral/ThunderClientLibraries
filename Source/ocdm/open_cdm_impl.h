@@ -47,12 +47,6 @@ struct OpenCDMSystem {
 };
 
 struct OpenCDMAccessor : public Exchange::IAccessorOCDM {
-
-private:
-    OpenCDMAccessor() = delete;
-    OpenCDMAccessor(const OpenCDMAccessor&) = delete;
-    OpenCDMAccessor& operator=(const OpenCDMAccessor&) = delete;
-
 private:
     typedef std::map<string, OpenCDMSession*> KeyMap;
 
@@ -94,16 +88,11 @@ protected:
     }
 
 public:
-    static OpenCDMAccessor* Instance()
-    {
-        string connector;
-        if ((Core::SystemInfo::GetEnvironment(_T("OPEN_CDM_SERVER"), connector) == false) || (connector.empty() == true)) {
-            connector = _T("/tmp/ocdm");
-        }
-        static OpenCDMAccessor& result = Core::SingletonType<OpenCDMAccessor>::Instance(connector.c_str());
-        result.Reconnect();
-        return &result;
-    }
+    OpenCDMAccessor() : _signal(false, true) { ASSERT(false); }
+    OpenCDMAccessor(const OpenCDMAccessor&) = delete;
+    OpenCDMAccessor& operator=(const OpenCDMAccessor&) = delete;
+
+    static OpenCDMAccessor* Instance();
 
     ~OpenCDMAccessor()
     {

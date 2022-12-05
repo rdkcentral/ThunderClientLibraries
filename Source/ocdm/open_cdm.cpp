@@ -57,6 +57,37 @@ OpenCDMError StringToAllocatedBuffer(const std::string& source, char* destinatio
 
 } // namespace
 
+/* static */ OpenCDMAccessor* OpenCDMAccessor::Instance()
+{
+    static class TheOne {
+    public:
+        TheOne(const TheOne&) = delete;
+        TheOne& operator= (const TheOne&) = delete;
+
+        TheOne() {
+            string connector;
+            if ((Core::SystemInfo::GetEnvironment(_T("OPEN_CDM_SERVER"), connector) == false) || (connector.empty() == true)) {
+                connector = _T("/tmp/ocdm");
+            }
+            Core::SingletonType<OpenCDMAccessor>::Create(connector.c_str());
+        }
+        ~TheOne() {
+            Core::SingletonType<OpenCDMAccessor>::Dispose();
+        }
+
+    public:
+        OpenCDMAccessor& Instance() {
+            return (Core::SingletonType<OpenCDMAccessor>::Instance());
+        }
+
+    } singleton;
+
+    OpenCDMAccessor& result = singleton.Instance();
+    result.Reconnect();
+    return &result;
+}
+
+
 KeyStatus CDMState(const Exchange::ISession::KeyStatus state)
 {
 
