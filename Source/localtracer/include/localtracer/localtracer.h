@@ -98,15 +98,15 @@ namespace Messaging {
 
             if (singleton == nullptr) {
 
-                char path[25];
-                strcpy(path, "/tmp/localTracer.XXXXXX");
-                mktemp(path);
+                char dir[] = "/tmp/localTracer.XXXXXX";
 
-                Core::Directory(path).CreatePath();
+                string Path(::mkdtemp(dir));
 
-                Messaging::MessageUnit::Instance().Open(path, 0, "", false, Messaging::MessageUnit::FLUSH);
+                Core::Directory(Path.c_str()).CreatePath();
 
-                singleton = new LocalTracer(path);
+                Messaging::MessageUnit::Instance().Open(Path, 0, "", false, Messaging::MessageUnit::FLUSH);
+
+                singleton = new LocalTracer(Path);
             }
 
             LockSingleton(false);
@@ -230,7 +230,7 @@ namespace Messaging {
             IosFlagSaver saveUs(std::cout);
 
             std::ostringstream output;
-            
+
             output.str("");
             output.clear();
 
