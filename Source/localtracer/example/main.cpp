@@ -12,6 +12,30 @@ using namespace WPEFramework;
 
 constexpr char module[] = "LocalTraceTest";
 
+namespace {
+class SleepObject {
+public:
+    SleepObject(const SleepObject&) = delete;
+    SleepObject& operator=(const SleepObject&) = delete;
+
+    SleepObject()
+    {
+        TRACE(Trace::Error, ("Constructing %s.... ", __FUNCTION__));
+    }
+
+    ~SleepObject()
+    {
+        TRACE(Trace::Error, ("Destructing %s.... ", __FUNCTION__));
+    }
+
+    void Sleep(uint8_t time)
+    {
+        TRACE(Trace::Information, ("Sleep for %ds ", time));
+        sleep(time);
+        TRACE(Trace::Information, ("Hello again!"));
+    }
+};
+}
 int main(int /*argc*/, const char* argv[])
 {
     Messaging::LocalTracer& tracer = Messaging::LocalTracer::Open();
@@ -24,11 +48,14 @@ int main(int /*argc*/, const char* argv[])
         tracer.EnableMessage(module, "Error", true);
         tracer.EnableMessage(module, "Information", true);
 
-        TRACE(Trace::Information, ("%s - build: %s", executableName, __TIMESTAMP__));
+        TRACE_GLOBAL(Trace::Information, ("%s - build: %s", executableName, __TIMESTAMP__));
 
-        sleep(5);
+        {
+            SleepObject object;
+            object.Sleep(5);
+        }
 
-        TRACE(Trace::Error, ("Exiting.... "));
+        TRACE_GLOBAL(Trace::Error, ("Exiting.... "));
     }
 
     tracer.Close();

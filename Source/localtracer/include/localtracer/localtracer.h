@@ -11,23 +11,27 @@ namespace Messaging {
     class EXTERNAL LocalTracer {
     public:
         struct EXTERNAL ICallback {
-            virtual void Output(const Core::Messaging::Information& info, const Core::Messaging::IEvent* message) = 0;
+            virtual void Output(const Core::Messaging::IStore::Information& info, const Core::Messaging::IEvent* message) = 0;
         };
 
     private:
-        std::string DispatcherIdentifier()
-        {
-            string result;
-            Core::SystemInfo::GetEnvironment(Core::Messaging::MessageUnit::MESSAGE_DISPACTHER_IDENTIFIER_ENV, result);
-            return result;
-        }
+        class MessageSettings : public Messaging::MessageUnit::Settings {
+        private:
+            MessageSettings()
+            {
+                Messaging::MessageUnit::Settings::Load();
+            };
 
-        std::string DispatcherBasePath()
-        {
-            string result;
-            Core::SystemInfo::GetEnvironment(Core::Messaging::MessageUnit::MESSAGE_DISPATCHER_PATH_ENV, result);
-            return result;
-        }
+        public:
+            MessageSettings(const MessageSettings&) = delete;
+            MessageSettings& operator=(const MessageSettings&) = delete;
+
+            static MessageSettings& Instance()
+            {
+                static MessageSettings singleton;
+                return (singleton);
+            }
+        };
 
     private:
         class WorkerThread : private Core::Thread {
@@ -73,7 +77,7 @@ namespace Messaging {
 
         void Close()
         {
-            Core::Messaging::MessageUnit::Instance().Close();
+            Messaging::MessageUnit::Instance().Close();
 
             Core::Directory(_path.c_str()).Destroy();
 
@@ -94,16 +98,15 @@ namespace Messaging {
 
             if (singleton == nullptr) {
 
-                char path[25];
-                strcpy(path, "/tmp/localtracer.XXXXXX");
-                mktemp(path);
+                char dir[] = "/tmp/localTracer.XXXXXX";
 
-                Core::Directory(path).CreatePath();
+                string Path(::mkdtemp(dir));
 
-                Core::Messaging::MessageUnit::Instance().IsBackground(false);
-                Core::Messaging::MessageUnit::Instance().Open(path);
+                Core::Directory(Path.c_str()).CreatePath();
 
-                singleton = new LocalTracer(path);
+                Messaging::MessageUnit::Instance().Open(Path, 0, "", false, Messaging::MessageUnit::FLUSH);
+
+                singleton = new LocalTracer(Path);
             }
 
             LockSingleton(false);
@@ -127,12 +130,12 @@ namespace Messaging {
             : _adminLock()
             , _path(path)
             , _worker(*this)
-            , _client(DispatcherIdentifier(), DispatcherBasePath())
+            , _client(MessageSettings::Instance().Identifier(), MessageSettings::Instance().BasePath(), MessageSettings::Instance().SocketPort())
             , _factory()
             , _callback(nullptr)
         {
             _client.AddInstance(0);
-            _client.AddFactory(Core::Messaging::MetaData::MessageType::TRACING, &_factory);
+            _client.AddFactory(Core::Messaging::Metadata::type::TRACING, &_factory);
 
             _worker.Start();
 
@@ -145,7 +148,7 @@ namespace Messaging {
         {
             Core::SafeSyncType<Core::CriticalSection> scopedLock(_adminLock);
 
-            Core::Messaging::MetaData metaData(Core::Messaging::MetaData::MessageType::TRACING, categoryName, moduleName);
+            Core::Messaging::Metadata metaData(Core::Messaging::Metadata::type::TRACING, categoryName, moduleName);
 
             _client.Enable(metaData, enable);
 
@@ -155,7 +158,7 @@ namespace Messaging {
         void Dispatch()
         {
             _client.WaitForUpdates(Core::infinite);
-            _client.PopMessagesAndCall([this](const Core::Messaging::Information& info, const Core::ProxyType<Core::Messaging::IEvent>& message) {
+            _client.PopMessagesAndCall([this](const Core::Messaging::IStore::Information& info, const Core::ProxyType<Core::Messaging::IEvent>& message) {
                 Output(info, message.Origin());
             });
         }
@@ -170,7 +173,7 @@ namespace Messaging {
         }
 
     private:
-        void Output(const Core::Messaging::Information& info, const Core::Messaging::IEvent* message)
+        void Output(const Core::Messaging::IStore::Information& info, const Core::Messaging::IEvent* message)
         {
             Core::SafeSyncType<Core::CriticalSection> scopedLock(_adminLock);
 
@@ -222,30 +225,27 @@ namespace Messaging {
         }
         virtual ~ConsolePrinter() = default;
 
-        void Output(const Core::Messaging::Information& info, const Core::Messaging::IEvent* message) override
+        void Output(const Core::Messaging::IStore::Information& info, const Core::Messaging::IEvent* message) override
         {
             IosFlagSaver saveUs(std::cout);
 
             std::ostringstream output;
-            std::string deserializedMessage;
 
             output.str("");
             output.clear();
-
-            message->ToString(deserializedMessage);
 
             Core::Time now(info.TimeStamp());
 
             if (_abbreviated == true) {
                 std::string time(now.ToTimeOnly(true));
                 output << '[' << time.c_str() << ']'
-                       << '[' << info.MessageMetaData().Module() << "]"
-                       << '[' << info.MessageMetaData().Category() << "]: "
-                       << deserializedMessage << std::endl;
+                       << '[' << info.Module() << "]"
+                       << '[' << info.Category() << "]: "
+                       << message->Data().c_str() << std::endl;
             } else {
                 std::string time(now.ToRFC1123(true));
                 output << '[' << time.c_str() << "]:[" << Core::FileNameOnly(info.FileName().c_str()) << ':' << info.LineNumber() << "] "
-                       << info.MessageMetaData().Category() << ": " << deserializedMessage << std::endl;
+                       << info.Category() << ": " << message->Data().c_str() << std::endl;
             }
 
             std::cout << output.str() << std::flush;
