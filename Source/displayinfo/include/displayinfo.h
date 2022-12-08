@@ -104,7 +104,6 @@ typedef enum displayinfo_edid_hdr_licensor {
 
 typedef uint8_t displayinfo_edid_hdr_licensor_map_t;
 
-// TODO: combine subsets
 typedef enum displayinfo_hdr_type {
     DISPLAYINFO_HDR_OFF = 0,
     DISPLAYINFO_HDR_UNKNOWN = (1 << 0),
@@ -123,10 +122,65 @@ typedef enum displayinfo_hdr_type {
     DISPLAYINFO_HDR_TB_500 = (1 << 14),
     DISPLAYINFO_HDR_TB_600 = (1 << 15),
     // VESA standards
-    DISPLAYINFO_DISPLAYHDR_400 = (1 << 17)
+    DISPLAYINFO_DISPLAYHDR_400 = (1 << 17),
+    // Multitypes
+    // Flag indicating displayinfo_hdr_vesa_t available in displayinfo_edid_hdr_multitype
+    DISPLAYINFO_HDR_VESATYPE = (1 << 28),
+    // Flag indicating displayinfo_hdr_pseudo_t available in displayinfo_edid_hdr_multitype
+    DISPLAYINFO_HDR_PSEUDOTYPE = (1 << 29),
+    // Flag indicating displayinfo_hdr_common_t available in displayinfo_edid_hdr_multitype
+    DISPLAYINFO_HDR_COMMONTYPE = (1 << 30),
+    // Flag indicating displayinfo_hdr_t compatibility mode in displayfino_edid_hdr_multitype
+    DISPLAYINFO_HDR_MULTITYPE = (1 << 31)
 } displayinfo_hdr_t;
 
-typedef uint32_t displayinfo_edid_hdr_type_map_t;
+typedef enum displayinfo_hdr_common_type {
+    DISPLAYINFO_HDR_COMMON_OFF = 0,
+    DISPLAYINFO_HDR_COMMON_UNKNOWN = (1 << 0),
+    DISPLAYINFO_HDR_COMMON_10 = (1 << 1),
+    DISPLAYINFO_HDR_COMMON_10PLUS = (1 << 2),
+    DISPLAYINFO_HDR_COMMON_DOLBYVISION = (1 << 3),
+    DISPLAYINFO_HDR_COMMON_TECHNICOLOR = (1 << 4),
+    DISPLAYINFO_HDR_COMMON_HLG = (1 << 5),
+//    DISPLAYINFO_HDR_COMMON_MAX = (1 << 6)
+} displayinfo_hdr_common_t;
+
+typedef enum displayinfo_hdr_pseudo_type {
+    DISPLAYINFO_HDR_PSEUDO_OFF = 0,
+    DISPLAYINFO_HDR_PSEUDO_400 = (1 << 0),
+    DISPLAYINFO_HDR_PSEUDO_500 = (1 << 1),
+    DISPLAYINFO_HDR_PSEUDO_600 = (1 << 2),
+    DISPLAYINFO_HDR_PSEUDO_1000 = (1 << 3),
+    DISPLAYINFO_HDR_PSEUDO_1400 = (1 << 4),
+    DISPLAYINFO_HDR_PSEUDO_TB_400 = (1 << 5),
+    DISPLAYINFO_HDR_PSEUDO_TB_500 = (1 << 6),
+    DISPLAYINFO_HDR_PSEUDO_TB_600 = (1 << 7),
+//    DISPLAYINFO_HDR_PSEUDO_PSEUDO_MAX = (1 << 8)
+} displayinfo_hdr_pseudo_t;
+
+typedef enum display_hdr_vesa_type {
+    DISPLAYINFO_HDR_VESA_OFF = 0,
+    DISPLAYINFO_HDR_VESA_DISPLAYHDR_400 = (1 << 0),
+//    DISPLAYINFO_HDR_VESA_MAX = (1 << 1)
+} displayinfo_hdr_vesa_t;
+
+// At least capable of holding a pointer: 32 bits on 32 bit systems, 64 bits on 64 bits systems
+typedef uintptr_t displayinfo_edid_hdr_type_map_t;
+
+typedef union {
+    // Legacy mode, eg, without multitype flags set
+    uintptr_t legacy;
+    struct {
+        // Multitype flag/flags set, then lower 8 bits for version
+        uintptr_t version;
+        // Number of bytes to represent enum bitmasks
+        uint8_t count;
+        // Version 1.0
+        uint8_t* common;
+        uint8_t* pseudo;
+        uint8_t* vesa;
+    };
+} displayinfo_edid_hdr_multitype_map_t, *displayinfo_edid_hdr_multitype_map_ptr_t;
 
 typedef enum displayinfo_hdcp_protection_type {
     DISPLAYINFO_HDCP_UNENCRYPTED,

@@ -1131,184 +1131,111 @@ namespace Plugin {
             return {Rx, Ry, Gx, Gy, Bx, By, Wx, Wy};
         }
 
+        bool HDRProfileSupport(displayinfo_hdr_common_t format) const {
+            bool result = false;
+
+            displayinfo_edid_hdr_multitype_map_t data;
+
+            data.legacy = DISPLAYINFO_HDR_MULTITYPE | DISPLAYINFO_HDR_COMMONTYPE;
+            data.version |= static_cast<uint8_t>(0x1);
+            data.count = sizeof(displayinfo_hdr_t);
+            data.common = new uint8_t[data.count];
+            data.pseudo = nullptr;
+            data.vesa = nullptr;
+
+            if(data.common != nullptr) {
+                /* void * */ memcpy(data.common, &format, data.count);
+
+                result = HDRProfileSupport(data);
+
+                delete[] data.common;
+            }
+
+            return result;
+        }
+
+        bool HDRProfileSupport(displayinfo_hdr_pseudo_t format) const {
+            bool result = false;
+
+            displayinfo_edid_hdr_multitype_map_t data;
+
+            data.legacy = DISPLAYINFO_HDR_MULTITYPE | DISPLAYINFO_HDR_PSEUDOTYPE;
+            data.version |= static_cast<uint8_t>(0x1);
+            data.count = sizeof(displayinfo_hdr_pseudo_t);
+            data.common = nullptr;
+            data.pseudo = new uint8_t[data.count];
+            data.vesa = nullptr;
+
+            if(data.pseudo != nullptr) {
+                /* void * */ memcpy(data.pseudo, &format, data.count);
+
+                result = HDRProfileSupport(data);
+
+                delete[] data.pseudo;
+            }
+
+            return result;
+        }
+
+        bool HDRProfileSupport(displayinfo_hdr_vesa_t format) const {
+            bool result = false;
+
+            displayinfo_edid_hdr_multitype_map_t data;
+
+            data.legacy = DISPLAYINFO_HDR_MULTITYPE | DISPLAYINFO_HDR_VESATYPE;
+            data.version |= static_cast<uint8_t>(0x1);
+            data.count = sizeof(displayinfo_hdr_vesa_t);
+            data.common = nullptr;
+            data.pseudo = nullptr;
+            data.vesa = new uint8_t[data.count];
+
+            if(data.vesa != nullptr) {
+                /* void * */ memcpy(data.vesa, &format, data.count);
+
+                result = HDRProfileSupport(data);
+
+                delete[] data.vesa;
+            }
+
+            return result;
+        }
+
+        // Legacy
         bool HDRProfileSupport(displayinfo_hdr_t format) const {
             bool result = false;
 
-            auto it = CEASegment();
-
-            // CEA and its data blocks are optional
-            if (it.IsValid() != false) {
-                const CEA & cea = ExtendedDisplayIdentification::CEA(it.Current());
-
-                auto dc_max = [](uint8_t cv) -> uint64_t {
-                    uint64_t result = 0;
-                    /*
-                        2 ^ ( cv / 32 ) = 2 ^ ( m * 32 / 32 + n / 32 ) = 2 ^ (m + n / 32 ), where m = cv / 32, and n = cv % 32;
-                                        = 2 ^ m * 2 ^ ( n / 32 )
-                                        = 2 ^ m * 2 ^ ( 1 / 32 ) ^ n = alpha * beta
-                    */
-
-                    uint8_t m = cv / 32;
-                    uint8_t n = cv % 32;
-
-                    uint64_t alpha = 1;
-
-                    if (m > 0) {
-                        alpha = alpha << m;
-                    }
-
-                    // A very naive method
-                    float beta = 1.0;
-                    for (uint8_t i = 0; i < n; i++) {
-                        beta *= 1.021897148654117;
-                    }
-
-                    // Truncation to underestimate
-                    result = static_cast<float>(50 * alpha) * beta;
-
-                    return result;
-                };
-
-                auto dc_min = [&](uint8_t cv_min, uint8_t cv_max) -> uint64_t {
-                    float val = static_cast<float>(cv_min) / 255.0;
-                    return static_cast<float>(dc_max(cv_max)) * val * val / 100.0;
-                };
-
-                auto dynamic = [](const displayinfo_edid_hdr_dynamic_metadata_t & data) -> bool {
-                    bool result = false;
-
-                    for (uint8_t i = 0; i < data.count; i++) {
-                        result = result || data.type[i].type != DISPLAYINFO_EDID_HDR_DYNAMIC_FLAG_TYPE_UNDEFINED;
-                    }
-
-                    return result;
-                };
-
-
-                // Allow for some inaccuracies
-                constexpr uint8_t gamut_threshold = 95;
-                uint8_t gamut_match = 0;
-
-                const displayinfo_edid_color_space_map_t spaces = DefaultColorSpace() | cea.ColorSpaces();
-
-                // ITU-R BT.2020 defined 10 or 12 bits per primary and YCbCr spaces are derived from RGB values
-                if (   (spaces & DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_RGB) != DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_RGB
-                    && (spaces & DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_CYCC) != DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_CYCC
-                    && (spaces & DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_YCC) != DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_YCC) {
-
-                    gamut_match = ColorSpaceGamutMatch(DISPLAYINFO_EDID_COLOR_SPACE_D65_P3);
-                }
-                else {
-                    // Wide color gamut support
-                    gamut_match = 100; // Represent >= 100
-                }
-
-                displayinfo_edid_color_format_map_t color_format = DisplayType() | cea.ColorFormats();
-
-                displayinfo_edid_color_depth_map_t color_depth =  ColorDepth()
-                                                                  | ((color_format & DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR444) == DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR444 ? cea.YCbCr444ColorDepths() : DISPLAYINFO_EDID_COLOR_DEPTH_UNDEFINED)
-                                                                  | ((color_format & DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR422) == DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR422 ? cea.YCbCr422ColorDepths() : DISPLAYINFO_EDID_COLOR_DEPTH_UNDEFINED)
-                                                                  | ((color_format & DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR420) == DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR420 ? cea.YCbCr420ColorDepths() : DISPLAYINFO_EDID_COLOR_DEPTH_UNDEFINED)
-                                                                  | ((color_format & DISPLAYINFO_EDID_COLOR_FORMAT_RGB) == DISPLAYINFO_EDID_COLOR_FORMAT_RGB ? cea.RGBColorDepths() : DISPLAYINFO_EDID_COLOR_DEPTH_UNDEFINED);
-
-                // Transfer function and luminance
-                displayinfo_edid_hdr_static_metadata_t hdr_static = cea.HDRStaticMetadata();
-
-                displayinfo_edid_hdr_dynamic_metadata_t hdr_dynamic = cea.HDRDynamicMetadata();
-
-                // https://en.wikipedia.org/wiki/High-dynamic-range_television
-                switch (format) {
-                    case DISPLAYINFO_HDR_10             :
-                                                            /*
-                                                            Developed by            : CTA
-                                                            Transfer function       : PQ
-                                                            Bit depth               : 10 bit
-                                                            Peak luminance          : Technical limit 10000 nits, common 1000-4000 nits
-                                                            Color primaries         : Technical limit Rec.2020, contents P3-D65 (common)
-                                                            Metadata                : static
-                                                            */
-                                                            __attribute__((fall_through));
-                    case DISPLAYINFO_DISPLAYHDR_400     :
-                                                            /*
-                                                                Minimal HDR_10, with maximum luminance values exceeding 400
-                                                            */
-                                                            result =    (hdr_static.eot & DISPLAYINFO_EDID_EOT_SMPTE_ST_2084) == DISPLAYINFO_EDID_EOT_SMPTE_ST_2084
-                                                                     && color_depth >= static_cast<displayinfo_edid_color_depth_map_t>(DISPLAYINFO_EDID_COLOR_DEPTH_10_BPC)
-                                                                     && dc_max(hdr_static.luminance.max_cv) >= (format == DISPLAYINFO_DISPLAYHDR_400 ? 400 /* 320 */ : 0)
-                                                                     && dc_max(hdr_static.luminance.average_cv) >= (format == DISPLAYINFO_DISPLAYHDR_400 ? 400 /* 320 */ : 0)
-                                                                     && dc_min(hdr_static.luminance.min_cv, hdr_static.luminance.max_cv) >= 0
-                                                                     && gamut_match >= gamut_threshold;
-                                                            break;
-
-                    case DISPLAYINFO_HDR_400            :   /*
-                                                            Exceeds SDR, minium peak 400 nits, but may otherwise not meet HDR10 specifications
-                                                            https://displayhdr.org/not-all-hdr-is-created-equal/
-                                                            */
-                                                            gamut_match = (color_format & DISPLAYINFO_EDID_DISPLAY_RGB == DISPLAYINFO_EDID_DISPLAY_RGB) ? 100 : ColorSpaceGamutMatch(DISPLAYINFO_EDID_COLOR_SPACE_SRGB);
-                                                            result = color_depth >= static_cast<displayinfo_edid_color_depth_map_t>(DISPLAYINFO_EDID_COLOR_DEPTH_8_BPC)
-                                                                     && dc_max(hdr_static.luminance.max_cv) >= 400 // 320
-                                                                     && dc_max(hdr_static.luminance.average_cv) >= 400 // 320
-                                                                     && dc_min(hdr_static.luminance.min_cv, hdr_static.luminance.max_cv) >= 0
-                                                                     // Exceed SDR
-                                                                     && gamut_match >= gamut_threshold;
-                                                            break;
-                    case DISPLAYINFO_HDR_10PLUS         :
-                                                            /*
-                                                            Developed by            : Samsung
-                                                            Transfer function       : PQ
-                                                            Bit depth               : 10 bit or more
-                                                            Peak luminance          : Technical limit 10000 nits, common 1000-4000 nits
-                                                            Color primaries         : Technical limit Rec.2020, contents P3-D65 (common)
-                                                            Metadata                : static and dynamic
-                                                            */
-                                                            result =    (hdr_static.eot & DISPLAYINFO_EDID_EOT_SMPTE_ST_2084) == DISPLAYINFO_EDID_EOT_SMPTE_ST_2084
-                                                                     && dynamic(hdr_dynamic) != false
-                                                                     && color_depth >= static_cast<displayinfo_edid_color_depth_map_t>(DISPLAYINFO_EDID_COLOR_DEPTH_10_BPC)
-                                                                     && dc_max(hdr_static.luminance.max_cv) >= 0
-                                                                     && dc_max(hdr_static.luminance.average_cv) >= 0
-                                                                     && dc_min(hdr_static.luminance.min_cv, hdr_static.luminance.max_cv) >= 0
-                                                                     && gamut_match >= gamut_threshold;
-                                                            break;
-                    case DISPLAYINFO_HDR_DOLBYVISION    :
-                                                            /*
-                                                            Developed by            : Dolby
-                                                            Transfer function       : PQ (most profiles), SDR (profiles 4.8.2, and 9), HLG (profile 8.4)
-                                                            Bit depth               : 10 bit or 12 bit using FEL
-                                                            Peak luminance          : Technical limit 10000 nits, at least 1000 nits, common 4000 nits
-                                                            Color primaries         : Technical limit Rec.2020, contents P3-D65 (at least)
-                                                            Metadata                : static and dynamic
-                                                            */
-                                                            result =    ((hdr_static.eot & DISPLAYINFO_EDID_EOT_SMPTE_ST_2084) == DISPLAYINFO_EDID_EOT_SMPTE_ST_2084
-                                                                        || (hdr_static.eot & DISPLAYINFO_EDID_EOT_HYBRID_LOG_GAMMA_ITU_R_BT_2100) == DISPLAYINFO_EDID_EOT_HYBRID_LOG_GAMMA_ITU_R_BT_2100)
-                                                                     && dynamic(hdr_dynamic) != false
-                                                                     && color_depth >= static_cast<displayinfo_edid_color_depth_map_t>(DISPLAYINFO_EDID_COLOR_DEPTH_10_BPC)
-                                                                     && dc_max(hdr_static.luminance.max_cv) >= 1000
-                                                                     && dc_max(hdr_static.luminance.average_cv) >= 1000
-                                                                     && dc_min(hdr_static.luminance.min_cv, hdr_static.luminance.max_cv) >= 1000
-                                                                     && gamut_match >= 100;
-                                                            break;
-                    case DISPLAYINFO_HDR_HLG            :
-                                                            /*
-                                                            Developed by            : NHK and BBC
-                                                            Transfer function       : HLG
-                                                            Bit depth               : 10 bit
-                                                            Peak luminance          : Technical limit variable nits, common 1000 nits
-                                                            Color primaries         : Technical limit Rec.2020, contents P3-D65 (common)
-                                                            Metadata                : none
-                                                            */
-                                                            result =    (hdr_static.eot & DISPLAYINFO_EDID_EOT_HYBRID_LOG_GAMMA_ITU_R_BT_2100) == DISPLAYINFO_EDID_EOT_HYBRID_LOG_GAMMA_ITU_R_BT_2100
-                                                                     && color_depth >= static_cast<displayinfo_edid_color_depth_map_t>(DISPLAYINFO_EDID_COLOR_DEPTH_10_BPC)
-                                                                     && dc_max(hdr_static.luminance.max_cv) >= 0
-                                                                     && dc_max(hdr_static.luminance.average_cv) >= 0
-                                                                     && dc_min(hdr_static.luminance.min_cv, hdr_static.luminance.max_cv) >= 0
-                                                                     && gamut_match >= gamut_threshold;
-                                                            break;
-                    case DISPLAYINFO_HDR_TECHNICOLOR    :
-                                                            /*
-                                                            */
-                                                            break;
-                    default                             :;
-                }
+            switch (format) {
+                case DISPLAYINFO_HDR_10          :  result = HDRProfileSupport(DISPLAYINFO_HDR_COMMON_10);
+                                                    break;
+                case DISPLAYINFO_HDR_10PLUS      :  result = HDRProfileSupport(DISPLAYINFO_HDR_COMMON_10PLUS);
+                                                    break;
+                case DISPLAYINFO_HDR_DOLBYVISION :  result = HDRProfileSupport(DISPLAYINFO_HDR_COMMON_DOLBYVISION);
+                                                    break;
+                case DISPLAYINFO_HDR_TECHNICOLOR :  result = HDRProfileSupport(DISPLAYINFO_HDR_COMMON_TECHNICOLOR);
+                                                    break;
+                case DISPLAYINFO_HDR_HLG         :  result = HDRProfileSupport(DISPLAYINFO_HDR_COMMON_HLG);
+                                                    break;
+                case DISPLAYINFO_HDR_400         :  result = HDRProfileSupport(DISPLAYINFO_HDR_PSEUDO_400);
+                                                    break;
+                case DISPLAYINFO_HDR_500         :  result = HDRProfileSupport(DISPLAYINFO_HDR_PSEUDO_500);
+                                                    break;
+                case DISPLAYINFO_HDR_600         :  result = HDRProfileSupport(DISPLAYINFO_HDR_PSEUDO_600);
+                                                    break;
+                case DISPLAYINFO_HDR_1000        :  result = HDRProfileSupport(DISPLAYINFO_HDR_PSEUDO_1000);
+                                                    break;
+                case DISPLAYINFO_HDR_1400        :  result = HDRProfileSupport(DISPLAYINFO_HDR_PSEUDO_1400);
+                                                    break;
+                case DISPLAYINFO_HDR_TB_400      :  result = HDRProfileSupport(DISPLAYINFO_HDR_PSEUDO_TB_400);
+                                                    break;
+                case DISPLAYINFO_HDR_TB_500      :  result = HDRProfileSupport(DISPLAYINFO_HDR_PSEUDO_TB_500);
+                                                    break;
+                case DISPLAYINFO_HDR_TB_600      :  result = HDRProfileSupport(DISPLAYINFO_HDR_PSEUDO_TB_600);
+                                                    break;
+                case DISPLAYINFO_DISPLAYHDR_400  :  result = HDRProfileSupport(DISPLAYINFO_HDR_VESA_DISPLAYHDR_400);
+                                                    break;
+                case DISPLAYINFO_HDR_OFF         :  __attribute__((fallthrough));
+                case DISPLAYINFO_HDR_UNKNOWN     :  __attribute__((fallthrough));
+                default                     :;
             }
 
             return result;
@@ -1405,8 +1332,273 @@ namespace Plugin {
         }
 
     private:
+
         inline TCHAR ManufactereChar(uint8_t value) const {
             return static_cast<TCHAR>('A' + ((value - 1) & 0x1F));
+        }
+
+        // Users should set the common, pseudo or vesa fields
+        bool HDRProfileSupport(displayinfo_edid_hdr_multitype_map_t format) const {
+            bool result = false;
+
+            auto it = CEASegment();
+
+            // CEA and its data blocks are optional
+            if (it.IsValid() != false) {
+                const CEA & cea = ExtendedDisplayIdentification::CEA(it.Current());
+
+                auto dc_max = [](uint8_t cv) -> uint64_t {
+                    uint64_t result = 0;
+                    /*
+                        2 ^ ( cv / 32 ) = 2 ^ ( m * 32 / 32 + n / 32 ) = 2 ^ (m + n / 32 ), where m = cv / 32, and n = cv % 32;
+                                        = 2 ^ m * 2 ^ ( n / 32 )
+                                        = 2 ^ m * 2 ^ ( 1 / 32 ) ^ n = alpha * beta
+                    */
+
+                    uint8_t m = cv / 32;
+                    uint8_t n = cv % 32;
+
+                    uint64_t alpha = 1;
+
+                    if (m > 0) {
+                        alpha = alpha << m;
+                    }
+
+                    // A very naive method
+                    float beta = 1.0;
+                    for (uint8_t i = 0; i < n; i++) {
+                        beta *= 1.021897148654117;
+                    }
+
+                    // Truncation to underestimate
+                    result = static_cast<float>(50 * alpha) * beta;
+
+                    return result;
+                };
+
+                auto dc_min = [&](uint8_t cv_min, uint8_t cv_max) -> uint64_t {
+                    float val = static_cast<float>(cv_min) / 255.0;
+                    return static_cast<float>(dc_max(cv_max)) * val * val / 100.0;
+                };
+
+                auto dynamic = [](const displayinfo_edid_hdr_dynamic_metadata_t & data) -> bool {
+                    bool result = false;
+
+                    for (uint8_t i = 0; i < data.count; i++) {
+                        result = result || data.type[i].type != DISPLAYINFO_EDID_HDR_DYNAMIC_FLAG_TYPE_UNDEFINED;
+                    }
+
+                    return result;
+                };
+
+
+                // Allow for some inaccuracies
+                constexpr uint8_t gamut_threshold = 95;
+                uint8_t gamut_match = 0;
+
+                const displayinfo_edid_color_space_map_t spaces = DefaultColorSpace() | cea.ColorSpaces();
+
+                // ITU-R BT.2020 defined 10 or 12 bits per primary and YCbCr spaces are derived from RGB values
+                if (   (spaces & DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_RGB) != DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_RGB
+                    && (spaces & DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_CYCC) != DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_CYCC
+                    && (spaces & DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_YCC) != DISPLAYINFO_EDID_COLOR_SPACE_ITUR_BT_2020_YCC) {
+
+                    gamut_match = ColorSpaceGamutMatch(DISPLAYINFO_EDID_COLOR_SPACE_D65_P3);
+                }
+                else {
+                    // Wide color gamut support
+                    gamut_match = ColorSpaceGamutMatch(DISPLAYINFO_EDID_COLOR_SPACE_D65_P3);
+                    gamut_match = 100; // Represent >= 100
+                }
+
+                displayinfo_edid_color_format_map_t color_format = DisplayType() | cea.ColorFormats();
+
+                displayinfo_edid_color_depth_map_t color_depth =  ColorDepth()
+                                                                  | ((color_format & DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR444) == DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR444 ? cea.YCbCr444ColorDepths() : DISPLAYINFO_EDID_COLOR_DEPTH_UNDEFINED)
+                                                                  | ((color_format & DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR422) == DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR422 ? cea.YCbCr422ColorDepths() : DISPLAYINFO_EDID_COLOR_DEPTH_UNDEFINED)
+                                                                  | ((color_format & DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR420) == DISPLAYINFO_EDID_COLOR_FORMAT_YCBCR420 ? cea.YCbCr420ColorDepths() : DISPLAYINFO_EDID_COLOR_DEPTH_UNDEFINED)
+                                                                  | ((color_format & DISPLAYINFO_EDID_COLOR_FORMAT_RGB) == DISPLAYINFO_EDID_COLOR_FORMAT_RGB ? cea.RGBColorDepths() : DISPLAYINFO_EDID_COLOR_DEPTH_UNDEFINED);
+
+                // Transfer function and luminance
+                displayinfo_edid_hdr_static_metadata_t hdr_static = cea.HDRStaticMetadata();
+
+                displayinfo_edid_hdr_dynamic_metadata_t hdr_dynamic = cea.HDRDynamicMetadata();
+
+                uintptr_t data;
+
+                // displayinfo_hdr_common_t;
+                if ((format.legacy & (DISPLAYINFO_HDR_MULTITYPE | DISPLAYINFO_HDR_COMMONTYPE))
+                    ==
+                    (DISPLAYINFO_HDR_MULTITYPE | DISPLAYINFO_HDR_COMMONTYPE)
+                   )
+                {
+                    data = 0;
+
+                    for (size_t i = format.count; i > 0; i--) {
+                        data |= format.common[i - 1] ;
+                        if (i > 1) {
+                            data <<= 8;
+                        }
+                    }
+
+                    // https://en.wikipedia.org/wiki/High-dynamic-range_television
+                    switch (data) {
+                        case DISPLAYINFO_HDR_COMMON_10              :
+                                                                        /*
+                                                                            Developed by            : CTA
+                                                                            Transfer function       : PQ
+                                                                            Bit depth               : 10 bit
+                                                                            Peak luminance          : Technical limit 10000 nits, common 1000-4000 nits
+                                                                            Color primaries         : Technical limit Rec.2020, contents P3-D65 (common)
+                                                                            Metadata                : static
+                                                                        */
+                                                                        result =    (hdr_static.eot & DISPLAYINFO_EDID_EOT_SMPTE_ST_2084) == DISPLAYINFO_EDID_EOT_SMPTE_ST_2084
+                                                                                 && color_depth >= static_cast<displayinfo_edid_color_depth_map_t>(DISPLAYINFO_EDID_COLOR_DEPTH_10_BPC)
+                                                                                 && dc_max(hdr_static.luminance.max_cv) >= 0
+                                                                                 && dc_max(hdr_static.luminance.average_cv) >= 0
+                                                                                 && dc_min(hdr_static.luminance.min_cv, hdr_static.luminance.max_cv) >= 0
+                                                                                 && gamut_match >= gamut_threshold;
+                                                                        break;
+                        case DISPLAYINFO_HDR_COMMON_10PLUS          :
+                                                                        /*
+                                                                            Developed by            : Samsung
+                                                                            Transfer function       : PQ
+                                                                            Bit depth               : 10 bit or more
+                                                                            Peak luminance          : Technical limit 10000 nits, common 1000-4000 nits
+                                                                            Color primaries         : Technical limit Rec.2020, contents P3-D65 (common)
+                                                                            Metadata                : static and dynamic
+                                                                        */
+                                                                        result =    (hdr_static.eot & DISPLAYINFO_EDID_EOT_SMPTE_ST_2084) == DISPLAYINFO_EDID_EOT_SMPTE_ST_2084
+                                                                                 && dynamic(hdr_dynamic) != false
+                                                                                 && color_depth >= static_cast<displayinfo_edid_color_depth_map_t>(DISPLAYINFO_EDID_COLOR_DEPTH_10_BPC)
+                                                                                 && dc_max(hdr_static.luminance.max_cv) >= 0
+                                                                                 && dc_max(hdr_static.luminance.average_cv) >= 0
+                                                                                 && dc_min(hdr_static.luminance.min_cv, hdr_static.luminance.max_cv) >= 0
+                                                                                 && gamut_match >= gamut_threshold;
+                                                                        break;
+                        case DISPLAYINFO_HDR_COMMON_DOLBYVISION    :
+                                                                        /*
+                                                                            Developed by            : Dolby
+                                                                            Transfer function       : PQ (most profiles), SDR (profiles 4.8.2, and 9), HLG (profile 8.4)
+                                                                            Bit depth               : 10 bit or 12 bit using FEL
+                                                                            Peak luminance          : Technical limit 10000 nits, at least 1000 nits, common 4000 nits
+                                                                            Color primaries         : Technical limit Rec.2020, contents P3-D65 (at least)
+                                                                            Metadata                : static and dynamic
+                                                                        */
+                                                                        result =    ((hdr_static.eot & DISPLAYINFO_EDID_EOT_SMPTE_ST_2084) == DISPLAYINFO_EDID_EOT_SMPTE_ST_2084
+                                                                                 || (hdr_static.eot & DISPLAYINFO_EDID_EOT_HYBRID_LOG_GAMMA_ITU_R_BT_2100) == DISPLAYINFO_EDID_EOT_HYBRID_LOG_GAMMA_ITU_R_BT_2100)
+                                                                                 && dynamic(hdr_dynamic) != false
+                                                                                 && color_depth >= static_cast<displayinfo_edid_color_depth_map_t>(DISPLAYINFO_EDID_COLOR_DEPTH_10_BPC)
+                                                                                 && dc_max(hdr_static.luminance.max_cv) >= 1000
+                                                                                 && dc_max(hdr_static.luminance.average_cv) >= 1000
+                                                                                 && dc_min(hdr_static.luminance.min_cv, hdr_static.luminance.max_cv) >= 1000
+                                                                                 && gamut_match >= 100;
+                                                                        break;
+                        case DISPLAYINFO_HDR_COMMON_HLG            :
+                                                                        /*
+                                                                            Developed by            : NHK and BBC
+                                                                            Transfer function       : HLG
+                                                                            Bit depth               : 10 bit
+                                                                            Peak luminance          : Technical limit variable nits, common 1000 nits
+                                                                            Color primaries         : Technical limit Rec.2020, contents P3-D65 (common)
+                                                                            Metadata                : none
+                                                                        */
+                                                                        result =    (hdr_static.eot & DISPLAYINFO_EDID_EOT_HYBRID_LOG_GAMMA_ITU_R_BT_2100) == DISPLAYINFO_EDID_EOT_HYBRID_LOG_GAMMA_ITU_R_BT_2100
+                                                                                 && color_depth >= static_cast<displayinfo_edid_color_depth_map_t>(DISPLAYINFO_EDID_COLOR_DEPTH_10_BPC)
+                                                                                 && dc_max(hdr_static.luminance.max_cv) >= 0
+                                                                                 && dc_max(hdr_static.luminance.average_cv) >= 0
+                                                                                 && dc_min(hdr_static.luminance.min_cv, hdr_static.luminance.max_cv) >= 0
+                                                                                 && gamut_match >= gamut_threshold;
+                                                                        break;
+                        case DISPLAYINFO_HDR_COMMON_TECHNICOLOR     :
+                                                                        /*
+                                                                        */
+                                                                        break;
+                        case DISPLAYINFO_HDR_COMMON_OFF             :
+                        case DISPLAYINFO_HDR_COMMON_UNKNOWN         :
+                        default                                     :;
+                    }
+
+                }
+
+                // displayinfo_hdr_pseudo_t;
+                if ((format.legacy & (DISPLAYINFO_HDR_MULTITYPE | DISPLAYINFO_HDR_PSEUDOTYPE))
+                    ==
+                    (DISPLAYINFO_HDR_MULTITYPE | DISPLAYINFO_HDR_PSEUDOTYPE)
+                   )
+                {
+                    data = 0;
+
+                    for (size_t i = format.count; i > 0; i--) {
+                        data |= format.pseudo[i - 1] ;
+                        if (i > 1) {
+                            data <<= 8;
+                        }
+                    }
+
+                    switch (data) {
+                        case DISPLAYINFO_HDR_PSEUDO_400     :
+                                                                /*
+                                                                Exceeds SDR, minium peak 400 nits, but may otherwise not meet HDR10 specifications
+                                                                https://displayhdr.org/not-all-hdr-is-created-equal/
+                                                                */
+                                                                gamut_match = (color_format & DISPLAYINFO_EDID_DISPLAY_RGB == DISPLAYINFO_EDID_DISPLAY_RGB) ? 100 : ColorSpaceGamutMatch(DISPLAYINFO_EDID_COLOR_SPACE_SRGB);
+                                                                result = color_depth >= static_cast<displayinfo_edid_color_depth_map_t>(DISPLAYINFO_EDID_COLOR_DEPTH_8_BPC)
+                                                                         && dc_max(hdr_static.luminance.max_cv) >= 400
+                                                                         && dc_max(hdr_static.luminance.average_cv) >= 400
+                                                                         && dc_min(hdr_static.luminance.min_cv, hdr_static.luminance.max_cv) >= 0
+                                                                         // Exceed SDR
+                                                                         && gamut_match >= gamut_threshold;
+                                                            break;
+                        case DISPLAYINFO_HDR_PSEUDO_OFF     :
+                        default                             :;
+                    }
+
+                }
+
+                // displayinfo_hdr_vesa_t;
+                if ((format.legacy & (DISPLAYINFO_HDR_MULTITYPE | DISPLAYINFO_HDR_VESATYPE))
+                    ==
+                    (DISPLAYINFO_HDR_MULTITYPE | DISPLAYINFO_HDR_VESATYPE)
+                   )
+                {
+                    data = 0;
+
+                    for (size_t i = format.count; i > 0; i--) {
+                        data |= format.vesa[i - 1] ;
+                        if (i > 1) {
+                            data <<= 8;
+                        }
+                    }
+
+                    switch (data) {
+                        case DISPLAYINFO_HDR_VESA_DISPLAYHDR_400    :
+                                                                        /*
+                                                                        Developed by            : CTA
+                                                                        Transfer function       : PQ
+                                                                        Bit depth               : 10 bit
+                                                                        Peak luminance          : Technical limit 10000 nits, common 1000-4000 nits
+                                                                        Color primaries         : Technical limit Rec.2020, contents P3-D65 (common)
+                                                                        Metadata                : static
+                                                                        */
+                                                                        /*
+                                                                        Minimal HDR_10, with maximum luminance values exceeding 400
+                                                                        */
+                                                                        result =    (hdr_static.eot & DISPLAYINFO_EDID_EOT_SMPTE_ST_2084) == DISPLAYINFO_EDID_EOT_SMPTE_ST_2084
+                                                                                 && color_depth >= static_cast<displayinfo_edid_color_depth_map_t>(DISPLAYINFO_EDID_COLOR_DEPTH_10_BPC)
+                                                                                 && dc_max(hdr_static.luminance.max_cv) >= 400
+                                                                                 && dc_max(hdr_static.luminance.average_cv) >= 400
+                                                                                 && dc_min(hdr_static.luminance.min_cv, hdr_static.luminance.max_cv) >= 0
+                                                                                 && gamut_match >= gamut_threshold;
+                                                                        break;
+                        case DISPLAYINFO_HDR_VESA_OFF               :
+                        default                                     :;
+                    }
+                }
+
+            }
+
+            return result;
         }
 
         class Coordinate {
