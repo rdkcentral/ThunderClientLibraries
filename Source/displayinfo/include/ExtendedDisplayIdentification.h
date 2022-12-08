@@ -1407,7 +1407,7 @@ namespace Plugin {
                 }
                 else {
                     // Wide color gamut support
-                    gamut_match = ColorSpaceGamutMatch(DISPLAYINFO_EDID_COLOR_SPACE_D65_P3);
+                    //gamut_match = ColorSpaceGamutMatch(DISPLAYINFO_EDID_COLOR_SPACE_D65_P3);
                     gamut_match = 100; // Represent >= 100
                 }
 
