@@ -23,7 +23,7 @@
 #define MODULE_NAME CryptographyTest
 #endif
 
-#include <plugins/plugins.h>
+#include <core/core.h>
 
 #undef EXTERNAL
 #define EXTERNAL
