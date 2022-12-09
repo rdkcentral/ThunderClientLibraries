@@ -27,13 +27,13 @@ extern "C" {
 
 /* Note: These calls adhere to the CRYPTOGRAPHY_VAULT_NETFLIX vault only. */
 
-uint16_t netflix_security_esn(const uint16_t max_length, uint8_t data[]);
+EXTERNAL uint16_t netflix_security_esn(const uint16_t max_length, uint8_t data[]);
 
-uint32_t netflix_security_encryption_key(void);
+EXTERNAL uint32_t netflix_security_encryption_key(void);
 
-uint32_t netflix_security_hmac_key(void);
+EXTERNAL uint32_t netflix_security_hmac_key(void);
 
-uint32_t netflix_security_wrapping_key(void);
+EXTERNAL uint32_t netflix_security_wrapping_key(void);
 
 /* Derive encryption keys based on an authenticated Diffie-Hellman procedure :
         1) secret = dh_shared_secret(private_key, peer_public_key)
@@ -42,8 +42,8 @@ uint32_t netflix_security_wrapping_key(void);
         4) hmacKey = vector[16..47]                                      ; HMAC-256
         5) wrappingKey = HMAC-256(809f82a7addf548d3ea9dd067ff9bb91,
                                   HMAC-256(vector, 027617984f6227539a630b897c017d69))[0..15]  ; AES-128 */
-uint32_t netflix_security_derive_keys(const uint32_t private_dh_key_id, const uint32_t peer_public_dh_key_id, const uint32_t derivation_key_id,
-                                      uint32_t* encryption_key_id, uint32_t* hmac_key_id, uint32_t* wrapping_key_id);
+EXTERNAL uint32_t netflix_security_derive_keys(const uint32_t private_dh_key_id, const uint32_t peer_public_dh_key_id,
+    const uint32_t derivation_key_id, uint32_t* encryption_key_id, uint32_t* hmac_key_id, uint32_t* wrapping_key_id);
 
 #ifdef __cplusplus
 } // extern "C"
