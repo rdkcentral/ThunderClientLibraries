@@ -169,10 +169,10 @@ typedef uintptr_t displayinfo_edid_hdr_type_map_t;
 
 typedef union {
     // Legacy mode, eg, without multitype flags set
-    uintptr_t legacy;
+    displayinfo_edid_hdr_type_map_t legacy;
     struct {
         // Multitype flag/flags set, then lower 8 bits for version
-        uintptr_t version;
+        displayinfo_edid_hdr_type_map_t version;
         // Number of bytes to represent enum bitmasks
         uint8_t count;
         // Version 1.0
@@ -180,7 +180,9 @@ typedef union {
         uint8_t* pseudo;
         uint8_t* vesa;
     };
-} displayinfo_edid_hdr_multitype_map_t, *displayinfo_edid_hdr_multitype_map_ptr_t;
+} displayinfo_edid_hdr_multitype_map_t;
+
+typedef displayinfo_edid_hdr_multitype_map_t* displayinfo_edid_hdr_multitype_map_ptr_t;
 
 typedef enum displayinfo_hdcp_protection_type {
     DISPLAYINFO_HDCP_UNENCRYPTED,

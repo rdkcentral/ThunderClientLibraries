@@ -469,6 +469,7 @@ uint32_t displayinfo_hdr(displayinfo_hdr_t* hdr)
                 break;
             case Exchange::IHDRProperties::HDR_400:
                 *hdr = DISPLAYINFO_HDR_400;
+                break;
             case Exchange::IHDRProperties::HDR_10PLUS:
                 *hdr = DISPLAYINFO_HDR_10PLUS;
                 break;

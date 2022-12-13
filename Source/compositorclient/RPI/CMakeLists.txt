@@ -23,6 +23,10 @@ find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
 find_package(${NAMESPACE}COM REQUIRED)
 
+set(PUBLIC_HEADERS
+        "include/traits.h"
+        )
+
 if(VC6)
     find_package(GBM REQUIRED)
     find_package(LibDRM REQUIRED)
@@ -62,6 +66,8 @@ target_link_libraries(${TARGET}
 
 if(VC6)
     target_link_libraries(${TARGET}
+        PUBLIC
+          CompileSettingsDebug::CompileSettingsDebug
         PRIVATE
             libdrm::libdrm
             libgbm::libgbm
@@ -73,13 +79,17 @@ endif()
 set_target_properties(${TARGET} PROPERTIES
         CXX_STANDARD 11
         CXX_STANDARD_REQUIRED YES
+        FRAMEWORK FALSE
+        PUBLIC_HEADER "${PUBLIC_HEADERS}"
         VERSION ${PROJECT_VERSION}
         SOVERSION ${PROJECT_VERSION_MAJOR}
 )
 
 target_include_directories(${TARGET}
     PUBLIC
-        $<INSTALL_INTERFACE:include/${NAMESPACE}>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
+        $<INSTALL_INTERFACE:include>
     PRIVATE
         ${EGL_INCLUDE_DIRS})
 
@@ -91,7 +101,10 @@ install(
         TARGETS ${TARGET}  EXPORT ${TARGET}Targets  # for downstream dependencies
         ARCHIVE DESTINATION lib COMPONENT libs      # static lib
         LIBRARY DESTINATION lib COMPONENT libs      # shared lib
+        RUNTIME DESTINATION bin COMPONENT libs      # binaries
         FRAMEWORK DESTINATION bin COMPONENT libs    # for mac
+        PUBLIC_HEADER DESTINATION include/${NAMESPACE}/compositorclient COMPONENT devel   # headers for mac (note the different component -> different package)
+        INCLUDES DESTINATION include/${NAMESPACE}/compositorclient # headers
 )
 
 InstallPackageConfig(
