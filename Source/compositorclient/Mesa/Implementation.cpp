@@ -220,10 +220,10 @@ namespace Linux {
             return rate;
         };
 
-        void GetDRMNodes(uint32_t const type, std::vector<std::string>& list)
+        void GetDRMNodes(const uint32_t type, std::vector<std::string>& list)
         {
             // Just an arbitrary choice
-            /* static */ constexpr uint8_t const DrmMaxDevices = 16;
+            /* static */ constexpr const uint8_t DrmMaxDevices = 16;
 
             drmDevicePtr devices[DrmMaxDevices];
 
@@ -308,9 +308,9 @@ namespace Linux {
 
         static void Publish(InputFunction& action);
 
-        static void VirtualKeyboardCallback(keyactiontype, unsigned int const);
-        static void VirtualMouseCallback(mouseactiontype, unsigned short const, signed short const, signed short const);
-        static void VirtualTouchScreenCallback(touchactiontype, unsigned short const, unsigned short const, unsigned short const);
+        static void VirtualKeyboardCallback(keyactiontype, const unsigned int);
+        static void VirtualMouseCallback(mouseactiontype, const unsigned short, const signed short, const signed short);
+        static void VirtualTouchScreenCallback(touchactiontype, const unsigned short, const unsigned short, const unsigned short);
 
         class SurfaceImplementation : public Compositor::IDisplay::ISurface {
         public:
@@ -347,9 +347,10 @@ namespace Linux {
                 TRACE(Trace::Information, (_T("Requesting FD for client %s id=%d"), _remoteClient->Name().c_str(), id));
 
                 Core::PrivilegedRequest request;
+                Core::PrivilegedRequest::Container fds;
 
-                int dmaBufferFd = request.Request(1000, DmaFdConnector, id);
-                ASSERT(dmaBufferFd > 0);
+                uint16_t nfd = request.Request(1000, DmaFdConnector, id, fds);
+                ASSERT(fds.size() > 0);
 
                 // EGL (extension: EGL_EXT_image_dma_buf_import): Create EGL image from file
                 // descriptor (dmaBufferFd) and the remote storage data
@@ -357,12 +358,12 @@ namespace Linux {
                     EGL_WIDTH, remote_width,
                     EGL_HEIGHT, remote_height,
                     EGL_LINUX_DRM_FOURCC_EXT, remote_format,
-                    EGL_DMA_BUF_PLANE0_FD_EXT, dmaBufferFd,
+                    EGL_DMA_BUF_PLANE0_FD_EXT, fds[0],
                     // TODO: magic constant
                     EGL_DMA_BUF_PLANE0_OFFSET_EXT, remote_offset,
                     EGL_DMA_BUF_PLANE0_PITCH_EXT, remote_stride,
-                    EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT, static_cast<uint32_t>(remote_modifier) & 0xFFFFFFFF,
-                    EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT, static_cast<uint32_t>(remote_modifier) >> 32,
+                    EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT, uint32_t(remote_modifier & 0xFFFFFFFF),
+                    EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT, uint32_t(remote_modifier >> 32),
                     /*EGL_IMAGE_PRESERVED_KHR, EGL_TRUE,*/
                     EGL_NONE
                 };
@@ -370,22 +371,26 @@ namespace Linux {
                 _eglImage = renderAPI.eglCreateImage(dpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, _attrs);
                 ASSERT(_eglImage != EGL_NO_IMAGE);
 
-                close(dmaBufferFd);
+                for (auto& fd : fds) {
+                    close(fd);
+                }
 
                 glFlush(); // Mandatory
 
                 properties->Release();
 
-                TRACE(Trace::Information, (_T("Created image %dx%d(hxb) on buffer fd=%d, _eglImage=%p, format=0x%04X"), remote_height, remote_width, dmaBufferFd, _eglImage, remote_format));
+                TRACE(Trace::Information, (_T("Created image %dx%d(hxb) on buffer fd=%d, _eglImage=%p, format=0x%04X"), remote_height, remote_width, fds[0], _eglImage, remote_format));
+
+                fds.clear();
 
                 return (_eglImage != EGL_NO_IMAGE);
             }
 
             bool RenderImage()
             {
-                constexpr GLuint const target = GL_TEXTURE_2D;
-                constexpr GLuint const filter = GL_LINEAR;
-                constexpr GLuint const wrap = GL_CLAMP_TO_EDGE;
+                constexpr const GLuint target = GL_TEXTURE_2D;
+                constexpr const GLuint filter = GL_LINEAR;
+                constexpr const GLuint wrap = GL_CLAMP_TO_EDGE;
 
                 bool ret(false);
 
@@ -433,10 +438,10 @@ namespace Linux {
 
         public:
             SurfaceImplementation() = delete;
-            SurfaceImplementation(SurfaceImplementation const&) = delete;
-            SurfaceImplementation& operator=(SurfaceImplementation const&) = delete;
+            SurfaceImplementation(const SurfaceImplementation&) = delete;
+            SurfaceImplementation& operator=(const SurfaceImplementation&) = delete;
 
-            SurfaceImplementation(Display& display, std::string const& name, uint32_t const width, uint32_t const height)
+            SurfaceImplementation(Display& display, const std::string& name, const uint32_t width, const uint32_t height)
                 : _adminLock()
                 , _display(display)
                 , _keyboard(nullptr)
@@ -606,7 +611,7 @@ namespace Linux {
 
             uint32_t Process()
             {
-                //TRACE(Trace::Information, (_T("Processing surface %p"), this));
+                // TRACE(Trace::Information, (_T("Processing surface %p"), this));
 
                 // Changes of currents cannot be reliably be monitored
                 EGLDisplay dpy = eglGetCurrentDisplay();
@@ -705,7 +710,7 @@ namespace Linux {
         }
         uint32_t Release() const override
         {
-          if (Core::InterlockedDecrement(_refCount) == 0) {
+            if (Core::InterlockedDecrement(_refCount) == 0) {
                 _displaysMapLock.Lock();
 
                 DisplayMap::iterator display = _displays.find(_displayName);
@@ -761,7 +766,7 @@ namespace Linux {
             return result;
         }
 
-        Exchange::IComposition::IDisplay const* RemoteDisplay() const
+        const Exchange::IComposition::IDisplay* RemoteDisplay() const
         {
             return _remoteDisplay;
         }
@@ -885,7 +890,7 @@ namespace Linux {
             _adminLock.Unlock();
         }
 
-        WPEFramework::Exchange::IComposition::IClient* CreateRemoteSurface(std::string const& name, uint32_t const width, uint32_t const height)
+        WPEFramework::Exchange::IComposition::IClient* CreateRemoteSurface(const std::string& name, const uint32_t width, const uint32_t height)
         {
             return (_remoteDisplay != nullptr ? _remoteDisplay->CreateClient(name, width, height) : nullptr);
         }
@@ -930,7 +935,7 @@ namespace Linux {
 
         GetDRMNodes(DRM_NODE_RENDER, nodes); // /dev/dri/Renderer128
 
-        for (auto const& node : nodes) {
+        for (const auto& node : nodes) {
             TRACE(Trace::Information, (_T("Found render node %s"), node.c_str()));
         }
 
@@ -940,7 +945,7 @@ namespace Linux {
         fd = 0;
         device = nullptr;
 
-        for (auto const& node : nodes) {
+        for (const auto& node : nodes) {
             fd = open(node.c_str(), O_RDWR);
 
             if (fd) {
@@ -1033,7 +1038,7 @@ namespace Linux {
         if (action != nullptr) {
             _displaysMapLock.Lock();
 
-            for (std::pair<string const, Display*>& entry : _displays) {
+            for (std::pair<const string, Display*>& entry : _displays) {
                 entry.second->_adminLock.Lock();
 
                 std::for_each(begin(entry.second->_surfaces), end(entry.second->_surfaces), action);
