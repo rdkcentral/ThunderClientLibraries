@@ -444,7 +444,7 @@ EXTERNAL uint32_t displayinfo_edid_vic_to_standard_timing(const displayinfo_edid
 EXTERNAL uint32_t displayinfo_width_in_centimeters( uint8_t* width);
 
 /**
- * @brief Get the heigth of the connected display in centimaters
+ * @brief Get the height of the connected display in centimaters
  *
  * @param instance Instance of @ref displayinfo_type
  * @param height The current height in centimeters
