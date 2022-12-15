@@ -538,6 +538,9 @@ displayinfo_hdr_t displayinfo_hdr(struct displayinfo_type* displayinfo)
     case Exchange::IHDRProperties::HDR_10PLUS:
         result = DISPLAYINFO_HDR_10PLUS;
         break;
+    case Exchange::IHDRProperties::HDR_HLG:
+        result = DISPLAYINFO_HDR_HLG;
+        break;
     case Exchange::IHDRProperties::HDR_DOLBYVISION:
         result = DISPLAYINFO_HDR_DOLBYVISION;
         break;
