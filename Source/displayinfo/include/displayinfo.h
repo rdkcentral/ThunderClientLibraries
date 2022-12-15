@@ -42,13 +42,16 @@ extern "C" {
 struct displayinfo_type;
 
 typedef enum displayinfo_hdr_type {
-    DISPLAYINFO_HDR_OFF,
-    DISPLAYINFO_HDR_10,
-    DISPLAYINFO_HDR_10PLUS,
-    DISPLAYINFO_HDR_HLG,
-    DISPLAYINFO_HDR_DOLBYVISION,
-    DISPLAYINFO_HDR_TECHNICOLOR,
-    DISPLAYINFO_HDR_UNKNOWN
+// Special value indicating no HDR capabilities at all.
+    DISPLAYINFO_HDR_OFF = 0x0000,
+// Following values can be OR'ed in a bitmask for displayinfo_hdr_caps_t.
+    DISPLAYINFO_HDR_10 = (1 << 0),
+    DISPLAYINFO_HDR_10PLUS = (1 << 1),
+    DISPLAYINFO_HDR_HLG = (1 << 2),
+    DISPLAYINFO_HDR_DOLBYVISION = (1 << 3),
+    DISPLAYINFO_HDR_TECHNICOLOR = (1 << 4),
+// Other special values (must have the lower byte always set to zero, i.e., n << 8).
+    DISPLAYINFO_HDR_UNKNOWN = (1 << 8)
 } displayinfo_hdr_t;
 
 typedef enum displayinfo_hdcp_protection_type {
@@ -63,6 +66,8 @@ typedef enum displayinfo_error_type {
     ERROR_UNKNOWN = 1,
     ERROR_INVALID_INSTANCE = 2,
 } displayinfo_error_t;
+
+typedef uint16_t displayinfo_hdr_caps_t;
 
 /**
 * \brief Will be called if there are changes regaring the display output, you need to query 
@@ -189,6 +194,16 @@ EXTERNAL uint32_t displayinfo_vertical_frequency(struct displayinfo_type* instan
  * 
  **/
 EXTERNAL displayinfo_hdr_t displayinfo_hdr(struct displayinfo_type* instance);
+
+/**
+ * \brief Get supported HDR systems of the connected display
+ *
+ * \param instance Instance of \ref displayinfo_type.
+ *
+ * \return The display supported HDR system, DISPLAYINFO_HDR_UNKNOWN on error or invalid connection
+ *
+ **/
+EXTERNAL displayinfo_hdr_caps_t displayinfo_hdr_tv_capabilities(struct displayinfo_type* instance);
 
 /**
  * \brief Get the current HDCP protection level of the connected display  

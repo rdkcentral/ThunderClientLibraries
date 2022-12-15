@@ -415,6 +415,43 @@ public:
         return _displayConnection->EDID(len, data);
     }
 
+    displayinfo_hdr_caps_t TvHDR() const
+    {
+        displayinfo_hdr_caps_t value = DISPLAYINFO_HDR_OFF;
+        Exchange::IHDRProperties::IHDRIterator* tvHdrSupport;
+        Exchange::IHDRProperties::HDRType hdr;
+
+        if ((_hdrProperties != nullptr) && (_hdrProperties->TVCapabilities(tvHdrSupport) == Core::ERROR_NONE) && (tvHdrSupport != nullptr)) {
+            //Count number of elements in list, if count > 0, then TV supports HDR
+            if (tvHdrSupport->Count()) {
+                while (tvHdrSupport->Next(hdr)) {
+                    switch (hdr) {
+                        case Exchange::IHDRProperties::HDRType::HDR_10:
+                            value |= DISPLAYINFO_HDR_10;
+                            break;
+                        case Exchange::IHDRProperties::HDRType::HDR_10PLUS:
+                            value |= DISPLAYINFO_HDR_10PLUS;
+                            break;
+                        case Exchange::IHDRProperties::HDRType::HDR_HLG:
+                            value |= DISPLAYINFO_HDR_HLG;
+                            break;
+                        case Exchange::IHDRProperties::HDRType::HDR_DOLBYVISION:
+                            value |= DISPLAYINFO_HDR_DOLBYVISION;
+                            break;
+                        case Exchange::IHDRProperties::HDRType::HDR_TECHNICOLOR:
+                            value |= DISPLAYINFO_HDR_TECHNICOLOR;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+            tvHdrSupport->Release();
+        } else {
+            value = DISPLAYINFO_HDR_UNKNOWN;
+        }
+        return value;
+    }
     Exchange::IHDRProperties::HDRType HDR() const
     {
         Exchange::IHDRProperties::HDRType value = Exchange::IHDRProperties::HDRType::HDR_OFF;
@@ -553,6 +590,11 @@ displayinfo_hdr_t displayinfo_hdr(struct displayinfo_type* displayinfo)
     }
 
     return result;
+}
+
+displayinfo_hdr_caps_t displayinfo_hdr_tv_capabilities(struct displayinfo_type* displayinfo)
+{
+    return reinterpret_cast<DisplayInfo*>(displayinfo)->TvHDR();
 }
 
 displayinfo_hdcp_protection_t displayinfo_hdcp_protection(struct displayinfo_type* displayinfo)
