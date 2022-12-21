@@ -162,6 +162,7 @@ void ShowMenu()
            "\tT : Get total gpu ram\n"
            "\tF : Get free gpu ram\n"
            "\tX : Get display dimensions in centimeters \n"
+           "\tS : Stress test\n"
            "\t? : Help\n"
            "\tQ : Quit\n",
         __TIMESTAMP__);
@@ -292,6 +293,19 @@ int main()
                 Trace("Display resolution %dhx%dw", width, height);
             } else {
                 Trace("Instance or width/height param is NULL, or invalid connection");
+            }
+
+            break;
+        }
+        case 'S': {
+            uint32_t width = 0, height = 0;
+            uint32_t count = 50000;
+            while (count-- != 0) {
+                if (displayinfo_width(&width) == 0 && displayinfo_height(&height) == 0) {
+                    Trace("%i: Display resolution %dhx%dw", count, width, height);
+                } else {
+                    Trace("Instance or width/height param is NULL, or invalid connection");
+                }
             }
 
             break;
