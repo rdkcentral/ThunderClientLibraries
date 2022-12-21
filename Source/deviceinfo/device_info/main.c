@@ -76,7 +76,7 @@ void ShowMenu()
            "\tV : Get summary of available video outputs\n"
            "\t1 : Stress test 1\n"
            "\t2 : Stress test 2\n"
-           "\tQ : Quit\n");
+           "\tQ : Quit\n"
            );
 }
 
