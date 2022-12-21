@@ -35,6 +35,7 @@
 #include <interfaces/IComposition.h>
 #include <virtualinput/virtualinput.h>
 #include "../Client.h"
+#include "CursorData.h"
 
 int g_pipefd[2];
 
@@ -103,9 +104,9 @@ static void VirtualTouchScreenCallback(touchactiontype type, unsigned short inde
 
 namespace {
 
-#ifdef VC6
-
 using namespace WPEFramework;
+
+#ifdef VC6
 
 class Platform {
 private:
@@ -147,7 +148,7 @@ public:
     {
         return (_platform.Height());
     }
-    EGLSurface CreateSurface (const EGLNativeDisplayType& display, const uint32_t width, const uint32_t height) 
+    EGLSurface CreateSurface(const EGLNativeDisplayType& display VARIABLE_IS_NOT_USED, const uint32_t width, const uint32_t height)
     {
         // A Native surface that acts as a native window
         EGLSurface result = reinterpret_cast<EGLSurface>(_platform.CreateRenderTarget(width, height));
@@ -174,7 +175,10 @@ public:
     {
         TRACE_L1(_T("Currently not supported"));
     }
- 
+    void CursorPosition (uint32_t, uint32_t )
+    {
+    }
+
 private:
     ModeSet _platform;
 };
@@ -183,6 +187,93 @@ private:
 
 class Platform {
 private:
+    static constexpr uint16_t VIDEO_LAYER = 10000;
+    static constexpr uint16_t CURSOR_LAYER = VIDEO_LAYER + 1;
+    class Cursor {
+    public:
+        Cursor(uint32_t width, uint32_t height)
+            : _cursorHandle(0)
+            , _pointerResource(0)
+            , _position({ 0, 0 })
+            , _displaySize({ width, height })
+            , _cursorSize({ 16, 16 })
+        {
+            uint32_t imagePtr;
+            VC_RECT_T rect;
+            vc_dispmanx_rect_set(&rect, 0, 0, CursorData::width, CursorData::height);
+            _pointerResource = vc_dispmanx_resource_create(VC_IMAGE_RGBA32, CursorData::width, CursorData::height, &imagePtr);
+            vc_dispmanx_resource_write_data(_pointerResource,
+                                            VC_IMAGE_RGBA32,
+                                            CursorData::width*4,
+                                            const_cast<uint8_t*>(CursorData::image),
+                                            &rect);
+        }
+
+        ~Cursor()
+        {
+            DISPMANX_UPDATE_HANDLE_T updateHandle = vc_dispmanx_update_start(0);
+            vc_dispmanx_resource_delete(_pointerResource);
+            vc_dispmanx_element_remove(updateHandle, _cursorHandle);
+            vc_dispmanx_update_submit_sync(updateHandle);
+        }
+
+        void Show()
+        {
+            //Cleanup cursors on the screen if any!
+            Hide();
+            DISPMANX_DISPLAY_HANDLE_T displayHandle = vc_dispmanx_display_open(0);
+            DISPMANX_UPDATE_HANDLE_T updateHandle = vc_dispmanx_update_start(0);
+            VC_RECT_T srcRect, destRect;
+            static VC_DISPMANX_ALPHA_T alpha = {
+                static_cast<DISPMANX_FLAGS_ALPHA_T>(DISPMANX_FLAGS_ALPHA_FROM_SOURCE), 255, 0
+            };
+
+            vc_dispmanx_rect_set(&srcRect, 0, 0, CursorData::width << 16, CursorData::height << 16);
+            vc_dispmanx_rect_set(&destRect, _position.first, _position.second, _cursorSize.first, _cursorSize.second);
+            _cursorHandle = vc_dispmanx_element_add(updateHandle,
+                                                    displayHandle,
+                                                    CURSOR_LAYER,
+                                                    &destRect,
+                                                    _pointerResource,
+                                                    &srcRect,
+                                                    DISPMANX_PROTECTION_NONE,
+                                                    &alpha,
+                                                    nullptr,
+                                                    DISPMANX_NO_ROTATE);
+            vc_dispmanx_update_submit_sync(updateHandle);
+        }
+
+        void Hide()
+        {
+            if (_cursorHandle > DISPMANX_NO_HANDLE) {
+                DISPMANX_UPDATE_HANDLE_T updateHandle = vc_dispmanx_update_start(0);
+                vc_dispmanx_element_remove( updateHandle, _cursorHandle);
+                vc_dispmanx_update_submit_sync( updateHandle );
+                _cursorHandle = DISPMANX_NO_HANDLE;
+            }
+        }
+
+        void Move(uint32_t x, uint32_t y)
+        {
+            DISPMANX_UPDATE_HANDLE_T updateHandle = vc_dispmanx_update_start(0);
+            VC_RECT_T destRect;
+
+            vc_dispmanx_rect_set(&destRect, x, y,
+                std::min<uint32_t>(_cursorSize.first, std::max<uint32_t>(0, _displaySize.first - x)),
+                std::min<uint32_t>(_cursorSize.second, std::max<uint32_t>(0, _displaySize.second - y)));
+            vc_dispmanx_element_change_attributes(updateHandle, _cursorHandle, 1 << 2,
+                CURSOR_LAYER, 0, &destRect, nullptr, DISPMANX_NO_HANDLE, DISPMANX_NO_ROTATE);
+            vc_dispmanx_update_submit_sync(updateHandle);
+        }
+
+    private:
+        DISPMANX_ELEMENT_HANDLE_T _cursorHandle;
+        DISPMANX_RESOURCE_HANDLE_T _pointerResource;
+        std::pair<uint32_t, uint32_t> _position;
+        std::pair<uint32_t, uint32_t> _displaySize;
+        std::pair<uint32_t, uint32_t> _cursorSize;
+    };
+
     struct Surface {
         EGL_DISPMANX_WINDOW_T surface;
         VC_RECT_T rectangle;
@@ -193,6 +284,12 @@ private:
     Platform()
     {
         bcm_host_init();
+        string cursor;
+        if (Core::SystemInfo::GetEnvironment(_T("WPE_BCMRPI_CURSOR"), cursor)) {
+            if (!_cursor) {
+                _cursor = new Cursor(Width(), Height());
+            }
+        }
     }
 
 public:
@@ -205,6 +302,8 @@ public:
     }
     ~Platform()
     {
+        if (_cursor)
+            delete _cursor;
         bcm_host_deinit();
     }
 
@@ -275,6 +374,9 @@ public:
     {
         Surface* object = reinterpret_cast<Surface*>(surface);
         // DISPMANX_DISPLAY_HANDLE_T dispmanDisplay = vc_dispmanx_display_open(0);
+        if (_cursor) {
+            delete _cursor;
+        }
         DISPMANX_UPDATE_HANDLE_T  dispmanUpdate  = vc_dispmanx_update_start(0);
         vc_dispmanx_element_remove(dispmanUpdate, object->surface.element);
         vc_dispmanx_update_submit_sync(dispmanUpdate);
@@ -327,13 +429,29 @@ public:
     void ZOrder(const EGLSurface& surface, const uint16_t layer)
     {
         // RPI is unique: layer #0 actually means "deepest", so we need to convert.
-        const uint16_t actualLayer = std::numeric_limits<uint16_t>::max() - layer;
+        uint16_t actualLayer = VIDEO_LAYER - layer;
+        if (_cursor) {
+            // If the mouse cursor is enabled, it stands on top of the all other surfaces.
+            if (!layer) {
+                _cursor->Show();
+            } else {
+                _cursor->Hide();
+            }
+        }
         Surface* object = reinterpret_cast<Surface*>(surface);
         DISPMANX_UPDATE_HANDLE_T  dispmanUpdate = vc_dispmanx_update_start(0);
-        object->layer = layer;
+        object->layer = actualLayer;
         vc_dispmanx_element_change_layer(dispmanUpdate, object->surface.element, actualLayer);
         vc_dispmanx_update_submit_sync(dispmanUpdate);
     }
+
+    void CursorPosition (uint32_t x, uint32_t y)
+    {
+        if (_cursor) {
+            _cursor->Move(x, y);
+        }
+    }
+    Cursor* _cursor;
 };
 
 #endif
@@ -526,12 +644,25 @@ private:
         {
             if (_pointer != nullptr) {
                 _pointer->Direct(x, y);
+                Platform::Instance().CursorPosition(x, y);
             }
         }
         inline void SendTouch(const uint8_t index, const ITouchPanel::state state, const uint16_t x, const uint16_t y, const uint32_t)
         {
             if (_touchpanel != nullptr) {
                 _touchpanel->Direct(index, state, x, y);
+            }
+        }
+        inline void Opacity(const uint32_t opacity) override
+        {
+            _remoteAccess->Opacity(opacity);
+        }
+        inline void Visibility(const bool visible) override
+        {
+            if (visible == true) {
+                _remoteAccess->Opacity(255);
+            } else {
+                _remoteAccess->Opacity(0);
             }
         }
 
@@ -640,20 +771,20 @@ private:
             // If we are in the same process space as where a WorkerPool is registered (Main Process or
             // hosting ptocess) use, it!
             Core::ProxyType<RPC::InvokeServer> engine = Core::ProxyType<RPC::InvokeServer>::Create(&Core::WorkerPool::Instance());
-            ASSERT(static_cast<Core::IReferenceCounted*>(engine) != nullptr);
+            ASSERT(engine.IsValid() == true);
 
             _compositerServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(Connector(), Core::ProxyType<Core::IIPCServer>(engine));
-            ASSERT(_compositerServerRPCConnection != nullptr);
+            ASSERT(_compositerServerRPCConnection.IsValid() == true);
 
             engine->Announcements(_compositerServerRPCConnection->Announcement());
         } else {
             // Seems we are not in a process space initiated from the Main framework process or its hosting process.
             // Nothing more to do than to create a workerpool for RPC our selves !
             Core::ProxyType<RPC::InvokeServerType<2,0,8>> engine = Core::ProxyType<RPC::InvokeServerType<2,0,8>>::Create();
-            ASSERT(engine != nullptr);
+            ASSERT(engine.IsValid() == true);
 
             _compositerServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(Connector(), Core::ProxyType<Core::IIPCServer>(engine));
-            ASSERT(_compositerServerRPCConnection != nullptr);
+            ASSERT(_compositerServerRPCConnection.IsValid() == true);
 
             engine->Announcements(_compositerServerRPCConnection->Announcement());
         }

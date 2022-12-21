@@ -47,12 +47,6 @@ struct OpenCDMSystem {
 };
 
 struct OpenCDMAccessor : public Exchange::IAccessorOCDM {
-
-private:
-    OpenCDMAccessor() = delete;
-    OpenCDMAccessor(const OpenCDMAccessor&) = delete;
-    OpenCDMAccessor& operator=(const OpenCDMAccessor&) = delete;
-
 private:
     typedef std::map<string, OpenCDMSession*> KeyMap;
 
@@ -94,16 +88,11 @@ protected:
     }
 
 public:
-    static OpenCDMAccessor* Instance()
-    {
-        string connector;
-        if ((Core::SystemInfo::GetEnvironment(_T("OPEN_CDM_SERVER"), connector) == false) || (connector.empty() == true)) {
-            connector = _T("/tmp/ocdm");
-        }
-        static OpenCDMAccessor& result = Core::SingletonType<OpenCDMAccessor>::Instance(connector.c_str());
-        result.Reconnect();
-        return &result;
-    }
+    OpenCDMAccessor() : _signal(false, true) { ASSERT(false); }
+    OpenCDMAccessor(const OpenCDMAccessor&) = delete;
+    OpenCDMAccessor& operator=(const OpenCDMAccessor&) = delete;
+
+    static OpenCDMAccessor* Instance();
 
     ~OpenCDMAccessor()
     {
@@ -210,99 +199,97 @@ public:
         _adminLock.Unlock();
     }
 
-    virtual uint64_t GetDrmSystemTime(const std::string& keySystem) const override
+    uint64_t GetDrmSystemTime(const std::string& keySystem) const override
     {
         ASSERT(_remote && "This method only works on IAccessorOCDM implementations.");
         return _remote->GetDrmSystemTime(keySystem);
     }
 
-    virtual std::string
-    GetVersionExt(const std::string& keySystem) const override
+    std::string GetVersionExt(const std::string& keySystem) const override
     {
         ASSERT(_remote && "This method only works on IAccessorOCDM implementations.");
         return _remote->GetVersionExt(keySystem);
     }
 
-    virtual uint32_t GetLdlSessionLimit(const std::string& keySystem) const
+    uint32_t GetLdlSessionLimit(const std::string& keySystem) const override
     {
         ASSERT(_remote && "This method only works on IAccessorOCDM implementations.");
         return _remote->GetLdlSessionLimit(keySystem);
     }
 
-    virtual bool IsSecureStopEnabled(const std::string& keySystem) override
+    bool IsSecureStopEnabled(const std::string& keySystem) override
     {
         ASSERT(_remote && "This method only works on IAccessorOCDM implementations.");
         return _remote->IsSecureStopEnabled(keySystem);
     }
 
-    virtual Exchange::OCDM_RESULT EnableSecureStop(const std::string& keySystem,
-        bool enable) override
+    Exchange::OCDM_RESULT EnableSecureStop(const std::string& keySystem, bool enable) override
     {
         ASSERT(_remote && "This method only works on IAccessorOCDM implementations.");
         return _remote->EnableSecureStop(keySystem, enable);
     }
 
-    virtual uint32_t ResetSecureStops(const std::string& keySystem) override
+    uint32_t ResetSecureStops(const std::string& keySystem) override
     {
         ASSERT(_remote && "This method only works on IAccessorOCDM implementations.");
         return _remote->ResetSecureStops(keySystem);
     }
 
-    virtual Exchange::OCDM_RESULT GetSecureStopIds(const std::string& keySystem,
+    Exchange::OCDM_RESULT GetSecureStopIds(const std::string& keySystem,
         uint8_t ids[], uint16_t idsLength,
-        uint32_t& count)
+        uint32_t& count) override
     {
         ASSERT(_remote && "This method only works on IAccessorOCDM implementations.");
         return _remote->GetSecureStopIds(keySystem, ids, idsLength, count);
     }
 
-    virtual Exchange::OCDM_RESULT GetSecureStop(const std::string& keySystem,
+    Exchange::OCDM_RESULT GetSecureStop(const std::string& keySystem,
         const uint8_t sessionID[],
-        uint32_t sessionIDLength,
+        uint16_t sessionIDLength,
         uint8_t rawData[],
-        uint16_t& rawSize)
+        uint16_t& rawSize) override
     {
         ASSERT(_remote && "This method only works on IAccessorOCDM implementations.");
         return _remote->GetSecureStop(keySystem, sessionID, sessionIDLength,
             rawData, rawSize);
     }
 
-    virtual Exchange::OCDM_RESULT
+    Exchange::OCDM_RESULT
     CommitSecureStop(const std::string& keySystem, const uint8_t sessionID[],
-        uint32_t sessionIDLength, const uint8_t serverResponse[],
-        uint32_t serverResponseLength) override
+        uint16_t sessionIDLength, const uint8_t serverResponse[],
+        uint16_t serverResponseLength) override
     {
         ASSERT(_remote && "This method only works on IAccessorOCDM implementations.");
         return _remote->CommitSecureStop(keySystem, sessionID, sessionIDLength,
             serverResponse, serverResponseLength);
     }
 
-    virtual Exchange::OCDM_RESULT
+    Exchange::OCDM_RESULT
     DeleteKeyStore(const std::string& keySystem) override
     {
         ASSERT(_remote && "This method only works on IAccessorOCDM implementations.");
         return _remote->DeleteKeyStore(keySystem);
     }
 
-    virtual Exchange::OCDM_RESULT
+    Exchange::OCDM_RESULT
     DeleteSecureStore(const std::string& keySystem) override
     {
         ASSERT(_remote && "This method only works on IAccessorOCDM implementations.");
         return _remote->DeleteSecureStore(keySystem);
     }
 
-    virtual Exchange::OCDM_RESULT
+    Exchange::OCDM_RESULT
     GetKeyStoreHash(const std::string& keySystem, uint8_t keyStoreHash[],
-        uint32_t keyStoreHashLength) override
+        uint16_t keyStoreHashLength) override
     {
         ASSERT(_remote && "This method only works on IAccessorOCDM implementations.");
         return _remote->GetKeyStoreHash(keySystem, keyStoreHash,
             keyStoreHashLength);
     }
 
-    virtual Exchange::OCDM_RESULT
+    Exchange::OCDM_RESULT
     GetSecureStoreHash(const std::string& keySystem, uint8_t secureStoreHash[],
-        uint32_t secureStoreHashLength) override
+        uint16_t secureStoreHashLength) override
     {
         ASSERT(_remote && "This method only works on IAccessorOCDM implementations.");
         return _remote->GetSecureStoreHash(keySystem, secureStoreHash,
@@ -401,11 +388,9 @@ private:
 
     public:
         uint32_t Decrypt(uint8_t* encryptedData, uint32_t encryptedDataLength,
-            const EncryptionScheme encScheme,
-            const EncryptionPattern& pattern,
-            const uint8_t* ivData, uint16_t ivDataLength,
-            const uint8_t* keyId, uint16_t keyIdLength,
-            uint32_t initWithLast15 /* = 0 */)
+            const ::SampleInfo* sampleInfo,
+            uint32_t initWithLast15,
+            const ::MediaProperties* properties)
         {
             int ret = 0;
 
@@ -423,11 +408,37 @@ private:
 
             if (RequestProduce(Core::infinite) == Core::ERROR_NONE) {
 
+                CDMi::SubSampleInfo* subSample = nullptr;
+                uint8_t subSampleCount = 0;
+                CDMi::EncryptionScheme encScheme = CDMi::EncryptionScheme::AesCtr_Cenc;
+                CDMi::EncryptionPattern pattern = {0 , 0};
+                uint8_t* ivData = nullptr;
+                uint8_t ivDataLength = 0;
+                uint8_t* keyId = nullptr;
+                uint8_t keyIdLength = 0;
+
+                if(sampleInfo != nullptr) {
+                    subSample = reinterpret_cast<CDMi::SubSampleInfo*>(sampleInfo->subSample);
+                    subSampleCount = sampleInfo->subSampleCount;
+                    ivData = sampleInfo->iv;
+                    ivDataLength = sampleInfo->ivLength;
+                    keyId = sampleInfo->keyId;
+                    keyIdLength = sampleInfo->keyIdLength;
+                    encScheme = static_cast<CDMi::EncryptionScheme>(sampleInfo->scheme);
+                    pattern.clear_blocks = sampleInfo->pattern.clear_blocks;
+                    pattern.encrypted_blocks = sampleInfo->pattern.encrypted_blocks;
+                }
+
                 SetIV(static_cast<uint8_t>(ivDataLength), ivData);
                 KeyId(static_cast<uint8_t>(keyIdLength), keyId);
+                SubSample(subSampleCount, subSample);
                 SetEncScheme(static_cast<uint8_t>(encScheme));
                 SetEncPattern(pattern.encrypted_blocks,pattern.clear_blocks);
                 InitWithLast15(initWithLast15);
+                if(properties != nullptr) {
+                    SetMediaProperties(properties->height, properties->width, properties->media_type);
+                }
+
                 Write(encryptedDataLength, encryptedData);
 
                 // This will trigger the OpenCDMIServer to decrypt this memory...
@@ -464,9 +475,7 @@ public:
     OpenCDMSession& operator= (const OpenCDMSession&) = delete;
     OpenCDMSession() = delete;
 
-    #ifdef __WINDOWS__
-    #pragma warning(disable : 4355)
-    #endif
+PUSH_WARNING(DISABLE_WARNING_THIS_IN_MEMBER_INITIALIZER_LIST)
 
     OpenCDMSession(OpenCDMSystem* system,
         const string& initDataType,
@@ -508,9 +517,7 @@ public:
         }
     }
 
-    #ifdef __WINDOWS__
-    #pragma warning(default : 4355)
-    #endif
+POP_WARNING()
 
     virtual ~OpenCDMSession()
     {
@@ -607,11 +614,9 @@ public:
         _session->Update(pbResponse, cbResponse);
     }
     uint32_t Decrypt(uint8_t* encryptedData, const uint32_t encryptedDataLength,
-        const EncryptionScheme encScheme,
-        const EncryptionPattern& pattern,
-        const uint8_t* ivData, uint16_t ivDataLength,
-        const uint8_t* keyId, const uint16_t keyIdLength,
-        uint32_t initWithLast15)
+        const ::SampleInfo* sampleInfo,
+        uint32_t initWithLast15,
+        const ::MediaProperties* properties)
     {
         uint32_t result = OpenCDMError::ERROR_INVALID_DECRYPT_BUFFER;
 
@@ -625,10 +630,9 @@ public:
 
         if (decryptSession != nullptr) {
             result = decryptSession->Decrypt(encryptedData, encryptedDataLength, 
-                encScheme,pattern,
-                ivData,ivDataLength,
-                keyId, keyIdLength,
-                initWithLast15);
+                sampleInfo,
+                initWithLast15,
+                properties);
             if(result)
             {
                 TRACE_L1("Decrypt() failed with return code: %x", result);
@@ -652,7 +656,7 @@ public:
     }
 
     Exchange::OCDM_RESULT GetChallengeDataExt(uint8_t* challenge,
-        uint32_t& challengeSize,
+        uint16_t& challengeSize,
         uint32_t isLDL)
     {
         ASSERT(_sessionExt && "This method only works on Exchange::ISessionExt implementations.");
@@ -666,7 +670,7 @@ public:
     }
 
     Exchange::OCDM_RESULT StoreLicenseData(const uint8_t licenseData[],
-        uint32_t licenseDataSize,
+        uint16_t licenseDataSize,
         uint8_t* secureStopId)
     {
         ASSERT(_sessionExt && "This method only works on Exchange::ISessionExt implementations.");

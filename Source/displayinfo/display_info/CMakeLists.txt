@@ -25,7 +25,7 @@ target_include_directories(display_info
 
 target_link_libraries(display_info
     PRIVATE
-        displayinfo)
+        ${NAMESPACE}DisplayInfo)
 
 install(TARGETS display_info 
     DESTINATION bin)

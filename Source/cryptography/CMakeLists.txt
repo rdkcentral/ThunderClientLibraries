@@ -15,11 +15,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-project(Cryptography)
-
 cmake_minimum_required(VERSION 3.3)
 
 find_package(WPEFramework)
+
+project(Cryptography)
 
 project_version(1.0.0)
 
@@ -29,7 +29,7 @@ message("Setup ${TARGET} v${PROJECT_VERSION}")
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# remove the -as-needed flag because it can lead to losing dependencies when we're mixing static and shared libs 
+# remove the -as-needed flag because it can lead to losing dependencies when we're mixing static and shared libs
 string(REPLACE "-Wl,--as-needed" "" CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-as-needed")
 
@@ -39,8 +39,7 @@ find_package(ProxyStubGenerator REQUIRED)
 
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
-find_package(${NAMESPACE}Tracing REQUIRED)
-find_package(${NAMESPACE}Plugins REQUIRED)
+find_package(${NAMESPACE}COM REQUIRED)
 
 ProxyStubGenerator(
     NAMESPACE "WPEFramework::Cryptography" 
@@ -59,11 +58,10 @@ add_library(${TARGET} SHARED
 )
 
 target_link_libraries(${TARGET}
-    PUBLIC
-        ${NAMESPACE}Core::${NAMESPACE}Core
-        ${NAMESPACE}Tracing::${NAMESPACE}Tracing
-        ${NAMESPACE}Plugins::${NAMESPACE}Plugins
     PRIVATE
+        ${NAMESPACE}Core::${NAMESPACE}Core
+        ${NAMESPACE}COM::${NAMESPACE}COM
+        CompileSettingsDebug::CompileSettingsDebug
         -Wl,--whole-archive implementation -Wl,--no-whole-archive
 )
 
@@ -127,7 +125,7 @@ if(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY)
     target_link_libraries(${TARGET}Software 
         PRIVATE
             ${NAMESPACE}Core::${NAMESPACE}Core
-            ${NAMESPACE}Tracing::${NAMESPACE}Tracing
+            ${NAMESPACE}COM::${NAMESPACE}COM
             OpenSSL::SSL
             OpenSSL::Crypto
     )

@@ -62,30 +62,30 @@ using namespace WPEFramework;
 
 static const struct wl_shell_surface_listener g_ShellSurfaceListener = {
     //handle_ping,
-    [](void* data, struct wl_shell_surface* shell_surface, uint32_t serial) {
+    [](void*, struct wl_shell_surface* shell_surface, uint32_t serial) {
         wl_shell_surface_pong(shell_surface, serial);
     },
     //handle_configure,
-    [](void* data, struct wl_shell_surface* shell_surface, uint32_t edges, int32_t width, int32_t height) {
+    [](void*, struct wl_shell_surface*, uint32_t, int32_t width, int32_t height) {
         Trace("handle_configure: width=%d height=%d \n", width, height);
         //  Wayland::Display::Sur *wayland = static_cast<Wayland *>(data);
         // wl_egl_window_resize(wayland->eglWindow, width, height, 0, 0);
     },
     //handle_popup_done
-    [](void* data, struct wl_shell_surface* shell_surface) {
+    [](void*, struct wl_shell_surface*) {
     }
 };
 
 struct wl_shm_listener shmListener = {
     // shmFormat
-    [](void* data, struct wl_shm* wl_shm, uint32_t format) {
+    [](void*, struct wl_shm*, uint32_t format) {
         Trace("shm format: %X\n", format);
     }
 };
 
 static const struct wl_output_listener outputListener = {
     // outputGeometry
-    [](void* data, struct wl_output* output, int32_t x, int32_t y, int32_t physical_width, int32_t physical_height, int32_t subpixel, const char* make, const char* model, int32_t transform) {
+    [](void* data, struct wl_output*, int32_t x, int32_t y, int32_t physical_width, int32_t physical_height, int32_t subpixel, const char* make, const char* model, int32_t transform) {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
         Trace("wl_output_listener.outputGeometry x=%d y=%d physical_width=%d physical_height=%d, make=%s: model=%s transform=%d subpixel%d\n",
             x, y, physical_width, physical_height, make, model, transform, subpixel);
@@ -96,7 +96,7 @@ static const struct wl_output_listener outputListener = {
         rect.Height = physical_height;
     },
     // outputMode
-    [](void* data, struct wl_output* output, uint32_t flags, int32_t width, int32_t height, int32_t refresh) {
+    [](void* data, struct wl_output*, uint32_t flags, int32_t width, int32_t height, int32_t) {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
 
         const Wayland::Display::Rectangle& rect(context.Physical());
@@ -109,16 +109,16 @@ static const struct wl_output_listener outputListener = {
         }
     },
     // outputDone
-    [](void* data, struct wl_output* output) {
+    [](void*, struct wl_output*) {
     },
     // outputScale
-    [](void* data, struct wl_output* output, int32_t factor) {
+    [](void*, struct wl_output*, int32_t) {
     }
 };
 
 static const struct wl_keyboard_listener keyboardListener = {
     // keyboardKeymap
-    [](void* data, struct wl_keyboard* keyboard, uint32_t format, int32_t fd, uint32_t size) {
+    [](void* data, struct wl_keyboard*, uint32_t format, int32_t fd, uint32_t size) {
         if (format != WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
             close(fd);
         } else {
@@ -136,19 +136,19 @@ static const struct wl_keyboard_listener keyboardListener = {
         Trace("wl_keyboard_listener.keyboardKeymap [%d,%d]\n", format, size);
     },
     // keyboardEnter,
-    [](void* data, struct wl_keyboard* keyboard, uint32_t serial, struct wl_surface* surface, struct wl_array* keys) {
+    [](void* data, struct wl_keyboard*, uint32_t serial, struct wl_surface* surface, struct wl_array*) {
         Trace("wl_keyboard_listener.keyboardEnter serial=%d\n", serial);
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
         context.FocusKeyboard(surface, true);
     },
     // keyboardLeave,
-    [](void* data, struct wl_keyboard* keyboard, uint32_t serial, struct wl_surface* surface) {
+    [](void* data, struct wl_keyboard*, uint32_t serial, struct wl_surface* surface) {
         Trace("wl_keyboard_listener.keyboardLeave serial=%d\n", serial);
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
         context.FocusKeyboard(surface, false);
     },
     // keyboardKey
-    [](void* data, struct wl_keyboard* keyboard, uint32_t serial, uint32_t time, uint32_t key, uint32_t state) {
+    [](void* data, struct wl_keyboard* keyboard, uint32_t, uint32_t time, uint32_t key, uint32_t state) {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
 
         // Have no idea if this is true, just lets see...
@@ -170,13 +170,13 @@ static const struct wl_keyboard_listener keyboardListener = {
         Trace("wl_keyboard_listener.keyboardKey [0x%02X, %s, 0x%02X ]\n", key, state == WL_KEYBOARD_KEY_STATE_PRESSED ? "Pressed" : "Released", context._keyModifiers);
     },
     // keyboardModifiers
-    [](void* data, struct wl_keyboard* keyboard, uint32_t serial, uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked, uint32_t group) {
+    [](void* data, struct wl_keyboard*, uint32_t, uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked, uint32_t group) {
         Trace("wl_keyboard_listener.keyboardModifiers [%d,%d,%d]\n", mods_depressed, mods_latched, mods_locked);
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
         context.Modifiers(mods_depressed, mods_latched, mods_locked, group);
     },
     // keyboardRepeatInfo
-    [](void* data, struct wl_keyboard* keyboard, int32_t rate, int32_t delay) {
+    [](void* data, struct wl_keyboard*, int32_t rate, int32_t delay) {
         Trace("wl_keyboard_listener.keyboardRepeatInfo [%d,%d]\n", rate, delay);
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
         context.Repeat(rate, delay);
@@ -185,7 +185,7 @@ static const struct wl_keyboard_listener keyboardListener = {
 
 static const struct wl_pointer_listener pointerListener = {
     // pointerEnter
-    [](void* data, struct wl_pointer* pointer, uint32_t serial, struct wl_surface* surface, wl_fixed_t sx, wl_fixed_t sy) {
+    [](void* data, struct wl_pointer*, uint32_t, struct wl_surface* surface, wl_fixed_t sx, wl_fixed_t sy) {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
         int x, y;
 
@@ -196,13 +196,13 @@ static const struct wl_pointer_listener pointerListener = {
         context.FocusPointer(surface, true);
     },
     // pointerLeave
-    [](void* data, struct wl_pointer* pointer, uint32_t serial, struct wl_surface* surface) {
+    [](void* data, struct wl_pointer*, uint32_t, struct wl_surface* surface) {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
         Trace("wl_pointer_listener.pointerLeave [%p]\n", surface);
         context.FocusPointer(surface, false);
     },
     // pointerMotion
-    [](void* data, struct wl_pointer* pointer, uint32_t time, wl_fixed_t sx, wl_fixed_t sy) {
+    [](void* data, struct wl_pointer*, uint32_t, wl_fixed_t sx, wl_fixed_t sy) {
         int x, y;
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
 
@@ -213,7 +213,7 @@ static const struct wl_pointer_listener pointerListener = {
         context.SendPointerPosition(x, y);
     },
     // pointerButton
-    [](void* data, struct wl_pointer* pointer, uint32_t serial, uint32_t time, uint32_t button, uint32_t state) {
+    [](void* data, struct wl_pointer*, uint32_t, uint32_t, uint32_t button, uint32_t state) {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
         Trace("wl_pointer_listener.pointerButton [%u,%u]\n", button, state);
 
@@ -226,10 +226,22 @@ static const struct wl_pointer_listener pointerListener = {
         context.SendPointerButton(button, static_cast<Wayland::Display::IPointer::state>(state));
     },
     // pointerAxis
-    [](void* data, struct wl_pointer* pointer, uint32_t time, uint32_t axis, wl_fixed_t value) {
+    [](void*, struct wl_pointer*, uint32_t, uint32_t axis, wl_fixed_t value) {
         int v;
         v = wl_fixed_to_int(value);
         Trace("wl_pointer_listener.pointerAxis [%u,%d]\n", axis, v);
+    },
+    // pointerFrame
+    [](void*, struct wl_pointer*) {
+    },
+    // pointerAxisSource
+    [](void*, struct wl_pointer*, uint32_t) {
+    },
+    // pointerAxisStop
+    [](void*, struct wl_pointer*, uint32_t, uint32_t) {
+    },
+    // pointerAxisDiscrete
+    [](void*, struct wl_pointer*, uint32_t, int32_t) {
     }
 };
 
@@ -256,7 +268,7 @@ static const struct wl_seat_listener seatListener = {
         }
     },
     // seatName
-    [](void* data, struct wl_seat* seat, const char* name) {
+    [](void*, struct wl_seat* seat, const char* name) {
         Trace("wl_seat_listener.seatName[%p,%s]\n", seat, name);
     }
 };
@@ -283,7 +295,7 @@ static const struct wl_simple_shell_listener simpleShellListener = {
         }
     },
     // surfaceCreated
-    [](void* data, struct wl_simple_shell* shell, uint32_t surfaceId, const char* name) {
+    [](void*, struct wl_simple_shell* shell, uint32_t surfaceId, const char* name) {
         Trace("wl_simple_shell_listener.surface_created shell=%p name=%s surfaceId=%d\n", shell, name, surfaceId);
     },
     // surfaceDestroyed
@@ -312,7 +324,7 @@ static const struct wl_simple_shell_listener simpleShellListener = {
         Trace("wl_simple_shell_listener.surface_status surfaceId=%d\n", surfaceId);
     },
     // getSurfacesDone
-    [](void* data, struct wl_simple_shell* shell) {
+    [](void*, struct wl_simple_shell* shell) {
         Trace("wl_simple_shell_listener.get_surfaces_done shell=%p\n", shell);
     }
 };
@@ -1226,7 +1238,7 @@ namespace Wayland {
 
     void Display::Signal()
     {
-        printf("Received Signal, killing thread %p.\n", &_thread);
+        TRACE_L1(_T("Received Signal, killing thread %p"), &_thread);
         ::pthread_kill(_thread, SIGINT);
     }
 }

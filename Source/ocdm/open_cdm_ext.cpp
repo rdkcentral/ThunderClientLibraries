@@ -220,8 +220,14 @@ opencdm_session_get_challenge_data(struct OpenCDMSession* mOpenCDMSession,
     uint32_t isLDL)
 {
     ASSERT(mOpenCDMSession != nullptr);
-    return (OpenCDMError)mOpenCDMSession->GetChallengeDataExt(challenge,
-        *challengeSize, isLDL);
+    ASSERT((*challengeSize) < 0xFFFF);
+    uint16_t realLength = static_cast<uint16_t>(*challengeSize);
+
+    OpenCDMError result = static_cast<OpenCDMError>(mOpenCDMSession->GetChallengeDataExt(challenge, realLength, isLDL));
+
+    *challengeSize = realLength;
+
+    return (result);
 }
 
 OpenCDMError
@@ -384,7 +390,7 @@ OpenCDMError opencdm_system_ext_get_properties(struct PlayLevels* system, const 
             , _compressedAudio()
             , _uncompressedAudio()
             , _maxDecodeWidth()
-            , _maxDecodeHeigth()
+            , _maxDecodeHeight()
         {
             Add(_T("compressed-video"), &_compressedVideo);
             Add(_T("uncompressed-video"), &_uncompressedVideo);
@@ -392,7 +398,7 @@ OpenCDMError opencdm_system_ext_get_properties(struct PlayLevels* system, const 
             Add(_T("compressed-audio"), &_compressedAudio);
             Add(_T("uncompressed-audio"), &_uncompressedAudio);
             Add(_T("max-decode-width"), &_maxDecodeWidth);
-            Add(_T("max-decode-height"), &_maxDecodeHeigth);
+            Add(_T("max-decode-height"), &_maxDecodeHeight);
         }
 
     public:
@@ -402,7 +408,7 @@ OpenCDMError opencdm_system_ext_get_properties(struct PlayLevels* system, const 
         JSON::DecUInt16 _compressedAudio;
         JSON::DecUInt16 _uncompressedAudio;
         JSON::DecUInt32 _maxDecodeWidth;
-        JSON::DecUInt32 _maxDecodeHeigth;
+        JSON::DecUInt32 _maxDecodeHeight;
     };
 
     ASSERT(system != nullptr);
@@ -421,7 +427,7 @@ OpenCDMError opencdm_system_ext_get_properties(struct PlayLevels* system, const 
         system->_compressedDigitalAudioLevel = playlevelJson._compressedAudio.Value();
         system->_uncompressedDigitalAudioLevel = playlevelJson._uncompressedAudio.Value();
         system->_maxResDecodeWidth = playlevelJson._maxDecodeWidth.Value();
-        system->_maxResDecodeHeight = playlevelJson._maxDecodeHeigth.Value();
+        system->_maxResDecodeHeight = playlevelJson._maxDecodeHeight.Value();
 
         result = OpenCDMError::ERROR_NONE;
     }

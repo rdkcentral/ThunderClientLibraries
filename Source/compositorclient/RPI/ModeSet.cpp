@@ -17,6 +17,7 @@
 * limitations under the License.
 */ 
 
+#include "Module.h"
 #include "ModeSet.h"
 
 #include <vector>
@@ -331,7 +332,7 @@ ModeSet::ModeSet()
                 if (_fd >= 0) {
                     bool success = false;
 
-                    printf("Test Card: %s\n", index->c_str());
+                    TRACE_L1(_T("Test Card: %s"), index->c_str());
                     if ( (FindProperDisplay(_fd, _crtc, _encoder, _connector, _fb) == true) && 
                          /* TODO: Changes the original fb which might not be what is intended */
                          (CreateBuffer(_fd, _connector, _device, _mode, _fb, _buffer) == true) && 
@@ -347,7 +348,7 @@ ModeSet::ModeSet()
                         }
                     }
                     if (success == true) {
-                        printf("Opened Card: %s\n", index->c_str());
+                        TRACE_L1(_T("Opened Card: %s"), index->c_str());
                     }
                     else {
                         Destruct();
@@ -356,7 +357,7 @@ ModeSet::ModeSet()
             }
             index++;
         }
-        printf("Found descriptor: %d\n", _fd); fflush(stdout); fflush(stderr);
+        TRACE_L1(_T("Found descriptor: %d"), _fd);
     }
 }
 
@@ -472,7 +473,7 @@ void ModeSet::DropSurfaceFromOutput(const uint32_t id) {
     drmModeRmFB(_fd, id);
 }
 
-void ModeSet::ScanOutRenderTarget (struct gbm_surface* surface, const uint32_t id) {
+void ModeSet::ScanOutRenderTarget(struct gbm_surface*, const uint32_t id) {
 
     std::mutex signal; 
     signal.lock();
@@ -489,7 +490,7 @@ void ModeSet::ScanOutRenderTarget (struct gbm_surface* surface, const uint32_t i
         // Strictly speaking c++ linkage and not C linkage
         // Asynchronous, but never called more than once, waiting in scope
         // Use the magic constant here because the struct is versioned!
-        drmEventContext context = { .version = 2, . vblank_handler = nullptr, .page_flip_handler = PageFlip };
+        drmEventContext context = { .version = 2, .vblank_handler = nullptr, .page_flip_handler = PageFlip, .page_flip_handler2 = nullptr, .sequence_handler = nullptr };
         struct timespec timeout = { .tv_sec = 1, .tv_nsec = 0 };
         fd_set fds;
 

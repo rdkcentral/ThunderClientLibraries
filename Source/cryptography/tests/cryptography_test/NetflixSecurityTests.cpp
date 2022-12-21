@@ -19,15 +19,17 @@
 
 #include "Module.h"
 
-#include <cryptography.h>
 #include <core/core.h>
-#include <string.h>
+
 #include <climits>
+#include <string.h>
 
 #include <openssl/sha.h>
 #include <openssl/hmac.h>
 #include <openssl/bn.h>
 
+#include "ICryptography.h"
+#include "INetflixSecurity.h"
 #include "Helpers.h"
 #include "Test.h"
 
@@ -271,16 +273,16 @@ int main()
             } else {
                 printf("FATAL: Failed to acquire IVault\n");
             }
+            cg->Release();
         } else {
             printf("FATAL: Failed to acquire ICryptography\n");
         }
+        nfSecurity->Release();
     } else {
         printf("FATAL: Failed to acquire INetflixSecurity, NetflixSecurity tests can't be performed\n");
     }
 
     printf("TOTAL: %i tests; %i PASSED, %i FAILED\n", TotalTests, TotalTestsPassed, (TotalTests - TotalTestsPassed));
-
-    Teardown();
 
     return (TotalTests - TotalTestsPassed);
 }

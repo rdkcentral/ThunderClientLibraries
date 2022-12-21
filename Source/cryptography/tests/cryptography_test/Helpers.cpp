@@ -21,7 +21,6 @@
 #include <openssl/dh.h>
 #include <openssl/sha.h>
 #include <openssl/hmac.h>
-
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
@@ -30,6 +29,8 @@
 #include "Test.h"
 
 #include "core/core.h"
+#include "ICryptography.h"
+#include "INetflixSecurity.h"
 
 extern "C" {
 
@@ -122,7 +123,7 @@ uint8_t* DHDerive(DH* dh, const BIGNUM* peerPublicKey)
 }
 
 
-bool DHAuthenticatedDerive(DH* dh, const uint16_t secretSize, const uint8_t secret[],  const uint16_t derivationKeySize, const uint8_t derivationKey[],
+bool DHAuthenticatedDerive(DH* dh VARIABLE_IS_NOT_USED, const uint16_t secretSize, const uint8_t secret[],  const uint16_t derivationKeySize, const uint8_t derivationKey[],
                            const uint16_t saltSize, const uint8_t salt[], const uint16_t dataSize, const uint8_t data[],
                            uint8_t* encKeyOut[], uint8_t* hmacKeyOut[], uint8_t* wrapKeyOut[])
 {
@@ -196,11 +197,6 @@ bool DHAuthenticatedDerive(DH* dh, const uint16_t secretSize, const uint8_t secr
     DumpBuffer(*wrapKeyOut, AES_KEY_SIZE);
 
     return (true);
-}
-
-void Teardown()
-{
-    WPEFramework::Core::Singleton::Dispose();
 }
 
 } // extern "C"

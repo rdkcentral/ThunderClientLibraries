@@ -728,8 +728,6 @@ int main(void)
 
     printf("TOTAL: %i tests; %i PASSED, %i FAILED\n", TotalTests, TotalTestsPassed, (TotalTests - TotalTestsPassed));
 
-    Teardown();
-
     return (TotalTests - TotalTestsPassed);
 }
 

@@ -15,11 +15,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-project(VirtualInput)
-
 cmake_minimum_required(VERSION 3.3)
 
 find_package(WPEFramework)
+
+project(VirtualInput)
 
 project_version(1.0.0)
 
@@ -54,10 +54,10 @@ set_target_properties(${TARGET} PROPERTIES
         FRAMEWORK FALSE
         PUBLIC_HEADER "${PUBLIC_HEADERS}" # specify the public headers
         VERSION ${PROJECT_VERSION}
-        SOSOVERSION ${PROJECT_VERSION_MAJOR}
+        SOVERSION ${PROJECT_VERSION_MAJOR}
         )
 
-target_include_directories( ${TARGET}
+target_include_directories(${TARGET}
         PUBLIC
           $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
           $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../>
@@ -79,7 +79,7 @@ InstallCMakeConfig(
         TARGETS ${TARGET})
 
 InstallPackageConfig(
-        TARGETS ${TARGET} 
+        TARGETS ${TARGET}
         DESCRIPTION "An abstraction layer for input virtualisation using an IPC message channel.")
 
 if (VIRTUALINPUT_TOOLS)

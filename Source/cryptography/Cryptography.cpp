@@ -46,6 +46,8 @@ namespace Implementation {
             : BaseClass()
             , _adminLock()
         {
+            ASSERT(_singleton==nullptr);
+            _singleton=this;
             BaseClass::Open(waitTime, thunder, callsign);
         }
         ~CryptographyLink() override
@@ -55,18 +57,29 @@ namespace Implementation {
         }
         static CryptographyLink& Instance(const std::string& callsign = Callsign)
         {
-            return Core::SingletonType<CryptographyLink>::Instance(TimeOut, PluginConnector, callsign);
+            static CryptographyLink *instance = new CryptographyLink(TimeOut, PluginConnector, callsign);
+            ASSERT(instance!=nullptr);
+            return *instance;
         }
-        Cryptography::ICryptography* Aquire(const Core::NodeId& nodeId)
+        static void Dispose()
         {
-            return BaseClass::Aquire<Cryptography::ICryptography>(3000, nodeId, _T(""), ~0);
+            ASSERT(_singleton != nullptr);
+
+            if(_singleton != nullptr)
+            {
+                delete _singleton;
+            }
+        }
+        Cryptography::ICryptography* Acquire(const Core::NodeId& nodeId)
+        {
+            return BaseClass::Acquire<Cryptography::ICryptography>(3000, nodeId, _T(""), ~0);
         }
         Cryptography::ICryptography* Cryptography(const std::string& connectionPoint);
 
         template <typename TYPE, typename... Args>
         Core::ProxyType<Core::IUnknown> Register(Args&&... args)
         {
-            return (_interfaces.template Instance<TYPE>(std::forward<Args>(args)...));
+            return (Core::ProxyType<Core::IUnknown>(_interfaces.template Instance<TYPE>(std::forward<Args>(args)...)));
         }
 
     private:
@@ -81,7 +94,10 @@ namespace Implementation {
     private:
         mutable Core::CriticalSection _adminLock;
         Core::ProxyListType<Core::IUnknown> _interfaces;
+        static CryptographyLink* _singleton;
     };
+
+    CryptographyLink* CryptographyLink::_singleton = nullptr;
 
     class RPCDiffieHellmanImpl : public Cryptography::IDiffieHellman {
     public:
@@ -144,16 +160,16 @@ namespace Implementation {
 
     public:
         int32_t Encrypt(const uint8_t ivLength, const uint8_t iv[],
-            const uint32_t inputLength, const uint8_t input[],
-            const uint32_t maxOutputLength, uint8_t output[]) const override
+            const uint16_t inputLength, const uint8_t input[],
+            const uint16_t maxOutputLength, uint8_t output[]) const override
         {
             Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
             return (_accessor != nullptr) ? _accessor->Encrypt(ivLength, iv, inputLength, input, maxOutputLength, output) : 0;
         }
 
         int32_t Decrypt(const uint8_t ivLength, const uint8_t iv[],
-            const uint32_t inputLength, const uint8_t input[],
-            const uint32_t maxOutputLength, uint8_t output[]) const override
+            const uint16_t inputLength, const uint8_t input[],
+            const uint16_t maxOutputLength, uint8_t output[]) const override
         {
             Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
             return (_accessor != nullptr) ? _accessor->Decrypt(ivLength, iv, inputLength, input, maxOutputLength, output) : 0;
@@ -190,7 +206,7 @@ namespace Implementation {
 
     public:
         /* Ingest data into the hash calculator (multiple calls possible) */
-        uint32_t Ingest(const uint32_t length, const uint8_t data[] /* @length:length */) override
+        uint32_t Ingest(const uint16_t length, const uint8_t data[] /* @length:length */) override
         {
             Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
             return (_accessor != nullptr ? _accessor->Ingest(length, data) : 0);
@@ -453,7 +469,7 @@ namespace Implementation {
 
     Cryptography::ICryptography* CryptographyLink::Cryptography(const std::string& connectionPoint)
     {
-        Cryptography::ICryptography* iface = BaseClass::Aquire<Cryptography::ICryptography>(3000, Core::NodeId(connectionPoint.c_str()), _T(""), ~0);
+        Cryptography::ICryptography* iface = BaseClass::Acquire<Cryptography::ICryptography>(3000, Core::NodeId(connectionPoint.c_str()), _T(""), ~0);
 
         // Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
 
@@ -488,9 +504,9 @@ namespace Implementation {
         }
 
     public:
-        uint32_t Ingest(const uint32_t length, const uint8_t data[]) override
+        uint32_t Ingest(const uint16_t length, const uint8_t data[]) override
         {
-            return (hash_ingest(_implementation, length, data));
+            return (hash_ingest(_implementation, static_cast<uint32_t>(length), data));
         }
 
         uint8_t Calculate(const uint8_t maxLength, uint8_t data[]) override
@@ -628,17 +644,17 @@ namespace Implementation {
 
         public:
             int32_t Encrypt(const uint8_t ivLength, const uint8_t iv[],
-                const uint32_t inputLength, const uint8_t input[],
-                const uint32_t maxOutputLength, uint8_t output[]) const override
+                const uint16_t inputLength, const uint8_t input[],
+                const uint16_t maxOutputLength, uint8_t output[]) const override
             {
-                return (cipher_encrypt(_implementation, ivLength, iv, inputLength, input, maxOutputLength, output));
+                return (cipher_encrypt(_implementation, ivLength, iv, static_cast<uint32_t>(inputLength), input, static_cast<uint32_t>(maxOutputLength), output));
             }
 
             int32_t Decrypt(const uint8_t ivLength, const uint8_t iv[],
-                const uint32_t inputLength, const uint8_t input[],
-                const uint32_t maxOutputLength, uint8_t output[]) const override
+                const uint16_t inputLength, const uint8_t input[],
+                const uint16_t maxOutputLength, uint8_t output[]) const override
             {
-                return (cipher_decrypt(_implementation, ivLength, iv, inputLength, input, maxOutputLength, output));
+                return (cipher_decrypt(_implementation, ivLength, iv, static_cast<uint32_t>(inputLength), input, static_cast<uint32_t>(maxOutputLength), output));
             }
 
         public:
