@@ -441,7 +441,7 @@ int main()
             uint32_t count = 500000;
             while (count-- != 0) {
                 deviceinfo_output_resolution_t res = DEVICEINFO_RESOLUTION_UNKNOWN;
-                deviceinfo_maximum_output_resolution(&res);
+                deviceinfo_maximum_output_resolution(DEVICEINFO_VIDEO_DISPLAYPORT, &res);
                 Trace("%i: Output Resolution: %d", count, res);
             }
         }
