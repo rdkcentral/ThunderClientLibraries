@@ -17,7 +17,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef DIFFIEHELLMAN_IMPLEMENTATION_H
+#define DIFFIEHELLMAN_IMPLEMENTATION_H
 
 #include <stdint.h>
 #include "vault_implementation.h"
@@ -36,3 +37,5 @@ EXTERNAL uint32_t diffiehellman_derive(struct VaultImplementation* vault,
 #ifdef __cplusplus
 } // extern "C"
 #endif
+
+#endif // DIFFIEHELLMAN_IMPLEMENTATION_H

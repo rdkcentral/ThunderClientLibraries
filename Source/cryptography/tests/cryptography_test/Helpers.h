@@ -17,7 +17,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef HELPERS_H
+#define HELPERS_H
 
 #include "Module.h"
 
@@ -48,3 +49,4 @@ bool DHAuthenticatedDerive(DH* dh, const uint16_t secretSize, const uint8_t secr
 }
 #endif
 
+#endif // HELPERS_H

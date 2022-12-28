@@ -17,7 +17,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef SECURITYAGENT_H
+#define SECURITYAGENT_H
 
 #ifndef EXTERNAL
 #ifdef _MSVC_LANG
@@ -65,3 +66,4 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+#endif // SECURITYAGENT_H

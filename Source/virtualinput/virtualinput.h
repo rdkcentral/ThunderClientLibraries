@@ -17,7 +17,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef VIRTUALINPUT_H
+#define VIRTUALINPUT_H
 
 #include <stdbool.h>
 
@@ -87,3 +88,5 @@ EXTERNAL void virtualinput_dispose();
 #ifdef __cplusplus
 }
 #endif
+
+#endif // VIRTUALINPUT_H

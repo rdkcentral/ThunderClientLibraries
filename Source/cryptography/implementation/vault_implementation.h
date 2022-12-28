@@ -17,7 +17,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef VAULT_IMPLEMENTATION_H
+#define VAULT_IMPLEMENTATION_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -60,3 +61,5 @@ EXTERNAL bool vault_delete(struct VaultImplementation* vault, const uint32_t id)
 #ifdef __cplusplus
 } // extern "C"
 #endif
+
+#endif // VAULT_IMPLEMENTATION_H
