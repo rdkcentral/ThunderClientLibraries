@@ -17,7 +17,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef DISPLAYINFO_H
+#define DISPLAYINFO_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -470,3 +471,5 @@ EXTERNAL void displayinfo_dispose();
 #ifdef __cplusplus
 } // extern "C"
 #endif
+
+#endif // DISPLAYINFO_H

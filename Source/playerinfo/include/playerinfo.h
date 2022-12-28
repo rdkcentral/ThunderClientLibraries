@@ -17,7 +17,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef PLAYERINFO_H
+#define PLAYERINFO_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -291,3 +292,5 @@ EXTERNAL void playerinfo_dispose();
 #ifdef __cplusplus
 } // extern "C"
 #endif
+
+#endif // PLAYERINFO_H

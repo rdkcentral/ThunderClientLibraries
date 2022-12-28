@@ -17,7 +17,8 @@
 * limitations under the License.
 */
 
-#pragma once
+#ifndef DEVICEINFO_H
+#define DEVICEINFO_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -441,3 +442,5 @@ EXTERNAL void deviceinfo_dispose();
 #ifdef __cplusplus
 } // extern "C"
 #endif
+
+#endif // DEVICEINFO_H

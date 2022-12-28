@@ -17,7 +17,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef CRYPTOGRAPHY_VAULT_IDS_H
+#define CRYPTOGRAPHY_VAULT_IDS_H
 
 #include <stdint.h>
 
@@ -30,3 +31,5 @@ extern "C"
         CRYPTOGRAPHY_VAULT_PROVISIONING = 0x10,
         CRYPTOGRAPHY_VAULT_NETFLIX = 0x11
     };
+
+#endif // CRYPTOGRAPHY_VAULT_IDS_H

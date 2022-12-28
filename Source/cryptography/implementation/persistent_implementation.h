@@ -17,7 +17,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef PERSISTENT_IMPLEMENTATION_H
+#define PERSISTENT_IMPLEMENTATION_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -48,3 +49,4 @@ EXTERNAL uint32_t persistent_flush(struct VaultImplementation* vault);
 } // extern "C"
 #endif
 
+#endif // PERSISTENT_IMPLEMENTATION_H

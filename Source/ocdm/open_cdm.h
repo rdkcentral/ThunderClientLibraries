@@ -15,7 +15,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef OPEN_CDM_H
+#define OPEN_CDM_H
 
 // WPEWebkit implementation is using the following header file to integrate
 // their solution with
@@ -597,4 +598,4 @@ EXTERNAL void opencdm_dispose();
 }
 #endif
 
-
+#endif // OPEN_CDM_H

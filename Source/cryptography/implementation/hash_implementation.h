@@ -17,7 +17,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef HASH_IMPLEMENTATION_H
+#define HASH_IMPLEMENTATION_H
 
 #include <stdint.h>
 #include "vault_implementation.h"
@@ -50,3 +51,5 @@ EXTERNAL uint8_t hash_calculate(struct HashImplementation* signing, const uint8_
 #ifdef __cplusplus
 } // extern "C"
 #endif
+
+#endif // HASH_IMPLEMENTATION_H
