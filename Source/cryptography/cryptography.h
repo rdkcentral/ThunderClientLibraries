@@ -17,7 +17,10 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef CRYPTOGRAPHY_H
+#define CRYPTOGRAPHY_H
 
 #include "ICryptography.h"
 #include "INetflixSecurity.h"
+
+#endif // CRYPTOGRAPHY_H

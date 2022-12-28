@@ -17,7 +17,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef NETFLIX_SECURITY_IMPL_H
+#define NETFLIX_SECURITY_IMPL_H
 
 #include <stdint.h>
 
@@ -48,3 +49,5 @@ EXTERNAL uint32_t netflix_security_derive_keys(const uint32_t private_dh_key_id,
 #ifdef __cplusplus
 } // extern "C"
 #endif
+
+#endif // NETFLIX_SECURITY_IMPL_H

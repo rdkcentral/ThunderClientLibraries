@@ -17,7 +17,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef CIPHER_IMPLEMENTATION_H
+#define CIPHER_IMPLEMENTATION_H
 
 #include <stdint.h>
 #include "vault_implementation.h"
@@ -52,3 +53,5 @@ EXTERNAL int32_t cipher_decrypt(const struct CipherImplementation* cipher, const
 #ifdef __cplusplus
 } // extern "C"
 #endif
+
+#endif // CIPHER_IMPLEMENTATION_H

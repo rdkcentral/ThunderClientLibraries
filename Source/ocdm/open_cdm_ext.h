@@ -15,10 +15,10 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef OPEN_CDM_EXT_H
+#define OPEN_CDM_EXT_H
 
 #include "open_cdm.h"
-
 
 #ifdef __cplusplus
 extern "C" {
@@ -239,7 +239,4 @@ EXTERNAL OpenCDMError opencdm_system_ext_get_properties(struct PlayLevels* syste
 } // extern "C"
 #endif
 
-
-
-
-
+#endif // OPEN_CDM_EXT_H
