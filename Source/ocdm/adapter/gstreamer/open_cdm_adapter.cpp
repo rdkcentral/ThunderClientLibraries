@@ -87,6 +87,8 @@ OpenCDMError opencdm_gstreamer_session_decrypt(struct OpenCDMSession* session, G
             const char* cipherModeBuf = gst_structure_get_string(protectionMeta->info, "cipher-mode");
             if(g_strcmp0(cipherModeBuf,"cbcs") == 0) {
                 encScheme = AesCbc_Cbcs;
+            } else if (gst_structure_has_name(protectionMeta->info, "application/x-cbcs")) {
+                encScheme = AesCbc_Cbcs;
             }
 
             gst_structure_get_uint(protectionMeta->info, "crypt_byte_block", &pattern.encrypted_blocks);
@@ -252,6 +254,8 @@ OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* ses
             EncryptionPattern pattern = {0, 0};
             const char* cipherModeBuf = gst_structure_get_string(protectionMeta->info, "cipher-mode");
             if(g_strcmp0(cipherModeBuf,"cbcs") == 0) {
+                encScheme = AesCbc_Cbcs;
+            } else if (gst_structure_has_name(protectionMeta->info, "application/x-cbcs")) {
                 encScheme = AesCbc_Cbcs;
             }
             gst_structure_get_uint(protectionMeta->info, "crypt_byte_block", &pattern.encrypted_blocks);
