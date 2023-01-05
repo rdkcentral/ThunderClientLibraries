@@ -73,7 +73,7 @@ target_include_directories( ${TARGET}
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
         )
 
-if("${CDMI_ADAPTER_IMPLEMENTATION}" STREQUAL "broadcom-svp")
+if(("${CDMI_ADAPTER_IMPLEMENTATION}" STREQUAL "broadcom-svp") OR ("${CDMI_ADAPTER_IMPLEMENTATION}" STREQUAL "broadcom-svp-secbuf"))
     if (OCDM_IMPLEMENTATION_PATH)
         target_sources(${TARGET} PRIVATE ${OCDM_IMPLEMENTATION_PATH}/open_cdm_adapter.cpp)
     else()
@@ -85,7 +85,11 @@ if("${CDMI_ADAPTER_IMPLEMENTATION}" STREQUAL "broadcom-svp")
             GIT_VERSION ${OCDM_IMPLEMENTATION_VERSION}
             SOURCE_DIR "adapter/broadcom-svp"
         )
-        target_sources(${TARGET} PRIVATE adapter/broadcom-svp/open_cdm_adapter.cpp)
+        if("${CDMI_ADAPTER_IMPLEMENTATION}" STREQUAL "broadcom-svp")
+            target_sources(${TARGET} PRIVATE adapter/broadcom-svp/open_cdm_adapter.cpp)
+        else()
+            target_sources(${TARGET} PRIVATE adapter/broadcom-svp/open_cdm_adapter-secbuf.cpp)
+        endif()
     endif()
 else()
     target_sources(${TARGET} PRIVATE adapter/${CDMI_ADAPTER_IMPLEMENTATION}/open_cdm_adapter.cpp)
