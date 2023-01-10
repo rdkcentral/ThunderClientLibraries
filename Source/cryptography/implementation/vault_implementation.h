@@ -26,11 +26,11 @@
 
 #undef EXTERNAL
 #if defined(WIN32) || defined(_WINDOWS) || defined (__CYGWIN__) || defined(_WIN64)
-#ifdef DEVICEINFO_EXPORTS
+#ifdef CRYPTOGRAPHY_EXPORTS
 #define EXTERNAL __declspec(dllexport)
 #else
 #define EXTERNAL __declspec(dllimport)
-#pragma comment(lib, "crypto.lib")
+#pragma comment(lib, "cryptography.lib")
 #endif
 #else
 #define EXTERNAL __attribute__((visibility("default")))
@@ -39,7 +39,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 
 struct VaultImplementation;
 
