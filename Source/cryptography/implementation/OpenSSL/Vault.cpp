@@ -179,7 +179,8 @@ uint16_t Vault::Cipher(bool encrypt, const uint16_t inSize, const uint8_t input[
         EVP_CipherInit_ex(ctx, EVP_aes_128_ctr(), nullptr, reinterpret_cast<const unsigned char*>(_vaultKey.data()), iv, encrypt);
         EVP_CipherUpdate(ctx, outputBuffer, &outLen, inputBuffer, inputSize);
         totalLen += outLen;
-        EVP_EncryptFinal_ex(ctx, (outputBuffer + outLen), &outLen);
+	outLen = 0;
+	EVP_EncryptFinal_ex(ctx, (output + totalLen), &outLen);
         totalLen += outLen;
 
         EVP_CIPHER_CTX_cleanup(ctx);
