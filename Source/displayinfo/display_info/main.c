@@ -90,6 +90,10 @@ int main(int argc, char* argv[])
                 Trace("HDR: HDR10 Plus");
                 break;
             }
+            case DISPLAYINFO_HDR_HLG: {
+                Trace("HDR: HLG");
+                break;
+            }
             case DISPLAYINFO_HDR_DOLBYVISION: {
                 Trace("HDR: DolbyVision");
                 break;
