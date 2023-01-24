@@ -256,15 +256,11 @@ private:
 
         if (ControllerInterface!= nullptr) {
 
-            _lock.Lock();
-
             _subsysInterface = ControllerInterface->SubSystems();
 
             if (_subsysInterface != nullptr) {
                 _identifierInterface = _subsysInterface->Get<PluginHost::ISubSystem::IIdentifier>();
             }
-
-            _lock.Unlock();
         }
     }
 
