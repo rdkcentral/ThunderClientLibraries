@@ -409,8 +409,8 @@ public:
         _lock.Lock();
 
         if (_dolbyInterface != nullptr) {
-            if (_dolbyInterface->AtmosMetadata(isSupported) != Core::ERROR_NONE) {
-                isSupported = true;
+            if(_dolbyInterface->AtmosMetadata(isSupported) != Core::ERROR_NONE) {
+                isSupported = false;
             }
         }
 
