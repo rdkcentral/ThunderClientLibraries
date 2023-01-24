@@ -256,11 +256,15 @@ private:
 
         if (ControllerInterface!= nullptr) {
 
+            _lock.Lock();
+
             _subsysInterface = ControllerInterface->SubSystems();
 
             if (_subsysInterface != nullptr) {
                 _identifierInterface = _subsysInterface->Get<PluginHost::ISubSystem::IIdentifier>();
             }
+
+            _lock.Unlock();
         }
     }
 
@@ -269,6 +273,8 @@ public:
     DeviceInfoLink& operator=(const DeviceInfoLink&) = delete;
     ~DeviceInfoLink() override
     {
+        _lock.Lock();
+
         if (_subsysInterface != nullptr) {
             _subsysInterface->Release();
             _subsysInterface = nullptr;
@@ -277,6 +283,9 @@ public:
             _identifierInterface->Release();
             _identifierInterface = nullptr;
         }
+
+        _lock.Unlock();
+
         BaseClass::Close(WPEFramework::Core::infinite);
         _singleton = nullptr;
     }
@@ -300,6 +309,8 @@ public:
 private:
     void Operational(const bool upAndRunning) override
     {
+        _lock.Lock();
+
         if (upAndRunning) {
             if (_deviceInfoInterface == nullptr) {
                 _deviceInfoInterface = BaseClass::Interface();
@@ -325,6 +336,8 @@ private:
                 _deviceInfoInterface = nullptr;
             }
         }
+
+        _lock.Unlock();
     }
 
     /*
