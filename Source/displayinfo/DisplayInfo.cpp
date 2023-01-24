@@ -56,7 +56,13 @@ public:
 private:
     void DisplayOutputUpdated(VARIABLE_IS_NOT_USED const Exchange::IConnectionProperties::INotification::Source event)
     {
-        for (auto& index : _displayChangeCallbacks) {
+        _lock.Lock();
+
+        auto callbacks = _displayChangeCallbacks;
+
+        _lock.Unlock();
+        
+        for (auto& index : callbacks) {
             index.first(index.second);
         }
     }
@@ -88,6 +94,8 @@ private:
 
     void Operational(const bool upAndRunning) override
     {
+        _lock.Lock();
+
         if (upAndRunning) {
             if (_displayConnection == nullptr) {
                 _displayConnection = BaseClass::Interface();
@@ -118,13 +126,18 @@ private:
             }
         }
 
-        for (auto& index : _operationalStateCallbacks) {
+        auto callbacks = _operationalStateCallbacks;
+
+        _lock.Unlock();
+
+        for (auto& index : callbacks) {
             index.first(upAndRunning, index.second);
         }
     }
 
 private:
     //MEMBERS
+    mutable Core::CriticalSection _lock;
     Exchange::IConnectionProperties* _displayConnection;
     Exchange::IHDRProperties* _hdrProperties;
     Exchange::IGraphicsProperties* _graphicsProperties;
@@ -169,197 +182,157 @@ public:
 
     uint32_t RegisterOperationalStateChangedCallback(displayinfo_operational_state_change_cb callback, void* userdata)
     {
+        uint32_t result = Core::ERROR_ALREADY_CONNECTED;
+
+        ASSERT(callback != nullptr);
+
+        _lock.Lock();
 
         OperationalStateChangeCallbacks::iterator index(_operationalStateCallbacks.find(callback));
 
-        if (index == _operationalStateCallbacks.end()) {
-            _operationalStateCallbacks.emplace(std::piecewise_construct,
-                std::forward_as_tuple(callback),
-                std::forward_as_tuple(userdata));
-            return Core::ERROR_NONE;
+        if (_operationalStateCallbacks.find(callback) == _operationalStateCallbacks.end()) {
+            _operationalStateCallbacks.emplace(std::piecewise_construct, std::forward_as_tuple(callback), std::forward_as_tuple(userdata));
+            result = Core::ERROR_NONE;
         }
-        return Core::ERROR_GENERAL;
+
+        _lock.Unlock();
+
+        return (result);
     }
 
     uint32_t UnregisterOperationalStateChangedCallback(displayinfo_operational_state_change_cb callback)
     {
+        uint32_t result = Core::ERROR_ALREADY_RELEASED;
+
+        ASSERT(callback != nullptr);
+
+        _lock.Lock();
+
         OperationalStateChangeCallbacks::iterator index(_operationalStateCallbacks.find(callback));
 
         if (index != _operationalStateCallbacks.end()) {
             _operationalStateCallbacks.erase(index);
-            return Core::ERROR_NONE;
+            result = Core::ERROR_NONE;
         }
-        return Core::ERROR_NOT_EXIST;
+
+        _lock.Unlock();
+
+        return (result);
     }
 
     uint32_t RegisterDisplayOutputChangeCallback(displayinfo_display_output_change_cb callback, void* userdata)
     {
-        DisplayOutputUpdatedCallbacks::iterator index(_displayChangeCallbacks.find(callback));
+        uint32_t result = Core::ERROR_ALREADY_CONNECTED;
 
-        if (index == _displayChangeCallbacks.end()) {
-            _displayChangeCallbacks.emplace(std::piecewise_construct,
-                std::forward_as_tuple(callback),
-                std::forward_as_tuple(userdata));
-            return Core::ERROR_NONE;
+        ASSERT(callback != nullptr);
+        
+        _lock.Lock();
+
+        if (_displayChangeCallbacks.find(callback) == _displayChangeCallbacks.end()) {
+            _displayChangeCallbacks.emplace(std::piecewise_construct, std::forward_as_tuple(callback), std::forward_as_tuple(userdata));
+            result = Core::ERROR_NONE;
         }
-        return Core::ERROR_GENERAL;
+
+        _lock.Unlock();
+
+        return (result);
     }
 
     uint32_t UnregisterDolbyAudioModeChangedCallback(displayinfo_display_output_change_cb callback)
     {
+        uint32_t result = Core::ERROR_ALREADY_RELEASED;
+
+        ASSERT(callback != nullptr);
+        
+        _lock.Lock();
+
         DisplayOutputUpdatedCallbacks::iterator index(_displayChangeCallbacks.find(callback));
 
         if (index != _displayChangeCallbacks.end()) {
             _displayChangeCallbacks.erase(index);
-            return Core::ERROR_NONE;
+            result = Core::ERROR_NONE;
         }
-        return Core::ERROR_NOT_EXIST;
+
+        _lock.Unlock();
+
+        return (result);
     }
 
     uint32_t IsAudioPassthrough(bool& outIsEnabled) const
     {
-        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IConnectionProperties* impl = _displayConnection;
-
-        if (impl != nullptr) {
-            errorCode = impl->IsAudioPassthrough(outIsEnabled);
-        }
-
-        return errorCode;
+        Core::SafeSyncType<Core::CriticalSection> lock(_lock);
+        return (_displayConnection != nullptr ? _displayConnection->IsAudioPassthrough(outIsEnabled) : Core::ERROR_UNAVAILABLE);
     }
+
     uint32_t Connected(bool& outIsConnected) const
     {
-        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IConnectionProperties* impl = _displayConnection;
-
-        if (impl != nullptr) {
-            errorCode = impl->Connected(outIsConnected);
-        }
-
-        return errorCode;
+        Core::SafeSyncType<Core::CriticalSection> lock(_lock);
+        return (_displayConnection != nullptr ? _displayConnection->Connected(outIsConnected) : Core::ERROR_UNAVAILABLE);
     }
+
     uint32_t Width(uint32_t& outWidth) const
     {
-
-        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IConnectionProperties* impl = _displayConnection;
-
-        if (impl != nullptr) {
-            errorCode = impl->Width(outWidth);
-        }
-
-        return errorCode;
+        Core::SafeSyncType<Core::CriticalSection> lock(_lock);
+        return (_displayConnection != nullptr ? _displayConnection->Width(outWidth) : Core::ERROR_UNAVAILABLE);
     }
 
     uint32_t Height(uint32_t& outHeight) const
     {
-        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IConnectionProperties* impl = _displayConnection;
-
-        if (impl != nullptr) {
-            errorCode = impl->Height(outHeight);
-        }
-
-        return errorCode;
+        Core::SafeSyncType<Core::CriticalSection> lock(_lock);
+        return (_displayConnection != nullptr ? _displayConnection->Height(outHeight) : Core::ERROR_UNAVAILABLE);
     }
 
     uint32_t WidthInCentimeters(uint8_t& outWidthInCentimeters) const
     {
-        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IConnectionProperties* impl = _displayConnection;
-
-        if (impl != nullptr) {
-            errorCode = impl->WidthInCentimeters(outWidthInCentimeters);
-        }
-
-        return errorCode;
+        Core::SafeSyncType<Core::CriticalSection> lock(_lock);
+        return (_displayConnection != nullptr ? _displayConnection->WidthInCentimeters(outWidthInCentimeters) : Core::ERROR_UNAVAILABLE);
     }
 
     uint32_t HeightInCentimeters(uint8_t& outHeightInCentimeters) const
     {
-        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IConnectionProperties* impl = _displayConnection;
-
-        if (impl != nullptr) {
-            errorCode = impl->HeightInCentimeters(outHeightInCentimeters);
-        }
-
-        return errorCode;
+        Core::SafeSyncType<Core::CriticalSection> lock(_lock);
+        return (_displayConnection != nullptr ? _displayConnection->HeightInCentimeters(outHeightInCentimeters) : Core::ERROR_UNAVAILABLE);
     }
 
     uint32_t VerticalFreq(uint32_t& outVerticalFreq) const
     {
-        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IConnectionProperties* impl = _displayConnection;
-
-        if (impl != nullptr) {
-            errorCode = impl->VerticalFreq(outVerticalFreq);
-        }
-
-        return errorCode;
+        Core::SafeSyncType<Core::CriticalSection> lock(_lock);
+        return (_displayConnection != nullptr ? _displayConnection->VerticalFreq(outVerticalFreq) : Core::ERROR_UNAVAILABLE);
     }
 
     uint32_t EDID(uint16_t& len, uint8_t outData[])
     {
-        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-
-        if (_displayConnection != nullptr) {
-            errorCode = _displayConnection->EDID(len, outData);
-        }
-
-        return errorCode;
+        Core::SafeSyncType<Core::CriticalSection> lock(_lock);
+        return (_displayConnection != nullptr ? _displayConnection->EDID(len, outData) : Core::ERROR_UNAVAILABLE);
     }
 
     uint32_t HDR(Exchange::IHDRProperties::HDRType& outHdrType) const
     {
-        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-
-        const Exchange::IHDRProperties* hdr = _hdrProperties;
-
-        if (hdr != nullptr) {
-            errorCode = hdr->HDRSetting(outHdrType);
-        }
-
-        return errorCode;
+        Core::SafeSyncType<Core::CriticalSection> lock(_lock);
+        return (_hdrProperties != nullptr ? _hdrProperties->HDRSetting(outHdrType) : Core::ERROR_UNAVAILABLE);
     }
 
     uint32_t HDCPProtection(Exchange::IConnectionProperties::HDCPProtectionType& outType) const
     {
-        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IConnectionProperties* impl = _displayConnection;
-
-        if (impl != nullptr) {
-            errorCode = impl->HDCPProtection(outType);
-        }
-
-        return errorCode;
+        Core::SafeSyncType<Core::CriticalSection> lock(_lock);
+        return (_displayConnection != nullptr ? _displayConnection->HDCPProtection(outType) : Core::ERROR_UNAVAILABLE);
     }
+
     uint32_t TotalGpuRam(uint64_t& outTotalRam) const
     {
-        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IGraphicsProperties* graphicsProperties = _graphicsProperties;
-
-        if (graphicsProperties != nullptr) {
-            errorCode = graphicsProperties->TotalGpuRam(outTotalRam);
-        }
-
-        return errorCode;
+        Core::SafeSyncType<Core::CriticalSection> lock(_lock);
+        return (_graphicsProperties != nullptr ? _graphicsProperties->TotalGpuRam(outTotalRam) : Core::ERROR_UNAVAILABLE);
     }
 
     uint32_t FreeGpuRam(uint64_t& outFreeRam) const
     {
-        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IGraphicsProperties* graphicsProperties = _graphicsProperties;
-
-        if (graphicsProperties != nullptr) {
-            errorCode = graphicsProperties->FreeGpuRam(outFreeRam);
-        }
-
-        return errorCode;
+        Core::SafeSyncType<Core::CriticalSection> lock(_lock);
+        return (_graphicsProperties != nullptr ? _graphicsProperties->FreeGpuRam(outFreeRam) : Core::ERROR_UNAVAILABLE);
     }
 };
 
 DisplayInfo* DisplayInfo::_singleton = nullptr;
+
 } // namespace WPEFramework
 
 using namespace WPEFramework;
