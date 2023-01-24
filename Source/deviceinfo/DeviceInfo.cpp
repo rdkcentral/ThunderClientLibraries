@@ -269,6 +269,8 @@ public:
     DeviceInfoLink& operator=(const DeviceInfoLink&) = delete;
     ~DeviceInfoLink() override
     {
+        BaseClass::Close(WPEFramework::Core::infinite);
+        
         _lock.Lock();
 
         if (_subsysInterface != nullptr) {
@@ -282,7 +284,6 @@ public:
 
         _lock.Unlock();
 
-        BaseClass::Close(WPEFramework::Core::infinite);
         _singleton = nullptr;
     }
 
