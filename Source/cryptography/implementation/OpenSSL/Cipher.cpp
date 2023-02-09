@@ -133,8 +133,9 @@ private:
                         TRACE_L1(_T("EVP_CipherUpdate() failed"));
                     } else {
                         result = len;
+			len = 0;
                         // Note: EVP_CipherFinal_ex() can still write to the output buffer!
-                        if (EVP_CipherFinal_ex(_context, (output + len), &len) == 0) {
+                        if (EVP_CipherFinal_ex(_context, (output + result), &len) == 0) {
                             TRACE_L1(_T("EVP_CipherFinal_ex() failed"));
                             result = 0;
                         } else {
