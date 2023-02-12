@@ -72,6 +72,7 @@ private:
         , _graphicsProperties(interface != nullptr ? interface->QueryInterface<Exchange::IGraphicsProperties>() : nullptr)
         , _notification(this)
         , _callbacks()
+        , _callbacksJob()
     {
         ASSERT (_displayConnection != nullptr);
         _displayConnection->AddRef();
@@ -325,11 +326,21 @@ public:
 
     void Updated(const Exchange::IConnectionProperties::INotification::Source /* event */)
     {
-        Callbacks::iterator index(_callbacks.begin());
+        // Decouple the _callbacks invoking from this execution context into a worker pool job, to
+        // avoid deadlocks caused by reentrancy (the _callbacks handlers making calls themselves to
+        // the DisplayInfo).
+        // In case we're called again while a previous job is still pending, this Submit() call will
+        // fail, but that's fine because the pending job will do the callbacks.
+        bool ret = _callbacksJob.Submit([this]() {
+            Callbacks::iterator index(_callbacks.begin());
 
-        while (index != _callbacks.end()) {
-            index->first(reinterpret_cast<displayinfo_type*>(this), index->second);
-            index++;
+            while (index != _callbacks.end()) {
+                index->first(reinterpret_cast<displayinfo_type*>(this), index->second);
+                index++;
+            }
+        });
+        if (!ret) {
+            Trace("Submitting _callbacksJob failed");
         }
     }
     void Register(displayinfo_updated_cb callback, void* userdata)
@@ -491,6 +502,7 @@ private:
     Exchange::IGraphicsProperties* _graphicsProperties;
     Core::Sink<Notification> _notification;
     Callbacks _callbacks;
+    Core::DecoupledJob _callbacksJob;
     static DisplayInfo::DisplayInfoAdministration _administration;
 };
 
