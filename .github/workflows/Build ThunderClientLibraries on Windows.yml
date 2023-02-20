@@ -21,7 +21,7 @@ env:
 # CHANGE TO RDKCENTRAL
 jobs:
   ThunderInterfaces:
-    uses: VeithMetro/Thunder/.github/workflows/Build ThunderInterfaces on Windows.yml@master
+    uses: VeithMetro/ThunderInterfaces/.github/workflows/Build ThunderInterfaces on Windows.yml@master
 
   Interfaces:
     needs: ThunderInterfaces
