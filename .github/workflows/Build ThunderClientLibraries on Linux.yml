@@ -1,4 +1,4 @@
-name: CMake ThunderClientLibraries
+name: Build ThunderClientLibraries on Linux
 
 on:
   push:
