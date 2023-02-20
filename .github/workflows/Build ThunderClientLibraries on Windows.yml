@@ -88,9 +88,9 @@ jobs:
     - name: Unpack files
       run: |
         tar -xvzf ${{matrix.type}}${{matrix.version}}.tar.gz
-        rm ${{matrix.type}}${{matrix.version}}.tar.gz'
+        rm ${{matrix.type}}${{matrix.version}}.tar.gz
 
-    - name: Build ThunderInterfaces
+    - name: Build ThunderClientLibraries
       shell: cmd
       run: |
         cd ThunderOnWindows
