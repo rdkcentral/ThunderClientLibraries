@@ -6,7 +6,6 @@ on:
     branches: ["development/actions-windows"]
   pull_request:
     branches: ["master"]
-  workflow_call:
 
 env:
   cryptography: ThunderClientLibraries\Source\cryptography\Cryptography.vcxproj
@@ -20,12 +19,7 @@ env:
 
 # CHANGE TO RDKCENTRAL
 jobs:
-  ThunderInterfaces:
-    uses: VeithMetro/ThunderInterfaces/.github/workflows/Build ThunderInterfaces on Windows.yml@master
-
-  Interfaces:
-    needs: ThunderInterfaces
-
+  ClientLibraries:
     runs-on: windows-latest
 
     strategy:
@@ -79,16 +73,6 @@ jobs:
 
     - name: Install jsonref
       run: pip install jsonref
-
-    - name: Download artifacts
-      uses: actions/download-artifact@v3
-      with:
-        name: ThunderInterfaces-${{matrix.type}}${{matrix.version}}-artifact
-
-    - name: Unpack files
-      run: |
-        tar -xvzf ${{matrix.type}}${{matrix.version}}.tar.gz
-        rm ${{matrix.type}}${{matrix.version}}.tar.gz
 
     - name: Build ThunderClientLibraries
       shell: cmd
