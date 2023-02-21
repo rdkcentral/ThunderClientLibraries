@@ -1,4 +1,4 @@
-name: CMake ThunderClientLibraries
+name: Build ThunderClientLibraries on Linux
 
 on:
   push:
@@ -8,9 +8,9 @@ on:
     
 jobs:
   ThunderInterfaces:
-    uses: rdkcentral/ThunderInterfaces/.github/workflows/Build ThunderInterfaces.yml@master
+    uses: rdkcentral/ThunderInterfaces/.github/workflows/Build ThunderInterfaces on Linux.yml@master
     
-  Interfaces:
+  ThunderClientLibraries:
     needs: ThunderInterfaces
     
     runs-on: ubuntu-latest
