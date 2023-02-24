@@ -38,6 +38,7 @@ extern "C" {
 
 #include <interfaces/IComposition.h>
 #include <virtualinput/virtualinput.h>
+#include <privilegedrequest/PrivilegedRequest.h>
 
 #include "../Client.h"
 

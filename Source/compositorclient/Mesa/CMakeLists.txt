@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-find_package(EGL REQUIRED)
 
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core CONFIG REQUIRED)
@@ -23,7 +22,6 @@ find_package(${NAMESPACE}COM CONFIG REQUIRED)
 
 find_package(gbm REQUIRED)
 find_package(libdrm REQUIRED)
-
 find_package(EGL REQUIRED)
 find_package(GLESv2 REQUIRED)
 
