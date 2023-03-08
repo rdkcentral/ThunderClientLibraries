@@ -20,10 +20,10 @@ cmake_minimum_required(VERSION 3.7)
 # Be compatible even if a newer CMake version is available
 cmake_policy(VERSION 3.7...3.12)
 
-if(LibDRM_FIND_QUIETLY)
-    set(_LIBDRM_MODE QUIET)
-elseif(LibDRM_FIND_REQUIRED)
-    set(_LIBDRM_MODE REQUIRED)
+if(libdrm_FIND_QUIETLY)
+    set(_libdrm_MODE QUIET)
+elseif(libdrm_FIND_REQUIRED)
+    set(_libdrm_MODE REQUIRED)
 endif()
 
 find_package(PkgConfig)
@@ -31,41 +31,39 @@ if(${PKG_CONFIG_FOUND})
 
     # Just check if the libdrm.pc exist, and create the PkgConfig::libdrm target
     # No version requirement (yet)
-    pkg_check_modules(LIBDRM ${_LIBDRM_MODE} IMPORTED_TARGET libdrm)
+    pkg_check_modules(libdrm ${_libdrm_MODE} IMPORTED_TARGET libdrm)
 
-    find_library(LIBDRM_ACTUAL_LIBRARY NAMES drm
-        HINTS ${LIBDRM_LIBRARY_DIRS} )
+    find_library(libdrm_ACTUAL_LIBRARY NAMES drm
+        HINTS ${libdrm_LIBRARY_DIRS} )
 
     include(FindPackageHandleStandardArgs)
 
     # Sets the FOUND variable to TRUE if all required variables are present and set
     find_package_handle_standard_args(
-        LibDRM
+        libdrm
         REQUIRED_VARS
-            LIBDRM_INCLUDE_DIRS
-            LIBDRM_CFLAGS
-            LIBDRM_LDFLAGS
-            LIBDRM_LIBRARIES
-            LIBDRM_ACTUAL_LIBRARY
+            libdrm_INCLUDE_DIRS
+            libdrm_CFLAGS
+            libdrm_LDFLAGS
+            libdrm_LIBRARIES
+            libdrm_ACTUAL_LIBRARY
         VERSION_VAR
-            LIBDRM_VERSION
+            libdrm_VERSION
     )
-    mark_as_advanced(LIBDRM_INCLUDE_DIRS LIBDRM_LIBRARIES)
-    set(LIBDRM_FOUND ${LibDRM_FOUND})
+    mark_as_advanced(libdrm_INCLUDE_DIRS libdrm_LIBRARIES)
+    set(libdrm_FOUND ${libdrm_FOUND})
 
-    if(LibDRM_FOUND AND NOT TARGET LibDRM::LibDRM)
-        add_library(LibDRM::LibDRM UNKNOWN IMPORTED)
-        set_target_properties(LibDRM::LibDRM PROPERTIES
-            IMPORTED_LOCATION "${LIBDRM_ACTUAL_LIBRARY}"
-            INTERFACE_LINK_LIBRARIES "${LIBDRM_LIBRARIES}"
-            INTERFACE_COMPILE_OPTIONS "${LIBDRM_CFLAGS}"
-            INTERFACE_INCLUDE_DIRECTORIES "${LIBDRM_INCLUDE_DIRS}"
+    if(libdrm_FOUND AND NOT TARGET libdrm::libdrm)
+        add_library(libdrm::libdrm UNKNOWN IMPORTED)
+        set_target_properties(libdrm::libdrm PROPERTIES
+            IMPORTED_LOCATION "${libdrm_ACTUAL_LIBRARY}"
+            INTERFACE_LINK_LIBRARIES "${libdrm_LIBRARIES}"
+            INTERFACE_COMPILE_OPTIONS "${libdrm_CFLAGS}"
+            INTERFACE_INCLUDE_DIRECTORIES "${libdrm_INCLUDE_DIRS}"
             )
     else()
         message(STATUS "Some required variable(s) is (are) not found / set! Does libdrm.pc exist?")
     endif()
 else()
-
     message(STATUS "Unable to locate PkgConfig")
-
 endif()

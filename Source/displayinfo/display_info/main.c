@@ -187,7 +187,7 @@ void binary_print(size_t const size, void const * const ptr)
 void print_edid_info(displayinfo_edid_base_info_t* edid_info) {
     puts("");
     Trace("EDID Base Info : ");
-    Trace("Manufacturer ID: %.*s", sizeof(edid_info->manufacturer_id), edid_info->manufacturer_id);
+    Trace("Manufacturer ID: %.*s", (uint32_t)(sizeof(edid_info->manufacturer_id)), edid_info->manufacturer_id);
     Trace("Serial Number: %u" , edid_info->serial_number);
     Trace("Product Code : %u" , edid_info->product_code);
     Trace("Week of manufacture : %u" , edid_info->manufacture_week);
