@@ -41,12 +41,12 @@ OpenCDMError StringToAllocatedBuffer(const std::string& source, char* destinatio
 
     if(destinationBuffer == nullptr) {
         bufferSize = sizeneeded;
-        result = ERROR_MORE_DATA_AVAILBALE;
+        result = ERROR_MORE_DATA_AVAILABLE;
     } else if ( bufferSize < sizeneeded ) {
         strncpy(destinationBuffer, source.c_str(), bufferSize-1);
         destinationBuffer[bufferSize-1] = '\0';
         bufferSize = sizeneeded;
-        result = ERROR_MORE_DATA_AVAILBALE;      
+        result = ERROR_MORE_DATA_AVAILABLE;      
     } else { // buffersize >= sizeneeded
         strncpy(destinationBuffer, source.c_str(), sizeneeded-1);
         destinationBuffer[sizeneeded-1] = '\0';
@@ -161,11 +161,11 @@ OpenCDMError opencdm_is_type_supported(const char keySystem[],
  * \param metadata, buffer to write metadata into, always 0 terminated (also when not large enough to hold all data) except when metadata is
  *     Null of course. Null allowed to retrieve required size needed for this buffer in metadataSize to be able to allocate required buffer 
  *     for subsequent call to opencdm_is_type_supported
- * \param metadataSize, in: size of metadata buffer, out: required size to hold all data available when return value is ERROR_MORE_DATA_AVAILBALE,
+ * \param metadataSize, in: size of metadata buffer, out: required size to hold all data available when return value is ERROR_MORE_DATA_AVAILABLE,
  *     , number of characters written into metadata (incl 0 terminator) otherwise. Note in case metadata could not hold all data but was not of zero
- *     length it is filled up to the maximum size (still zero terminated) but also ERROR_MORE_DATA_AVAILBALE is returned with the required size needed
+ *     length it is filled up to the maximum size (still zero terminated) but also ERROR_MORE_DATA_AVAILABLE is returned with the required size needed
  *     to hold all data
- * \return Zero on success, non-zero on error. ERROR_MORE_DATA_AVAILBALE when the buffer was not large enough to hold all the data available. 
+ * \return Zero on success, non-zero on error. ERROR_MORE_DATA_AVAILABLE when the buffer was not large enough to hold all the data available. 
  */
 OpenCDMError opencdm_system_get_metadata(struct OpenCDMSystem* system, 
     char metadata[], 
@@ -179,6 +179,31 @@ OpenCDMError opencdm_system_get_metadata(struct OpenCDMSystem* system,
     return result;
 }
 
+/**
+ * \brief Get metrics associated with a DRM system.
+ *
+ * Some DRMs (e.g. WideVine) offer metric data that can be used for any
+ * analyses. This function retrieves the metric data of the passed in
+ * system. It is up to the callee to interpret the baniary data correctly.
+ * \param system Instance of \ref OpenCDMAccessor.
+ * \param bufferLength Actual buffer length of the buffer parameter, on return
+ *                     it holds the number of bytes actually written in it.
+ * \param buffer Buffer length of buffer that can hold the metric data.
+ * \return Zero on success, non-zero on error.
+ */
+
+EXTERNAL OpenCDMError opencdm_get_metric_system_data(struct OpenCDMSystem* system,
+    uint32_t* bufferLength,
+    uint8_t* buffer) {
+    OpenCDMError result(ERROR_INVALID_ACCESSOR);
+    OpenCDMAccessor* accessor = OpenCDMAccessor::Instance();
+
+    if (accessor != nullptr) {
+	result = static_cast<OpenCDMError>(accessor->Metricdata(system->keySystem(), *bufferLength, buffer));
+    }
+
+    return (result);
+}
 
 /**
  * \brief Maps key ID to \ref OpenCDMSession instance.
@@ -292,11 +317,11 @@ OpenCDMError opencdm_session_load(struct OpenCDMSession* session)
 * \param metadata, buffer to write metadata into, always 0 terminated (also when not large enough to hold all data) except when metadata is
  *     Null of course. Null allowed to retrieve required size needed for this buffer in metadataSize to be able to allocate required buffer 
  *     for subsequent call to opencdm_session_metadata
- * \param metadataSize, in: size of metadata buffer, out: required size to hold all data available when return value is ERROR_MORE_DATA_AVAILBALE,
+ * \param metadataSize, in: size of metadata buffer, out: required size to hold all data available when return value is ERROR_MORE_DATA_AVAILABLE,
  *     , number of characters written into metadata (incl 0 terminator) otherwise. Note in case metadata could not hold all data but was not of zero
- *     length it is filled up to the maximum size (still zero terminated) but also ERROR_MORE_DATA_AVAILBALE is returned with the required size needed
+ *     length it is filled up to the maximum size (still zero terminated) but also ERROR_MORE_DATA_AVAILABLE is returned with the required size needed
  *     to hold all data
- * \return Zero on success, non-zero on error. ERROR_MORE_DATA_AVAILBALE when the buffer was not large enough to hold all the data available. 
+ * \return Zero on success, non-zero on error. ERROR_MORE_DATA_AVAILABLE when the buffer was not large enough to hold all the data available. 
 
  */
 OpenCDMError opencdm_session_metadata(const struct OpenCDMSession* session, 
@@ -546,6 +571,32 @@ OpenCDMError opencdm_session_decrypt_v2(struct OpenCDMSession* session,
 
     return (result);
 }
+
+/**
+ * \brief Get metrics associated with a DRM session.
+ *
+ * Some DRMs (e.g. WideVine) offer metric data that can be used for any
+ * analyses. This function retrieves the metric data of the passed in
+ * system. It is up to the callee to interpret the baniary data correctly.
+ * \param session Instance of \ref OpenCDMSession.
+ * \param bufferLength Actual buffer length of the buffer parameter, on return
+ *                     it holds the number of bytes actually written in it.
+ * \param buffer Buffer length of buffer that can hold the metric data.
+ * \return Zero on success, non-zero on error.
+ */
+
+OpenCDMError opencdm_get_metric_session_data(struct OpenCDMSession* session,
+    uint32_t* bufferLength,
+    uint8_t* buffer) {
+    OpenCDMError result(ERROR_INVALID_SESSION);
+    if (session != nullptr) {
+        result = static_cast<OpenCDMError>(session->Metricdata(
+            *bufferLength, buffer));
+    }
+
+    return (result);
+}
+
 
 
 void opencdm_dispose() {
