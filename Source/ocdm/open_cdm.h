@@ -178,17 +178,22 @@ typedef enum {
 typedef enum {
     ERROR_NONE = 0,
     ERROR_UNKNOWN = 1,
-    ERROR_MORE_DATA_AVAILBALE=2,
+    ERROR_MORE_DATA_AVAILABLE = 2,
+    ERROR_INTERFACE_NOT_IMPLEMENTED = 3,
+    ERROR_BUFFER_TOO_SMALL = 4,
     ERROR_INVALID_ACCESSOR = 0x80000001,
     ERROR_KEYSYSTEM_NOT_SUPPORTED = 0x80000002,
     ERROR_INVALID_SESSION = 0x80000003,
     ERROR_INVALID_DECRYPT_BUFFER = 0x80000004,
     ERROR_OUT_OF_MEMORY = 0x80000005,
+    ERROR_METHOD_NOT_IMPLEMENTED = 0x80000006,
     ERROR_FAIL = 0x80004005,
     ERROR_INVALID_ARG = 0x80070057,
     ERROR_SERVER_INTERNAL_ERROR = 0x8004C600,
     ERROR_SERVER_INVALID_MESSAGE = 0x8004C601,
     ERROR_SERVER_SERVICE_SPECIFIC = 0x8004C604,
+    ERROR_BUSY_CANNOT_INITIALIZE = 0x8004DD00
+
 } OpenCDMError;
 
 /**
@@ -384,6 +389,23 @@ EXTERNAL OpenCDMError opencdm_system_set_server_certificate(
     const uint8_t serverCertificate[], const uint16_t serverCertificateLength);
 
 /**
+ * \brief Get metrics associated with a DRM system.
+ *
+ * Some DRMs (e.g. WideVine) offer metric data that can be used for any
+ * analyses. This function retrieves the metric data of the passed in
+ * system. It is up to the callee to interpret the baniary data correctly.
+ * \param system Instance of \ref OpenCDMAccessor.
+ * \param bufferLength Actual buffer length of the buffer parameter, on return
+ *                     it holds the number of bytes actually written in it.
+ * \param buffer Buffer length of buffer that can hold the metric data.
+ * \return Zero on success, non-zero on error.
+ */
+
+EXTERNAL OpenCDMError opencdm_get_metric_system_data(struct OpenCDMSystem* system,
+    uint32_t* bufferLength,
+    uint8_t* buffer);
+
+/**
  * \brief Create DRM session (for actual decrypting of data).
  *
  * Creates an instance of \ref OpenCDMSession using initialization data.
@@ -564,6 +586,22 @@ EXTERNAL OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
     uint32_t initWithLast15);
 #endif // __cplusplus
 
+/**
+ * \brief Get metrics associated with a DRM session.
+ *
+ * Some DRMs (e.g. WideVine) offer metric data that can be used for any
+ * analyses. This function retrieves the metric data of the passed in
+ * system. It is up to the callee to interpret the baniary data correctly.
+ * \param session Instance of \ref OpenCDMSession.
+ * \param bufferLength Actual buffer length of the buffer parameter, on return
+ *                     it holds the number of bytes actually written in it.
+ * \param buffer Buffer length of buffer that can hold the metric data.
+ * \return Zero on success, non-zero on error.
+ */
+
+EXTERNAL OpenCDMError opencdm_get_metric_session_data(struct OpenCDMSession* session,
+    uint32_t* bufferLength,
+    uint8_t* buffer);
 
 /**
  * \brief Performs decryption.
