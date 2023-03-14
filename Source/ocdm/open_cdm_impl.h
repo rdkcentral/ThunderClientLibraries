@@ -149,10 +149,13 @@ public:
         return result;
     }
 
-    virtual Exchange::OCDM_RESULT Metadata(const std::string& keySystem,
-        std::string& metadata) const override
+    virtual Exchange::OCDM_RESULT Metadata(const string& keySystem, string& metadata) const override
     {
         return(_remote->Metadata(keySystem, metadata));
+    }
+
+    virtual Exchange::OCDM_RESULT Metricdata(const string& keySystem, uint32_t& length, uint8_t buffer[]) const override {
+        return(_remote->Metricdata(keySystem, length, buffer));
     }
 
     // Create a MediaKeySession using the supplied init data and CDM data.
@@ -558,6 +561,12 @@ public:
 
         return _session->Metadata();
     }
+    inline uint32_t Metricdata(uint32_t& bufferSize, uint8_t buffer[])
+    {
+        ASSERT(_session != nullptr);
+
+        return _session->Metricdata(bufferSize, buffer);
+    } 
     inline const string& BufferId() const
     {
         static string EmptyString;
