@@ -56,13 +56,11 @@ private:
     {
         _lock.Lock();
 
-        auto callbacks = _dolbyCallbacks;
-
-        _lock.Unlock();
-
-        for (auto& index : callbacks) {
+        for (auto& index : _dolbyCallbacks) {
             index.first(index.second);
         }
+
+        _lock.Unlock();
     }
 
     void Operational(const bool upAndRunning) override
@@ -93,13 +91,11 @@ private:
             }
         }
 
-        auto callbacks = _operationalStateCallbacks;
-
-        _lock.Unlock();
-
-        for (auto& index : callbacks) {
+        for (auto& index : _operationalStateCallbacks) {
             index.first(upAndRunning, index.second);
         }
+
+        _lock.Unlock();
     }
 
     class Notification : public Exchange::Dolby::IOutput::INotification {

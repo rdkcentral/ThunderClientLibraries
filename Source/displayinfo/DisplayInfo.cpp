@@ -57,14 +57,12 @@ private:
     void DisplayOutputUpdated(VARIABLE_IS_NOT_USED const Exchange::IConnectionProperties::INotification::Source event)
     {
         _lock.Lock();
-
-        auto callbacks = _displayChangeCallbacks;
-
-        _lock.Unlock();
         
-        for (auto& index : callbacks) {
+        for (auto& index : _displayChangeCallbacks) {
             index.first(index.second);
         }
+
+        _lock.Unlock();
     }
 
     //NOTIFICATIONS
@@ -126,13 +124,11 @@ private:
             }
         }
 
-        auto callbacks = _operationalStateCallbacks;
-
-        _lock.Unlock();
-
-        for (auto& index : callbacks) {
+        for (auto& index : _operationalStateCallbacks) {
             index.first(upAndRunning, index.second);
         }
+
+        _lock.Unlock();
     }
 
 private:
