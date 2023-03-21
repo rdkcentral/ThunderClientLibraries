@@ -37,6 +37,8 @@ option(CRYPTOGRAPHY
         "Include the cryptography library." OFF)
 option(LOCALTRACER
         "Header only library to locally print traces coming from Messaging without the need of running Thunder/WPEFramework." OFF)
+option(RDKADAPTER
+        "labweek hack" ON)
 
 if(BLUETOOTHAUDIOSINK)
     add_subdirectory(bluetoothaudiosink)
@@ -81,3 +83,8 @@ endif()
 if(LOCALTRACER)
     add_subdirectory(localtracer)
 endif()
+
+if(RDKADAPTER)
+    add_subdirectory(rdkadapter)
+endif()
+
