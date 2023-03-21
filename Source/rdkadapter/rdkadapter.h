@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include <stdint.h>
+
 #ifndef EXTERNAL
 #ifdef _MSVC_LANG
 #ifdef COMPOSITORCLIENT_EXPORTS
@@ -41,7 +43,7 @@ struct EXTERNAL IRDKAdapter {
     static IRDKAdapter& Instance();
 
     // interface
-    virtual void Test() const = 0;
+    virtual uint32_t Test() const = 0;
 };
 
 }

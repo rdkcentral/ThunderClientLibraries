@@ -42,7 +42,6 @@ void ShowMenu()
 
 int main()
 {
-    int16_t result = 0;
 
     ShowMenu();
 

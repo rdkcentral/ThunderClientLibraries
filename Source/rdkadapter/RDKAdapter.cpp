@@ -53,12 +53,16 @@ public:
         return adapter;
     } 
 
-    void Test() const override {
+    uint32_t Test() const override {
+        uint32_t result = Core::ERROR_UNAVAILABLE;
+
         const Exchange::IRDKAdapter* impl = SmartInterfaceType::Interface();
 
         if (impl != nullptr) {
-            impl->Test();
+            result = impl->Test();
         }
+
+        return result;
     }
 
 };
