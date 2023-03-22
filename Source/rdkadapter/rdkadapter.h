@@ -20,6 +20,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <string>
 
 #ifndef EXTERNAL
 #ifdef _MSVC_LANG
@@ -43,7 +44,14 @@ struct EXTERNAL IRDKAdapter {
     static IRDKAdapter& Instance();
 
     // interface
-    virtual uint32_t Test() const = 0;
+    struct INotification {
+        virtual ~INotification() = default;
+
+        virtual void InterfaceUpdate(const std::string& interfacename, bool connected) = 0;
+    };
+
+    virtual uint32_t Register(IRDKAdapter::INotification* sink) = 0;
+    virtual uint32_t Unregister(IRDKAdapter::INotification* sink) = 0;
 };
 
 }

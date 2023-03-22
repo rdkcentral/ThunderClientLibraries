@@ -50,10 +50,10 @@ int main()
         character = toupper(getc(stdin));
 
         switch (character) {
-        case 'T': {
+/*        case 'T': {
             RDKAdapter::IRDKAdapter::Instance().Test();
             break;
-        }
+        }*/
         case '?': {
             ShowMenu();
             break;
