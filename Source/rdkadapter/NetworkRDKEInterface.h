@@ -260,7 +260,7 @@ private:
     public:
         ~Notification() override = default;
 
-        void InterfaceUpdate(const string& interfacename, bool connected) override;
+        void InterfaceUpdate(const string& interfacename) override;
     }
 
     static void OnWifiSignalThresholdChangedHandler( const Core::JSON::String& parameters );

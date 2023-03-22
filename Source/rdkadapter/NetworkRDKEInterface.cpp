@@ -191,18 +191,27 @@ void NetworkRdkInterface::OnWifiErrorHandler( const Core::JSON::String& paramete
 
 }
 
-void NetworkRdkInterface::Notification::InterfaceUpdate(const string& interfacename, bool connected) 
+void NetworkRdkInterface::Notification::InterfaceUpdate(const string& interfacename) 
 {
-    std::string data = "{ ";
-    data += "\"interface\" : \"";
-    data += interfacename;
-    data += "\", \"enabled\" : ";
-    data += connected ? "true" : "false";
-    data += '}';
+    bool available = true;
+    _adapter.InterfaceAvailable(interfacename, available);
+    std::string connectiondata ="{ \"interface\" : \"";
+    connectiondata += interfacename;
+    connectiondata += "\", \"enabled\" : ";
+    connectiondata += available ? "true }" : "false }";
+
+    std::string primaryaddress;
+    _adapter.InterfaceAddress(interfacename, primaryaddress);
+    std::string ipdata ="{ \"interface\" : \"";
+    primaryaddress += interfacename;
+    primaryaddress += "\", \"ip4Address\" : \"";
+    primaryaddress += primaryaddress;
+    primaryaddress += "\", \"status\" : \"ACQUIRED\"}";
 
     auto networkControllerInstance = NetworkController::getInstance();
     if ( networkControllerInstance )
     {
-        networkControllerInstance->RdkEventsListener( NETWORK_EVENT_TYPE_RDK_INTERFACE_STATUS_CHANGED, data );
+        networkControllerInstance->RdkEventsListener( NETWORK_EVENT_TYPE_RDK_INTERFACE_STATUS_CHANGED, connectiondata );
+        networkControllerInstance->RdkEventsListener( NETWORK_EVENT_TYPE_RDK_IP_ADDRESS_CHANGED, primaryaddress );
     }
 }

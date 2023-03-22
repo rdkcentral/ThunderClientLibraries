@@ -179,20 +179,41 @@ public:
         return Core::ERROR_NONE;
     }
 
+    uint32_t InterfaceAvailable(const string& interfacename, bool& available) const override {
+        uint32_t result = Core::ERROR_RPC_CALL_FAILED;
+        available = false;
+
+        const Exchange::INetworkControl* network = _networklink.NetworkInterface();
+        Exchange::INetworkControl::StatusType status = Exchange::INetworkControl::StatusType::UNAVAILABLE;
+        if((network != nullptr) && (result = network->Status(interfacename, status) == Core::ERROR_NONE)) {
+            available = status == Exchange::INetworkControl::StatusType::AVAILABLE;
+        }
+        return result;
+    }
+
+    uint32_t InterfaceAddress(const std::string& interfacename, string& primaryaddress) const {
+        uint32_t result = Core::ERROR_RPC_CALL_FAILED;
+        
+        const Exchange::INetworkControl* network = _networklink.NetworkInterface();
+        Exchange::INetworkControl::INetworkInfoIterator* it;
+        if((network != nullptr) && (result = network->Network(interfacename, it) == Core::ERROR_NONE)) {
+            if(it->IsValid() == true) {
+                primaryaddress = it->Current().address;
+            }
+            it->Release();
+        }
+        return result;
+    }
+
 private:
     void InterfaceUpdate(const string& interfaceName) {
-        Exchange::INetworkControl* network = _networklink.NetworkInterface();
-        Exchange::INetworkControl::StatusType status = Exchange::INetworkControl::StatusType::UNAVAILABLE;
-        if((network != nullptr) && (network->Status(interfaceName, status) == Core::ERROR_NONE)) {
-            _adminLock.Lock();
+        _adminLock.Lock();
 
-            for (auto l : _listeners) {
-                l->InterfaceUpdate(interfaceName, status == Exchange::INetworkControl::StatusType::AVAILABLE);
-            }
-
-            _adminLock.Unlock();
+        for (auto l : _listeners) {
+            l->InterfaceUpdate(interfaceName);
         }
-       
+
+        _adminLock.Unlock();
     }
 
 private:
