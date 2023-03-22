@@ -271,8 +271,6 @@ private:
 
     static void OnDefaultInterfaceChangedHandler(const string& interfacename, bool connected);
 
-//    static void OnInterfaceStatusChangedHandler( const Core::JSON::String& parameters );
-
     static void OnAvailableSSIDsHandler( const Core::JSON::String& parameters );
 
     static void OnWIFIStateChangedHandler( const Core::JSON::String& parameters );

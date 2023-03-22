@@ -10,6 +10,8 @@
 using namespace std;
 using namespace WPEFramework;
 
+static NetworkRdkInterface::Notification _notifcation;
+
 
 NetworkRdkInterface::NetworkRdkInterface()
 : m_instanceLock()
@@ -30,7 +32,7 @@ void NetworkRdkInterface::Initialise()
 
 void NetworkRdkInterface::RegisterRdkNetworkEventListener()
 {
-    _adapter.Register();
+    _adapter.Register(&_notifcation);
 }
 
 int NetworkRdkInterface::EnableInterface( std::string interfaceName, bool enableInterface )
@@ -170,11 +172,6 @@ void NetworkRdkInterface::OnConnectionStatusChangedHandler( const Core::JSON::St
 }
 
 void NetworkRdkInterface::OnIPAddressStatusChangedHandler( const Core::JSON::String& parameters )
-{
-
-}
-
-void NetworkRdkInterface::OnInterfaceStatusChangedHandler( const Core::JSON::String& parameters )
 {
 
 }
