@@ -265,10 +265,6 @@ private:
 
     static void OnWifiSignalThresholdChangedHandler( const Core::JSON::String& parameters );
 
-    static void OnConnectionStatusChangedHandler( const Core::JSON::String& parameters );
-
-    static void OnIPAddressStatusChangedHandler( const Core::JSON::String& parameters );
-
     static void OnDefaultInterfaceChangedHandler(const string& interfacename, bool connected);
 
     static void OnAvailableSSIDsHandler( const Core::JSON::String& parameters );

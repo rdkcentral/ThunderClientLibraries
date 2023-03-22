@@ -54,6 +54,7 @@ struct EXTERNAL IRDKAdapter {
     virtual uint32_t Unregister(IRDKAdapter::INotification* sink) = 0;
 
     virtual uint32_t InterfaceAvailable(const std::string& interfacename, bool& available) const = 0;
+    virtual uint32_t InterfaceUp(const std::string& interfacename, bool& up) const = 0;
     virtual uint32_t InterfaceAddress(const std::string& interfacename, std::string& primaryaddress) const = 0;
 };
 

@@ -22,6 +22,7 @@
 #include "rdkadapter.h"
 #include <interfaces/IRDKAdapter.h>
 #include <interfaces/INetworkControl.h>
+#include <interfaces/IWifiControl.h>
 
  #include <list>
  #include <algorithm>
@@ -95,6 +96,39 @@ public:
     }
 
     Exchange::INetworkControl* NetworkInterface()  
+    {
+        return SmartInterface::Interface();
+    }
+};
+
+class WifiLink : protected RPC::SmartInterfaceType<Exchange::IWifiControl> {
+private:
+using SmartInterface = RPC::SmartInterfaceType<Exchange::IWifiControl>;
+
+public:
+    WifiLink(const WifiLink&) = delete;
+    WifiLink(NetworkLink&&) = delete;
+    WifiLink& operator=(const WifiLink&) = delete;
+    WifiLink& operator=(WifiLink&) = delete;
+
+    WifiLink() 
+    : SmartInterface()
+    {
+        if (SmartInterface::Open(RPC::CommunicationTimeOut, SmartInterface::Connector(), _T("WifiControl")) != Core::ERROR_NONE) {
+            PRINT(_T("Failed to open the smart interface!"));
+        }
+    }
+    ~WifiLink() override
+    {
+        SmartInterface::Close(Core::infinite);
+    }
+
+    const Exchange::IWifiControl* WifiInterface() const 
+    {
+        return SmartInterface::Interface();
+    }
+
+    Exchange::IWifiControl* WifiInterface()  
     {
         return SmartInterface::Interface();
     }
@@ -187,6 +221,17 @@ public:
         Exchange::INetworkControl::StatusType status = Exchange::INetworkControl::StatusType::UNAVAILABLE;
         if((network != nullptr) && (result = network->Status(interfacename, status) == Core::ERROR_NONE)) {
             available = status == Exchange::INetworkControl::StatusType::AVAILABLE;
+        }
+        return result;
+    }
+
+    uint32_t InterfaceUp(const std::string& interfacename, bool& up) const override {
+        uint32_t result = Core::ERROR_RPC_CALL_FAILED;
+        up = false;
+
+        const Exchange::INetworkControl* network = _networklink.NetworkInterface();
+        if(network != nullptr) {
+            result = network->Up(interfacename, up);
         }
         return result;
     }
