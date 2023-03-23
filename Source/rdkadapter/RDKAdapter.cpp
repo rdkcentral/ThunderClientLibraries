@@ -137,7 +137,8 @@ public:
 class RDKAdapterImp : public RDKAdapter::IRDKAdapter {
 private:
     class Notification : public Exchange::INetworkControl::INotification
-                       , public Exchange::IRDKAdapter::INotification {
+                       , public Exchange::IRDKAdapter::INotification
+                       , public Exchange::IWifiControl::INotification {
     public:
         explicit Notification(RDKAdapterImp& parent) : Exchange::INetworkControl::INotification(), _parent(parent) {}
         ~Notification() override = default;
@@ -150,10 +151,20 @@ private:
             _parent.ConnectionUpdate(connected);
         }
 
+        void NetworkChange() override {
+            _parent.WifiNetworkChange();
+        }
+
+        void ConnectionChange(const string& ssid) {
+            // not used right now...
+        }
+
+
 
     public:
         BEGIN_INTERFACE_MAP(Notification)
         INTERFACE_ENTRY(Exchange::INetworkControl::INotification)
+        INTERFACE_ENTRY(Exchange::IWifiControl::INotification)
         INTERFACE_ENTRY(Exchange::IRDKAdapter::INotification)
         END_INTERFACE_MAP
 
@@ -179,6 +190,12 @@ public:
         Exchange::INetworkControl* network = _networklink.NetworkInterface();
         if(network != nullptr) {
             network->Register(&_sink);
+            network->Release();
+        }
+        Exchange::IWifiControl* wifi = _wifilink.WifiInterface();
+        if(wifi != nullptr) {
+            wifi->Register(&_sink);
+            wifi->Release();
         }
     }
 
@@ -187,6 +204,12 @@ public:
         Exchange::INetworkControl* network = _networklink.NetworkInterface();
         if(network != nullptr) {
             network->Unregister(&_sink);
+            network->Release();
+        }
+        Exchange::IWifiControl* wifi = _wifilink.WifiInterface();
+        if(wifi != nullptr) {
+            wifi->Unregister(&_sink);
+            wifi->Release();
         }
     }
 
@@ -303,6 +326,27 @@ public:
         return result;
     }
 
+    uint32_t SSIDS(std::vector<std::string>& ssids) const override {
+        uint32_t result = Core::ERROR_RPC_CALL_FAILED;
+        ssids.clear();
+
+        const Exchange::IWifiControl* wifi = _wifilink.WifiInterface();
+        Exchange::IWifiControl::INetworkInfoIterator* it = nullptr;
+        if(wifi != nullptr) {
+            if ((result = wifi->Networks(it)) == Core::ERROR_NONE) {
+                it->Reset(0);
+                Exchange::IWifiControl::NetworkInfo i;
+                while(it->Next(i) == true) {
+                    ssids.emplace_back(i.ssid);
+                }
+
+                it->Release();
+            }
+            wifi->Release();
+        }
+        return result;
+    }
+
 private:
     void InterfaceUpdate(const string& interfaceName) {
         _adminLock.Lock();
@@ -319,6 +363,16 @@ private:
 
         for (auto l : _listeners) {
             l->ConnectedUpdate(connected);
+        }
+
+        _adminLock.Unlock();
+    }
+
+    void WifiNetworkChange() {
+        _adminLock.Lock();
+
+        for (auto l : _listeners) {
+            l->SSIDSUpdate();
         }
 
         _adminLock.Unlock();

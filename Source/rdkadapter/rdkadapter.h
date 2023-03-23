@@ -50,6 +50,7 @@ struct EXTERNAL IRDKAdapter {
 
         virtual void InterfaceUpdate(const std::string& interfacename) = 0;
         virtual void ConnectedUpdate(const bool connected) = 0;
+        virtual void SSIDSUpdate() = 0;
     };
 
     virtual uint32_t Register(IRDKAdapter::INotification* sink) = 0;
@@ -59,7 +60,11 @@ struct EXTERNAL IRDKAdapter {
     virtual uint32_t InterfaceAvailable(const std::string& interfacename, bool& available) const = 0;
     virtual uint32_t InterfaceUp(const std::string& interfacename, bool& up) const = 0;
     virtual uint32_t InterfaceAddress(const std::string& interfacename, std::string& primaryaddress) const = 0;
+
     virtual uint32_t Connected(bool& connected) const = 0;
+
+    virtual uint32_t SSIDS(std::vector<std::string>& ssids) const = 0;
+
 };
 
 }

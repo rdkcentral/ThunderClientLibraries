@@ -262,14 +262,10 @@ private:
 
         void InterfaceUpdate(const string& interfacename) override;
         void ConnectedUpdate(const bool connected) override;
-
+        void SSIDSUpdate() override;
     }
 
-    static void OnWifiSignalThresholdChangedHandler( const Core::JSON::String& parameters );
-
     static void OnDefaultInterfaceChangedHandler(const string& interfacename, bool connected);
-
-    static void OnAvailableSSIDsHandler( const Core::JSON::String& parameters );
 
     static void OnWIFIStateChangedHandler( const Core::JSON::String& parameters );
 

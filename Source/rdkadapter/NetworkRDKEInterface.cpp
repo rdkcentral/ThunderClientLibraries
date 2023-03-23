@@ -162,11 +162,6 @@ int NetworkRdkInterface::InitiateWPSPINPairing()
 
 }
 
-void NetworkRdkInterface::OnWifiSignalThresholdChangedHandler( const Core::JSON::String& parameters )
-{
-
-}
-
 void NetworkRdkInterface::OnAvailableSSIDsHandler( const Core::JSON::String& parameters )
 {
 
@@ -209,7 +204,7 @@ void NetworkRdkInterface::Notification::InterfaceUpdate(const string& interfacen
     }
 }
 
-void NetworkRdkInterface::ConnectedUpdate(const bool connected) override {
+void NetworkRdkInterface::ConnectedUpdate(const bool connected)  {
     auto networkControllerInstance = NetworkController::getInstance();
     if ( networkControllerInstance )
     {
@@ -229,7 +224,30 @@ void NetworkRdkInterface::ConnectedUpdate(const bool connected) override {
     }
 }
 
-//doen we niet
+void NetworkRdkInterface::Notification::SSIDSUpdate() {
+    auto networkControllerInstance = NetworkController::getInstance();
+    if ( networkControllerInstance )
+    {
+        std::vector<std::string> ssids;
+        _adapter.SSIDS(ssids);
+        if(ssids.size() > 0) {
+            std::string ssiddata ="{ \"ssids\" : [";
+            for( auto it = ssids.begin(); it != ssids.end(); ++it ) {
+                if(it != ssids.begin()) {
+                    ssiddata += ", ";
+                }
+                ssiddata += '\"';
+                ssiddata += *it;
+                ssiddata += '\"';
+            }
+            ssiddata += "]}";
+            // note the json also has a "moreData", let's assume it is not mandatory
+            networkControllerInstance->RdkEventsListener( NETWORK_EVENT_TYPE_RDK_SSID_AVAILABLE, ssiddata );
+        }
+    }
+}
 
-        networkControllerInstance->RdkEventsListener( NETWORK_EVENT_TYPE_RDK_WIFI_SIGNAL_THRESHOLD_CHANGED, data );
+//not supported, and I guesd will work without:
+
+//        networkControllerInstance->RdkEventsListener( NETWORK_EVENT_TYPE_RDK_WIFI_SIGNAL_THRESHOLD_CHANGED, data );
 
