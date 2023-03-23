@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 #include <string>
+#include <vector>
 
 #ifndef EXTERNAL
 #ifdef _MSVC_LANG
@@ -48,14 +49,17 @@ struct EXTERNAL IRDKAdapter {
         virtual ~INotification() = default;
 
         virtual void InterfaceUpdate(const std::string& interfacename) = 0;
+        virtual void ConnectedUpdate(const bool connected) = 0;
     };
 
     virtual uint32_t Register(IRDKAdapter::INotification* sink) = 0;
     virtual uint32_t Unregister(IRDKAdapter::INotification* sink) = 0;
 
+    virtual uint32_t Interfaces(std::vector<std::string>& interfaces) const = 0;
     virtual uint32_t InterfaceAvailable(const std::string& interfacename, bool& available) const = 0;
     virtual uint32_t InterfaceUp(const std::string& interfacename, bool& up) const = 0;
     virtual uint32_t InterfaceAddress(const std::string& interfacename, std::string& primaryaddress) const = 0;
+    virtual uint32_t Connected(bool& connected) const = 0;
 };
 
 }

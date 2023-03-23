@@ -1,5 +1,6 @@
 #include <cstring>
 #include <sstream>
+#include <vector>
 
 #include "sky/log.h"
 #include "NetworkRdkInterface.h"
@@ -204,12 +205,31 @@ void NetworkRdkInterface::Notification::InterfaceUpdate(const string& interfacen
             primaryaddress += primaryaddress;
             primaryaddress += "\", \"status\" : \"ACQUIRED\"}";
             networkControllerInstance->RdkEventsListener( NETWORK_EVENT_TYPE_RDK_IP_ADDRESS_CHANGED, primaryaddress );
-
-            // don't think we have this
-            std::string connecteddata ="{ \"interface\" : \"";
-            connecteddata += interfacename;
-            connecteddata += "\", \"status\" : \"CONNECTED\"}";
-            networkControllerInstance->RdkEventsListener( NETWORK_EVENT_TYPE_RDK_CONNECTION_STATUS_CHANGED, connecteddata );
         }
     }
 }
+
+void NetworkRdkInterface::ConnectedUpdate(const bool connected) override {
+    auto networkControllerInstance = NetworkController::getInstance();
+    if ( networkControllerInstance )
+    {
+        std::vector<std::string> interfaces;
+        _adapter.Interfaces(interfaces);
+        for( auto& s : interfaces) {
+            bool available = false;
+            _adapter.InterfaceAvailable(s, available);
+            if(available == true) {
+                std::string connecteddata ="{ \"interface\" : \"";
+                connecteddata += s;
+                connecteddata += "\", \"status\" : ";
+                connecteddata += connected ? "\"CONNECTED\" }" : "\"DISCONNECTED\" }";
+                networkControllerInstance->RdkEventsListener( NETWORK_EVENT_TYPE_RDK_CONNECTION_STATUS_CHANGED, connecteddata );
+            }
+        }
+    }
+}
+
+//doen we niet
+
+        networkControllerInstance->RdkEventsListener( NETWORK_EVENT_TYPE_RDK_WIFI_SIGNAL_THRESHOLD_CHANGED, data );
+

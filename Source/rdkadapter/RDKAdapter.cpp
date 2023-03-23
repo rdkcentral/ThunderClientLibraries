@@ -136,7 +136,8 @@ public:
 
 class RDKAdapterImp : public RDKAdapter::IRDKAdapter {
 private:
-    class Notification : public Exchange::INetworkControl::INotification {
+    class Notification : public Exchange::INetworkControl::INotification
+                       , public Exchange::IRDKAdapter::INotification {
     public:
         explicit Notification(RDKAdapterImp& parent) : Exchange::INetworkControl::INotification(), _parent(parent) {}
         ~Notification() override = default;
@@ -145,9 +146,15 @@ private:
             _parent.InterfaceUpdate(interfaceName);
         }
 
+        void ConnectionUpdate(const bool connected) override {
+            _parent.ConnectionUpdate(connected);
+        }
+
+
     public:
         BEGIN_INTERFACE_MAP(Notification)
         INTERFACE_ENTRY(Exchange::INetworkControl::INotification)
+        INTERFACE_ENTRY(Exchange::IRDKAdapter::INotification)
         END_INTERFACE_MAP
 
     private:
@@ -166,6 +173,7 @@ public:
     , _adminLock()
     , _adapterlink()
     , _networklink()
+    , _wifilink()
     , _sink(*this)
     {
         Exchange::INetworkControl* network = _networklink.NetworkInterface();
@@ -196,6 +204,11 @@ public:
 
         _adminLock.Unlock();
 
+        //they might to receive an initial update anyway:
+        bool connected = false;
+        Connected(connected);
+        sink->ConnectedUpdate(connected);
+
         return Core::ERROR_NONE;
     }
 
@@ -213,14 +226,39 @@ public:
         return Core::ERROR_NONE;
     }
 
+    virtual uint32_t Interfaces(std::vector<std::string>& interfaces) const override {
+        uint32_t result = Core::ERROR_RPC_CALL_FAILED;
+        interfaces.clear();
+
+        const Exchange::INetworkControl* network = _networklink.NetworkInterface();
+        Exchange::INetworkControl::IStringIterator* it = nullptr;
+        if(network != nullptr) {
+            if ((result = network->Interfaces(it)) == Core::ERROR_NONE) {
+                it->Reset(0);
+                string i;
+                while(it->Next(i) == true) {
+                    interfaces.emplace_back(i);
+                }
+
+                it->Release();
+            }
+            network->Release();
+        }
+        return result;
+    }
+
+
     uint32_t InterfaceAvailable(const string& interfacename, bool& available) const override {
         uint32_t result = Core::ERROR_RPC_CALL_FAILED;
         available = false;
 
         const Exchange::INetworkControl* network = _networklink.NetworkInterface();
         Exchange::INetworkControl::StatusType status = Exchange::INetworkControl::StatusType::UNAVAILABLE;
-        if((network != nullptr) && (result = network->Status(interfacename, status) == Core::ERROR_NONE)) {
-            available = status == Exchange::INetworkControl::StatusType::AVAILABLE;
+        if(network != nullptr) {
+            if ((result = network->Status(interfacename, status)) == Core::ERROR_NONE) {
+                available = status == Exchange::INetworkControl::StatusType::AVAILABLE;
+            }
+            network->Release();
         }
         return result;
     }
@@ -232,6 +270,7 @@ public:
         const Exchange::INetworkControl* network = _networklink.NetworkInterface();
         if(network != nullptr) {
             result = network->Up(interfacename, up);
+            network->Release();
         }
         return result;
     }
@@ -241,11 +280,25 @@ public:
         
         const Exchange::INetworkControl* network = _networklink.NetworkInterface();
         Exchange::INetworkControl::INetworkInfoIterator* it;
-        if((network != nullptr) && (result = network->Network(interfacename, it) == Core::ERROR_NONE)) {
-            if(it->IsValid() == true) {
-                primaryaddress = it->Current().address;
+        if(network != nullptr) {
+            if ((result = network->Network(interfacename, it)) == Core::ERROR_NONE) {
+                if(it->IsValid() == true) {
+                    primaryaddress = it->Current().address;
+                }
+                it->Release();
             }
-            it->Release();
+            network->Release();
+        }
+        return result;
+    }
+
+    uint32_t Connected(bool& connected) const override {
+        uint32_t result = Core::ERROR_RPC_CALL_FAILED;
+        
+        const Exchange::IRDKAdapter* adapter = _adapterlink.AdapterInterface();
+        if(adapter != nullptr) {
+            result = adapter->Connected(connected);
+            adapter->Release();
         }
         return result;
     }
@@ -261,12 +314,24 @@ private:
         _adminLock.Unlock();
     }
 
+    void ConnectionUpdate(const bool connected) {
+        _adminLock.Lock();
+
+        for (auto l : _listeners) {
+            l->ConnectedUpdate(connected);
+        }
+
+        _adminLock.Unlock();
+    }
+
+
 private:
     using NotificationContainer = std::list<RDKAdapter::IRDKAdapter::INotification*>;
 
     mutable Core::CriticalSection _adminLock;
     AdapterLink _adapterlink;
     NetworkLink _networklink;
+    WifiLink _wifilink;
     NotificationContainer _listeners;
     Core::Sink<RDKAdapterImp::Notification> _sink;
 };

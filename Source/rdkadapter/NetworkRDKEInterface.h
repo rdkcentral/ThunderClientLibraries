@@ -261,6 +261,8 @@ private:
         ~Notification() override = default;
 
         void InterfaceUpdate(const string& interfacename) override;
+        void ConnectedUpdate(const bool connected) override;
+
     }
 
     static void OnWifiSignalThresholdChangedHandler( const Core::JSON::String& parameters );
