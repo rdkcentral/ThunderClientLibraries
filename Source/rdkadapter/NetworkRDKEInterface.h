@@ -260,14 +260,15 @@ private:
     public:
         ~Notification() override = default;
 
-        void InterfaceUpdate(const string& interfacename) override;
+        void InterfaceUpdate(const std::string& interfacename) override;
         void ConnectedUpdate(const bool connected) override;
         void SSIDSUpdate() override;
+        void WifiConnectionChange(const std::string& ssid) override;
+
     }
 
     static void OnDefaultInterfaceChangedHandler(const string& interfacename, bool connected);
 
-    static void OnWIFIStateChangedHandler( const Core::JSON::String& parameters );
 
     static void OnWifiErrorHandler( const Core::JSON::String& parameters );
 

@@ -156,7 +156,7 @@ private:
         }
 
         void ConnectionChange(const string& ssid) {
-            // not used right now...
+            _parent.WifiConnectionChange(ssid);
         }
 
 
@@ -348,7 +348,7 @@ public:
     }
 
 private:
-    void InterfaceUpdate(const string& interfaceName) {
+    void InterfaceUpdate(const std::string& interfaceName) {
         _adminLock.Lock();
 
         for (auto l : _listeners) {
@@ -377,6 +377,17 @@ private:
 
         _adminLock.Unlock();
     }
+
+    void WifiConnectionChange(const std::string& ssid) {
+        _adminLock.Lock();
+
+        for (auto l : _listeners) {
+            l->WifiConnectionChange(ssid);
+        }
+
+        _adminLock.Unlock();
+    }
+
 
 
 private:

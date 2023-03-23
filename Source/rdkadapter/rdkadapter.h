@@ -51,6 +51,7 @@ struct EXTERNAL IRDKAdapter {
         virtual void InterfaceUpdate(const std::string& interfacename) = 0;
         virtual void ConnectedUpdate(const bool connected) = 0;
         virtual void SSIDSUpdate() = 0;
+        virtual void WifiConnectionChange(const std::string& ssid) = 0; // note empty if disconnected
     };
 
     virtual uint32_t Register(IRDKAdapter::INotification* sink) = 0;

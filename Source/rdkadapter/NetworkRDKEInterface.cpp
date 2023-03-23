@@ -162,22 +162,13 @@ int NetworkRdkInterface::InitiateWPSPINPairing()
 
 }
 
-void NetworkRdkInterface::OnAvailableSSIDsHandler( const Core::JSON::String& parameters )
-{
-
-}
-
-void NetworkRdkInterface::OnWIFIStateChangedHandler( const Core::JSON::String& parameters )
-{
-
-}
 
 void NetworkRdkInterface::OnWifiErrorHandler( const Core::JSON::String& parameters )
 {
 
 }
 
-void NetworkRdkInterface::Notification::InterfaceUpdate(const string& interfacename) 
+void NetworkRdkInterface::Notification::InterfaceUpdate(const std::string& interfacename) 
 {
     auto networkControllerInstance = NetworkController::getInstance();
     if ( networkControllerInstance )
@@ -244,6 +235,18 @@ void NetworkRdkInterface::Notification::SSIDSUpdate() {
             // note the json also has a "moreData", let's assume it is not mandatory
             networkControllerInstance->RdkEventsListener( NETWORK_EVENT_TYPE_RDK_SSID_AVAILABLE, ssiddata );
         }
+    }
+}
+
+void NetworkRdkInterface::Notification::WifiConnectionChange(const std::string& ssid) {
+    auto networkControllerInstance = NetworkController::getInstance();
+    if ( networkControllerInstance )
+    {
+        std::string data ="{ \"state\" : ";
+        data += ssid.empty() == false ? '5' : '2'; // 5 is connected, 2 is disconnected...
+        data += ", \"isLNF\" : false}";
+
+        networkControllerInstance->RdkEventsListener( NETWORK_EVENT_TYPE_RDK_WIFI_STATE_CHANGED, data );
     }
 }
 
