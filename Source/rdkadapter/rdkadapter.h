@@ -54,6 +54,35 @@ struct EXTERNAL IRDKAdapter {
         virtual void WifiConnectionChange(const std::string& ssid) = 0; // note empty if disconnected
     };
 
+    // for now let's use the RDK enums for easy API usage
+    enum class WifiSecurity : uint8_t
+    {
+        NET_WIFI_SECURITY_NONE = 0,
+        NET_WIFI_SECURITY_WEP_64,
+        NET_WIFI_SECURITY_WEP_128,
+        NET_WIFI_SECURITY_WPA_PSK_TKIP,
+        NET_WIFI_SECURITY_WPA_PSK_AES,
+        NET_WIFI_SECURITY_WPA2_PSK_TKIP,
+        NET_WIFI_SECURITY_WPA2_PSK_AES,
+        NET_WIFI_SECURITY_WPA_ENTERPRISE_TKIP,
+        NET_WIFI_SECURITY_WPA_ENTERPRISE_AES,
+        NET_WIFI_SECURITY_WPA2_ENTERPRISE_TKIP,
+        NET_WIFI_SECURITY_WPA2_ENTERPRISE_AES,
+        NET_WIFI_SECURITY_WPA_WPA2_PSK,
+        NET_WIFI_SECURITY_WPA_WPA2_ENTERPRISE,
+        NET_WIFI_SECURITY_WPA3_PSK_AES,
+        NET_WIFI_SECURITY_WPA3_SAE,
+        NET_WIFI_SECURITY_NOT_SUPPORTED = 99
+    };
+
+    struct WifiNetworkInfo {
+        uint64_t bssid;
+        uint32_t frequency;
+        int32_t signal;
+        WifiSecurity security;
+    };
+
+
     virtual uint32_t Register(IRDKAdapter::INotification* sink) = 0;
     virtual uint32_t Unregister(IRDKAdapter::INotification* sink) = 0;
 
@@ -64,10 +93,14 @@ struct EXTERNAL IRDKAdapter {
     virtual uint32_t InterfaceAddress(const std::string& interfacename, std::string& primaryaddress) const = 0;
 
     // for now hack to create an easy call, todo get rid of the string for security
-    virtual uint32_t WifiConnect(const std::string& ssid, std::string security, std::string password) = 0;
-    virtual uint32_t WifiConnected(bool& connected) const = 0;
+    virtual uint32_t WifiConnect(const std::string& ssid, const WifiSecurity security, const std::string& password) = 0;
+    virtual uint32_t WifiDisconnect() = 0;
+    virtual uint32_t WifiConnected(std::string& ssid) const = 0; // empty when not connected
+    virtual uint32_t WifiInfo(const std::string& ssid, WifiNetworkInfo& info) const = 0;
+    virtual uint32_t WifiScan() = 0;
 
     virtual uint32_t Connected(bool& connected) const = 0;
+    virtual uint32_t PublicIpAddress(std::string& address) const = 0;
 
     virtual uint32_t SSIDS(std::vector<std::string>& ssids) const = 0;
 

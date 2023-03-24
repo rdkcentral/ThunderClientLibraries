@@ -55,69 +55,119 @@ int NetworkRdkInterface::CancelWPSPairing()
 
 int NetworkRdkInterface::ConnectToAccessPoint( std::string ssid, std::string security, std::string password )
 {
-    uint32_t result =_adapter.Connect(ssid, security, password)
+    uint32_t result = Core::ERROR_RPC_CALL_FAILED;
+
+    SsidSecurity securityMode;
+    if ( NETWORK_UTILS::GetWirelessSecurityModeFromASSecurityString( security, securityMode ) == 0 ) {
+        result =_adapter.Connect(ssid, securityMode, password);
+    }
     return result == Core::ERROR_NONE : 0 : -1;
 }
 
 int NetworkRdkInterface::Disconnect()
 {
-  
+    uint32_t result =_adapter.Disconnect();
+    return result == Core::ERROR_NONE : 0 : -1;
 }
 
 int NetworkRdkInterface::ClearSSID()
 {
-   
+    return -1; // not supported for now
 }
 
 int NetworkRdkInterface::GetInterfaces( std::string &jsonResponseInterfaces )
 {
-   
+    std::vector<std::string> interfaces;
+    uint32_t result = _adapter.Interfaces(interfaces);
+    if(result == Core::ERROR_NONE) {
+        jsonResponseInterfaces = "{\"interfaces\":[";
+        bool added = false;
+        for( auto i = interfaces.begin(); i != interfaces.end(); ++i  ) {
+            if(added == true) {
+                jsonResponseInterfaces += ", ";
+            }
+            bool up = false;
+            result = _adapter.InterfaceUp(*it, up);
+            if(result == Core::ERROR_NONE) {
+                added = true;
+                jsonResponseInterfaces += "{\"interface\":\"";
+                jsonResponseInterfaces += *it;
+                jsonResponseInterfaces += "\",\"macAddress\":\"\", \"enabled\":"; //maccaddress not available for now
+                jsonResponseInterfaces += up ? "true, " : "false, ";
+                jsonResponseInterfaces += "\"connected\":true}"; // no connect info for now
+            }
+        }
+        jsonResponseInterfaces += "]}";
+    }
+    return result == Core::ERROR_NONE : 0 : -1;
 }
 
 int NetworkRdkInterface::GetStbIpAddress( std::string &ipAddress )
 {
-   
+    uint32_t result =_adapter.PublicIpAddress(ipAddress);
+    return result == Core::ERROR_NONE : 0 : -1;
 }
 
 int NetworkRdkInterface::GetGatewayIpAddress( std::string &gatewayIpAddress )
 {
- 
-
+    // not supported for now
+    return -1;
 }
 
 int NetworkRdkInterface::SetSignalThresholdChangeEnabled()
 {
-
+    // not supported for now
+    return -1;
 }
 
 int NetworkRdkInterface::GetConnectedSSID( NetworkWifiConnectedSSID &connectedSsid )
 {
-
+    string ssid;
+    uint32_t result =_adapter.WifiConnected(ssid);
+    // mhmm cannot see how it should behave if not connected. let's assume we return empty values...
+    if(result == Core::ERROR_NONE) {
+        connectedSsid.ssid = ssid;
+        RDKAdapter::IRDKAdapter::WifiNetworkInfo info;
+        result =_adapter.WifiInfo(ssid,info);
+        if(result == Core::ERROR_NONE) {
+            connectedSsid.bssid = info.bssid;
+            connectedSsid.wirelessSecurity = info.security;
+            connectedSsid.frequency = info.frequency;
+            connectedSsid.sigstr = info.signal;
+        }
+    }
+    return result == Core::ERROR_NONE : 0 : -1;
 }
 
 int NetworkRdkInterface::StartWifiScan()
 {
-  
+    uint32_t result =_adapter.WifiScan();
+    return result == Core::ERROR_NONE : 0 : -1;
 }
 
 int NetworkRdkInterface::StopWifiScan()
 {
- 
+    // not supported for now
+    return -1;
 }
 
 int NetworkRdkInterface::SetDefaultInterface( const std::string &interfaceName, bool isPersist )
 {
- 
+    // not supported for now
+    return -1;
 }
 
 std::string NetworkRdkInterface::GetNetworkStatusConnectStatus( const WiFiStatusCode connectState )
 {
- 
+    // not supported for now
+    return -1;
 }
 
 int NetworkRdkInterface::SetManualIpAddress( const std::string &ifname, const ManualIpAddressParameters &manualIpAddressParameters )
 {
-   
+    // not supported for now
+    return -1;
+  
 }
 
 int NetworkRdkInterface::GetManualIpAddress( const std::string &ifname, ManualIpAddressParameters &manualIpAddressParameters )

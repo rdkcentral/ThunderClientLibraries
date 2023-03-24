@@ -33,64 +33,99 @@ using namespace WPEFramework;
 
 namespace {
 
-uint32_t  WirelessSecurityInfoFromString( const std::string securityString, Exchange::IWifiControl::SecurityInfo& info )
+uint32_t  WirelessSecurityInfoFromEnum( const RDKAdapter::IRDKAdapter::WifiSecurity security, Exchange::IWifiControl::SecurityInfo& info )
 {
 
     // just quick guesses, needs to be looked
 
     uint32_t result = Core::ERROR_NONE;
 
-    if ( securityString == "OPEN" )
-    {
-        info.method = Exchange::IWifiControl::OPEN;
-        info.keys = Exchange::IWifiControl::SecurityInfo::NONE;
-    }
-    else if ( securityString == "WEP" )
-    {
-        info.method = Exchange::IWifiControl::WEP;
-        info.keys = Exchange::IWifiControl::SecurityInfo::PSK;
-    }
-    else if ( securityString == "WPA" )
-    {
-        info.method = Exchange::IWifiControl::WPA;
-        info.keys = Exchange::IWifiControl::SecurityInfo::TKIP;
-    }
-    else if ( securityString == "WPA_AES" )
-    {
-        info.method = Exchange::IWifiControl::WPA;
-        info.keys = Exchange::IWifiControl::SecurityInfo::PSK_HASHED;
-    }
-    else if ( securityString == "WPA2" )
-    {
-        info.method = Exchange::IWifiControl::WPA2;
-        info.keys = Exchange::IWifiControl::SecurityInfo::PSK_HASHED;
-    }
-    else if ( securityString == "WPA2_TKIP" )
-    {
-        info.method = Exchange::IWifiControl::WPA2;
-        info.keys = Exchange::IWifiControl::SecurityInfo::TKIP;
-    }
-    else if ( securityString == "WPA_BOTH" )
-    {
-        info.method = Exchange::IWifiControl::WPA;
-        info.keys = Exchange::IWifiControl::SecurityInfo::EAP; //????
-    }
-    else if ( securityString == "WPA2_WPA3" )
-    {
-        result = Core::ERROR_NOT_SUPPORTED; 
-    }
-    else if ( securityString == "WPA3" )
-    {
-        result = Core::ERROR_NOT_SUPPORTED; 
-    }
-    else
-    {
-        result = Core::ERROR_NOT_SUPPORTED; 
-    }
+    switch(security) {
+        case RDKAdapter::IRDKAdapter::WifiSecurity::NET_WIFI_SECURITY_NONE:
+            info.method = Exchange::IWifiControl::OPEN;
+            info.keys = Exchange::IWifiControl::SecurityInfo::NONE;
+        break;
+        case RDKAdapter::IRDKAdapter::WifiSecurity::NET_WIFI_SECURITY_WEP_64:
+            info.method = Exchange::IWifiControl::WEP;
+            info.keys = Exchange::IWifiControl::SecurityInfo::PSK;
+        break;
+        case RDKAdapter::IRDKAdapter::WifiSecurity::NET_WIFI_SECURITY_WEP_128:
+            info.method = Exchange::IWifiControl::WEP;
+            info.keys = Exchange::IWifiControl::SecurityInfo::PSK;
+        break;
+        case RDKAdapter::IRDKAdapter::WifiSecurity::NET_WIFI_SECURITY_WPA_PSK_TKIP:
+            info.method = Exchange::IWifiControl::WPA;
+            info.keys = Exchange::IWifiControl::SecurityInfo::TKIP;
+        break;
+        case RDKAdapter::IRDKAdapter::WifiSecurity::NET_WIFI_SECURITY_WPA_PSK_AES:
+            info.method = Exchange::IWifiControl::WPA;
+            info.keys = Exchange::IWifiControl::SecurityInfo::PSK_HASHED;
+        break;
+        case RDKAdapter::IRDKAdapter::WifiSecurity::NET_WIFI_SECURITY_WPA2_PSK_TKIP:
+            info.method = Exchange::IWifiControl::WPA2;
+            info.keys = Exchange::IWifiControl::SecurityInfo::TKIP;
+        break;
+        case RDKAdapter::IRDKAdapter::WifiSecurity::NET_WIFI_SECURITY_WPA2_PSK_AES:
+            info.method = Exchange::IWifiControl::WPA2;
+            info.keys = Exchange::IWifiControl::SecurityInfo::PSK_HASHED;
+        break;
+        case RDKAdapter::IRDKAdapter::WifiSecurity::NET_WIFI_SECURITY_WPA_ENTERPRISE_TKIP:
+            info.method = Exchange::IWifiControl::WPA;
+            info.keys = Exchange::IWifiControl::SecurityInfo::TKIP;
+        break;
+        case RDKAdapter::IRDKAdapter::WifiSecurity::NET_WIFI_SECURITY_WPA_ENTERPRISE_AES:
+            info.method = Exchange::IWifiControl::WPA;
+            info.keys = Exchange::IWifiControl::SecurityInfo::PSK_HASHED;
+        break;
+        case RDKAdapter::IRDKAdapter::WifiSecurity::NET_WIFI_SECURITY_WPA2_ENTERPRISE_TKIP:
+            info.method = Exchange::IWifiControl::WPA2;
+            info.keys = Exchange::IWifiControl::SecurityInfo::TKIP;
+        break;
+        case RDKAdapter::IRDKAdapter::WifiSecurity::NET_WIFI_SECURITY_WPA2_ENTERPRISE_AES:
+            info.method = Exchange::IWifiControl::WPA2;
+            info.keys = Exchange::IWifiControl::SecurityInfo::PSK_HASHED;
+        break;
+        case RDKAdapter::IRDKAdapter::WifiSecurity::NET_WIFI_SECURITY_WPA_WPA2_PSK:
+            info.method = Exchange::IWifiControl::WPA2;
+            info.keys = Exchange::IWifiControl::SecurityInfo::PSK;
+        break;
+        case RDKAdapter::IRDKAdapter::WifiSecurity::NET_WIFI_SECURITY_WPA_WPA2_ENTERPRISE:
+            info.method = Exchange::IWifiControl::WPA2;
+            info.keys = Exchange::IWifiControl::SecurityInfo::PSK;
+        break;
+        case RDKAdapter::IRDKAdapter::WifiSecurity::NET_WIFI_SECURITY_WPA3_PSK_AES:
+        case RDKAdapter::IRDKAdapter::WifiSecurity::NET_WIFI_SECURITY_WPA3_SAE:
+        case RDKAdapter::IRDKAdapter::WifiSecurity::NET_WIFI_SECURITY_NOT_SUPPORTED:
+        default:
+            result = Core::ERROR_NOT_SUPPORTED; 
+            break;
+
+    };
 
     return result;
 }
 
+uint32_t  WirelessSecurityInfoToEnum( RDKAdapter::IRDKAdapter::WifiSecurity& security, const Exchange::IWifiControl::Security& info )
+{
+
+    // just quick guesses, needs to be looked, not complete and no correct mapping for key
+
+    uint32_t result = Core::ERROR_NONE;
+
+    if( info == Exchange::IWifiControl::OPEN) {
+        security = RDKAdapter::IRDKAdapter::WifiSecurity::NET_WIFI_SECURITY_NONE;
+    } else if( info == Exchange::IWifiControl::WEP) {
+        security = RDKAdapter::IRDKAdapter::WifiSecurity::NET_WIFI_SECURITY_WEP_64;
+    } else if( info == Exchange::IWifiControl::WPA) {
+        security = RDKAdapter::IRDKAdapter::WifiSecurity::NET_WIFI_SECURITY_WPA_PSK_AES;
+    } else if( info == Exchange::IWifiControl::WPA2) {
+        security = RDKAdapter::IRDKAdapter::WifiSecurity::NET_WIFI_SECURITY_WPA2_PSK_AES;
+    } else {
+        security = RDKAdapter::IRDKAdapter::WifiSecurity::NET_WIFI_SECURITY_NOT_SUPPORTED;
+    }
+    
+    return result;
+}
 
 // in case we need to override Operational for one or the other lket's wrap them...
 
@@ -385,14 +420,14 @@ public:
         return result;
     }
 
-    uint32_t WifiConnect(const std::string& ssid, std::string security, std::string password) override {
+    uint32_t WifiConnect(const std::string& ssid, const WifiSecurity security, const std::string& password) override {
         uint32_t result = Core::ERROR_RPC_CALL_FAILED;
         
         Exchange::IWifiControl* wifi = _wifilink.WifiInterface();
         if(wifi != nullptr) {
             //bit of a gamble if this will work...
             Exchange::IWifiControl::SecurityInfo secinfo;
-            if( (result = WirelessSecurityInfoFromString(security, secinfo)) == Core::ERROR_NONE) {
+            if( (result = WirelessSecurityInfoFromEnum(security, secinfo)) == Core::ERROR_NONE) {
                 Exchange::IWifiControl::ConfigInfo config;
                 config.hidden = false;
                 config.accesspoint = true;
@@ -409,16 +444,73 @@ public:
         return result;
     }
 
-    uint32_t WifiConnected(bool& connected) const override {
+    uint32_t WifiDisconnect() {
+        uint32_t result = Core::ERROR_RPC_CALL_FAILED;
+        
+        Exchange::IWifiControl* wifi = _wifilink.WifiInterface();
+        if(wifi != nullptr) {
+            string ssid;
+            bool scanning;
+            if( (result = wifi->Status(ssid, scanning)) == Core::ERROR_NONE) {
+                if(ssid.empty() == false) {
+                    result = wifi->Disconnect(ssid);
+                } else {
+                    result = Core::ERROR_ILLEGAL_STATE;
+                }
+            }
+            wifi->Release();
+        }
+        return result;
+    }
+
+    uint32_t WifiConnected(string& ssid) const override {
         uint32_t result = Core::ERROR_RPC_CALL_FAILED;
         
         const Exchange::IWifiControl* wifi = _wifilink.WifiInterface();
         if(wifi != nullptr) {
-            string ssid;
             bool scanning;
             result = wifi->Status(ssid, scanning);
             wifi->Release();
-            connected = ssid.empty() == false;            
+        }
+        return result;
+    }
+
+    uint32_t WifiInfo(const string& ssid, WifiNetworkInfo& info) const override {
+        uint32_t result = Core::ERROR_RPC_CALL_FAILED;
+        
+        const Exchange::IWifiControl* wifi = _wifilink.WifiInterface();
+        if(wifi != nullptr) {
+            Exchange::IWifiControl::INetworkInfoIterator* networkInfoList = nullptr;
+            result = wifi->Networks(networkInfoList);
+            if( networkInfoList != nullptr ) {
+                networkInfoList->Reset(0);
+
+                Exchange::IWifiControl::NetworkInfo wifiinfo;
+
+                while( networkInfoList->Next(wifiinfo) == true ) {
+                    if(wifiinfo.ssid == ssid) {
+                        info.bssid = wifiinfo.bssid;
+                        info.frequency = 0; // not used
+                        WirelessSecurityInfoToEnum(info.security, wifiinfo.security);
+                        info.signal = wifiinfo.signal;
+                        break;
+                    }
+                }
+
+                networkInfoList->Release();
+            }
+            wifi->Release();
+        }
+        return result;
+    }
+
+    uint32_t WifiScan() override {
+        uint32_t result = Core::ERROR_RPC_CALL_FAILED;
+        
+        Exchange::IWifiControl* wifi = _wifilink.WifiInterface();
+        if(wifi != nullptr) {
+            result = wifi->Scan();
+            wifi->Release();
         }
         return result;
     }
@@ -429,6 +521,17 @@ public:
         const Exchange::IRDKAdapter* adapter = _adapterlink.AdapterInterface();
         if(adapter != nullptr) {
             result = adapter->Connected(connected);
+            adapter->Release();
+        }
+        return result;
+    }
+
+    uint32_t PublicIpAddress(std::string& address) const override {
+        uint32_t result = Core::ERROR_RPC_CALL_FAILED;
+        
+        const Exchange::IRDKAdapter* adapter = _adapterlink.AdapterInterface();
+        if(adapter != nullptr) {
+            result = adapter->PublicIP(address);
             adapter->Release();
         }
         return result;
