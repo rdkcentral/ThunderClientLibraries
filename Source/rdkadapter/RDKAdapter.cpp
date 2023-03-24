@@ -420,7 +420,7 @@ public:
         return result;
     }
 
-    uint32_t InterfaceInfo(const std::string& interfacename, NetworkInfo& info) override {
+    uint32_t InterfaceSetting(const std::string& interfacename, NetworkInfo& info) const override {
         uint32_t result = Core::ERROR_RPC_CALL_FAILED;
         
         const Exchange::INetworkControl* network = _networklink.NetworkInterface();
@@ -444,6 +444,26 @@ public:
                 }
                 it->Release();
             }
+            network->Release();
+        }
+        return result;
+    }
+
+    virtual uint32_t InterfaceSetting(const std::string& interfacename, const NetworkInfo& info) override {
+        uint32_t result = Core::ERROR_RPC_CALL_FAILED;
+        
+        Exchange::INetworkControl* network = _networklink.NetworkInterface();
+        if(network != nullptr) {
+            std::list<Exchange::INetworkControl::NetworkInfo> networks;
+            Exchange::INetworkControl::NetworkInfo netinfo;
+            netinfo.address = info.address;
+            netinfo.defaultGateway = info.defaultGateway;
+            netinfo.mask = info.mask;
+            netinfo.mode = info.mode == RDKAdapter::IRDKAdapter::ModeType::DYNAMIC ? Exchange::INetworkControl::DYNAMIC : Exchange::INetworkControl::STATIC;
+            networks.emplace_back(std::move(netinfo));
+//            RPC::IIteratorType<Exchange::INetworkControl::NetworkInfo, Exchange::ID_NETWORKCONTROL_NETWORK_INFO_ITERATOR>* networkList{Core::Service<RPC::IteratorType<RPC::IIteratorType<Exchange::INetworkControl::NetworkInfo, Exchange::ID_NETWORKCONTROL_NETWORK_INFO_ITERATOR>>>::Create<RPC::IIteratorType<Exchange::INetworkControl::NetworkInfo, Exchange::ID_NETWORKCONTROL_NETWORK_INFO_ITERATOR>>(networks)};
+//            result = network->Network(interfacename, static_cast<Exchange::INetworkControl::INetworkInfoIterator* const&>(networkList));
+//            networkList->Release();
             network->Release();
         }
         return result;
