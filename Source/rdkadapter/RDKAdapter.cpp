@@ -407,11 +407,40 @@ public:
         uint32_t result = Core::ERROR_RPC_CALL_FAILED;
         
         const Exchange::INetworkControl* network = _networklink.NetworkInterface();
-        Exchange::INetworkControl::INetworkInfoIterator* it;
         if(network != nullptr) {
+            Exchange::INetworkControl::INetworkInfoIterator* it = nullptr;
             if ((result = network->Network(interfacename, it)) == Core::ERROR_NONE) {
                 if(it->IsValid() == true) {
                     primaryaddress = it->Current().address;
+                }
+                it->Release();
+            }
+            network->Release();
+        }
+        return result;
+    }
+
+    uint32_t InterfaceInfo(const std::string& interfacename, NetworkInfo& info) override {
+        uint32_t result = Core::ERROR_RPC_CALL_FAILED;
+        
+        const Exchange::INetworkControl* network = _networklink.NetworkInterface();
+        if(network != nullptr) {
+            Exchange::INetworkControl::INetworkInfoIterator* it = nullptr;
+            if ((result = network->Network(interfacename, it)) == Core::ERROR_NONE) {
+                if(it->IsValid() == true) {
+                    info.address = it->Current().address;
+                    info.defaultGateway = it->Current().defaultGateway;
+                    info.mask = it->Current().mask;
+                    info.mode = it->Current().mode == Exchange::INetworkControl::DYNAMIC ? RDKAdapter::IRDKAdapter::ModeType::DYNAMIC : RDKAdapter::IRDKAdapter::ModeType::STATIC;
+                    Exchange::INetworkControl::IStringIterator* it2 = nullptr;
+                    if ((result = network->DNS(it2)) == Core::ERROR_NONE) {
+                        it2->Reset(0);
+                        string dns;
+                        while(it2->Next(dns) == true) {
+                            info.dns.emplace_back(dns);
+                        }
+                        it2->Release();
+                    }
                 }
                 it->Release();
             }

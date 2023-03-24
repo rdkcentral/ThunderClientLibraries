@@ -172,7 +172,17 @@ int NetworkRdkInterface::SetManualIpAddress( const std::string &ifname, const Ma
 
 int NetworkRdkInterface::GetManualIpAddress( const std::string &ifname, ManualIpAddressParameters &manualIpAddressParameters )
 {
-  
+    RDKAdapter::IRDKAdapter::NetworkInfo info;
+    uint32_t result =_adapter.InterfaceInfo(ifname, info);
+    if(result == Core::ERROR_NONE) {
+        manualIpAddressParameters.autoConfig = info.mode == RDKAdapter::IRDKAdapter::ModeType::DYNAMIC;
+        manualIpAddressParameters.ipAdrr = info.address;
+        manualIpAddressParameters.netMask = info.mask;
+        manualIpAddressParameters.gateway = info.defaultGateway;
+        manualIpAddressParameters.primaryDns = info.dns.size() > 0 ? info.dns[0] : "";
+        manualIpAddressParameters.secondaryDns = info.dns.size() > 1 ? info.dns[1] : "";
+    }
+    return result == Core::ERROR_NONE : 0 : -1;
 }
 
 int NetworkRdkInterface::SetWPSLed( WPSLedState ledState )

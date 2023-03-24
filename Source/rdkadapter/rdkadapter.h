@@ -82,6 +82,20 @@ struct EXTERNAL IRDKAdapter {
         WifiSecurity security;
     };
 
+    enum class ModeType : uint8_t {
+        STATIC,
+        DYNAMIC
+    };
+
+    struct NetworkInfo {
+        std::string address;
+        std::string defaultGateway;
+        uint8_t mask;
+        ModeType mode;
+        std::vector<std::string> dns;
+    };
+
+
 
     virtual uint32_t Register(IRDKAdapter::INotification* sink) = 0;
     virtual uint32_t Unregister(IRDKAdapter::INotification* sink) = 0;
@@ -91,6 +105,7 @@ struct EXTERNAL IRDKAdapter {
     virtual uint32_t InterfaceUp(const std::string& interfacename, bool& up) const = 0;
     virtual uint32_t InterfaceUp(const std::string& interfacename, const bool up) = 0;
     virtual uint32_t InterfaceAddress(const std::string& interfacename, std::string& primaryaddress) const = 0;
+    virtual uint32_t InterfaceInfo(const std::string& interfacename, NetworkInfo& info) = 0;
 
     // for now hack to create an easy call, todo get rid of the string for security
     virtual uint32_t WifiConnect(const std::string& ssid, const WifiSecurity security, const std::string& password) = 0;
