@@ -33,6 +33,65 @@ using namespace WPEFramework;
 
 namespace {
 
+uint32_t  WirelessSecurityInfoFromString( const std::string securityString, Exchange::IWifiControl::SecurityInfo& info )
+{
+
+    // just quick guesses, needs to be looked
+
+    uint32_t result = Core::ERROR_NONE;
+
+    if ( securityString == "OPEN" )
+    {
+        info.method = Exchange::IWifiControl::OPEN;
+        info.keys = Exchange::IWifiControl::SecurityInfo::NONE;
+    }
+    else if ( securityString == "WEP" )
+    {
+        info.method = Exchange::IWifiControl::WEP;
+        info.keys = Exchange::IWifiControl::SecurityInfo::PSK;
+    }
+    else if ( securityString == "WPA" )
+    {
+        info.method = Exchange::IWifiControl::WPA;
+        info.keys = Exchange::IWifiControl::SecurityInfo::TKIP;
+    }
+    else if ( securityString == "WPA_AES" )
+    {
+        info.method = Exchange::IWifiControl::WPA;
+        info.keys = Exchange::IWifiControl::SecurityInfo::PSK_HASHED;
+    }
+    else if ( securityString == "WPA2" )
+    {
+        info.method = Exchange::IWifiControl::WPA2;
+        info.keys = Exchange::IWifiControl::SecurityInfo::PSK_HASHED;
+    }
+    else if ( securityString == "WPA2_TKIP" )
+    {
+        info.method = Exchange::IWifiControl::WPA2;
+        info.keys = Exchange::IWifiControl::SecurityInfo::TKIP;
+    }
+    else if ( securityString == "WPA_BOTH" )
+    {
+        info.method = Exchange::IWifiControl::WPA;
+        info.keys = Exchange::IWifiControl::SecurityInfo::EAP; //????
+    }
+    else if ( securityString == "WPA2_WPA3" )
+    {
+        result = Core::ERROR_NOT_SUPPORTED; 
+    }
+    else if ( securityString == "WPA3" )
+    {
+        result = Core::ERROR_NOT_SUPPORTED; 
+    }
+    else
+    {
+        result = Core::ERROR_NOT_SUPPORTED; 
+    }
+
+    return result;
+}
+
+
 // in case we need to override Operational for one or the other lket's wrap them...
 
 class AdapterLink : protected RPC::SmartInterfaceType<Exchange::IRDKAdapter> {
@@ -298,6 +357,17 @@ public:
         return result;
     }
 
+    uint32_t InterfaceUp(const std::string& interfacename, const bool up) override {
+        uint32_t result = Core::ERROR_RPC_CALL_FAILED;
+
+        Exchange::INetworkControl* network = _networklink.NetworkInterface();
+        if(network != nullptr) {
+            result = network->Up(interfacename, up);
+            network->Release();
+        }
+        return result;
+    }
+
     uint32_t InterfaceAddress(const std::string& interfacename, string& primaryaddress) const {
         uint32_t result = Core::ERROR_RPC_CALL_FAILED;
         
@@ -311,6 +381,44 @@ public:
                 it->Release();
             }
             network->Release();
+        }
+        return result;
+    }
+
+    uint32_t WifiConnect(const std::string& ssid, std::string security, std::string password) override {
+        uint32_t result = Core::ERROR_RPC_CALL_FAILED;
+        
+        Exchange::IWifiControl* wifi = _wifilink.WifiInterface();
+        if(wifi != nullptr) {
+            //bit of a gamble if this will work...
+            Exchange::IWifiControl::SecurityInfo secinfo;
+            if( (result = WirelessSecurityInfoFromString(security, secinfo)) == Core::ERROR_NONE) {
+                Exchange::IWifiControl::ConfigInfo config;
+                config.hidden = false;
+                config.accesspoint = true;
+                config.ssid = ssid;
+                config.secret = password;
+                config.method = secinfo.method;
+                config.key = secinfo.keys;
+                if( (result = wifi->Config(ssid, static_cast<const Exchange::IWifiControl::ConfigInfo&>(config))) == Core::ERROR_NONE) {
+                    result = wifi->Connect(ssid);
+                }
+            }
+            wifi->Release();
+        }
+        return result;
+    }
+
+    uint32_t WifiConnected(bool& connected) const override {
+        uint32_t result = Core::ERROR_RPC_CALL_FAILED;
+        
+        const Exchange::IWifiControl* wifi = _wifilink.WifiInterface();
+        if(wifi != nullptr) {
+            string ssid;
+            bool scanning;
+            result = wifi->Status(ssid, scanning);
+            wifi->Release();
+            connected = ssid.empty() == false;            
         }
         return result;
     }

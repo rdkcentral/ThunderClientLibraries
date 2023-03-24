@@ -60,7 +60,12 @@ struct EXTERNAL IRDKAdapter {
     virtual uint32_t Interfaces(std::vector<std::string>& interfaces) const = 0;
     virtual uint32_t InterfaceAvailable(const std::string& interfacename, bool& available) const = 0;
     virtual uint32_t InterfaceUp(const std::string& interfacename, bool& up) const = 0;
+    virtual uint32_t InterfaceUp(const std::string& interfacename, const bool up) = 0;
     virtual uint32_t InterfaceAddress(const std::string& interfacename, std::string& primaryaddress) const = 0;
+
+    // for now hack to create an easy call, todo get rid of the string for security
+    virtual uint32_t WifiConnect(const std::string& ssid, std::string security, std::string password) = 0;
+    virtual uint32_t WifiConnected(bool& connected) const = 0;
 
     virtual uint32_t Connected(bool& connected) const = 0;
 

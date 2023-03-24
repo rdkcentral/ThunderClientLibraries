@@ -266,13 +266,6 @@ private:
         void WifiConnectionChange(const std::string& ssid) override;
 
     }
-
-    static void OnDefaultInterfaceChangedHandler(const string& interfacename, bool connected);
-
-
-    static void OnWifiErrorHandler( const Core::JSON::String& parameters );
-
-    static std::string AStoRDKInterfaceMapping( const std::string &asInterface );
 };
 
 #endif //NETWORK_RDK_INTERFACE_H

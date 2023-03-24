@@ -28,7 +28,7 @@ NetworkRdkInterface::~NetworkRdkInterface()
 
 void NetworkRdkInterface::Initialise()
 {
-  
+ 
 }
 
 void NetworkRdkInterface::RegisterRdkNetworkEventListener()
@@ -38,22 +38,25 @@ void NetworkRdkInterface::RegisterRdkNetworkEventListener()
 
 int NetworkRdkInterface::EnableInterface( std::string interfaceName, bool enableInterface )
 {
-   
+    // don't think it is needed anyway...
+    uint32_t result =_adapter.InterfaceUp(interfaceName, enableInterface);
+    return result == Core::ERROR_NONE : 0 : -1;
 }
 
 int NetworkRdkInterface::StartAutoConnect()
 {
-   
+    return -1; // not supported for now
 }
 
 int NetworkRdkInterface::CancelWPSPairing()
 {
-   
+    return -1; // not supported for now
 }
 
 int NetworkRdkInterface::ConnectToAccessPoint( std::string ssid, std::string security, std::string password )
 {
-  
+    uint32_t result =_adapter.Connect(ssid, security, password)
+    return result == Core::ERROR_NONE : 0 : -1;
 }
 
 int NetworkRdkInterface::Disconnect()
@@ -112,11 +115,6 @@ std::string NetworkRdkInterface::GetNetworkStatusConnectStatus( const WiFiStatus
  
 }
 
-std::string NetworkRdkInterface::AStoRDKInterfaceMapping( const std::string &asInterface )
-{
-  
-}
-
 int NetworkRdkInterface::SetManualIpAddress( const std::string &ifname, const ManualIpAddressParameters &manualIpAddressParameters )
 {
    
@@ -158,12 +156,6 @@ int NetworkRdkInterface::GetWakeupReason( std::string& wakeupReason ) const
 }
 
 int NetworkRdkInterface::InitiateWPSPINPairing()
-{
-
-}
-
-
-void NetworkRdkInterface::OnWifiErrorHandler( const Core::JSON::String& parameters )
 {
 
 }
@@ -250,7 +242,10 @@ void NetworkRdkInterface::Notification::WifiConnectionChange(const std::string& 
     }
 }
 
-//not supported, and I guesd will work without:
+//not supported, and I gues will work without:
 
 //        networkControllerInstance->RdkEventsListener( NETWORK_EVENT_TYPE_RDK_WIFI_SIGNAL_THRESHOLD_CHANGED, data );
+//        networkControllerInstance->RdkEventsListener( NETWORK_EVENT_TYPE_RDK_WIFI_ERROR, data );
 
+
+//not supported, think we might need it but skipped for now
