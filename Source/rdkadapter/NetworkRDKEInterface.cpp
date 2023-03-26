@@ -165,15 +165,22 @@ std::string NetworkRdkInterface::GetNetworkStatusConnectStatus( const WiFiStatus
 
 int NetworkRdkInterface::SetManualIpAddress( const std::string &ifname, const ManualIpAddressParameters &manualIpAddressParameters )
 {
-    // not supported for now
-    return -1;
-  
+    RDKAdapter::IRDKAdapter::NetworkInfo info;
+    info.mode == manualIpAddressParameters.autoConfig == true? RDKAdapter::IRDKAdapter::ModeType::DYNAMIC : RDKAdapter::IRDKAdapter::ModeType::STATIC;
+    info.address = manualIpAddressParameters.ipAdrr;
+    info.mask = manualIpAddressParameters.netMask;
+    info.defaultGateway = manualIpAddressParameters.gateway;
+    manualIpAddressParameters.primaryDns = info.dns.size() > 0 ? 
+    info.dns.emplace_back(manualIpAddressParameters.primaryDns);
+    info.dns.emplace_back(manualIpAddressParameters.secondaryDns);
+    uint32_t result =_adapter.InterfaceSetting(ifname, info);
+    return result == Core::ERROR_NONE : 0 : -1;  
 }
 
 int NetworkRdkInterface::GetManualIpAddress( const std::string &ifname, ManualIpAddressParameters &manualIpAddressParameters )
 {
     RDKAdapter::IRDKAdapter::NetworkInfo info;
-    uint32_t result =_adapter.InterfaceInfo(ifname, info);
+    uint32_t result =_adapter.InterfaceSetting(ifname, info);
     if(result == Core::ERROR_NONE) {
         manualIpAddressParameters.autoConfig = info.mode == RDKAdapter::IRDKAdapter::ModeType::DYNAMIC;
         manualIpAddressParameters.ipAdrr = info.address;

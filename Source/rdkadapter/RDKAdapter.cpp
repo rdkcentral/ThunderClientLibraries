@@ -461,9 +461,16 @@ public:
             netinfo.mask = info.mask;
             netinfo.mode = info.mode == RDKAdapter::IRDKAdapter::ModeType::DYNAMIC ? Exchange::INetworkControl::DYNAMIC : Exchange::INetworkControl::STATIC;
             networks.emplace_back(std::move(netinfo));
-//            RPC::IIteratorType<Exchange::INetworkControl::NetworkInfo, Exchange::ID_NETWORKCONTROL_NETWORK_INFO_ITERATOR>* networkList{Core::Service<RPC::IteratorType<RPC::IIteratorType<Exchange::INetworkControl::NetworkInfo, Exchange::ID_NETWORKCONTROL_NETWORK_INFO_ITERATOR>>>::Create<RPC::IIteratorType<Exchange::INetworkControl::NetworkInfo, Exchange::ID_NETWORKCONTROL_NETWORK_INFO_ITERATOR>>(networks)};
-//            result = network->Network(interfacename, static_cast<Exchange::INetworkControl::INetworkInfoIterator* const&>(networkList));
-//            networkList->Release();
+            RPC::IIteratorType<Exchange::INetworkControl::NetworkInfo, Exchange::ID_NETWORKCONTROL_NETWORK_INFO_ITERATOR>* networkList{Core::Service<RPC::IteratorType<RPC::IIteratorType<Exchange::INetworkControl::NetworkInfo, Exchange::ID_NETWORKCONTROL_NETWORK_INFO_ITERATOR>>>::Create<RPC::IIteratorType<Exchange::INetworkControl::NetworkInfo, Exchange::ID_NETWORKCONTROL_NETWORK_INFO_ITERATOR>>(networks)};
+            result = network->Network(interfacename, static_cast<Exchange::INetworkControl::INetworkInfoIterator* const&>(networkList));
+            networkList->Release();
+            std::list<string> dnss;
+            for(auto& dns : info.dns) {
+                dnss.emplace_back(dns);
+            }
+            RPC::IIteratorType<string, RPC::ID_STRINGITERATOR>* dnsList{Core::Service<RPC::IteratorType<RPC::IIteratorType<string, RPC::ID_STRINGITERATOR>>>::Create<RPC::IIteratorType<string, RPC::ID_STRINGITERATOR>>(dnss)};
+            result = network->DNS(static_cast<Exchange::INetworkControl::IStringIterator* const&>(dnsList));
+            dnsList->Release();
             network->Release();
         }
         return result;
