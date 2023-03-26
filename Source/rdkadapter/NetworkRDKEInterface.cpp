@@ -147,8 +147,8 @@ int NetworkRdkInterface::StartWifiScan()
 
 int NetworkRdkInterface::StopWifiScan()
 {
-    // not supported for now
-    return -1;
+    // not supported for now, but let's pretent we do :)
+    return 0;
 }
 
 int NetworkRdkInterface::SetDefaultInterface( const std::string &interfaceName, bool isPersist )
@@ -160,7 +160,7 @@ int NetworkRdkInterface::SetDefaultInterface( const std::string &interfaceName, 
 std::string NetworkRdkInterface::GetNetworkStatusConnectStatus( const WiFiStatusCode connectState )
 {
     // not supported for now
-    return -1;
+    return "";
 }
 
 int NetworkRdkInterface::SetManualIpAddress( const std::string &ifname, const ManualIpAddressParameters &manualIpAddressParameters )
@@ -194,37 +194,39 @@ int NetworkRdkInterface::GetManualIpAddress( const std::string &ifname, ManualIp
 
 int NetworkRdkInterface::SetWPSLed( WPSLedState ledState )
 {
-  
+    return -1;
 }
 
 int NetworkRdkInterface::EchoPing( const std::string &endpoint, const uint32_t packets, uint32_t &packetsReceived )
 {
- 
+    return -1;
 }
 
 int NetworkRdkInterface::SetConnectivityTestEndpoints( const std::string &endpointIpAddress )
 {
-  
+    return -1;
 }
 
 int NetworkRdkInterface::IsConnectedToInternet( bool &isConnected )
 {
-
+    uint32_t result =_adapter.Connected(isConnected);
+    return result == Core::ERROR_NONE : 0 : -1;
 }
 
 int NetworkRdkInterface::GetPublicIPAddress( std::string& publicIPAddress )
 {
-
+    uint32_t result =_adapter.PublicIpAddress(publicIPAddress);
+    return result == Core::ERROR_NONE : 0 : -1;
 }
 
 int NetworkRdkInterface::GetWakeupReason( std::string& wakeupReason ) const
 {
-
+    return -1;
 }
 
 int NetworkRdkInterface::InitiateWPSPINPairing()
 {
-
+    return -1;
 }
 
 void NetworkRdkInterface::Notification::InterfaceUpdate(const std::string& interfacename) 
