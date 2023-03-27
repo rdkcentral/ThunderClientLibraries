@@ -65,25 +65,15 @@ jobs:
         repository: ${{github.repository_owner}}/ThunderClientLibraries
 
     - name: Regex ThunderClientLibraries
-      if: contains(github.event.pull_request.body, '[ClientLibs:')
+      if: contains(github.event.pull_request.body, '[Options:')
       id: clientlibs
       uses: AsasInnab/regex-action@v1
       with:
-        regex_pattern: '(?<=\[ClientLibs:).*(?=\])'
+        regex_pattern: '(?<=\[Options:).*(?=\])'
         regex_flags: 'gim'
         search_string: ${{github.event.pull_request.body}}
 
-    - name: Build ThunderClientLibraries - custom clientlibs
-      if: contains(github.event.pull_request.body, '[ClientLibs:')
-      run: |
-        cmake -G Ninja -S ThunderClientLibraries -B ${{matrix.build_type}}/build/ThunderClientLibraries \
-        -DCMAKE_INSTALL_PREFIX="${{matrix.build_type}}/install/usr" \
-        -DCMAKE_MODULE_PATH="${PWD}/${{matrix.build_type}}/install/usr/include/WPEFramework/Modules" \
-        ${{steps.clientlibs.outputs.first_match}}
-        cmake --build ${{matrix.build_type}}/build/ThunderClientLibraries --target install
-
-    - name: Build ThunderClientLibraries - default
-      if: ${{ !contains(github.event.pull_request.body, '[ClientLibs:') }}
+    - name: Build ThunderClientLibraries
       run: |
         cmake -G Ninja -S ThunderClientLibraries -B ${{matrix.build_type}}/build/ThunderClientLibraries \
         -DCMAKE_INSTALL_PREFIX="${{matrix.build_type}}/install/usr" \
@@ -95,7 +85,8 @@ jobs:
         -DSECURITYAGENT=ON \
         -DPLAYERINFO=ON \
         -DPROTOCOLS=ON \
-        -DVIRTUALINPUT=ON
+        -DVIRTUALINPUT=ON \
+        ${{steps.clientlibs.outputs.first_match}}
         cmake --build ${{matrix.build_type}}/build/ThunderClientLibraries --target install
 
     - name: Tar files
