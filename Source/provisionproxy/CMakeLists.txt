@@ -61,6 +61,7 @@ set_target_properties(${TARGET} PROPERTIES
         PUBLIC_HEADER "${PUBLIC_HEADERS}" # specify the public headers
         VERSION ${PROJECT_VERSION}
         SOVERSION ${PROJECT_VERSION_MAJOR}
+        INTERFACE_POSITION_INDEPENDENT_CODE ON
         )
 
 target_include_directories( ${TARGET}
