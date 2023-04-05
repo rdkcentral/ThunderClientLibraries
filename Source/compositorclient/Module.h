@@ -24,7 +24,7 @@
 #endif
 
 #include <core/core.h>
-#include <tracing/tracing.h>
+#include <messaging/messaging.h>
 
 #if defined(__WINDOWS__)
 #if defined(COMPOSITORCLIENT_EXPORTS)
