@@ -74,6 +74,7 @@ target_include_directories( ${TARGET}
 target_compile_options(${TARGET}
             PUBLIC
                 "-u OpenSSLModule"
+                "-fPIC"
             )
         
 install(
