@@ -172,13 +172,11 @@ namespace BluetoothAudioSinkClient {
         {
             _lock.Lock();
 
-            auto callbacks = _sinkStateCallbacks;
-
-            _lock.Unlock();
-
-            for (auto& cb : callbacks) {
+            for (auto& cb : _sinkStateCallbacks) {
                 cb.first(cb.second);
             }
+
+            _lock.Unlock();
         }
 
     private:
@@ -227,10 +225,6 @@ namespace BluetoothAudioSinkClient {
                 }
             }
 
-            auto callbacks = _operationalStateCallbacks;
-
-           _lock.Unlock();
-
             if (upAndRunning == false) {
                 _bufferLock.Lock();
 
@@ -242,9 +236,11 @@ namespace BluetoothAudioSinkClient {
                 _bufferLock.Unlock();
             }
 
-            for (auto& cb : callbacks) {
+            for (auto& cb : _operationalStateCallbacks) {
                 cb.first(upAndRunning, cb.second);
             }
+
+            _lock.Unlock();
         }
 
     public:
