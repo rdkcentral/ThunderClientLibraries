@@ -269,6 +269,10 @@ public:
     DeviceInfoLink& operator=(const DeviceInfoLink&) = delete;
     ~DeviceInfoLink() override
     {
+        BaseClass::Close(WPEFramework::Core::infinite);
+        
+        _lock.Lock();
+
         if (_subsysInterface != nullptr) {
             _subsysInterface->Release();
             _subsysInterface = nullptr;
@@ -277,7 +281,9 @@ public:
             _identifierInterface->Release();
             _identifierInterface = nullptr;
         }
-        BaseClass::Close(WPEFramework::Core::infinite);
+
+        _lock.Unlock();
+
         _singleton = nullptr;
     }
 
@@ -300,6 +306,8 @@ public:
 private:
     void Operational(const bool upAndRunning) override
     {
+        _lock.Lock();
+
         if (upAndRunning) {
             if (_deviceInfoInterface == nullptr) {
                 _deviceInfoInterface = BaseClass::Interface();
@@ -325,6 +333,8 @@ private:
                 _deviceInfoInterface = nullptr;
             }
         }
+
+        _lock.Unlock();
     }
 
     /*
