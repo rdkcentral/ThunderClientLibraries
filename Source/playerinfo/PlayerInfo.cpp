@@ -54,13 +54,19 @@ private:
     //NOTIFICATIONS
     void DolbySoundModeUpdated(VARIABLE_IS_NOT_USED const Exchange::Dolby::IOutput::SoundModes mode, VARIABLE_IS_NOT_USED const bool enabled)
     {
+        _lock.Lock();
+
         for (auto& index : _dolbyCallbacks) {
             index.first(index.second);
         }
+
+        _lock.Unlock();
     }
 
     void Operational(const bool upAndRunning) override
     {
+        _lock.Lock();
+
         if (upAndRunning) {
             if (_playerInterface == nullptr) {
                 _playerInterface = BaseClass::Interface();
@@ -88,6 +94,8 @@ private:
         for (auto& index : _operationalStateCallbacks) {
             index.first(upAndRunning, index.second);
         }
+
+        _lock.Unlock();
     }
 
     class Notification : public Exchange::Dolby::IOutput::INotification {
@@ -116,6 +124,7 @@ private:
 
 private:
     //MEMBERS
+    mutable Core::CriticalSection _lock;
     Exchange::IPlayerProperties* _playerInterface;
     Exchange::Dolby::IOutput* _dolbyInterface;
     std::string _callsign;
@@ -156,86 +165,104 @@ public:
     {
         return _callsign;
     }
+
     uint32_t RegisterOperationalStateChangedCallback(playerinfo_operational_state_change_cb callback, void* userdata)
     {
-        OperationalStateChangeCallbacks::iterator index(_operationalStateCallbacks.find(callback));
+        uint32_t result = Core::ERROR_ALREADY_CONNECTED;
 
-        if (index == _operationalStateCallbacks.end()) {
-            _operationalStateCallbacks.emplace(std::piecewise_construct,
-                std::forward_as_tuple(callback),
-                std::forward_as_tuple(userdata));
-            return Core::ERROR_NONE;
+        ASSERT(callback != nullptr);
+
+        _lock.Lock();
+
+        if (_operationalStateCallbacks.find(callback) == _operationalStateCallbacks.end()) {
+            _operationalStateCallbacks.emplace(std::piecewise_construct, std::forward_as_tuple(callback), std::forward_as_tuple(userdata));
+            result = Core::ERROR_NONE;
         }
-        return Core::ERROR_GENERAL;
+
+        _lock.Unlock();
+
+        return (result);
     }
 
     uint32_t UnregisterOperationalStateChangedCallback(playerinfo_operational_state_change_cb callback)
     {
+        uint32_t result = Core::ERROR_ALREADY_RELEASED;
+
+        ASSERT(callback != nullptr);
+
+        _lock.Lock();
+
         OperationalStateChangeCallbacks::iterator index(_operationalStateCallbacks.find(callback));
 
         if (index != _operationalStateCallbacks.end()) {
             _operationalStateCallbacks.erase(index);
-            return Core::ERROR_NONE;
+            result = Core::ERROR_NONE;
         }
-        return Core::ERROR_NOT_EXIST;
+
+        _lock.Unlock();
+
+        return (result);
     }
 
     uint32_t RegisterDolbyAudioModeChangedCallback(playerinfo_dolby_audio_updated_cb callback, void* userdata)
     {
-        DolbyModeAudioUpdateCallbacks::iterator index(_dolbyCallbacks.find(callback));
+        uint32_t result = Core::ERROR_ALREADY_CONNECTED;
 
-        if (index == _dolbyCallbacks.end()) {
-            _dolbyCallbacks.emplace(std::piecewise_construct,
-                std::forward_as_tuple(callback),
-                std::forward_as_tuple(userdata));
-            return Core::ERROR_NONE;
+        ASSERT(callback != nullptr);
+        
+        _lock.Lock();
+
+        if (_dolbyCallbacks.find(callback) == _dolbyCallbacks.end()) {
+            _dolbyCallbacks.emplace(std::piecewise_construct, std::forward_as_tuple(callback), std::forward_as_tuple(userdata));
+            result = Core::ERROR_NONE;
         }
-        return Core::ERROR_GENERAL;
+
+        _lock.Unlock();
+
+        return (result);
     }
 
     uint32_t UnregisterDolbyAudioModeChangedCallback(playerinfo_dolby_audio_updated_cb callback)
     {
+        uint32_t result = Core::ERROR_ALREADY_RELEASED;
+
+        ASSERT(callback != nullptr);
+        
+        _lock.Lock();
+
         DolbyModeAudioUpdateCallbacks::iterator index(_dolbyCallbacks.find(callback));
 
         if (index != _dolbyCallbacks.end()) {
             _dolbyCallbacks.erase(index);
-            return Core::ERROR_NONE;
+            result = Core::ERROR_NONE;
         }
-        return Core::ERROR_NOT_EXIST;
+
+        _lock.Unlock();
+
+        return (result);
     }
 
     uint32_t IsAudioEquivalenceEnabled(bool& outIsEnabled) const
     {
-        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IPlayerProperties* constPlayerInterface = _playerInterface;
-
-        if (constPlayerInterface != nullptr) {
-            errorCode = _playerInterface->IsAudioEquivalenceEnabled(outIsEnabled);
-        }
-
-        return errorCode;
+        Core::SafeSyncType<Core::CriticalSection> lock(_lock);
+        return (_playerInterface != nullptr ? _playerInterface->IsAudioEquivalenceEnabled(outIsEnabled) : Core::ERROR_UNAVAILABLE);
     }
 
     uint32_t PlaybackResolution(Exchange::IPlayerProperties::PlaybackResolution& outResolution) const
     {
-        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::IPlayerProperties* constPlayerInterface = _playerInterface;
-
-        if (constPlayerInterface != nullptr) {
-            errorCode = constPlayerInterface->Resolution(outResolution);
-        }
-
-        return errorCode;
+        Core::SafeSyncType<Core::CriticalSection> lock(_lock);
+        return (_playerInterface != nullptr ? _playerInterface->Resolution(outResolution) : Core::ERROR_UNAVAILABLE);
     }
 
     int8_t VideoCodecs(playerinfo_videocodec_t array[], const uint8_t length) const
     {
-        const Exchange::IPlayerProperties* constPlayerInterface = _playerInterface;
         Exchange::IPlayerProperties::IVideoCodecIterator* videoCodecs;
         int8_t value = 0;
 
-        if (constPlayerInterface != nullptr) {
-            if (constPlayerInterface->VideoCodecs(videoCodecs) == Core::ERROR_NONE && videoCodecs != nullptr) {
+        _lock.Lock();
+
+        if (_playerInterface != nullptr) {
+            if (_playerInterface->VideoCodecs(videoCodecs) == Core::ERROR_NONE && videoCodecs != nullptr) {
 
                 Exchange::IPlayerProperties::VideoCodec codec;
 
@@ -290,17 +317,19 @@ public:
             }
         }
 
-        return value;
+        _lock.Unlock();
+
+        return (value);
     }
     int8_t AudioCodecs(playerinfo_audiocodec_t array[], const uint8_t length) const
     {
-        const Exchange::IPlayerProperties* constPlayerInterface = _playerInterface;
         Exchange::IPlayerProperties::IAudioCodecIterator* audioCodecs;
         int8_t value = 0;
 
-        if (constPlayerInterface != nullptr) {
+        _lock.Lock();
 
-            if (constPlayerInterface->AudioCodecs(audioCodecs) == Core::ERROR_NONE && audioCodecs != nullptr) {
+        if (_playerInterface != nullptr) {
+            if (_playerInterface->AudioCodecs(audioCodecs) == Core::ERROR_NONE && audioCodecs != nullptr) {
 
                 Exchange::IPlayerProperties::AudioCodec codec;
 
@@ -363,65 +392,51 @@ public:
                 audioCodecs->Release();
             }
         }
-        return value;
+
+        _lock.Unlock();
+
+        return (value);
     }
 
     bool IsAtmosMetadataSupported() const
     {
         bool isSupported = false;
 
-        const Exchange::Dolby::IOutput* constDolby = _dolbyInterface;
-        if (constDolby != nullptr) {
-            if (constDolby->AtmosMetadata(isSupported) != Core::ERROR_NONE) {
+        _lock.Lock();
+
+        if (_dolbyInterface != nullptr) {
+            if(_dolbyInterface->AtmosMetadata(isSupported) != Core::ERROR_NONE) {
                 isSupported = false;
             }
         }
 
-        return isSupported;
+        _lock.Unlock();
+
+        return (isSupported);
     }
 
     uint32_t DolbySoundMode(Exchange::Dolby::IOutput::SoundModes& mode) const
     {
-        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-
-        const Exchange::Dolby::IOutput* constDolby = _dolbyInterface;
-
-        if (constDolby != nullptr) {
-            errorCode = constDolby->SoundMode(mode);
-        }
-
-        return errorCode;
+        Core::SafeSyncType<Core::CriticalSection> lock(_lock);
+        return (_dolbyInterface != nullptr ? _dolbyInterface->SoundMode(mode) : Core::ERROR_UNAVAILABLE);
     }
+
     uint32_t EnableAtmosOutput(const bool enabled)
     {
-        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-
-        if (_dolbyInterface != nullptr) {
-            errorCode = _dolbyInterface->EnableAtmosOutput(enabled);
-        }
-
-        return errorCode;
+        Core::SafeSyncType<Core::CriticalSection> lock(_lock);
+        return (_dolbyInterface != nullptr ? _dolbyInterface->EnableAtmosOutput(enabled) : Core::ERROR_UNAVAILABLE);
     }
+
     uint32_t SetDolbyMode(const Exchange::Dolby::IOutput::Type& mode)
     {
-        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-
-        if (_dolbyInterface != nullptr) {
-            errorCode = _dolbyInterface->Mode(mode);
-        }
-
-        return errorCode;
+        Core::SafeSyncType<Core::CriticalSection> lock(_lock);
+        return (_dolbyInterface != nullptr ? _dolbyInterface->Mode(mode) : Core::ERROR_UNAVAILABLE);
     }
+
     uint32_t GetDolbyMode(Exchange::Dolby::IOutput::Type& outMode) const
     {
-        uint32_t errorCode = Core::ERROR_UNAVAILABLE;
-        const Exchange::Dolby::IOutput* constDolby = _dolbyInterface;
-
-        if (constDolby != nullptr) {
-            errorCode = constDolby->Mode(outMode);
-        }
-
-        return errorCode;
+        Core::SafeSyncType<Core::CriticalSection> lock(_lock);
+        return (_dolbyInterface != nullptr ? _dolbyInterface->Mode(outMode) : Core::ERROR_UNAVAILABLE);
     }
 };
 

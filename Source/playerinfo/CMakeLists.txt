@@ -29,7 +29,7 @@ message("Setup ${TARGET} v${PROJECT_VERSION}")
 
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
-find_package(${NAMESPACE}Tracing REQUIRED)
+find_package(${NAMESPACE}Messaging REQUIRED)
 find_package(${NAMESPACE}COM REQUIRED)
 
 set(PUBLIC_HEADERS "include/playerinfo.h")
@@ -42,7 +42,7 @@ add_library(${TARGET}  SHARED
 target_link_libraries(${TARGET}
         PUBLIC
           ${NAMESPACE}Core::${NAMESPACE}Core
-          ${NAMESPACE}Tracing::${NAMESPACE}Tracing
+          ${NAMESPACE}Messaging::${NAMESPACE}Messaging
           ${NAMESPACE}COM::${NAMESPACE}COM
           CompileSettingsDebug::CompileSettingsDebug
         )

@@ -19,7 +19,7 @@ set(TARGET implementation)
 
 find_package(OpenSSL REQUIRED)
 
-option(USE_PROVISIONING "Load Netflix data from a provisioning label" ON)
+option(USE_PROVISIONING "Load Netflix data from a provisioning label" OFF)
 
 add_library(${TARGET} STATIC
     Vault.cpp
