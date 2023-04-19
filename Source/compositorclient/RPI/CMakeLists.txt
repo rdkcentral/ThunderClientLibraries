@@ -55,6 +55,8 @@ set_target_properties(${PLUGIN_COMPOSITOR_IMPLEMENTATION} PROPERTIES
         SOVERSION ${PROJECT_VERSION_MAJOR}
 )
 
+target_compile_options (${PLUGIN_COMPOSITOR_IMPLEMENTATION} PRIVATE -Wno-psabi)
+
 target_include_directories(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
     PUBLIC
         $<INSTALL_INTERFACE:include/${NAMESPACE}>
