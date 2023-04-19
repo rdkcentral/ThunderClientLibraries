@@ -47,10 +47,6 @@ target_link_libraries(${TARGET}
           ${NAMESPACE}Core::${NAMESPACE}Core
           ${NAMESPACE}COM::${NAMESPACE}COM
           libprovision::libprovision
-        )
-
-target_link_libraries(${TARGET}
-        PRIVATE
           CompileSettingsDebug::CompileSettingsDebug
         )
 
@@ -63,6 +59,8 @@ set_target_properties(${TARGET} PROPERTIES
         SOVERSION ${PROJECT_VERSION_MAJOR}
         INTERFACE_POSITION_INDEPENDENT_CODE ON
         )
+
+target_compile_options (${TARGET} PRIVATE -Wno-psabi)
 
 target_include_directories( ${TARGET}
         PUBLIC
