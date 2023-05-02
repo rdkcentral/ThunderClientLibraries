@@ -44,7 +44,7 @@ target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
 if(VC6)
     target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
         PUBLIC
-            LibDRM::LibDRM
+            Libdrm::Libdrm
     )
 endif()
 
