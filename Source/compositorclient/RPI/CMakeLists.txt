@@ -24,8 +24,8 @@ find_package(${NAMESPACE}COM REQUIRED)
 add_library(${PLUGIN_COMPOSITOR_IMPLEMENTATION} OBJECT Implementation.cpp)
 
 if(VC6)
-    find_package(GBM REQUIRED)
-    find_package(LibDRM REQUIRED)
+    find_package(gbm REQUIRED)
+    find_package(libdrm REQUIRED)
     
     target_sources(${PLUGIN_COMPOSITOR_IMPLEMENTATION} PRIVATE ModeSet.cpp)
     target_compile_definitions(${PLUGIN_COMPOSITOR_IMPLEMENTATION} PRIVATE VC6)
@@ -44,7 +44,7 @@ target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
 if(VC6)
     target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
         PUBLIC
-            Libdrm::Libdrm
+            libdrm::libdrm
     )
 endif()
 
