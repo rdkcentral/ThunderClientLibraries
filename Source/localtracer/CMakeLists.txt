@@ -43,6 +43,4 @@ HeaderOnlyInstallPackageConfig(TARGET ${MODULE_NAME}
 
 HeaderOnlyInstallCMakeConfig(TARGET ${MODULE_NAME} TREAT_AS_NORMAL)
 
-if(EXAMPLE_LOCALTRACER)
-    add_subdirectory(example)
-endif()
+add_subdirectory(example)
