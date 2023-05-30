@@ -490,7 +490,6 @@ namespace RPI {
             WPEFramework::GLResourceMediator::GLES _gles;
         };
 
-
         Display(const std::string&, WPEFramework::Exchange::IComposition::IDisplay*);
 
         Exchange::IComposition::IClient* CreateRemoteSurface(const std::string&, uint32_t, uint32_t);
@@ -801,8 +800,7 @@ namespace RPI {
                 ? KHRFIX(eglCreateSync)(_dpy, _EGL_SYNC_FENCE, nullptr)
                 : InvalidSync()
                }
-    {
-    }
+    {}
 
     WPEFramework::GLResourceMediator::EGL::Sync::~Sync()
     {
@@ -1130,8 +1128,7 @@ namespace RPI {
         , _tex{InvalidTexture}
         , _fbo{InvalidFramebufferObject}
         , _valid{Initialize()}
-    {
-    }
+    {}
 
     WPEFramework::GLResourceMediator::GLES::~GLES()
     {
@@ -1291,7 +1288,7 @@ namespace RPI {
         const GLubyte* str = nullptr;
 
         // A valid GL context should exist
-        
+
         bool ret =     /*_egl.IsValid()
                     &&*/ _egl.Bind()
                     ;
@@ -2030,7 +2027,7 @@ namespace RPI {
         const size_t bufsize = msg.capacity();
 
         bool ret = false;
-       
+
         if (   bufsize > 0
             && count > 0
             && fd != nullptr
