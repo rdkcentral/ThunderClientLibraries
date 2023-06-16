@@ -19,6 +19,9 @@
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core CONFIG REQUIRED)
 find_package(${NAMESPACE}COM CONFIG REQUIRED)
+find_package(${NAMESPACE}CompositorBuffer REQUIRED)
+find_package(${NAMESPACE}PrivilegedRequest REQUIRED)
+find_package(CompileSettingsDebug CONFIG REQUIRED)
 
 find_package(gbm REQUIRED)
 find_package(libdrm REQUIRED)
@@ -28,11 +31,14 @@ find_package(GLESv2 REQUIRED)
 add_library(${PLUGIN_COMPOSITOR_IMPLEMENTATION} OBJECT Implementation.cpp)
 
 target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
-    PUBLIC
+    PRIVATE
         CompileSettingsDebug::CompileSettingsDebug
         ${NAMESPACE}Core::${NAMESPACE}Core
         ${NAMESPACE}VirtualInput::${NAMESPACE}VirtualInput
         ${NAMESPACE}COM::${NAMESPACE}COM
+        ${NAMESPACE}PrivilegedRequest::${NAMESPACE}PrivilegedRequest
+        ${NAMESPACE}CompositorBuffer::${NAMESPACE}CompositorBuffer
+        CompileSettingsDebug::CompileSettingsDebug
         libdrm::libdrm
         gbm::gbm
         EGL::EGL

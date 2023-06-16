@@ -40,6 +40,9 @@ extern "C" {
 #include <virtualinput/virtualinput.h>
 #include <privilegedrequest/PrivilegedRequest.h>
 
+#include <interfaces/ICompositionBuffer.h>
+#include <compositorbuffer/CompositorBufferType.h>
+
 #include "../Client.h"
 
 #include "RenderAPI.h"
@@ -68,7 +71,14 @@ using EGLImage = EGLImageKHR;
 namespace WPEFramework {
 namespace Linux {
     namespace {
-        constexpr char DmaFdConnector[] = "/tmp/Compositor/DmaFdConnector";
+        const string ClientBridge()
+        {
+            string connector;
+            if ((Core::SystemInfo::GetEnvironment(_T("COMPOSITORCLIENTBRIDGE"), connector) == false) || (connector.empty() == true)) {
+                connector = _T("/tmp/compositorclient-bridge");
+            }
+            return connector;
+        }
 
         Core::NodeId CompositorConnector()
         {
@@ -251,46 +261,6 @@ namespace Linux {
                 drmFreeDevices(&devices[0], device_count);
             }
         }
-
-        Render::API renderAPI;
-
-        namespace EGL {
-            static bool HasExtension(const EGLDisplay dpy, const std::string& extention)
-            {
-                const std::string extensions(eglQueryString(dpy, EGL_EXTENSIONS));
-                return ((extention.size() > 0) && (extensions.find(extention) != std::string::npos));
-            }
-
-            static bool HasAPI(const EGLDisplay dpy, const std::string& api)
-            {
-                const std::string apis(eglQueryString(dpy, EGL_CLIENT_APIS));
-                return ((api.size() > 0) && (apis.find(api) != std::string::npos));
-            }
-
-            static void Fence(const EGLDisplay dpy)
-            {
-                ASSERT(dpy != EGL_NO_DISPLAY);
-                EGLSync fence = renderAPI.eglCreateSync(dpy, EGL_SYNC_FENCE, NULL);
-
-                glFlush(); // Mandatory
-
-                renderAPI.eglClientWaitSync(dpy, fence, EGL_SYNC_FLUSH_COMMANDS_BIT_KHR, EGL_FOREVER_KHR);
-                renderAPI.eglDestroySync(dpy, fence);
-            }
-        } // namespace EGL
-        namespace GL {
-            static bool HasRenderer(const std::string& name)
-            {
-                static const std::string renderer(reinterpret_cast<const char*>(glGetString(GL_RENDERER)));
-                return ((name.size() > 0) && (renderer.find(name) != std::string::npos));
-            }
-
-            static bool HasExtension(const std::string& extention)
-            {
-                static const std::string extensions(reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS)));
-                return ((extention.size() > 0) && (extensions.find(extention) != std::string::npos));
-            }
-        } // namespace GL
     }
 
     class Display : public Compositor::IDisplay {
@@ -313,76 +283,123 @@ namespace Linux {
         static void VirtualMouseCallback(mouseactiontype, const unsigned short, const signed short, const signed short);
         static void VirtualTouchScreenCallback(touchactiontype, const unsigned short, const unsigned short, const unsigned short);
 
-        class SurfaceImplementation : public Compositor::IDisplay::ISurface {
-        public:
-            // we should create a HAL layer for this...
-            // #if defined(USE_AMLOGIC_MESON)
-            //             static constexpr uint32_t ScreenFormat = GBM_FORMAT_ABGR8888;
-            // #elif defined(USE_TI_OMAP3)
-            //             static constexpr uint32_t ScreenFormat = GBM_FORMAT_XRGB8888;
-            // #else
-            static constexpr uint32_t ScreenFormat = GBM_FORMAT_ARGB8888;
-            // #endif
+        class RemoteBuffer : public WPEFramework::Compositor::CompositorBufferType<4> {
         private:
-            bool CreateImage(EGLDisplay dpy)
+            using BaseClass = WPEFramework::Compositor::CompositorBufferType<4>;
+
+        protected:
+            RemoteBuffer(const uint32_t id, Core::PrivilegedRequest::Container& descriptors)
+                : BaseClass(id, descriptors)
             {
-                ASSERT(_remoteClient != nullptr);
+            }
 
-                Exchange::IComposition::IClient::IProperties* properties = _remoteClient->QueryInterface<Exchange::IComposition::IClient::IProperties>();
-                ASSERT(properties != nullptr);
+        public:
+            RemoteBuffer() = delete;
+            RemoteBuffer(RemoteBuffer&&) = delete;
+            RemoteBuffer(const RemoteBuffer&) = delete;
+            RemoteBuffer& operator=(const RemoteBuffer&) = delete;
 
-                uint32_t remote_stride = properties->Stride();
-                uint32_t remote_offset = properties->Offset();
-                uint64_t remote_modifier = properties->Modifier();
-                uint32_t remote_format = properties->Format();
+            static Exchange::ICompositionBuffer* Create(const uint32_t id, Core::PrivilegedRequest::Container& descriptors)
+            {
+                Core::ProxyType<RemoteBuffer> element(Core::ProxyType<RemoteBuffer>::Create(id, descriptors));
+                Exchange::ICompositionBuffer* result = &(*element);
+                result->AddRef();
+                return (result);
+            }
 
-                Exchange::IComposition::Rectangle rectangle = _remoteClient->Geometry();
+        public:
+            void Render() override
+            {
+                ASSERT(false); // This should never be called, we are a remote buffer
+            }
+        };
 
-                uint32_t remote_width = rectangle.width;
-                uint32_t remote_height = rectangle.height;
-
-                TRACE(Trace::Information, (_T("Remote surface info size=%dx%d, stride=%d, offset=%d, modifier=%d, format=0x%04X"), remote_height, remote_width, remote_stride, remote_offset, remote_modifier, remote_format));
-
-                uint32_t id = _remoteClient->Native();
-
-                TRACE(Trace::Information, (_T("Requesting FD for client %s id=%d"), _remoteClient->Name().c_str(), id));
-
-                Core::PrivilegedRequest request;
-                Core::PrivilegedRequest::Container fds;
-
-                uint16_t nfd = request.Request(1000, DmaFdConnector, id, fds);
-                ASSERT(fds.size() > 0);
-
-                // EGL (extension: EGL_EXT_image_dma_buf_import): Create EGL image from file
-                // descriptor (dmaBufferFd) and the remote storage data
-                const EGLAttrib _attrs[] = {
-                    EGL_WIDTH, remote_width,
-                    EGL_HEIGHT, remote_height,
-                    EGL_LINUX_DRM_FOURCC_EXT, remote_format,
-                    EGL_DMA_BUF_PLANE0_FD_EXT, fds[0],
-                    // TODO: magic constant
-                    EGL_DMA_BUF_PLANE0_OFFSET_EXT, remote_offset,
-                    EGL_DMA_BUF_PLANE0_PITCH_EXT, remote_stride,
-                    EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT, uint32_t(remote_modifier & 0xFFFFFFFF),
-                    EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT, uint32_t(remote_modifier >> 32),
-                    /*EGL_IMAGE_PRESERVED_KHR, EGL_TRUE,*/
-                    EGL_NONE
-                };
-
-                _eglImage = renderAPI.eglCreateImage(dpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, _attrs);
-                ASSERT(_eglImage != EGL_NO_IMAGE);
-
-                for (auto& fd : fds) {
-                    close(fd);
-                }
+        class SurfaceImplementation : public Compositor::IDisplay::ISurface {
+        private:
+            void Fence(const EGLDisplay dpy)
+            {
+                ASSERT(dpy != EGL_NO_DISPLAY);
+                EGLSync fence = _egl.eglCreateSync(dpy, EGL_SYNC_FENCE, NULL);
 
                 glFlush(); // Mandatory
 
-                properties->Release();
+                _egl.eglClientWaitSync(dpy, fence, EGL_SYNC_FLUSH_COMMANDS_BIT_KHR, EGL_FOREVER_KHR);
+                _egl.eglDestroySync(dpy, fence);
+            }
 
-                TRACE(Trace::Information, (_T("Created image %dx%d(hxb) on buffer fd=%d, _eglImage=%p, format=0x%04X"), remote_height, remote_width, fds[0], _eglImage, remote_format));
+            bool CreateImage(EGLDisplay dpy)
+            {
+                ASSERT(_remoteClient != nullptr);
+                ASSERT(_remoteBuffer != nullptr);
 
-                fds.clear();
+                Exchange::ICompositionBuffer::IIterator* planes = _remoteBuffer->Planes(10);
+                ASSERT(planes != nullptr);
+
+                planes->Next();
+                ASSERT(planes->IsValid() == true);
+
+                Exchange::ICompositionBuffer::IPlane* plane = planes->Plane();
+                ASSERT(plane != nullptr); // we should atleast have 1 plane....
+
+                // EGL (extension: EGL_EXT_image_dma_buf_import): Create EGL image from file
+                // descriptor (dmaBufferFd) and the remote storage data
+
+                Compositor::API::Attributes<EGLAttrib> imageAttributes;
+
+                imageAttributes.Append(EGL_WIDTH, _remoteBuffer->Width());
+                imageAttributes.Append(EGL_HEIGHT, _remoteBuffer->Height());
+                imageAttributes.Append(EGL_LINUX_DRM_FOURCC_EXT, _remoteBuffer->Format());
+
+                imageAttributes.Append(EGL_DMA_BUF_PLANE0_FD_EXT, plane->Accessor());
+                imageAttributes.Append(EGL_DMA_BUF_PLANE0_OFFSET_EXT, plane->Offset());
+                imageAttributes.Append(EGL_DMA_BUF_PLANE0_PITCH_EXT, plane->Stride());
+                imageAttributes.Append(EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT, (_remoteBuffer->Modifier() & 0xFFFFFFFF));
+                imageAttributes.Append(EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT, (_remoteBuffer->Modifier() >> 32));
+
+                if (planes->Next() == true) {
+                    plane = planes->Plane();
+
+                    ASSERT(plane != nullptr);
+
+                    imageAttributes.Append(EGL_DMA_BUF_PLANE1_FD_EXT, plane->Accessor());
+                    imageAttributes.Append(EGL_DMA_BUF_PLANE1_OFFSET_EXT, plane->Offset());
+                    imageAttributes.Append(EGL_DMA_BUF_PLANE1_PITCH_EXT, plane->Stride());
+                    imageAttributes.Append(EGL_DMA_BUF_PLANE1_MODIFIER_LO_EXT, (_remoteBuffer->Modifier() & 0xFFFFFFFF));
+                    imageAttributes.Append(EGL_DMA_BUF_PLANE1_MODIFIER_HI_EXT, (_remoteBuffer->Modifier() >> 32));
+                }
+
+                if (planes->Next() == true) {
+                    plane = planes->Plane();
+
+                    ASSERT(plane != nullptr);
+
+                    imageAttributes.Append(EGL_DMA_BUF_PLANE2_FD_EXT, plane->Accessor());
+                    imageAttributes.Append(EGL_DMA_BUF_PLANE2_OFFSET_EXT, plane->Offset());
+                    imageAttributes.Append(EGL_DMA_BUF_PLANE2_PITCH_EXT, plane->Stride());
+                    imageAttributes.Append(EGL_DMA_BUF_PLANE2_MODIFIER_LO_EXT, (_remoteBuffer->Modifier() & 0xFFFFFFFF));
+                    imageAttributes.Append(EGL_DMA_BUF_PLANE2_MODIFIER_HI_EXT, (_remoteBuffer->Modifier() >> 32));
+                }
+
+                if (planes->Next() == true) {
+                    plane = planes->Plane();
+
+                    ASSERT(plane != nullptr);
+
+                    imageAttributes.Append(EGL_DMA_BUF_PLANE3_FD_EXT, plane->Accessor());
+                    imageAttributes.Append(EGL_DMA_BUF_PLANE3_OFFSET_EXT, plane->Offset());
+                    imageAttributes.Append(EGL_DMA_BUF_PLANE3_PITCH_EXT, plane->Stride());
+                    imageAttributes.Append(EGL_DMA_BUF_PLANE3_MODIFIER_LO_EXT, (_remoteBuffer->Modifier() & 0xFFFFFFFF));
+                    imageAttributes.Append(EGL_DMA_BUF_PLANE3_MODIFIER_HI_EXT, (_remoteBuffer->Modifier() >> 32));
+                }
+
+                imageAttributes.Append(EGL_IMAGE_PRESERVED_KHR, EGL_TRUE);
+
+                _eglImage = _egl.eglCreateImage(dpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, imageAttributes);
+                ASSERT(_eglImage != EGL_NO_IMAGE);
+
+                glFlush(); // Mandatory
+
+                // TRACE(Trace::Information, (_T("Created image %dx%d(hxb) on buffer fd=%d, _eglImage=%p, format=0x%04X"), remote_height, remote_width, fds[0], _eglImage, remote_format));
 
                 return (_eglImage != EGL_NO_IMAGE);
             }
@@ -411,7 +428,7 @@ namespace Linux {
                 glTexParameteri(target, GL_TEXTURE_WRAP_S, wrap);
                 glTexParameteri(target, GL_TEXTURE_WRAP_T, wrap);
 
-                renderAPI.glEGLImageTargetTexture2DOES(target, _eglImage);
+                _gl.glEGLImageTargetTexture2DOES(target, _eglImage);
 
                 if (_textureId != 0) {
                     glDeleteFramebuffers(1, &_frameBuffer);
@@ -450,11 +467,13 @@ namespace Linux {
                 , _pointer(nullptr)
                 , _touchpanel(nullptr)
                 , _remoteClient(nullptr)
-                , _remoteRenderer(nullptr)
                 , _surface(nullptr)
                 , _eglImage(EGL_NO_IMAGE)
                 , _textureId(0)
                 , _frameBuffer(0)
+                , _remoteBuffer(nullptr)
+                , _egl()
+                , _gl()
             {
 
                 TRACE(Trace::Information, (_T("Construct surface %s  %dx%d (hxb)"), name.c_str(), height, width));
@@ -465,26 +484,23 @@ namespace Linux {
                 _remoteClient = _display.CreateRemoteSurface(name, width, height);
 
                 if (_remoteClient != nullptr) {
-                    Exchange::IComposition::IClient::IProperties* properties = _remoteClient->QueryInterface<Exchange::IComposition::IClient::IProperties>();
-                    ASSERT(properties != nullptr);
+                    TRACE(Trace::Information, (_T("Created remote surface %s  %dx%d (hxb)"), name.c_str(), height, width));
 
-                    _remoteRenderer = _remoteClient->QueryInterface<Exchange::IComposition::IRender>();
-                    ASSERT(_remoteRenderer != nullptr);
+                    Core::PrivilegedRequest::Container descriptors;
+                    Core::PrivilegedRequest request;
 
-                    Exchange::IComposition::Rectangle rectangle = _remoteClient->Geometry();
+                    if (request.Request(1000, ClientBridge(), _remoteClient->Native(), descriptors) == Core::ERROR_NONE) {
+                        _remoteBuffer = RemoteBuffer::Create(_remoteClient->Native(), descriptors);
+                    }
 
-                    uint32_t remote_width = rectangle.width;
-                    uint32_t remote_height = rectangle.height;
-                    uint32_t remote_format = properties->Format();
+                    if (_remoteBuffer != nullptr) {
+                        _surface = gbm_surface_create(
+                            static_cast<gbm_device*>(_display.Native()),
+                            _remoteBuffer->Width(), _remoteBuffer->Height(), _remoteBuffer->Format(),
+                            GBM_BO_USE_RENDERING /* used for rendering */);
 
-                    _surface = gbm_surface_create(
-                        static_cast<gbm_device*>(_display.Native()),
-                        remote_width, remote_height, remote_format,
-                        GBM_BO_USE_RENDERING /* used for rendering */);
-
-                    TRACE(Trace::Information, (_T("GBM surface %p ready %dx%d(hxb) format=0x%04X"), _surface, remote_height, remote_width, remote_format));
-
-                    properties->Release();
+                        TRACE(Trace::Information, (_T("GBM surface %p ready %dx%d(hxb) format=0x%04X"), _surface, _remoteBuffer->Width(), _remoteBuffer->Height(), _remoteBuffer->Format()));
+                    }
 
                     ASSERT(_surface != nullptr);
                 } else {
@@ -525,7 +541,7 @@ namespace Linux {
                 EGLDisplay dpy = eglGetCurrentDisplay();
 
                 if (_eglImage != EGL_NO_IMAGE) {
-                    renderAPI.eglDestroyImage(dpy, _eglImage);
+                    _egl.eglDestroyImage(dpy, _eglImage);
                 }
 
                 if (_surface != nullptr) {
@@ -624,8 +640,8 @@ namespace Linux {
                 ASSERT(status == true); // Process need to be called in a active GL context
 
                 // A remote ClientSurface has been created and the IRender interface is supported so the compositor is able to support scan out for this client
-                if ((status == true) && (_remoteRenderer != nullptr) && (_remoteClient != nullptr)) {
-                    EGLSync fence = renderAPI.eglCreateSync(dpy, EGL_SYNC_FENCE, NULL);
+                if ((status == true) && (_remoteBuffer != nullptr) && (_remoteClient != nullptr)) {
+                    EGLSync fence = _egl.eglCreateSync(dpy, EGL_SYNC_FENCE, NULL);
 
                     if (_eglImage == EGL_NO_IMAGE) {
                         CreateImage(dpy);
@@ -633,21 +649,12 @@ namespace Linux {
 
                     RenderImage();
 
-                    // Prepare the remote surface
-                    _remoteRenderer->PreScanOut();
-
                     // Wait for all EGL actions to be completed
-                    renderAPI.eglClientWaitSync(dpy, fence, EGL_SYNC_FLUSH_COMMANDS_BIT_KHR, EGL_FOREVER_KHR);
+                    _egl.eglClientWaitSync(dpy, fence, EGL_SYNC_FLUSH_COMMANDS_BIT_KHR, EGL_FOREVER_KHR);
 
-                    // Render on the remote surface... eglImage -> gmb_bo
-                    _adminLock.Lock();
-                    _remoteRenderer->ScanOut();
-                    _adminLock.Unlock();
-
-                    // Done using the remote surface
-                    _remoteRenderer->PostScanOut();
-
-                    renderAPI.eglDestroySync(dpy, fence);
+                    _remoteBuffer->Render();  // Request the remote buffer to be rendered
+                    
+                    _egl.eglDestroySync(dpy, fence);
                 } else {
                     TRACE(Trace::Error, (_T ( "Remote scan out is not (yet) supported. Has a remote surface been created? Is the IRender interface available?" )));
                 }
@@ -666,13 +673,17 @@ namespace Linux {
             ITouchPanel* _touchpanel;
 
             Exchange::IComposition::IClient* _remoteClient;
-            Exchange::IComposition::IRender* _remoteRenderer;
 
             struct gbm_surface* _surface;
 
             EGLImage _eglImage;
             GLuint _textureId;
             GLuint _frameBuffer;
+
+            Exchange::ICompositionBuffer* _remoteBuffer;
+
+            Compositor::API::EGL _egl;
+            Compositor::API::GL _gl;
         };
 
     public:
