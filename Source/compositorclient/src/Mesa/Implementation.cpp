@@ -43,7 +43,7 @@ extern "C" {
 #include <interfaces/ICompositionBuffer.h>
 #include <compositorbuffer/CompositorBufferType.h>
 
-#include "../Client.h"
+#include <compositor/Client.h>
 
 #include "RenderAPI.h"
 
@@ -743,7 +743,7 @@ namespace Linux {
         EGLNativeDisplayType Native() const override
         {
             TRACE(Trace::Information, (_T("Get native display")));
-            return static_cast<EGLNativeDisplayType>(_nativeDisplay._device);
+            return static_cast<EGLNativeDisplayType>(_nativeDisplay.device);
         }
 
         const std::string& Name() const final override
@@ -921,8 +921,8 @@ namespace Linux {
         Exchange::IComposition::IDisplay* _remoteDisplay;
 
         struct {
-            struct gbm_device* _device;
-            int _fd;
+            struct gbm_device* device;
+            int fd;
         } _nativeDisplay;
     }; // class Display
 
@@ -951,8 +951,8 @@ namespace Linux {
             TRACE(Trace::Information, (_T("Found render node %s"), node.c_str()));
         }
 
-        decltype(_nativeDisplay._fd)& fd = _nativeDisplay._fd;
-        decltype(_nativeDisplay._device)& device = _nativeDisplay._device;
+        int& fd = _nativeDisplay.fd;
+        struct gbm_device*& device = _nativeDisplay.device;
 
         fd = 0;
         device = nullptr;
@@ -979,8 +979,8 @@ namespace Linux {
 
     Display::~Display()
     {
-        decltype(_nativeDisplay._fd)& fd = _nativeDisplay._fd;
-        decltype(_nativeDisplay._device)& device = _nativeDisplay._device;
+        int& fd = _nativeDisplay.fd;
+        struct gbm_device*& device = _nativeDisplay.device;
 
         if (device != nullptr) {
             gbm_device_destroy(device);
