@@ -341,9 +341,6 @@ namespace Linux {
                 Exchange::ICompositionBuffer::IPlane* plane = planes->Plane();
                 ASSERT(plane != nullptr); // we should atleast have 1 plane....
 
-                // EGL (extension: EGL_EXT_image_dma_buf_import): Create EGL image from file
-                // descriptor (dmaBufferFd) and the remote storage data
-
                 Compositor::API::Attributes<EGLAttrib> imageAttributes;
 
                 imageAttributes.Append(EGL_WIDTH, _remoteBuffer->Width());
@@ -356,6 +353,8 @@ namespace Linux {
                 imageAttributes.Append(EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT, (_remoteBuffer->Modifier() & 0xFFFFFFFF));
                 imageAttributes.Append(EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT, (_remoteBuffer->Modifier() >> 32));
 
+                TRACE(Trace::Information, (_T("Add Plane 0 fd=%d, offset=%d, stride=%d, modifier=%" PRIu64), plane->Accessor(), plane->Offset(), plane->Stride(), _remoteBuffer->Modifier()));
+
                 if (planes->Next() == true) {
                     plane = planes->Plane();
 
@@ -366,6 +365,8 @@ namespace Linux {
                     imageAttributes.Append(EGL_DMA_BUF_PLANE1_PITCH_EXT, plane->Stride());
                     imageAttributes.Append(EGL_DMA_BUF_PLANE1_MODIFIER_LO_EXT, (_remoteBuffer->Modifier() & 0xFFFFFFFF));
                     imageAttributes.Append(EGL_DMA_BUF_PLANE1_MODIFIER_HI_EXT, (_remoteBuffer->Modifier() >> 32));
+
+                    TRACE(Trace::Information, (_T("Add Plane 1 fd=%d, offset=%d, stride=%d, modifier=%" PRIu64), plane->Accessor(), plane->Offset(), plane->Stride(), _remoteBuffer->Modifier()));
                 }
 
                 if (planes->Next() == true) {
@@ -378,6 +379,8 @@ namespace Linux {
                     imageAttributes.Append(EGL_DMA_BUF_PLANE2_PITCH_EXT, plane->Stride());
                     imageAttributes.Append(EGL_DMA_BUF_PLANE2_MODIFIER_LO_EXT, (_remoteBuffer->Modifier() & 0xFFFFFFFF));
                     imageAttributes.Append(EGL_DMA_BUF_PLANE2_MODIFIER_HI_EXT, (_remoteBuffer->Modifier() >> 32));
+
+                    TRACE(Trace::Information, (_T("Add Plane 2 fd=%d, offset=%d, stride=%d, modifier=%" PRIu64), plane->Accessor(), plane->Offset(), plane->Stride(), _remoteBuffer->Modifier()));
                 }
 
                 if (planes->Next() == true) {
@@ -390,6 +393,8 @@ namespace Linux {
                     imageAttributes.Append(EGL_DMA_BUF_PLANE3_PITCH_EXT, plane->Stride());
                     imageAttributes.Append(EGL_DMA_BUF_PLANE3_MODIFIER_LO_EXT, (_remoteBuffer->Modifier() & 0xFFFFFFFF));
                     imageAttributes.Append(EGL_DMA_BUF_PLANE3_MODIFIER_HI_EXT, (_remoteBuffer->Modifier() >> 32));
+
+                    TRACE(Trace::Information, (_T("Add Plane 3 fd=%d, offset=%d, stride=%d, modifier=%" PRIu64), plane->Accessor(), plane->Offset(), plane->Stride(), _remoteBuffer->Modifier()));
                 }
 
                 imageAttributes.Append(EGL_IMAGE_PRESERVED_KHR, EGL_TRUE);
@@ -399,7 +404,7 @@ namespace Linux {
 
                 glFlush(); // Mandatory
 
-                // TRACE(Trace::Information, (_T("Created image %dx%d(hxb) on buffer fd=%d, _eglImage=%p, format=0x%04X"), remote_height, remote_width, fds[0], _eglImage, remote_format));
+                TRACE(Trace::Information, (_T("Created image %dx%d(hxb) on buffer id=%d, _eglImage=%p, format=0x%04X"), _remoteBuffer->Height(), _remoteBuffer->Width(), _remoteBuffer->Identifier(), _eglImage, _remoteBuffer->Format()));
 
                 return (_eglImage != EGL_NO_IMAGE);
             }
@@ -633,9 +638,9 @@ namespace Linux {
                 // Changes of currents cannot be reliably be monitored
                 EGLDisplay dpy = eglGetCurrentDisplay();
                 EGLContext ctx = eglGetCurrentContext();
-                EGLSurface surf = eglGetCurrentSurface(EGL_DRAW);
+                // EGLSurface surf = eglGetCurrentSurface(EGL_DRAW);
 
-                bool status = (dpy != EGL_NO_DISPLAY && ctx != EGL_NO_CONTEXT && surf != EGL_NO_SURFACE);
+                bool status = (dpy != EGL_NO_DISPLAY && ctx != EGL_NO_CONTEXT /*&& surf != EGL_NO_SURFACE*/);
 
                 ASSERT(status == true); // Process need to be called in a active GL context
 
@@ -646,14 +651,17 @@ namespace Linux {
                     if (_eglImage == EGL_NO_IMAGE) {
                         CreateImage(dpy);
                     }
+                    
+                    // Lock the buffer
+                    _remoteBuffer->Planes(10); 
 
                     RenderImage();
 
                     // Wait for all EGL actions to be completed
                     _egl.eglClientWaitSync(dpy, fence, EGL_SYNC_FLUSH_COMMANDS_BIT_KHR, EGL_FOREVER_KHR);
 
-                    _remoteBuffer->Render();  // Request the remote buffer to be rendered
-                    
+                    // Signal the other side to render the buffer
+                    _remoteBuffer->Completed(true);
                     _egl.eglDestroySync(dpy, fence);
                 } else {
                     TRACE(Trace::Error, (_T ( "Remote scan out is not (yet) supported. Has a remote surface been created? Is the IRender interface available?" )));
