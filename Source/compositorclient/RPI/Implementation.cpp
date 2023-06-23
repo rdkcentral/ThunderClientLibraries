@@ -776,7 +776,6 @@ private:
             _compositerServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(Connector(), Core::ProxyType<Core::IIPCServer>(engine));
             ASSERT(_compositerServerRPCConnection.IsValid() == true);
 
-            engine->Announcements(_compositerServerRPCConnection->Announcement());
         } else {
             // Seems we are not in a process space initiated from the Main framework process or its hosting process.
             // Nothing more to do than to create a workerpool for RPC our selves !
@@ -786,7 +785,6 @@ private:
             _compositerServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(Connector(), Core::ProxyType<Core::IIPCServer>(engine));
             ASSERT(_compositerServerRPCConnection.IsValid() == true);
 
-            engine->Announcements(_compositerServerRPCConnection->Announcement());
         }
 
         uint32_t result = _compositerServerRPCConnection->Open(RPC::CommunicationTimeOut);
