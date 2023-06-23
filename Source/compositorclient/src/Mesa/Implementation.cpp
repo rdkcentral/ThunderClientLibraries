@@ -806,16 +806,12 @@ namespace Linux {
                 Core::ProxyType<RPC::InvokeServer> engine = Core::ProxyType<RPC::InvokeServer>::Create(&Core::WorkerPool::Instance());
 
                 _compositorServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(CompositorConnector(), Core::ProxyType<Core::IIPCServer>(engine));
-
-                engine->Announcements(_compositorServerRPCConnection->Announcement());
             } else {
                 // Seems we are not in a process space initiated from the Main framework process or its hosting process.
                 // Nothing more to do than to create a workerpool for RPC our selves !
                 Core::ProxyType<RPC::InvokeServerType<2, 0, 8>> engine = Core::ProxyType<RPC::InvokeServerType<2, 0, 8>>::Create();
 
                 _compositorServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(CompositorConnector(), Core::ProxyType<Core::IIPCServer>(engine));
-
-                engine->Announcements(_compositorServerRPCConnection->Announcement());
             }
 
             // if (display != nullptr) {
