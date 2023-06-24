@@ -75,7 +75,7 @@ namespace Linux {
         {
             string connector;
             if ((Core::SystemInfo::GetEnvironment(_T("COMPOSITORCLIENTBRIDGE"), connector) == false) || (connector.empty() == true)) {
-                connector = _T("/tmp/compositorclient-bridge");
+                connector = _T("/tmp/Compositor/clientbridge");
             }
             return connector;
         }
@@ -84,7 +84,7 @@ namespace Linux {
         {
             string connector;
             if ((Core::SystemInfo::GetEnvironment(_T("COMPOSITOR"), connector) == false) || (connector.empty() == true)) {
-                connector = _T("/tmp/compositor");
+                connector = _T("/tmp/Compositor/communicator");
             }
             return (Core::NodeId(connector.c_str()));
         }
