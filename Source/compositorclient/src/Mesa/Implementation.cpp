@@ -74,7 +74,7 @@ namespace Linux {
         const string ClientBridge()
         {
             string connector;
-            if ((Core::SystemInfo::GetEnvironment(_T("COMPOSITORCLIENTBRIDGE"), connector) == false) || (connector.empty() == true)) {
+            if ((Core::SystemInfo::GetEnvironment(_T("COMPOSITOR_CLIENTBRIDGE"), connector) == false) || (connector.empty() == true)) {
                 connector = _T("/tmp/Compositor/clientbridge");
             }
             return connector;
@@ -83,7 +83,7 @@ namespace Linux {
         Core::NodeId CompositorConnector()
         {
             string connector;
-            if ((Core::SystemInfo::GetEnvironment(_T("COMPOSITOR"), connector) == false) || (connector.empty() == true)) {
+            if ((Core::SystemInfo::GetEnvironment(_T("COMPOSITOR_COMMUNICATOR"), connector) == false) || (connector.empty() == true)) {
                 connector = _T("/tmp/Compositor/communicator");
             }
             return (Core::NodeId(connector.c_str()));
