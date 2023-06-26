@@ -73,7 +73,7 @@ install(
 )
 
 target_include_directories(${TARGET} INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include/${NAMESPACE}>)
 
 add_library(${TARGET}::${TARGET} ALIAS ${TARGET})
