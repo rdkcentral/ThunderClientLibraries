@@ -1,7 +1,7 @@
 # If not stated otherwise in this file or this component's LICENSE file the
 # following copyright and licenses apply:
 #
-# Copyright 2020 Metrological
+# Copyright 2022 Metrological
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,16 +15,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.15)
+add_library(CommonInclude INTERFACE)
 
-find_package(WPEFramework)
+target_include_directories(CommonInclude
+    INTERFACE
+        "${CMAKE_CURRENT_LIST_DIR}")
 
-project(compositorclient)
-
-project_version(1.0.0)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
-
-add_subdirectory(include)
-add_subdirectory(src)
-add_subdirectory(test)
+add_library(common::include ALIAS CommonInclude)
