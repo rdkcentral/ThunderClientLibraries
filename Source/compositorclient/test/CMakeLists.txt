@@ -19,7 +19,6 @@
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core CONFIG REQUIRED)
 find_package(${NAMESPACE}Messaging CONFIG REQUIRED)
-find_package(${NAMESPACE}LocalTracer CONFIG REQUIRED)
 
 add_executable(compositorclient_test main.cpp)
 

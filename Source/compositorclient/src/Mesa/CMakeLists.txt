@@ -17,7 +17,7 @@
 
 find_package(${NAMESPACE}Core CONFIG REQUIRED)
 find_package(${NAMESPACE}COM CONFIG REQUIRED)
-find_package(${NAMESPACE}CompositorBuffer REQUIRED)
+find_package(${NAMESPACE}CompositorBufferType REQUIRED)
 find_package(${NAMESPACE}PrivilegedRequest REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 
@@ -30,11 +30,12 @@ add_library(${PLUGIN_COMPOSITOR_IMPLEMENTATION} OBJECT Implementation.cpp)
 
 target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
     PRIVATE
+        common::include
         ${NAMESPACE}Core::${NAMESPACE}Core
         ${NAMESPACE}VirtualInput::${NAMESPACE}VirtualInput
         ${NAMESPACE}COM::${NAMESPACE}COM
         ${NAMESPACE}PrivilegedRequest::${NAMESPACE}PrivilegedRequest
-        ${NAMESPACE}CompositorBuffer::${NAMESPACE}CompositorBuffer
+        ${NAMESPACE}CompositorBufferType::${NAMESPACE}CompositorBufferType
         CompileSettingsDebug::CompileSettingsDebug
         libdrm::libdrm
         gbm::gbm
