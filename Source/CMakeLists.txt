@@ -17,6 +17,8 @@
 
 option(BLUETOOTHAUDIOSINK
         "Include the bluetoothaudiosink library." OFF)
+option(BLUETOOTHAUDIOSOURCE
+        "Include the bluetoothaudiosource library." OFF)
 option(PROTOCOLS
         "Include the protocols library." ON)
 option(COMPOSITORCLIENT
@@ -40,6 +42,10 @@ option(LOCALTRACER
 
 if(BLUETOOTHAUDIOSINK)
     add_subdirectory(bluetoothaudiosink)
+endif()
+
+if(BLUETOOTHAUDIOSOURCE)
+    add_subdirectory(bluetoothaudiosource)
 endif()
 
 if(COMPOSITORCLIENT)
