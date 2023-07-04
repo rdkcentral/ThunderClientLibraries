@@ -65,7 +65,7 @@ namespace Cryptography {
         ~IHash() override = default;
 
         /* Ingest data into the hash calculator (multiple calls possible) */
-        virtual uint32_t Ingest(const uint16_t length, const uint8_t data[] /* @in @length:length */) = 0;
+        virtual uint32_t Ingest(const uint32_t length, const uint8_t data[] /* @in @length:length */) = 0;
 
         /* Calculate the hash from all ingested data */
         virtual uint8_t Calculate(const uint8_t maxLength, uint8_t data[] /* @out @maxlength:maxLength */) = 0;
@@ -83,13 +83,13 @@ namespace Cryptography {
 
         /* Encrypt data */
         virtual int32_t Encrypt(const uint8_t ivLength, const uint8_t iv[] /* @in @length:ivLength */,
-                                const uint16_t inputLength, const uint8_t input[] /* @in @length:inputLength */,
-                                const uint16_t maxOutputLength, uint8_t output[] /* @out @maxlength:maxOutputLength */) const = 0;
+                                const uint32_t inputLength, const uint8_t input[] /* @in @length:inputLength */,
+                                const uint32_t maxOutputLength, uint8_t output[] /* @out @maxlength:maxOutputLength */) const = 0;
 
         /* Decrypt data */
         virtual int32_t Decrypt(const uint8_t ivLength, const uint8_t iv[] /* @in @length:ivLength */,
-                                const uint16_t inputLength, const uint8_t input[] /* @in @length:inputLength */,
-                                const uint16_t maxOutputLength, uint8_t output[] /* @out @maxlength:maxOutputLength */) const = 0;
+                                const uint32_t inputLength, const uint8_t input[] /* @in @length:inputLength */,
+                                const uint32_t maxOutputLength, uint8_t output[] /* @out @maxlength:maxOutputLength */) const = 0;
     };
 
     struct EXTERNAL IDiffieHellman : virtual public Core::IUnknown {
