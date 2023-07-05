@@ -160,16 +160,16 @@ namespace Implementation {
 
     public:
         int32_t Encrypt(const uint8_t ivLength, const uint8_t iv[],
-            const uint16_t inputLength, const uint8_t input[],
-            const uint16_t maxOutputLength, uint8_t output[]) const override
+            const uint32_t inputLength, const uint8_t input[],
+            const uint32_t maxOutputLength, uint8_t output[]) const override
         {
             Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
             return (_accessor != nullptr) ? _accessor->Encrypt(ivLength, iv, inputLength, input, maxOutputLength, output) : 0;
         }
 
         int32_t Decrypt(const uint8_t ivLength, const uint8_t iv[],
-            const uint16_t inputLength, const uint8_t input[],
-            const uint16_t maxOutputLength, uint8_t output[]) const override
+            const uint32_t inputLength, const uint8_t input[],
+            const uint32_t maxOutputLength, uint8_t output[]) const override
         {
             Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
             return (_accessor != nullptr) ? _accessor->Decrypt(ivLength, iv, inputLength, input, maxOutputLength, output) : 0;
@@ -206,7 +206,7 @@ namespace Implementation {
 
     public:
         /* Ingest data into the hash calculator (multiple calls possible) */
-        uint32_t Ingest(const uint16_t length, const uint8_t data[] /* @length:length */) override
+        uint32_t Ingest(const uint32_t length, const uint8_t data[] /* @length:length */) override
         {
             Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
             return (_accessor != nullptr ? _accessor->Ingest(length, data) : 0);
@@ -504,9 +504,9 @@ namespace Implementation {
         }
 
     public:
-        uint32_t Ingest(const uint16_t length, const uint8_t data[]) override
+        uint32_t Ingest(const uint32_t length, const uint8_t data[]) override
         {
-            return (hash_ingest(_implementation, static_cast<uint32_t>(length), data));
+            return (hash_ingest(_implementation, length, data));
         }
 
         uint8_t Calculate(const uint8_t maxLength, uint8_t data[]) override
@@ -644,17 +644,17 @@ namespace Implementation {
 
         public:
             int32_t Encrypt(const uint8_t ivLength, const uint8_t iv[],
-                const uint16_t inputLength, const uint8_t input[],
-                const uint16_t maxOutputLength, uint8_t output[]) const override
+                const uint32_t inputLength, const uint8_t input[],
+                const uint32_t maxOutputLength, uint8_t output[]) const override
             {
-                return (cipher_encrypt(_implementation, ivLength, iv, static_cast<uint32_t>(inputLength), input, static_cast<uint32_t>(maxOutputLength), output));
+                return (cipher_encrypt(_implementation, ivLength, iv, inputLength, input, maxOutputLength, output));
             }
 
             int32_t Decrypt(const uint8_t ivLength, const uint8_t iv[],
-                const uint16_t inputLength, const uint8_t input[],
-                const uint16_t maxOutputLength, uint8_t output[]) const override
+                const uint32_t inputLength, const uint8_t input[],
+                const uint32_t maxOutputLength, uint8_t output[]) const override
             {
-                return (cipher_decrypt(_implementation, ivLength, iv, static_cast<uint32_t>(inputLength), input, static_cast<uint32_t>(maxOutputLength), output));
+                return (cipher_decrypt(_implementation, ivLength, iv, inputLength, input, maxOutputLength, output));
             }
 
         public:
