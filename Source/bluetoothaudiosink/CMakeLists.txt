@@ -1,4 +1,4 @@
-# If not stated otherwise in this file or this component's LICENSE file the
+            # If not stated otherwise in this file or this component's LICENSE file the
 # following copyright and licenses apply:
 #
 # Copyright 2021 Metrological
@@ -23,7 +23,7 @@ project(BluetoothAudioSink)
 
 project_version(1.0.0)
 
-set(TARGET ${NAMESPACE}${PROJECT_NAME})
+set(TARGET Client${PROJECT_NAME})
 
 message("Setup ${TARGET} v${PROJECT_VERSION}")
 
