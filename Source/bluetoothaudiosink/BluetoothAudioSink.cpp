@@ -123,13 +123,13 @@ namespace BluetoothAudioSinkClient {
             , _lock()
             , _operationalStateCallbacks()
             , _sinkStateCallbacks()
+            , _sinkLock()
             , _sink(nullptr)
             , _sinkControl(nullptr)
             , _frameSize(0)
-            , _bufferLock()
             , _buffer()
         {
-            TRACE_L1("Bluetooth audio sink is being constructed...");
+            TRACE_L5("Bluetooth audio sink is being constructed...");
 
             ASSERT(_singleton == nullptr);
             _singleton = this;
@@ -140,7 +140,7 @@ namespace BluetoothAudioSinkClient {
                 TRACE_L1("Opened smart interface ('%s')", callsign.c_str());
             }
 
-            TRACE_L1("Bluetooth audio sink constructed");
+            TRACE_L5("Bluetooth audio sink constructed");
         }
 
     public:
@@ -151,15 +151,15 @@ namespace BluetoothAudioSinkClient {
     private:
         ~AudioSink() override
         {
-            TRACE_L1("Bluetooth audio sink is being destructed...");
+            TRACE_L5("Bluetooth audio sink is being destructed...");
 
             Relinquish();
 
-            _bufferLock.Lock();
+            _sinkLock.Lock();
 
             _buffer.reset();
 
-            _bufferLock.Unlock();
+            _sinkLock.Unlock();
 
             _lock.Lock();
 
@@ -181,7 +181,7 @@ namespace BluetoothAudioSinkClient {
             ASSERT(_singleton != nullptr);
             _singleton = nullptr;
 
-            TRACE_L1("Bluetooth audio sink destructed");
+            TRACE_L5("Bluetooth audio sink destructed");
         }
 
     private:
@@ -216,6 +216,8 @@ namespace BluetoothAudioSinkClient {
     private:
         void StateChanged(const Exchange::IBluetoothAudio::state state)
         {
+            TRACE_L5("State changed to %d", state);
+
             _lock.Lock();
 
             for (auto& cb : _sinkStateCallbacks) {
@@ -257,11 +259,11 @@ namespace BluetoothAudioSinkClient {
             } else {
                 TRACE_L1("Bluetooth audio sink is no longer operational!");
 
-                _bufferLock.Lock();
+                _sinkLock.Lock();
 
                 _buffer.reset();
 
-                _bufferLock.Unlock();
+                _sinkLock.Unlock();
 
                 if (_sinkControl != nullptr) {
                     _sinkControl->Release();
@@ -404,7 +406,7 @@ namespace BluetoothAudioSinkClient {
         {
             uint32_t result = Core::ERROR_ILLEGAL_STATE;
 
-            _lock.Lock();
+            _sinkLock.Lock();
 
             if (_sink != nullptr) {
                 result = _sink->State(state);
@@ -414,7 +416,7 @@ namespace BluetoothAudioSinkClient {
                 }
             }
 
-            _lock.Unlock();
+            _sinkLock.Unlock();
 
             return (result);
         }
@@ -422,7 +424,7 @@ namespace BluetoothAudioSinkClient {
         {
             uint32_t result = Core::ERROR_ILLEGAL_STATE;
 
-            _lock.Lock();
+            _sinkLock.Lock();
 
             if (_sinkControl != nullptr) {
                 _frameSize = (100UL * format.Resolution * format.Channels * format.SampleRate) / (format.FrameRate * 8);
@@ -437,7 +439,7 @@ namespace BluetoothAudioSinkClient {
                 }
             }
 
-            _lock.Unlock();
+            _sinkLock.Unlock();
 
             return (result);
         }
@@ -445,10 +447,9 @@ namespace BluetoothAudioSinkClient {
         {
             uint32_t result = Core::ERROR_ILLEGAL_STATE;
 
-            _lock.Lock();
+            _sinkLock.Lock();
 
             if ((_sinkControl != nullptr) && (_frameSize != 0)) {
-                _bufferLock.Lock();
 
                 TRACE_L1("Acquiring sink with connector '%s'", CONNECTOR);
 
@@ -467,11 +468,9 @@ namespace BluetoothAudioSinkClient {
                     TRACE_L1("Failed to open buffer!");
                     result = Core::ERROR_OPENING_FAILED;
                 }
-
-                _bufferLock.Unlock();
             }
 
-            _lock.Unlock();
+            _sinkLock.Unlock();
 
             return (result);
         }
@@ -479,7 +478,7 @@ namespace BluetoothAudioSinkClient {
         {
             uint32_t result = Core::ERROR_ILLEGAL_STATE;
 
-            _lock.Lock();
+            _sinkLock.Lock();
 
             if (_sinkControl != nullptr) {
 
@@ -488,19 +487,15 @@ namespace BluetoothAudioSinkClient {
                     TRACE_L1("IStream::Relinquish failed! [%i]", result);
                 }
                 else {
-                    TRACE_L1("A client released the audio sink");
+                    TRACE_L1("Client released the audio sink");
                 }
 
-                _bufferLock.Lock();
-
                 _buffer.reset();
-
-                _bufferLock.Unlock();
 
                 _frameSize = 0;
             }
 
-            _lock.Unlock();
+            _sinkLock.Unlock();
 
             return (result);
         }
@@ -509,7 +504,7 @@ namespace BluetoothAudioSinkClient {
         {
             uint32_t result = Core::ERROR_ILLEGAL_STATE;
 
-            _lock.Lock();
+            _sinkLock.Lock();
 
             if (_sinkControl != nullptr) {
                 result = _sinkControl->Speed(speed);
@@ -519,7 +514,7 @@ namespace BluetoothAudioSinkClient {
                 }
             }
 
-            _lock.Unlock();
+            _sinkLock.Unlock();
 
             return (result);
         }
@@ -528,7 +523,7 @@ namespace BluetoothAudioSinkClient {
         {
             uint32_t result = Core::ERROR_NONE;
 
-            _bufferLock.Lock();
+            _sinkLock.Lock();
 
             if (_buffer != nullptr) {
                 consumed = _buffer->Write(length, data);
@@ -537,7 +532,7 @@ namespace BluetoothAudioSinkClient {
                 result = Core::ERROR_ILLEGAL_STATE;
             }
 
-            _bufferLock.Unlock();
+            _sinkLock.Unlock();
 
             return (result);
         }
@@ -546,7 +541,7 @@ namespace BluetoothAudioSinkClient {
         {
             uint32_t result = Core::ERROR_ILLEGAL_STATE;
 
-            _lock.Lock();
+            _sinkLock.Lock();
 
             if ((_sinkControl != nullptr) && (_buffer != nullptr)) {
                 result = _sinkControl->Time(timeMs);
@@ -556,7 +551,7 @@ namespace BluetoothAudioSinkClient {
                 }
             }
 
-            _lock.Unlock();
+            _sinkLock.Unlock();
 
             return (result);
         }
@@ -565,7 +560,7 @@ namespace BluetoothAudioSinkClient {
         {
             uint32_t result = Core::ERROR_ILLEGAL_STATE;
 
-            _lock.Lock();
+            _sinkLock.Lock();
 
             if (_sinkControl != nullptr) {
                 result = _sinkControl->Delay(delaySamples);
@@ -575,7 +570,7 @@ namespace BluetoothAudioSinkClient {
                 }
             }
 
-            _lock.Unlock();
+            _sinkLock.Unlock();
 
             return (result);
         }
@@ -588,11 +583,11 @@ namespace BluetoothAudioSinkClient {
         mutable Core::CriticalSection _lock;
         OperationalStateUpdateCallbacks _operationalStateCallbacks;
         SinkStateChangedCallbacks _sinkStateCallbacks;
+
+        mutable Core::CriticalSection _sinkLock;
         Exchange::IBluetoothAudio::ISink* _sink;
         Exchange::IBluetoothAudio::IStream* _sinkControl;
         uint32_t _frameSize;
-
-        mutable Core::CriticalSection _bufferLock;
         std::unique_ptr<SendBuffer> _buffer;
     };
 
