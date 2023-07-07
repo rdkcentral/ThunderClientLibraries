@@ -1,7 +1,7 @@
-            # If not stated otherwise in this file or this component's LICENSE file the
+# If not stated otherwise in this file or this component's LICENSE file the
 # following copyright and licenses apply:
 #
-# Copyright 2021 Metrological
+# Copyright 2023 Metrological
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,28 +19,28 @@ cmake_minimum_required(VERSION 3.0)
 
 find_package(WPEFramework)
 
-project(BluetoothAudioSink)
+project(BluetoothAudioSource)
 
 project_version(1.0.0)
 
 set(TARGET Client${PROJECT_NAME})
 
-message("Setup ${TARGET} v${PROJECT_VERSION}")
+message("Setup ${TARGET} ${PROJECT_VERSION}")
 
 find_package(${NAMESPACE}Core REQUIRED)
 find_package(${NAMESPACE}COM REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 
-option(BLUETOOTHAUDIOSINK_EXAMPLEPLAYER "Build audio player" OFF)
-set(PUBLIC_HEADERS "include/bluetoothaudiosink.h")
+option(BLUETOOTHAUDIOSOURCE_EXAMPLERECORDER "Build audio recorder" ON)
+set(PUBLIC_HEADERS "include/bluetoothaudiosource.h")
 
 add_library(${TARGET} SHARED
     Module.cpp
-    BluetoothAudioSink.cpp
+    BluetoothAudioSource.cpp
 )
 
 target_link_libraries(${TARGET}
-   PRIVATE 
+   PRIVATE
         ${NAMESPACE}Core::${NAMESPACE}Core
         ${NAMESPACE}COM::${NAMESPACE}COM
         CompileSettingsDebug::CompileSettingsDebug
@@ -55,7 +55,7 @@ set_target_properties(${TARGET} PROPERTIES
     SOVERSION ${PROJECT_VERSION_MAJOR}
 )
 
-target_include_directories( ${TARGET}
+target_include_directories(${TARGET}
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
@@ -68,8 +68,8 @@ install(
     LIBRARY DESTINATION lib COMPONENT libs
     RUNTIME DESTINATION bin COMPONENT libs
     FRAMEWORK DESTINATION bin COMPONENT libs
-    PUBLIC_HEADER DESTINATION include/${NAMESPACE}/bluetoothaudiosink COMPONENT devel
-    INCLUDES DESTINATION include/${NAMESPACE}/bluetoothaudiosink
+    PUBLIC_HEADER DESTINATION include/${NAMESPACE}/bluetoothaudiosource COMPONENT devel
+    INCLUDES DESTINATION include/${NAMESPACE}/bluetoothaudiosource
 )
 
 InstallCMakeConfig(
@@ -78,9 +78,9 @@ InstallCMakeConfig(
 
 InstallPackageConfig(
     TARGETS ${TARGET}
-    DESCRIPTION "Bluetooth audio playback abstraction"
+    DESCRIPTION "Bluetooth audio capture abstraction"
 )
 
-if(BLUETOOTHAUDIOSINK_EXAMPLEPLAYER)
-    add_subdirectory(btaudioplayer)
+if(BLUETOOTHAUDIOSOURCE_EXAMPLERECORDER)
+    add_subdirectory(btaudiorecorder)
 endif()

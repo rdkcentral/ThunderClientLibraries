@@ -1,7 +1,7 @@
 # If not stated otherwise in this file or this component's LICENSE file the
 # following copyright and licenses apply:
 #
-# Copyright 2021 Metrological
+# Copyright 2023 Metrological
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-project(btaudioplayer)
+project(btaudiorecorder)
 
 set(TARGET ${PROJECT_NAME})
 
@@ -25,15 +25,15 @@ add_executable(${PROJECT_NAME}
     main.c
 )
 
-target_include_directories(btaudioplayer
+target_include_directories(btaudiorecorder
     PRIVATE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../include>
-        $<INSTALL_INTERFACE:include/bluetoothaudiosink>
+        $<INSTALL_INTERFACE:include/bluetoothaudiosource
 )
 
 target_link_libraries(${TARGET}
     PUBLIC
-        ClientBluetoothAudioSink::ClientBluetoothAudioSink
+        ClientBluetoothAudioSource::ClientBluetoothAudioSource
         pthread
 )
 
