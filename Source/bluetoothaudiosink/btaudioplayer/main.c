@@ -20,24 +20,33 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <assert.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include <alloca.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <signal.h>
+#include <endian.h>
 
-#include <bluetoothaudiosink.h>
+#include "../include/bluetoothaudiosink.h"
 
 #define CDDA_FRAMERATE (7500 /* cHz */)
 
+#define PRINT(format, ...) printf(format "\n", ##__VA_ARGS__)
+#define PRINT_NO_CR(format, ...) printf(format, ##__VA_ARGS__)
 #define TRACE(format, ...) fprintf(stderr, "btaudioplayer: " format "\n", ##__VA_ARGS__)
+#define ERROR(format, ...) fprintf(stderr, "btaudioplayer: [\033[31merror\033[0m]: " format "\n", ##__VA_ARGS__)
 
 
 typedef struct {
     const char* file;
-    bool do_acquire;
-    bool playing;
+    volatile bool connected;
+    volatile bool playing;
+    volatile bool release;
+    volatile bool exit;
     bluetoothaudiosink_format_t format;
     pthread_t thread;
     sem_t connect_sync;
@@ -66,14 +75,18 @@ static volatile bool user_break = false;
 static void* playback_task(void *user_data)
 {
     context_t *context = (context_t*)user_data;
+    assert(context);
 
     TRACE("WAV streaming thread started");
 
-    if (bluetoothaudiosink_acquire(&context->format) != 0) {
+    if (bluetoothaudiosink_configure(&context->format) != BLUETOOTHAUDIOSINK_SUCCESS) {
+        TRACE("Failed to configure Bluetooth audio sink device!");
+    }
+    else if (bluetoothaudiosink_acquire() != BLUETOOTHAUDIOSINK_SUCCESS) {
         TRACE("Failed to acquire Bluetooth audio sink device!");
     } else {
         TRACE("Starting a playback session...");
-        context->do_acquire = false;
+        context->release = true;
 
         if (bluetoothaudiosink_speed(100) == 0) {
             FILE *f = fopen(context->file, "rb+");
@@ -87,32 +100,45 @@ static void* playback_task(void *user_data)
 
                 fseek(f, sizeof(wav_header_t), SEEK_SET);
 
-                sem_post(&context->playback_sync);
-                context->playing = true;
+                while (context->exit == false) {
+                    sem_wait(&context->playback_sync);
 
-                while (context->playing == true) {
-                    uint16_t played = 0;
+                    TRACE("Unpaused...");
 
-                    if (to_play == 0) {
-                        to_play = fread(data, 1, bufferSize, f);
+                    while (context->playing == true) {
+                        uint16_t played = 0;
+
+                        if (to_play == 0) {
+                            to_play = fread(data, 1, bufferSize, f);
+                        }
+
+                        if (bluetoothaudiosink_frame(to_play, data, &played) != 0) {
+                            TRACE("Failed to send audio frame!");
+                            context->exit = true;
+                            break;
+                        }
+
+                        if (to_play != bufferSize) {
+                            TRACE("EOF reached");
+                            context->exit = true;
+                            break;
+                        }
+
+                        if (user_break == true) {
+                            TRACE("User break!");
+                            context->exit = true;
+                            break;
+                        }
+
+                        if (played < to_play) {
+                            // we're sending too fast...
+                            usleep(1 * 1000);
+                        }
+
+                        to_play -= played;
                     }
 
-                    if (bluetoothaudiosink_frame(to_play, data, &played) != 0) {
-                        TRACE("Failed to send audio frame!");
-                        break;
-                    }
-
-                    if (to_play != bufferSize) {
-                        TRACE("EOF reached");
-                        break;
-                    }
-
-                    if (played < to_play) {
-                        // we're sending too fast...
-                        usleep(1 * 1000);
-                    }
-
-                    to_play -= played;
+                    TRACE("Paused...");
                 }
 
                 context->playing = false;
@@ -123,12 +149,14 @@ static void* playback_task(void *user_data)
                 TRACE("Failed to open file '%s'", context->file);
             }
 
-            if (bluetoothaudiosink_speed(0) != 0) {
-                TRACE("Failed to set audio speed 0%%!");
-            }
+            if (context->release) {
+                if (bluetoothaudiosink_speed(0) != 0) {
+                    TRACE("Failed to set audio speed 0%%!");
+                }
 
-            if (bluetoothaudiosink_relinquish() != 0) {
-                TRACE("Failed to reqlinquish bluetooth audio sink device!");
+                if (bluetoothaudiosink_relinquish() != 0) {
+                    TRACE("Failed to reqlinquish bluetooth audio sink device!");
+                }
             }
         } else {
             TRACE("Failed to set audio speed 100%%!");
@@ -140,71 +168,87 @@ static void* playback_task(void *user_data)
     return (NULL);
 }
 
-static void audio_sink_connected(context_t * context)
+static void audio_sink_disconnected(context_t *context)
 {
-    if ((context->playing == false) && (context->do_acquire == true)) {
-        sem_post(&context->connect_sync);
+    assert(context);
+
+    if (context->connected) {
+        TRACE("Remote device closed. Stopping playback!");
+        context->exit = true;
+        context->release = false;
+        context->playing = false;
+        sem_post(&context->playback_sync);
     }
 }
 
-static void audio_sink_disconnected(context_t *context)
+static void audio_sink_connected(context_t * context)
 {
-    if (context->playing == true) {
-        // Device disconnected abruptly, stop the playback thread, too...
+    assert(context);
+
+    if (!context->playing) {
+        context->connected = true;
+        sem_post(&context->connect_sync);
+    } else {
         context->playing = false;
     }
 }
 
-static void audio_sink_state_update(void *user_data)
+static void audio_sink_playing(context_t * context,  const bool enable)
 {
-    bluetoothaudiosink_state_t state = BLUETOOTHAUDIOSINK_STATE_UNKNOWN;
+    assert(context);
 
-    if (bluetoothaudiosink_state(&state) == 0) {
-        switch (state) {
-        case BLUETOOTHAUDIOSINK_STATE_UNASSIGNED:
-            TRACE("Bluetooth audio sink is currently unassigned!");
-            break;
-        case BLUETOOTHAUDIOSINK_STATE_CONNECTED:
-            TRACE("Bluetooth audio sink is now connected!");
-            audio_sink_connected((context_t*)user_data);
-            break;
-        case BLUETOOTHAUDIOSINK_STATE_CONNECTED_BAD_DEVICE:
-            TRACE("Invalid device connected - cant't play!");
-            break;
-        case BLUETOOTHAUDIOSINK_STATE_CONNECTED_RESTRICTED:
-            TRACE("Restricted Bluetooth audio device connected - won't play!");
-            break;
-        case BLUETOOTHAUDIOSINK_STATE_DISCONNECTED:
-            TRACE("Bluetooth Audio sink is now disconnected!");
-            audio_sink_disconnected((context_t*)user_data);
-            break;
-        case BLUETOOTHAUDIOSINK_STATE_READY:
-            TRACE("Bluetooth Audio sink now ready!");
-            break;
-        case BLUETOOTHAUDIOSINK_STATE_STREAMING:
-            TRACE("Bluetooth Audio sink is now streaming!");
-            break;
-        default:
-            break;
-        }
+    if (enable) {
+        context->playing = true;
+        sem_post(&context->playback_sync);
+    }
+    else {
+        context->playing = false;
+    }
+}
+
+static void audio_sink_state_changed(const bluetoothaudiosink_state_t state, void *user_data)
+{
+    switch (state) {
+    case BLUETOOTHAUDIOSINK_STATE_UNASSIGNED:
+        TRACE("State: BLUETOOTHAUDIOSINK_STATE_UNASSIGNED");
+        break;
+    case BLUETOOTHAUDIOSINK_STATE_CONNECTING:
+        TRACE("State: BLUETOOTHAUDIOSINK_STATE_CONNECTING");
+        break;
+    case BLUETOOTHAUDIOSINK_STATE_CONNECTED:
+        TRACE("State: BLUETOOTHAUDIOSINK_STATE_CONNECTED");
+        audio_sink_connected((context_t*)user_data);
+        break;
+    case BLUETOOTHAUDIOSINK_STATE_CONNECTED_BAD:
+        TRACE("State: BLUETOOTHAUDIOSINK_STATE_CONNECTED_BAD");
+        break;
+    case BLUETOOTHAUDIOSINK_STATE_CONNECTED_RESTRICTED:
+        TRACE("State: BLUETOOTHAUDIOSINK_STATE_CONNECTED_RESTRICTED");
+        break;
+    case BLUETOOTHAUDIOSINK_STATE_DISCONNECTED:
+        TRACE("State: BLUETOOTHAUDIOSINK_STATE_DISCONNECTED");
+        audio_sink_disconnected((context_t*)user_data);
+        break;
+    case BLUETOOTHAUDIOSINK_STATE_READY:
+        TRACE("State: BLUETOOTHAUDIOSINK_STATE_READY");
+        audio_sink_playing((context_t*)user_data, false);
+        break;
+    case BLUETOOTHAUDIOSINK_STATE_STREAMING:
+        TRACE("State: BLUETOOTHAUDIOSINK_STATE_STREAMING");
+        audio_sink_playing((context_t*)user_data, true);
+        break;
+    default:
+        assert(!"Unmapped enum");
+        break;
     }
 }
 
 static void audio_sink_operational_state_update(const uint8_t running, void *user_data)
 {
     if (running) {
-        bluetoothaudiosink_state_t state = BLUETOOTHAUDIOSINK_STATE_UNKNOWN;
-        bluetoothaudiosink_state(&state);
-
-        if (state == BLUETOOTHAUDIOSINK_STATE_UNKNOWN) {
-            TRACE("Unknown Bluetooth Audio Sink failure!");
-        } else {
-            TRACE("Bluetooth Audio Sink service now available");
-
-            // Register for the sink updates
-            if (bluetoothaudiosink_register_state_update_callback(audio_sink_state_update, user_data) != 0) {
-                TRACE("Failed to register sink sink update callback!");
-            }
+        // Register for the sink updates
+        if (bluetoothaudiosink_register_state_changed_callback(audio_sink_state_changed, user_data) != 0) {
+            ERROR("Failed to register sink sink update callback!");
         }
     } else {
         TRACE("Bluetooth Audio Sink service is now unavailable");
@@ -224,7 +268,7 @@ int main(int argc, const char* argv[])
 {
     int result = 1;
 
-    TRACE("Plays a .wav file over a Bluetooth speaker device");
+    PRINT("Plays a .wav file over a Bluetooth speaker device");
 
     if (argc == 2) {
         FILE *f;
@@ -232,7 +276,6 @@ int main(int argc, const char* argv[])
         memset(&context, 0, sizeof(context));
 
         context.file = argv[1];
-        context.do_acquire = true;
         context.playing = false;
 
         f = fopen(context.file, "rb+");
@@ -241,10 +284,10 @@ int main(int argc, const char* argv[])
 
             if (fread(&header, 1, sizeof(header), f) == sizeof(header)) {
                 if (memcmp(header.wave, "WAVE", 4) == 0) {
-                    context.format.sample_rate = header.sample_rate;
+                    context.format.sample_rate = le32toh(header.sample_rate);
                     context.format.frame_rate = CDDA_FRAMERATE;
-                    context.format.channels = header.channels;
-                    context.format.resolution = header.resolution;
+                    context.format.channels = (uint8_t) le16toh(header.channels);
+                    context.format.resolution = (uint8_t) le16toh(header.resolution);
 
                     TRACE("Input format: PCM %i Hz, %i bit (signed, little endian), %i channels @ %i.%02i fps",
                         context.format.sample_rate, context.format.resolution, context.format.channels,
@@ -258,12 +301,14 @@ int main(int argc, const char* argv[])
             if (((context.format.sample_rate >= 8000) && (context.format.channels == 1)) || ((context.format.channels == 2) && (context.format.resolution == 16))) {
                 TRACE("Waiting for Bluetooth audio sink device to be available... (Press Ctrl+C to quit at any time.)");
 
+                setbuf(stdout, NULL);
+
                 sem_init(&context.connect_sync, 0, 0);
                 sem_init(&context.playback_sync, 0, 0);
 
                 // Register for the audio sink service updates
-                if (bluetoothaudiosink_register_operational_state_update_callback(&audio_sink_operational_state_update, &context) != 0) {
-                    TRACE("Failed to register Bluetooths Audio Sink operational callback");
+                if (bluetoothaudiosink_register_operational_state_update_callback(&audio_sink_operational_state_update, &context) != BLUETOOTHAUDIOSINK_SUCCESS) {
+                    ERROR("Failed to register Bluetooths Audio Sink operational callback");
                 } else {
                     const uint32_t timeout = 120 /* sec */;
                     struct timespec ts;
@@ -280,55 +325,41 @@ int main(int argc, const char* argv[])
 
                     // Wait for connection...
                     if (sem_timedwait(&context.connect_sync, &ts) != -1) {
-                        struct timespec ts;
-                        clock_gettime(CLOCK_REALTIME, &ts);
-                        ts.tv_sec += 2;
 
                         pthread_create(&context.thread, NULL, playback_task, (void*)&context);
 
-                        // Wait for playback start...
-                        if (sem_timedwait(&context.playback_sync, &ts) != -1) {
-                            TRACE("Playing...");
+                        while (context.exit == false) {
+                            uint32_t time;
 
-                            while (context.playing == true) {
-                                uint32_t playtime = 0;
-
-                                bluetoothaudiosink_time(&playtime);
-                                TRACE("Time: %02i:%02i:%03i\r", ((playtime / 1000) / 60), ((playtime / 1000) % 60), playtime % 1000);
-
-                                usleep(50 * 1000);
-
-                                if ((user_break != false) && (context.playing == true)) {
-                                    // Ctrl+C!
-                                    TRACE("User break! Stopping playback...");
-                                    context.playing = false;
-                                }
+                            if (bluetoothaudiosink_time(&time) == BLUETOOTHAUDIOSINK_SUCCESS) {
+                                printf("playing %d:%02d.%03d\r", time/60000, (time/1000)%60, time%1000);
                             }
 
-                            result = 0;
-                        } else {
-                            TRACE("Failed to start playback!");
+                            usleep(10 * 1000);
                         }
 
+                        TRACE("Exiting...");
+
                         pthread_join(context.thread, NULL);
+
                     } else {
-                        TRACE("Bluetooth audio sink device not connected in %i seconds, terminating!", timeout);
+                        ERROR("Bluetooth audio sink device not connected in %d seconds, terminating!", timeout);
                     }
 
                     // And we're done...
                     TRACE("Cleaning up...");
-                    bluetoothaudiosink_unregister_state_update_callback(&audio_sink_state_update); // this can fail, it's OK
+                    bluetoothaudiosink_unregister_state_changed_callback(&audio_sink_state_changed); // this can fail, it's OK
                     bluetoothaudiosink_unregister_operational_state_update_callback(&audio_sink_operational_state_update);
                     bluetoothaudiosink_dispose();
                 }
             } else {
-                TRACE("Invalid file format!");
+                ERROR("Invalid file format!");
             }
         } else {
-            TRACE("Failed to open the source file!");
+            ERROR("Failed to open the source file!");
         }
     } else {
-        TRACE("arguments:\n%s <file.wav>", argv[0]);
+        PRINT("arguments:\n%s <file.wav>", argv[0]);
     }
 
     return (result);

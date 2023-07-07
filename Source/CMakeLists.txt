@@ -17,6 +17,8 @@
 
 option(BLUETOOTHAUDIOSINK
         "Include the bluetoothaudiosink library." OFF)
+option(BLUETOOTHAUDIOSOURCE
+        "Include the bluetoothaudiosource library." OFF)
 option(PROTOCOLS
         "Include the protocols library." ON)
 option(COMPOSITORCLIENT
@@ -35,11 +37,13 @@ option(CDMI
         "Include OpenCDM interface." OFF)
 option(CRYPTOGRAPHY
         "Include the cryptography library." OFF)
-option(LOCALTRACER
-        "Header only library to locally print traces coming from Messaging without the need of running Thunder/WPEFramework." OFF)
 
 if(BLUETOOTHAUDIOSINK)
     add_subdirectory(bluetoothaudiosink)
+endif()
+
+if(BLUETOOTHAUDIOSOURCE)
+    add_subdirectory(bluetoothaudiosource)
 endif()
 
 if(COMPOSITORCLIENT)
@@ -76,8 +80,4 @@ endif()
 
 if(CRYPTOGRAPHY)
     add_subdirectory(cryptography)
-endif()
-
-if(LOCALTRACER)
-    add_subdirectory(localtracer)
 endif()
