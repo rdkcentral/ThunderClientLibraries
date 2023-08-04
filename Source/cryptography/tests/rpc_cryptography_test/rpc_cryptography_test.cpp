@@ -171,7 +171,7 @@ protected:
 
     virtual void SetUp()
     {
-        cryptography = Thunder::Cryptography::ICryptography::Instance(TestData::nodeId);
+        cryptography = Thunder::Exchange::ICryptography::Instance(TestData::nodeId);
     }
 
     virtual void TearDown()
@@ -182,7 +182,7 @@ protected:
         }
     }
 
-    Thunder::Cryptography::ICryptography* cryptography;
+    Thunder::Exchange::ICryptography* cryptography;
     Controller controller;
 };
 
@@ -218,7 +218,7 @@ TEST_F(BasicTest, Vault)
     ASSERT_TRUE(controller.IsPluginActive(TestData::plugin));
     ASSERT_NE(nullptr, cryptography);
 
-    Thunder::Cryptography::IVault* vault = cryptography->Vault(CRYPTOGRAPHY_VAULT_PLATFORM);
+    Thunder::Exchange::IVault* vault = cryptography->Vault(Thunder::Exchange::CRYPTOGRAPHY_VAULT_PLATFORM);
 
     ASSERT_NE(nullptr, vault);
 
@@ -238,7 +238,7 @@ TEST_F(BasicTest, VaultImportExport)
     ASSERT_TRUE(controller.IsPluginActive(TestData::plugin));
     ASSERT_NE(nullptr, cryptography);
 
-    Thunder::Cryptography::IVault* vault = cryptography->Vault(CRYPTOGRAPHY_VAULT_PLATFORM);
+    Thunder::Exchange::IVault* vault = cryptography->Vault(Thunder::Exchange::CRYPTOGRAPHY_VAULT_PLATFORM);
 
     ASSERT_NE(nullptr, vault);
 
@@ -272,7 +272,7 @@ TEST_F(BasicTest, VaultSetGet)
     ASSERT_TRUE(controller.IsPluginActive(TestData::plugin));
     ASSERT_NE(nullptr, cryptography);
 
-    Thunder::Cryptography::IVault* vault = cryptography->Vault(CRYPTOGRAPHY_VAULT_PLATFORM);
+    Thunder::Exchange::IVault* vault = cryptography->Vault(Thunder::Exchange::CRYPTOGRAPHY_VAULT_PLATFORM);
 
     ASSERT_NE(nullptr, vault);
 
@@ -302,11 +302,11 @@ TEST_F(BasicTest, VaultDiffieHellman)
     ASSERT_TRUE(controller.IsPluginActive(TestData::plugin));
     ASSERT_NE(nullptr, cryptography);
 
-    Thunder::Cryptography::IVault* vault = cryptography->Vault(CRYPTOGRAPHY_VAULT_PLATFORM);
+    Thunder::Exchange::IVault* vault = cryptography->Vault(Thunder::Exchange::CRYPTOGRAPHY_VAULT_PLATFORM);
 
     ASSERT_NE(nullptr, vault);
 
-    Thunder::Cryptography::IDiffieHellman* dh = vault->DiffieHellman();
+    Thunder::Exchange::IDiffieHellman* dh = vault->DiffieHellman();
 
     EXPECT_NE(nullptr, dh);
 
@@ -327,13 +327,13 @@ TEST_F(BasicTest, VaultHMAC)
     ASSERT_TRUE(controller.IsPluginActive(TestData::plugin));
     ASSERT_NE(nullptr, cryptography);
 
-    Thunder::Cryptography::IVault* vault = cryptography->Vault(CRYPTOGRAPHY_VAULT_PLATFORM);
+    Thunder::Exchange::IVault* vault = cryptography->Vault(Thunder::Exchange::CRYPTOGRAPHY_VAULT_PLATFORM);
 
     ASSERT_NE(nullptr, vault);
 
     uint32_t keyId = vault->Import(sizeof(TestData::cipherkey), reinterpret_cast<const uint8_t*>(TestData::cipherkey));
 
-    Thunder::Cryptography::IHash* iface = vault->HMAC(Thunder::Cryptography::SHA1, keyId);
+    Thunder::Exchange::IHash* iface = vault->HMAC(Thunder::Exchange::SHA1, keyId);
 
     EXPECT_NE(nullptr, iface);
 
@@ -364,13 +364,13 @@ TEST_F(BasicTest, VaultHMACIngestCalculate)
     ASSERT_TRUE(controller.IsPluginActive(TestData::plugin));
     ASSERT_NE(nullptr, cryptography);
 
-    Thunder::Cryptography::IVault* vault = cryptography->Vault(CRYPTOGRAPHY_VAULT_PLATFORM);
+    Thunder::Exchange::IVault* vault = cryptography->Vault(Thunder::Exchange::CRYPTOGRAPHY_VAULT_PLATFORM);
 
     ASSERT_NE(nullptr, vault);
 
     uint32_t keyId = vault->Import(sizeof(TestData::cipherkey), TestData::cipherkey);
 
-    Thunder::Cryptography::IHash* iface = vault->HMAC(Thunder::Cryptography::SHA1, keyId);
+    Thunder::Exchange::IHash* iface = vault->HMAC(Thunder::Exchange::SHA1, keyId);
 
     if (vault != nullptr) {
         vault->Release();
@@ -385,7 +385,7 @@ TEST_F(BasicTest, VaultHMACIngestCalculate)
 
     ingestSize = iface->Calculate(sizeof(hashBuffer), hashBuffer);
 
-    EXPECT_EQ(ingestSize, Thunder::Cryptography::SHA1);
+    EXPECT_EQ(ingestSize, Thunder::Exchange::SHA1);
 
     EXPECT_TRUE(ArraysMatch(hashBuffer, hashExpected));
 
@@ -404,13 +404,13 @@ TEST_F(BasicTest, VaultHMACIngest65K)
     ASSERT_TRUE(controller.IsPluginActive(TestData::plugin));
     ASSERT_NE(nullptr, cryptography);
 
-    Thunder::Cryptography::IVault* vault = cryptography->Vault(CRYPTOGRAPHY_VAULT_PLATFORM);
+    Thunder::Exchange::IVault* vault = cryptography->Vault(Thunder::Exchange::CRYPTOGRAPHY_VAULT_PLATFORM);
 
     ASSERT_NE(nullptr, vault);
 
     uint32_t keyId = vault->Import(sizeof(TestData::cipherkey), TestData::cipherkey);
 
-    Thunder::Cryptography::IHash* iface = vault->HMAC(Thunder::Cryptography::SHA1, keyId);
+    Thunder::Exchange::IHash* iface = vault->HMAC(Thunder::Exchange::SHA1, keyId);
 
     if (vault != nullptr) {
         vault->Release();
@@ -428,7 +428,7 @@ TEST_F(BasicTest, VaultHMACIngest65K)
 
     ingestSize = iface->Calculate(sizeof(hashBuffer), hashBuffer);
 
-    EXPECT_EQ(ingestSize, Thunder::Cryptography::SHA1);
+    EXPECT_EQ(ingestSize, Thunder::Exchange::SHA1);
 
     if (iface != nullptr) {
         iface->Release();
@@ -442,13 +442,13 @@ TEST_F(BasicTest, VaultAES)
     ASSERT_TRUE(controller.IsPluginActive(TestData::plugin));
     ASSERT_NE(nullptr, cryptography);
 
-    Thunder::Cryptography::IVault* vault = cryptography->Vault(CRYPTOGRAPHY_VAULT_PLATFORM);
+    Thunder::Exchange::IVault* vault = cryptography->Vault(Thunder::Exchange::CRYPTOGRAPHY_VAULT_PLATFORM);
 
     ASSERT_NE(nullptr, vault);
 
     uint32_t keyId = vault->Import(sizeof(TestData::cipherkey), TestData::cipherkey);
 
-    Thunder::Cryptography::ICipher* iface = vault->AES(Thunder::Cryptography::CBC, keyId);
+    Thunder::Exchange::ICipher* iface = vault->AES(Thunder::Exchange::CBC, keyId);
 
     ASSERT_NE(nullptr, iface);
 
@@ -468,7 +468,7 @@ TEST_F(BasicTest, VaultAESEncryptDecrypt)
     uint8_t encryptBuffer[128];
     uint8_t clearBuffer[128];
 
-    Thunder::Cryptography::ICipher* iface = nullptr;
+    Thunder::Exchange::ICipher* iface = nullptr;
 
     memset(encryptBuffer, 0x00, sizeof(encryptBuffer));
     memset(clearBuffer, 0x00, sizeof(clearBuffer));
@@ -477,13 +477,13 @@ TEST_F(BasicTest, VaultAESEncryptDecrypt)
     ASSERT_TRUE(controller.IsPluginActive(TestData::plugin));
     ASSERT_NE(nullptr, cryptography);
 
-    Thunder::Cryptography::IVault* vault = cryptography->Vault(CRYPTOGRAPHY_VAULT_PLATFORM);
+    Thunder::Exchange::IVault* vault = cryptography->Vault(Thunder::Exchange::CRYPTOGRAPHY_VAULT_PLATFORM);
 
     ASSERT_NE(nullptr, vault);
 
     uint32_t keyId = vault->Import(sizeof(TestData::cipherkey), TestData::cipherkey);
 
-    iface = vault->AES(Thunder::Cryptography::CBC, keyId);
+    iface = vault->AES(Thunder::Exchange::CBC, keyId);
 
     ASSERT_NE(nullptr, iface);
 
@@ -523,7 +523,7 @@ TEST_F(BasicTest, VaultAESEncryptDecryptDisablePlugin)
     ASSERT_TRUE(controller.IsPluginActive(TestData::plugin));
     ASSERT_NE(nullptr, cryptography);
 
-    Thunder::Cryptography::IVault* vault = cryptography->Vault(CRYPTOGRAPHY_VAULT_PLATFORM);
+    Thunder::Exchange::IVault* vault = cryptography->Vault(Thunder::Exchange::CRYPTOGRAPHY_VAULT_PLATFORM);
 
     cryptography->Release();
     cryptography = nullptr;
@@ -532,7 +532,7 @@ TEST_F(BasicTest, VaultAESEncryptDecryptDisablePlugin)
 
     uint32_t keyId = vault->Import(sizeof(TestData::cipherkey), TestData::cipherkey);
 
-    Thunder::Cryptography::ICipher* iface = vault->AES(Thunder::Cryptography::CBC, keyId);
+    Thunder::Exchange::ICipher* iface = vault->AES(Thunder::Exchange::CBC, keyId);
 
     ASSERT_NE(nullptr, iface);
 
@@ -571,7 +571,7 @@ TEST_F(BasicTest, Hash)
     ASSERT_TRUE(controller.IsPluginActive(TestData::plugin));
     ASSERT_NE(nullptr, cryptography);
 
-    Thunder::Cryptography::IHash* hash = cryptography->Hash(Thunder::Cryptography::SHA1);
+    Thunder::Exchange::IHash* hash = cryptography->Hash(Thunder::Exchange::SHA1);
 
     ASSERT_NE(nullptr, hash);
 
@@ -583,20 +583,20 @@ TEST_F(BasicTest, Hash)
 
 TEST_F(BasicTest, HashSHA1Calculate)
 {
-    uint8_t exportBuffer[Thunder::Cryptography::SHA1];
+    uint8_t exportBuffer[Thunder::Exchange::SHA1];
     memset(exportBuffer, 0, sizeof(exportBuffer));
 
     ASSERT_EQ(controller.ActivatePlugin(TestData::plugin), Thunder::Core::ERROR_NONE);
     ASSERT_TRUE(controller.IsPluginActive(TestData::plugin));
     ASSERT_NE(nullptr, cryptography);
 
-    Thunder::Cryptography::IHash* hash = cryptography->Hash(Thunder::Cryptography::SHA1);
+    Thunder::Exchange::IHash* hash = cryptography->Hash(Thunder::Exchange::SHA1);
 
     ASSERT_NE(nullptr, hash);
 
     EXPECT_EQ(hash->Ingest(sizeof(TestData::data), reinterpret_cast<const uint8_t*>(TestData::data)), sizeof(TestData::data));
 
-    EXPECT_EQ(hash->Calculate(sizeof(exportBuffer), exportBuffer), Thunder::Cryptography::SHA1);
+    EXPECT_EQ(hash->Calculate(sizeof(exportBuffer), exportBuffer), Thunder::Exchange::SHA1);
 
     EXPECT_TRUE(ArraysMatch(exportBuffer, TestData::expectedSHA1HashOfData));
 
@@ -608,14 +608,14 @@ TEST_F(BasicTest, HashSHA1Calculate)
 
 TEST_F(BasicTest, HashSHA1CalculateDeactivate)
 {
-    uint8_t exportBuffer[Thunder::Cryptography::SHA1];
+    uint8_t exportBuffer[Thunder::Exchange::SHA1];
     memset(exportBuffer, 0, sizeof(exportBuffer));
 
     ASSERT_EQ(controller.ActivatePlugin(TestData::plugin), Thunder::Core::ERROR_NONE);
     ASSERT_TRUE(controller.IsPluginActive(TestData::plugin));
     ASSERT_NE(nullptr, cryptography);
 
-    Thunder::Cryptography::IHash* hash = cryptography->Hash(Thunder::Cryptography::SHA1);
+    Thunder::Exchange::IHash* hash = cryptography->Hash(Thunder::Exchange::SHA1);
 
     ASSERT_NE(nullptr, hash);
 
@@ -635,14 +635,14 @@ TEST_F(BasicTest, HashSHA1CalculateDeactivate)
 
 TEST_F(BasicTest, HashSHA1CalculateDeactivateAndRecover)
 {
-    uint8_t exportBuffer[Thunder::Cryptography::SHA1];
+    uint8_t exportBuffer[Thunder::Exchange::SHA1];
     memset(exportBuffer, 0, sizeof(exportBuffer));
 
     ASSERT_EQ(controller.ActivatePlugin(TestData::plugin), Thunder::Core::ERROR_NONE);
     ASSERT_TRUE(controller.IsPluginActive(TestData::plugin));
     ASSERT_NE(nullptr, cryptography);
 
-    Thunder::Cryptography::IHash* hash = cryptography->Hash(Thunder::Cryptography::SHA1);
+    Thunder::Exchange::IHash* hash = cryptography->Hash(Thunder::Exchange::SHA1);
     ASSERT_NE(nullptr, hash);
 
     EXPECT_EQ(hash->Ingest(sizeof(TestData::data), reinterpret_cast<const uint8_t*>(TestData::data)), sizeof(TestData::data));
@@ -657,15 +657,15 @@ TEST_F(BasicTest, HashSHA1CalculateDeactivateAndRecover)
     ASSERT_EQ(controller.ActivatePlugin(TestData::plugin), Thunder::Core::ERROR_NONE);
     ASSERT_TRUE(controller.IsPluginActive(TestData::plugin));
 
-    cryptography = Thunder::Cryptography::ICryptography::Instance(TestData::nodeId);
+    cryptography = Thunder::Exchange::ICryptography::Instance(TestData::nodeId);
     ASSERT_NE(nullptr, cryptography);
 
-    hash = cryptography->Hash(Thunder::Cryptography::SHA1);
+    hash = cryptography->Hash(Thunder::Exchange::SHA1);
     ASSERT_NE(nullptr, hash);
 
     EXPECT_EQ(hash->Ingest(sizeof(TestData::data), reinterpret_cast<const uint8_t*>(TestData::data)), sizeof(TestData::data));
 
-    EXPECT_EQ(hash->Calculate(sizeof(exportBuffer), exportBuffer), Thunder::Cryptography::SHA1);
+    EXPECT_EQ(hash->Calculate(sizeof(exportBuffer), exportBuffer), Thunder::Exchange::SHA1);
 
     EXPECT_TRUE(ArraysMatch(exportBuffer, TestData::expectedSHA1HashOfData));
 
@@ -681,13 +681,13 @@ TEST_F(BasicTest, VaultDiffieHellmanDeavtivated)
     ASSERT_TRUE(controller.IsPluginActive(TestData::plugin));
     ASSERT_NE(nullptr, cryptography);
 
-    Thunder::Cryptography::IVault* vault = cryptography->Vault(CRYPTOGRAPHY_VAULT_PLATFORM);
+    Thunder::Exchange::IVault* vault = cryptography->Vault(Thunder::Exchange::CRYPTOGRAPHY_VAULT_PLATFORM);
 
     ASSERT_NE(nullptr, vault);
 
     EXPECT_EQ(controller.DeactivatePlugin(TestData::plugin), Thunder::Core::ERROR_NONE);
 
-    Thunder::Cryptography::IDiffieHellman* df = vault->DiffieHellman();
+    Thunder::Exchange::IDiffieHellman* df = vault->DiffieHellman();
 
     EXPECT_EQ(nullptr, df);
 
@@ -705,11 +705,11 @@ TEST_F(BasicTest, VaultDiffieHellmanGenerate)
     ASSERT_TRUE(controller.IsPluginActive(TestData::plugin));
     ASSERT_NE(nullptr, cryptography);
 
-    Thunder::Cryptography::IVault* vault = cryptography->Vault(CRYPTOGRAPHY_VAULT_PLATFORM);
+    Thunder::Exchange::IVault* vault = cryptography->Vault(Thunder::Exchange::CRYPTOGRAPHY_VAULT_PLATFORM);
 
     ASSERT_NE(nullptr, vault);
 
-    Thunder::Cryptography::IDiffieHellman* dh = vault->DiffieHellman();
+    Thunder::Exchange::IDiffieHellman* dh = vault->DiffieHellman();
 
     vault->Release();
     vault = nullptr;
@@ -739,11 +739,11 @@ TEST_F(BasicTest, VaultDiffieHellmanGenerateDeactivatedPlugin)
     ASSERT_TRUE(controller.IsPluginActive(TestData::plugin));
     ASSERT_NE(nullptr, cryptography);
 
-    Thunder::Cryptography::IVault* vault = cryptography->Vault(CRYPTOGRAPHY_VAULT_PLATFORM);
+    Thunder::Exchange::IVault* vault = cryptography->Vault(Thunder::Exchange::CRYPTOGRAPHY_VAULT_PLATFORM);
 
     ASSERT_NE(nullptr, vault);
 
-    Thunder::Cryptography::IDiffieHellman* dh = vault->DiffieHellman();
+    Thunder::Exchange::IDiffieHellman* dh = vault->DiffieHellman();
 
     if (vault != nullptr) {
         vault->Release();

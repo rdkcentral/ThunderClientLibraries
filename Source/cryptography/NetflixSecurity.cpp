@@ -20,7 +20,7 @@
 
 #include "Module.h"
 
-#include <INetflixSecurity.h>
+#include <interfaces/INetflixSecurity.h>
 #include "implementation/netflix_security_implementation.h"
 
 namespace WPEFramework {
