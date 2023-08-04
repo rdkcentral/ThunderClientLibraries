@@ -22,7 +22,6 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "cryptography_vault_ids.h"
 
 #undef EXTERNAL
 #if defined(WIN32) || defined(_WINDOWS) || defined (__CYGWIN__) || defined(_WIN64)
@@ -39,6 +38,13 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+enum cryptographyvault : uint8_t {
+    CRYPTOGRAPHY_VAULT_DEFAULT = 0,
+    CRYPTOGRAPHY_VAULT_PLATFORM = 1,
+    CRYPTOGRAPHY_VAULT_PROVISIONING = 0x10,
+    CRYPTOGRAPHY_VAULT_NETFLIX = 0x11
+};
 
 struct VaultImplementation;
 

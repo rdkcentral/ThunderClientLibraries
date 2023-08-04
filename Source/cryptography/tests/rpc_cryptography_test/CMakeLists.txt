@@ -18,6 +18,7 @@
 option(COMRPCVAULT "Include Com RPC Vault test tool" ON)
 
 find_package(GTest REQUIRED)
+find_package(${NAMESPACE}Core REQUIRED)
 
 set(TARGET rpc_cryptography_test)
 
@@ -32,6 +33,7 @@ target_link_libraries(${TARGET}
     PRIVATE
         GTest::GTest
         ${NAMESPACE}Cryptography
+        ${NAMESPACE}Core::${NAMESPACE}Core
         ${NAMESPACE}COM
 )
 
