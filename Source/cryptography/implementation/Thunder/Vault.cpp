@@ -19,7 +19,6 @@
 
 #include "../../Module.h"
 
-#include <ICryptographic.h>
 #include <vault_implementation.h>
 #include <persistent_implementation.h>
 
