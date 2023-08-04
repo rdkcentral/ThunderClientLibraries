@@ -19,7 +19,6 @@
 
 #include "../../Module.h"
 
-#include <ICryptographic.h>
 #include <cipher_implementation.h>
 
 #include <core/core.h>
