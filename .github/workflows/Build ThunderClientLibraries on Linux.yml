@@ -63,6 +63,7 @@ jobs:
       with:
         path: ThunderClientLibraries
         repository: ${{github.repository_owner}}/ThunderClientLibraries
+        ref: development/actions-warnings # REMOVE
 
     - name: Regex ThunderClientLibraries
       if: contains(github.event.pull_request.body, '[Options:')
