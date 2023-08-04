@@ -245,13 +245,13 @@ public:
     uint32_t IsAudioEquivalenceEnabled(bool& outIsEnabled) const
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_playerInterface != nullptr ? _playerInterface->IsAudioEquivalenceEnabled(outIsEnabled) : Core::ERROR_UNAVAILABLE);
+        return (_playerInterface != nullptr ? _playerInterface->IsAudioEquivalenceEnabled(outIsEnabled) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE);
     }
 
     uint32_t PlaybackResolution(Exchange::IPlayerProperties::PlaybackResolution& outResolution) const
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_playerInterface != nullptr ? _playerInterface->Resolution(outResolution) : Core::ERROR_UNAVAILABLE);
+        return (_playerInterface != nullptr ? _playerInterface->Resolution(outResolution) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE);
     }
 
     int8_t VideoCodecs(playerinfo_videocodec_t array[], const uint8_t length) const
@@ -418,25 +418,25 @@ public:
     uint32_t DolbySoundMode(Exchange::Dolby::IOutput::SoundModes& mode) const
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_dolbyInterface != nullptr ? _dolbyInterface->SoundMode(mode) : Core::ERROR_UNAVAILABLE);
+        return (_dolbyInterface != nullptr ? _dolbyInterface->SoundMode(mode) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
     }
 
     uint32_t EnableAtmosOutput(const bool enabled)
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_dolbyInterface != nullptr ? _dolbyInterface->EnableAtmosOutput(enabled) : Core::ERROR_UNAVAILABLE);
+        return (_dolbyInterface != nullptr ? _dolbyInterface->EnableAtmosOutput(enabled) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
     }
 
     uint32_t SetDolbyMode(const Exchange::Dolby::IOutput::Type& mode)
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_dolbyInterface != nullptr ? _dolbyInterface->Mode(mode) : Core::ERROR_UNAVAILABLE);
+        return (_dolbyInterface != nullptr ? _dolbyInterface->Mode(mode) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
     }
 
     uint32_t GetDolbyMode(Exchange::Dolby::IOutput::Type& outMode) const
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_dolbyInterface != nullptr ? _dolbyInterface->Mode(outMode) : Core::ERROR_UNAVAILABLE);
+        return (_dolbyInterface != nullptr ? _dolbyInterface->Mode(outMode) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
     }
 };
 
