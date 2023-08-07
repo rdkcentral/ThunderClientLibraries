@@ -436,7 +436,7 @@ public:
     uint32_t GetDolbyMode(Exchange::Dolby::IOutput::Type& outMode) const
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_dolbyInterface != nullptr ? _dolbyInterface->Mode(outMode) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
+        return (_dolbyInterface != nullptr ? static_cast<const Exchange::Dolby::IOutput*>(_dolbyInterface)->Mode(outMode) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
     }
 };
 
