@@ -28,9 +28,7 @@
 #include "Helpers.h"
 #include "Test.h"
 
-#include "core/core.h"
-#include "ICryptography.h"
-#include "INetflixSecurity.h"
+#include <core/core.h>
 
 extern "C" {
 

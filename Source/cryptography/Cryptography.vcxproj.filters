@@ -27,12 +27,6 @@
     <ClInclude Include="cryptography.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ICryptography.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="INetflixSecurity.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Module.h">
       <Filter>Header Files</Filter>
     </ClInclude>
