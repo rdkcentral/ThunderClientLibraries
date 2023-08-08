@@ -34,7 +34,7 @@
 #include <com/com.h>
 #include <interfaces/IComposition.h>
 #include <virtualinput/virtualinput.h>
-#include "../Client.h"
+#include <compositor/Client.h>
 #include "CursorData.h"
 
 int g_pipefd[2];

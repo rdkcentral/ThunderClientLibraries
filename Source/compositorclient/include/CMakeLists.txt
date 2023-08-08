@@ -1,8 +1,7 @@
-#
 # If not stated otherwise in this file or this component's LICENSE file the
 # following copyright and licenses apply:
 #
-# Copyright 2020 Metrological
+# Copyright 2022 Metrological
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,14 +15,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.3)
-project(ClientLibraries)
+add_library(CommonInclude INTERFACE)
 
-option(INSTALL_TESTS "Install the test applications" OFF)
+target_include_directories(CommonInclude
+    INTERFACE
+        "${CMAKE_CURRENT_LIST_DIR}")
 
-if (BUILD_REFERENCE)
-    add_definitions (-DBUILD_REFERENCE=${BUILD_REFERENCE})
-endif()
-
-add_subdirectory(Source)
-
+add_library(common::include ALIAS CommonInclude)
