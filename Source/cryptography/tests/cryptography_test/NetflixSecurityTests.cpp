@@ -35,7 +35,7 @@
 
 
 static WPEFramework::Exchange::IVault* vault = nullptr;
-static WPEFramework::Cryptography::INetflixSecurity* nfSecurity = nullptr;
+static WPEFramework::Exchange::INetflixSecurity* nfSecurity = nullptr;
 
 
 TEST(NetflixSecurity, Security)
@@ -260,7 +260,7 @@ TEST(NetflixSecurity, AuthenticatedDerive)
 
 int main()
 {
-    nfSecurity = WPEFramework::Cryptography::INetflixSecurity::Instance();
+    nfSecurity = WPEFramework::Exchange::INetflixSecurity::Instance();
     if (nfSecurity != nullptr) {
         CALL(NetflixSecurity, Security);
 
