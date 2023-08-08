@@ -27,7 +27,7 @@ namespace WPEFramework {
 
 namespace Implementation {
 
-    class NetflixSecurity : public Cryptography::INetflixSecurity  {
+    class NetflixSecurity : public Exchange::INetflixSecurity  {
     public:
         NetflixSecurity(const NetflixSecurity&) = delete;
         NetflixSecurity& operator=(const NetflixSecurity&) = delete;
@@ -76,15 +76,15 @@ namespace Implementation {
 
     public:
         BEGIN_INTERFACE_MAP(NetflixSecurity)
-        INTERFACE_ENTRY(Cryptography::INetflixSecurity)
+        INTERFACE_ENTRY(Exchange::INetflixSecurity)
         END_INTERFACE_MAP
     }; // class NetflixSecurity
 
 } // namespace Implementation
 
-/* static */ Cryptography::INetflixSecurity* Cryptography::INetflixSecurity::Instance()
+/* static */ Exchange::INetflixSecurity* Exchange::INetflixSecurity::Instance()
 {
-    return (Core::Service<Implementation::NetflixSecurity>::Create<Cryptography::INetflixSecurity>());
+    return (Core::Service<Implementation::NetflixSecurity>::Create<Exchange::INetflixSecurity>());
 }
 
 }
