@@ -17,6 +17,8 @@
 
 set(TARGET implementation)
 
+find_package(${NAMESPACE}Cryptalgo REQUIRED)
+
 add_library(${TARGET} STATIC
     Signing.cpp
     Vault.cpp

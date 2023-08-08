@@ -22,7 +22,6 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "cryptography_vault_ids.h"
 #include "vault_implementation.h" 
 
 #ifdef __cplusplus

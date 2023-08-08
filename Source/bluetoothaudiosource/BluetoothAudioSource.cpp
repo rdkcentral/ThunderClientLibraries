@@ -87,6 +87,7 @@ namespace BluetoothAudioSourceClient {
                 _buffer.reset(new (std::nothrow) uint8_t[_bufferSize]);
                 ASSERT(_buffer.get() != nullptr);
 
+                Block();
                 Stop();
             }
 
@@ -169,7 +170,8 @@ namespace BluetoothAudioSourceClient {
 
             if (SmartInterfaceType::Open(RPC::CommunicationTimeOut, SmartInterfaceType::Connector(), callsign) != Core::ERROR_NONE) {
                 TRACE_L1("Failed to open the smart interface!");
-            } else {
+            }
+            else {
                 TRACE_L1("Opened smart interface ('%s')", callsign.c_str());
             }
 
@@ -202,7 +204,7 @@ namespace BluetoothAudioSourceClient {
             TRACE_L1("Bluetooth Audio Source client library destructed");
         }
 
-        void Cleanup()
+        void Cleanup(const bool terminated = false)
         {
             if (_sourceStream != nullptr) {
                 _sourceStream->Release();
@@ -210,13 +212,21 @@ namespace BluetoothAudioSourceClient {
             }
 
             if (_sourceControl != nullptr) {
-                _sourceControl->Sink(nullptr);
+
+                if (terminated == FALSE) {
+                    _sourceControl->Sink(nullptr);
+                }
+
                 _sourceControl->Release();
                 _sourceControl = nullptr;
             }
 
             if (_source != nullptr) {
-                _source->Callback(nullptr);
+
+                if (terminated == FALSE) {
+                    _source->Callback(nullptr);
+                }
+
                 _source->Release();
                 _source = nullptr;
             }
@@ -340,8 +350,8 @@ namespace BluetoothAudioSourceClient {
                 }
                 else {
                     result = Core::ERROR_NONE;
-                    TRACE_L1("Sink configured (%d Hz, %d bits, %d channels, %d fps)",
-                        cFormat.sample_rate, cFormat.resolution, cFormat.channels, cFormat.frame_rate);
+                    TRACE_L1("Sink configured (%d Hz, %d bits, %d channels, %d.%02d fps)",
+                        cFormat.sample_rate, cFormat.resolution, cFormat.channels, (cFormat.frame_rate / 100), (cFormat.frame_rate % 100));
                 }
             }
 
@@ -407,9 +417,9 @@ namespace BluetoothAudioSourceClient {
 
             _sinkLock.Lock();
 
-            if ((_receiver != nullptr) || (_sinkCallbacks != nullptr)) {
+            TRACE_L1("Remote source is relinquishing sink...");
 
-                TRACE_L1("Remote source is relinquishing sink...");
+            if ((_receiver != nullptr) || (_sinkCallbacks != nullptr)) {
 
                 _receiver.reset();
 
@@ -533,16 +543,8 @@ namespace BluetoothAudioSourceClient {
         void OnFrameReceived(const uint8_t frame[], const uint16_t length)
         {
             ASSERT(frame != nullptr);
-
-            _sinkLock.Lock();
-
-            if (_sinkCallbacks != nullptr) {
-                ASSERT(_sinkCallbacks->frame_cb != nullptr);
-
-                _sinkCallbacks->frame_cb(length, frame, _sinkCallbacksUserData);
-            }
-
-            _sinkLock.Unlock();
+            ASSERT(_sinkCallbacks->frame_cb != nullptr);
+            _sinkCallbacks->frame_cb(length, frame, _sinkCallbacksUserData);
         }
 
     private:
@@ -602,9 +604,11 @@ namespace BluetoothAudioSourceClient {
             else {
                 TRACE_L1("'%s' service is no longer operational!", _callsign.c_str());
 
+                OnSetSpeed(0);
+
                 OnRelinquish();
 
-                Cleanup();
+                Cleanup(true);
 
                 notify = true;
             }
@@ -615,6 +619,7 @@ namespace BluetoothAudioSourceClient {
                 _sinkLock.Lock();
 
                 for (auto& cb : _operationalStateCallbacks) {
+
                     cb.first(upAndRunning, cb.second);
                 }
 
@@ -759,7 +764,10 @@ namespace BluetoothAudioSourceClient {
 
                 if ((_receiver != nullptr) && (sink == nullptr)) {
                     TRACE_L1("Warning: Removing callbacks for an acquired receiver!");
-                    Relinquish();
+
+                    if (Relinquish() != Core::ERROR_NONE) {
+                        TRACE_L1("Failed to relinquish on behalf of the client");
+                    }
                 }
 
                 if ((sink == nullptr) || ((sink->acquire_cb != nullptr) && (sink->frame_cb != nullptr)
@@ -796,14 +804,6 @@ namespace BluetoothAudioSourceClient {
                 if ((result != Core::ERROR_NONE) && (result != Core::ERROR_ALREADY_RELEASED)) {
                     TRACE_L1("Relinquish() failed! [%d]", result);
                 }
-
-                _sinkLock.Lock();
-
-                _receiver.reset();
-
-                _sinkLock.Unlock();
-
-                TRACE_L1("Source relinquished");
             }
 
             _lock.Unlock();
