@@ -46,6 +46,7 @@ endif ()
 
 target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
     PRIVATE
+        common::include
         CompileSettingsDebug::CompileSettingsDebug
     PUBLIC
         WaylandEGL::WaylandEGL
