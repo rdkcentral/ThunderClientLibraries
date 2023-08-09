@@ -27,4 +27,8 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 add_subdirectory(include)
 add_subdirectory(src)
-add_subdirectory(test)
+
+option(BUILD_COMPOSITORCLIENT_TEST "Build compositorclient test" OFF)
+if (BUILD_COMPOSITORCLIENT_TEST)
+    add_subdirectory(test)
+endif()
