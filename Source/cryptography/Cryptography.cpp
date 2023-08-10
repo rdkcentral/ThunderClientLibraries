@@ -807,18 +807,22 @@ namespace Implementation {
 
 } // namespace Implementation
 
-/* static */ Exchange::ICryptography* Exchange::ICryptography::Instance(const std::string& connectionPoint)
-{
-    Exchange::ICryptography* result(nullptr);
+namespace Exchange {
+     
+    /* static */ ICryptography* ICryptography::Instance(const std::string& connectionPoint)
+    {
+        Exchange::ICryptography* result(nullptr);
 
-    if (connectionPoint.empty() == true) {
-        result = Core::Service<Implementation::CryptographyImpl>::Create<Exchange::ICryptography>();
-    } else {
-        // Seems we received a connection point
-        result = Implementation::CryptographyLink::Instance().Cryptography(connectionPoint);
+        if (connectionPoint.empty() == true) {
+            result = Core::Service<Implementation::CryptographyImpl>::Create<Exchange::ICryptography>();
+        }
+        else {
+            // Seems we received a connection point
+            result = Implementation::CryptographyLink::Instance().Cryptography(connectionPoint);
+        }
+
+        return result;
     }
-
-    return result;
 }
 
 } // namespace WPEFramework

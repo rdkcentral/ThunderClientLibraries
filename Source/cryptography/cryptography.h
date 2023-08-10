@@ -20,6 +20,8 @@
 #ifndef CRYPTOGRAPHY_H
 #define CRYPTOGRAPHY_H
 
+#include "Module.h"
+
 #include <interfaces/ICryptography.h>
 #include <interfaces/INetflixSecurity.h>
 
