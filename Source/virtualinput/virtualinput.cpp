@@ -132,7 +132,7 @@ namespace VirtualInput{
                 TRACE_L1("In NameEventHandler::Procedure -- %d", __LINE__);
 
                 Core::ProxyType<IVirtualInput::NameMessage> message(data);
-                ::strncpy(message->Response().Name, _name.c_str(), sizeof(IVirtualInput::LinkInfo::Name));
+                ::strncpy(message->Response().Name, _name.c_str(), (sizeof(IVirtualInput::LinkInfo::Name) - 1));
                 message->Response().Mode = _mode;
                 source.ReportResponse(data);
             }
