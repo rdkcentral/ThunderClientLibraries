@@ -19,6 +19,8 @@
 cmake_minimum_required(VERSION 3.3)
 project(ClientLibraries)
 
+option(INSTALL_TESTS "Install the test applications" OFF)
+
 if (BUILD_REFERENCE)
     add_definitions (-DBUILD_REFERENCE=${BUILD_REFERENCE})
 endif()

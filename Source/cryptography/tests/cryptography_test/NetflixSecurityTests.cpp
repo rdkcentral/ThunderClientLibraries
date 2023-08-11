@@ -20,6 +20,8 @@
 #include "Module.h"
 
 #include <core/core.h>
+#include <interfaces/ICryptography.h>
+#include <interfaces/INetflixSecurity.h>
 
 #include <climits>
 #include <string.h>
@@ -28,14 +30,12 @@
 #include <openssl/hmac.h>
 #include <openssl/bn.h>
 
-#include "ICryptography.h"
-#include "INetflixSecurity.h"
 #include "Helpers.h"
 #include "Test.h"
 
 
-static WPEFramework::Cryptography::IVault* vault = nullptr;
-static WPEFramework::Cryptography::INetflixSecurity* nfSecurity = nullptr;
+static WPEFramework::Exchange::IVault* vault = nullptr;
+static WPEFramework::Exchange::INetflixSecurity* nfSecurity = nullptr;
 
 
 TEST(NetflixSecurity, Security)
@@ -76,7 +76,7 @@ static void TestAuthenticatedDerive(const uint16_t hostPskSize, const uint8_t ho
     DH *hostPrivKey = DHGenerate(generator, prime1024, sizeof(prime1024));
     assert(hostPrivKey != nullptr);
 
-    WPEFramework::Cryptography::IDiffieHellman *idh = vault->DiffieHellman();
+    WPEFramework::Exchange::IDiffieHellman *idh = vault->DiffieHellman();
     EXPECT_NE(idh, nullptr);
 
     if (idh != nullptr) {
@@ -158,7 +158,7 @@ static void TestAuthenticatedDerive(const uint16_t hostPskSize, const uint8_t ho
                     DumpBuffer(encBuf, (uint32_t)encLen);
 
                     uint8_t decBuf[32] = { 0 };
-                    WPEFramework::Cryptography::ICipher *cipher = vault->AES(WPEFramework::Cryptography::aesmode::CBC, teeEncKeyId);
+                    WPEFramework::Exchange::ICipher *cipher = vault->AES(WPEFramework::Exchange::aesmode::CBC, teeEncKeyId);
                     EXPECT_NE(cipher, nullptr);
                     if (cipher != nullptr) {
                         uint32_t decLen = 0;
@@ -179,7 +179,7 @@ static void TestAuthenticatedDerive(const uint16_t hostPskSize, const uint8_t ho
                     printf("Host HMAC using hmacKey:\n");
                     DumpBuffer(hostHmac, sizeof(hostHmac));
 
-                    WPEFramework::Cryptography::IHash *hash = vault->HMAC(WPEFramework::Cryptography::hashtype::SHA256, teeHmacKeyId);
+                    WPEFramework::Exchange::IHash *hash = vault->HMAC(WPEFramework::Exchange::hashtype::SHA256, teeHmacKeyId);
                     EXPECT_NE(hash, nullptr);
                     if (hash != nullptr) {
                         EXPECT_EQ(hash->Ingest(sizeof(testStr), (uint8_t*)testStr), sizeof(testStr));
@@ -260,13 +260,13 @@ TEST(NetflixSecurity, AuthenticatedDerive)
 
 int main()
 {
-    nfSecurity = WPEFramework::Cryptography::INetflixSecurity::Instance();
+    nfSecurity = WPEFramework::Exchange::INetflixSecurity::Instance();
     if (nfSecurity != nullptr) {
         CALL(NetflixSecurity, Security);
 
-        WPEFramework::Cryptography::ICryptography* cg = WPEFramework::Cryptography::ICryptography::Instance("");
+        WPEFramework::Exchange::ICryptography* cg = WPEFramework::Exchange::ICryptography::Instance("");
         if (cg != nullptr) {
-            vault = cg->Vault(CRYPTOGRAPHY_VAULT_NETFLIX);
+            vault = cg->Vault(WPEFramework::Exchange::CryptographyVault::CRYPTOGRAPHY_VAULT_NETFLIX);
             if (vault != nullptr) {
                 CALL(NetflixSecurity, AuthenticatedDerive);
                 vault->Release();

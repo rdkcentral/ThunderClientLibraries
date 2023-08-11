@@ -19,7 +19,7 @@
 
 #include "Module.h"
 
-#include <ICryptography.h>
+#include <interfaces/ICryptography.h>
 
 #include "implementation/cipher_implementation.h"
 #include "implementation/diffiehellman_implementation.h"
@@ -70,11 +70,11 @@ namespace Implementation {
                 delete _singleton;
             }
         }
-        Cryptography::ICryptography* Acquire(const Core::NodeId& nodeId)
+        Exchange::ICryptography* Acquire(const Core::NodeId& nodeId)
         {
-            return BaseClass::Acquire<Cryptography::ICryptography>(3000, nodeId, _T(""), ~0);
+            return BaseClass::Acquire<Exchange::ICryptography>(3000, nodeId, _T(""), ~0);
         }
-        Cryptography::ICryptography* Cryptography(const std::string& connectionPoint);
+        Exchange::ICryptography* Cryptography(const std::string& connectionPoint);
 
         template <typename TYPE, typename... Args>
         Core::ProxyType<Core::IUnknown> Register(Args&&... args)
@@ -99,9 +99,9 @@ namespace Implementation {
 
     CryptographyLink* CryptographyLink::_singleton = nullptr;
 
-    class RPCDiffieHellmanImpl : public Cryptography::IDiffieHellman {
+    class RPCDiffieHellmanImpl : public Exchange::IDiffieHellman {
     public:
-        RPCDiffieHellmanImpl(Cryptography::IDiffieHellman* iface)
+        RPCDiffieHellmanImpl(Exchange::IDiffieHellman* iface)
             : _accessor(iface)
         {
             if (_accessor != nullptr) {
@@ -111,7 +111,7 @@ namespace Implementation {
         ~RPCDiffieHellmanImpl() override = default;
 
         BEGIN_INTERFACE_MAP(RPCDiffieHellmanImpl)
-        INTERFACE_ENTRY(Cryptography::IDiffieHellman)
+        INTERFACE_ENTRY(Exchange::IDiffieHellman)
         END_INTERFACE_MAP
 
     public:
@@ -140,12 +140,12 @@ namespace Implementation {
 
     private:
         Core::CriticalSection _adminLock;
-        Cryptography::IDiffieHellman* _accessor;
+        Exchange::IDiffieHellman* _accessor;
     };
 
-    class RPCCipherImpl : public Cryptography::ICipher {
+    class RPCCipherImpl : public Exchange::ICipher {
     public:
-        RPCCipherImpl(Cryptography::ICipher* iface)
+        RPCCipherImpl(Exchange::ICipher* iface)
             : _accessor(iface)
         {
             if (_accessor != nullptr) {
@@ -155,7 +155,7 @@ namespace Implementation {
         ~RPCCipherImpl() override = default;
 
         BEGIN_INTERFACE_MAP(RPCCipherImpl)
-        INTERFACE_ENTRY(Cryptography::ICipher)
+        INTERFACE_ENTRY(Exchange::ICipher)
         END_INTERFACE_MAP
 
     public:
@@ -186,12 +186,12 @@ namespace Implementation {
 
     private:
         mutable Core::CriticalSection _adminLock;
-        Cryptography::ICipher* _accessor;
+        Exchange::ICipher* _accessor;
     };
 
-    class RPCHashImpl : public Cryptography::IHash {
+    class RPCHashImpl : public Exchange::IHash {
     public:
-        RPCHashImpl(Cryptography::IHash* hash)
+        RPCHashImpl(Exchange::IHash* hash)
             : _accessor(hash)
         {
             if (_accessor != nullptr) {
@@ -201,7 +201,7 @@ namespace Implementation {
         ~RPCHashImpl() override = default;
 
         BEGIN_INTERFACE_MAP(RPCHashImpl)
-        INTERFACE_ENTRY(Cryptography::IHash)
+        INTERFACE_ENTRY(Exchange::IHash)
         END_INTERFACE_MAP
 
     public:
@@ -230,12 +230,12 @@ namespace Implementation {
 
     private:
         Core::CriticalSection _adminLock;
-        Cryptography::IHash* _accessor;
+        Exchange::IHash* _accessor;
     };
 
-    class RPCVaultImpl : public Cryptography::IVault {
+    class RPCVaultImpl : public Exchange::IVault {
     public:
-        RPCVaultImpl(Cryptography::IVault* vault)
+        RPCVaultImpl(Exchange::IVault* vault)
             : _accessor(vault)
         {
             if (_accessor != nullptr) {
@@ -245,7 +245,7 @@ namespace Implementation {
         ~RPCVaultImpl() override = default;
 
         BEGIN_INTERFACE_MAP(RPCVaultImpl)
-        INTERFACE_ENTRY(Cryptography::IVault)
+        INTERFACE_ENTRY(Exchange::IVault)
         END_INTERFACE_MAP
 
     public:
@@ -297,9 +297,9 @@ namespace Implementation {
         // -----------------------------------------------------
 
         // Retrieve a HMAC calculator
-        Cryptography::IHash* HMAC(const Cryptography::hashtype hashType, const uint32_t keyId) override
+        Exchange::IHash* HMAC(const Exchange::hashtype hashType, const uint32_t keyId) override
         {
-            Cryptography::IHash* iface = nullptr;
+            Exchange::IHash* iface = nullptr;
 
             Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
 
@@ -314,7 +314,7 @@ namespace Implementation {
 
                     iface->Release();
 
-                    iface = reinterpret_cast<Cryptography::IHash*>(object->QueryInterface(Cryptography::IHash::ID));
+                    iface = reinterpret_cast<Exchange::IHash*>(object->QueryInterface(Exchange::IHash::ID));
                 }
             }
 
@@ -322,9 +322,9 @@ namespace Implementation {
         }
 
         // Retrieve an AES encryptor/decryptor
-        Cryptography::ICipher* AES(const Cryptography::aesmode aesMode, const uint32_t keyId) override
+        Exchange::ICipher* AES(const Exchange::aesmode aesMode, const uint32_t keyId) override
         {
-            Cryptography::ICipher* iface = nullptr;
+            Exchange::ICipher* iface = nullptr;
 
             Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
 
@@ -339,7 +339,7 @@ namespace Implementation {
 
                     iface->Release();
 
-                    iface = reinterpret_cast<Cryptography::ICipher*>(object->QueryInterface(Cryptography::ICipher::ID));
+                    iface = reinterpret_cast<Exchange::ICipher*>(object->QueryInterface(Exchange::ICipher::ID));
                 }
             }
 
@@ -347,9 +347,9 @@ namespace Implementation {
         }
 
         // Retrieve a Diffie-Hellman key creator
-        Cryptography::IDiffieHellman* DiffieHellman() override
+        Exchange::IDiffieHellman* DiffieHellman() override
         {
-            Cryptography::IDiffieHellman* iface = nullptr;
+            Exchange::IDiffieHellman* iface = nullptr;
 
             Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
 
@@ -364,7 +364,7 @@ namespace Implementation {
 
                     iface->Release();
 
-                    iface = reinterpret_cast<Cryptography::IDiffieHellman*>(object->QueryInterface(Cryptography::IDiffieHellman::ID));
+                    iface = reinterpret_cast<Exchange::IDiffieHellman*>(object->QueryInterface(Exchange::IDiffieHellman::ID));
                 }
             }
 
@@ -382,16 +382,16 @@ namespace Implementation {
 
     private:
         mutable Core::CriticalSection _adminLock;
-        Cryptography::IVault* _accessor;
+        Exchange::IVault* _accessor;
     };
 
-    class RPCCryptographyImpl : public Cryptography::ICryptography {
+    class RPCCryptographyImpl : public Exchange::ICryptography {
     public:
         RPCCryptographyImpl() = delete;
         RPCCryptographyImpl(const RPCCryptographyImpl&) = delete;
         RPCCryptographyImpl& operator=(const RPCCryptographyImpl&) = delete;
 
-        RPCCryptographyImpl(Cryptography::ICryptography* iface)
+        RPCCryptographyImpl(Exchange::ICryptography* iface)
             : _accessor(iface)
         {
             _accessor->AddRef();
@@ -399,14 +399,14 @@ namespace Implementation {
         ~RPCCryptographyImpl() override = default;
 
         BEGIN_INTERFACE_MAP(RPCCryptographyImpl)
-        INTERFACE_ENTRY(Cryptography::ICryptography)
+        INTERFACE_ENTRY(Exchange::ICryptography)
         END_INTERFACE_MAP
 
     public:
         // Retrieve a hash calculator
-        Cryptography::IHash* Hash(const Cryptography::hashtype hashType) override
+        Exchange::IHash* Hash(const Exchange::hashtype hashType) override
         {
-            Cryptography::IHash* iface = nullptr;
+            Exchange::IHash* iface = nullptr;
 
             Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
 
@@ -421,7 +421,7 @@ namespace Implementation {
 
                     iface->Release();
 
-                    iface = reinterpret_cast<Cryptography::IHash*>(object->QueryInterface(Cryptography::IHash::ID));
+                    iface = reinterpret_cast<Exchange::IHash*>(object->QueryInterface(Exchange::IHash::ID));
                 }
             }
 
@@ -429,9 +429,9 @@ namespace Implementation {
         }
 
         // Retrieve a vault (TEE identified by ID)
-        Cryptography::IVault* Vault(const cryptographyvault id) override
+        Exchange::IVault* Vault(const Exchange::CryptographyVault id) override
         {
-            Cryptography::IVault* iface = nullptr;
+            Exchange::IVault* iface = nullptr;
 
             Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
 
@@ -446,7 +446,7 @@ namespace Implementation {
 
                     iface->Release();
 
-                    iface = reinterpret_cast<Cryptography::IVault*>(object->QueryInterface(Cryptography::IVault::ID));
+                    iface = reinterpret_cast<Exchange::IVault*>(object->QueryInterface(Exchange::IVault::ID));
                 }
             }
 
@@ -464,12 +464,12 @@ namespace Implementation {
 
     private:
         mutable Core::CriticalSection _adminLock;
-        Cryptography::ICryptography* _accessor;
+        Exchange::ICryptography* _accessor;
     };
 
-    Cryptography::ICryptography* CryptographyLink::Cryptography(const std::string& connectionPoint)
+    Exchange::ICryptography* CryptographyLink::Cryptography(const std::string& connectionPoint)
     {
-        Cryptography::ICryptography* iface = BaseClass::Acquire<Cryptography::ICryptography>(3000, Core::NodeId(connectionPoint.c_str()), _T(""), ~0);
+        Exchange::ICryptography* iface = BaseClass::Acquire<Exchange::ICryptography>(3000, Core::NodeId(connectionPoint.c_str()), _T(""), ~0);
 
         // Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
 
@@ -480,13 +480,13 @@ namespace Implementation {
 
             iface->Release();
 
-            iface = reinterpret_cast<Cryptography::ICryptography*>(object->QueryInterface(Cryptography::ICryptography::ID));
+            iface = reinterpret_cast<Exchange::ICryptography*>(object->QueryInterface(Exchange::ICryptography::ID));
         }
 
         return iface;
     }
 
-    class HashImpl : public WPEFramework::Cryptography::IHash {
+    class HashImpl : public WPEFramework::Exchange::IHash {
     public:
         HashImpl() = delete;
         HashImpl(const HashImpl&) = delete;
@@ -516,14 +516,14 @@ namespace Implementation {
 
     public:
         BEGIN_INTERFACE_MAP(HashImpl)
-        INTERFACE_ENTRY(WPEFramework::Cryptography::IHash)
+        INTERFACE_ENTRY(WPEFramework::Exchange::IHash)
         END_INTERFACE_MAP
 
     private:
         HashImplementation* _implementation;
     }; // class HashImpl
 
-    class VaultImpl : public WPEFramework::Cryptography::IVault, public WPEFramework::Cryptography::IPersistent {
+    class VaultImpl : public WPEFramework::Exchange::IVault, public WPEFramework::Exchange::IPersistent {
     public:
         VaultImpl() = delete;
         VaultImpl(const VaultImpl&) = delete;
@@ -621,7 +621,7 @@ namespace Implementation {
             VaultImpl* _vault;
         }; // class HMACImpl
 
-        class CipherImpl : public WPEFramework::Cryptography::ICipher {
+        class CipherImpl : public WPEFramework::Exchange::ICipher {
         public:
             CipherImpl() = delete;
             CipherImpl(const CipherImpl&) = delete;
@@ -659,7 +659,7 @@ namespace Implementation {
 
         public:
             BEGIN_INTERFACE_MAP(CipherImpl)
-            INTERFACE_ENTRY(WPEFramework::Cryptography::ICipher)
+            INTERFACE_ENTRY(WPEFramework::Exchange::ICipher)
             END_INTERFACE_MAP
 
         private:
@@ -667,7 +667,7 @@ namespace Implementation {
             CipherImplementation* _implementation;
         }; // class CipherImpl
 
-        class DiffieHellmanImpl : public WPEFramework::Cryptography::IDiffieHellman {
+        class DiffieHellmanImpl : public WPEFramework::Exchange::IDiffieHellman {
         public:
             DiffieHellmanImpl() = delete;
             DiffieHellmanImpl(const DiffieHellmanImpl&) = delete;
@@ -699,22 +699,22 @@ namespace Implementation {
 
         public:
             BEGIN_INTERFACE_MAP(DiffieHellmanImpl)
-            INTERFACE_ENTRY(WPEFramework::Cryptography::IDiffieHellman)
+            INTERFACE_ENTRY(WPEFramework::Exchange::IDiffieHellman)
             END_INTERFACE_MAP
 
         private:
             VaultImpl* _vault;
         }; // class DiffieHellmanImpl
 
-        WPEFramework::Cryptography::IHash* HMAC(const WPEFramework::Cryptography::hashtype hashType,
+        WPEFramework::Exchange::IHash* HMAC(const WPEFramework::Exchange::hashtype hashType,
             const uint32_t secretId) override
         {
-            WPEFramework::Cryptography::IHash* hmac(nullptr);
+            WPEFramework::Exchange::IHash* hmac(nullptr);
 
             HashImplementation* impl = hash_create_hmac(_implementation, static_cast<hash_type>(hashType), secretId);
 
             if (impl != nullptr) {
-                hmac = WPEFramework::Core::Service<HMACImpl>::Create<WPEFramework::Cryptography::IHash>(this, impl);
+                hmac = WPEFramework::Core::Service<HMACImpl>::Create<WPEFramework::Exchange::IHash>(this, impl);
                 ASSERT(hmac != nullptr);
 
                 if (hmac == nullptr) {
@@ -725,15 +725,15 @@ namespace Implementation {
             return (hmac);
         }
 
-        WPEFramework::Cryptography::ICipher* AES(const WPEFramework::Cryptography::aesmode aesMode,
+        WPEFramework::Exchange::ICipher* AES(const WPEFramework::Exchange::aesmode aesMode,
             const uint32_t keyId) override
         {
-            WPEFramework::Cryptography::ICipher* cipher(nullptr);
+            WPEFramework::Exchange::ICipher* cipher(nullptr);
 
             CipherImplementation* impl = cipher_create_aes(_implementation, static_cast<aes_mode>(aesMode), keyId);
 
             if (impl != nullptr) {
-                cipher = Core::Service<CipherImpl>::Create<WPEFramework::Cryptography::ICipher>(this, impl);
+                cipher = Core::Service<CipherImpl>::Create<WPEFramework::Exchange::ICipher>(this, impl);
                 ASSERT(cipher != nullptr);
 
                 if (cipher == nullptr) {
@@ -744,24 +744,24 @@ namespace Implementation {
             return (cipher);
         }
 
-        WPEFramework::Cryptography::IDiffieHellman* DiffieHellman() override
+        WPEFramework::Exchange::IDiffieHellman* DiffieHellman() override
         {
-            WPEFramework::Cryptography::IDiffieHellman* dh = Core::Service<DiffieHellmanImpl>::Create<WPEFramework::Cryptography::IDiffieHellman>(this);
+            WPEFramework::Exchange::IDiffieHellman* dh = Core::Service<DiffieHellmanImpl>::Create<WPEFramework::Exchange::IDiffieHellman>(this);
             ASSERT(dh != nullptr);
             return (dh);
         }
 
     public:
         BEGIN_INTERFACE_MAP(VaultImpl)
-        INTERFACE_ENTRY(WPEFramework::Cryptography::IVault)
-        INTERFACE_ENTRY(WPEFramework::Cryptography::IPersistent)
+        INTERFACE_ENTRY(WPEFramework::Exchange::IVault)
+        INTERFACE_ENTRY(WPEFramework::Exchange::IPersistent)
         END_INTERFACE_MAP
 
     private:
         VaultImplementation* _implementation;
     }; // class VaultImpl
 
-    class CryptographyImpl : public WPEFramework::Cryptography::ICryptography {
+    class CryptographyImpl : public WPEFramework::Exchange::ICryptography {
     public:
         CryptographyImpl(const CryptographyImpl&) = delete;
         CryptographyImpl& operator=(const CryptographyImpl&) = delete;
@@ -769,13 +769,13 @@ namespace Implementation {
         ~CryptographyImpl() override = default;
 
     public:
-        WPEFramework::Cryptography::IHash* Hash(const WPEFramework::Cryptography::hashtype hashType) override
+        WPEFramework::Exchange::IHash* Hash(const WPEFramework::Exchange::hashtype hashType) override
         {
-            WPEFramework::Cryptography::IHash* hash(nullptr);
+            WPEFramework::Exchange::IHash* hash(nullptr);
 
             HashImplementation* impl = hash_create(static_cast<hash_type>(hashType));
             if (impl != nullptr) {
-                hash = WPEFramework::Core::Service<Implementation::HashImpl>::Create<WPEFramework::Cryptography::IHash>(impl);
+                hash = WPEFramework::Core::Service<Implementation::HashImpl>::Create<WPEFramework::Exchange::IHash>(impl);
                 ASSERT(hash != nullptr);
 
                 if (hash == nullptr) {
@@ -786,13 +786,13 @@ namespace Implementation {
             return (hash);
         }
 
-        WPEFramework::Cryptography::IVault* Vault(const cryptographyvault id) override
+        WPEFramework::Exchange::IVault* Vault(const Exchange::CryptographyVault id) override
         {
-            WPEFramework::Cryptography::IVault* vault(nullptr);
-            VaultImplementation* impl = vault_instance(id);
+            WPEFramework::Exchange::IVault* vault(nullptr);
+            VaultImplementation* impl = vault_instance(static_cast<cryptographyvault>(id));
 
             if (impl != nullptr) {
-                vault = WPEFramework::Core::Service<Implementation::VaultImpl>::Create<WPEFramework::Cryptography::IVault>(impl);
+                vault = WPEFramework::Core::Service<Implementation::VaultImpl>::Create<WPEFramework::Exchange::IVault>(impl);
                 ASSERT(vault != nullptr);
             }
 
@@ -801,24 +801,28 @@ namespace Implementation {
 
     public:
         BEGIN_INTERFACE_MAP(CryptographyImpl)
-        INTERFACE_ENTRY(WPEFramework::Cryptography::ICryptography)
+        INTERFACE_ENTRY(WPEFramework::Exchange::ICryptography)
         END_INTERFACE_MAP
     }; // class CryptographyImpl
 
 } // namespace Implementation
 
-/* static */ Cryptography::ICryptography* Cryptography::ICryptography::Instance(const std::string& connectionPoint)
-{
-    Cryptography::ICryptography* result(nullptr);
+namespace Exchange {
+     
+    /* static */ ICryptography* ICryptography::Instance(const std::string& connectionPoint)
+    {
+        Exchange::ICryptography* result(nullptr);
 
-    if (connectionPoint.empty() == true) {
-        result = Core::Service<Implementation::CryptographyImpl>::Create<Cryptography::ICryptography>();
-    } else {
-        // Seems we received a connection point
-        result = Implementation::CryptographyLink::Instance().Cryptography(connectionPoint);
+        if (connectionPoint.empty() == true) {
+            result = Core::Service<Implementation::CryptographyImpl>::Create<Exchange::ICryptography>();
+        }
+        else {
+            // Seems we received a connection point
+            result = Implementation::CryptographyLink::Instance().Cryptography(connectionPoint);
+        }
+
+        return result;
     }
-
-    return result;
 }
 
 } // namespace WPEFramework

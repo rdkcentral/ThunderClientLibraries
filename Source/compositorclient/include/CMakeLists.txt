@@ -1,7 +1,7 @@
 # If not stated otherwise in this file or this component's LICENSE file the
 # following copyright and licenses apply:
 #
-# Copyright 2020 Metrological
+# Copyright 2022 Metrological
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,23 +15,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(TARGET implementation)
+add_library(CommonInclude INTERFACE)
 
-find_package(${NAMESPACE}Cryptalgo REQUIRED)
+target_include_directories(CommonInclude
+    INTERFACE
+        "${CMAKE_CURRENT_LIST_DIR}")
 
-add_library(${TARGET} STATIC
-    Signing.cpp
-    Vault.cpp
-    Cipher.cpp
-)
-
-target_link_libraries(${TARGET}
-    PUBLIC
-        ${NAMESPACE}Core::${NAMESPACE}Core
-        ${NAMESPACE}Cryptalgo::${NAMESPACE}Cryptalgo
-)
-
-target_include_directories(${TARGET}
-    PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../..>)
+add_library(common::include ALIAS CommonInclude)

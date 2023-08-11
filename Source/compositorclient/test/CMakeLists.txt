@@ -1,7 +1,7 @@
 # If not stated otherwise in this file or this component's LICENSE file the
 # following copyright and licenses apply:
 #
-# Copyright 2020 Metrological
+# Copyright 2023 Metrological
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,23 +15,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(TARGET implementation)
 
-find_package(${NAMESPACE}Cryptalgo REQUIRED)
+find_package(CompileSettingsDebug CONFIG REQUIRED)
+find_package(${NAMESPACE}Core CONFIG REQUIRED)
+find_package(${NAMESPACE}Messaging CONFIG REQUIRED)
+find_package(${NAMESPACE}LocalTracer CONFIG REQUIRED)
 
-add_library(${TARGET} STATIC
-    Signing.cpp
-    Vault.cpp
-    Cipher.cpp
-)
+add_executable(compositorclient_test main.cpp)
 
-target_link_libraries(${TARGET}
-    PUBLIC
+target_link_libraries(compositorclient_test
+    PRIVATE
         ${NAMESPACE}Core::${NAMESPACE}Core
-        ${NAMESPACE}Cryptalgo::${NAMESPACE}Cryptalgo
+        ${NAMESPACE}Messaging::${NAMESPACE}Messaging
+        ${NAMESPACE}LocalTracer::${NAMESPACE}LocalTracer
+        ${NAMESPACE}VirtualInput::${NAMESPACE}VirtualInput
+        CompileSettingsDebug::CompileSettingsDebug
+        compositorclient::compositorclient
 )
 
-target_include_directories(${TARGET}
-    PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../..>)
+if(INSTALL_TESTS)
+    install(TARGETS compositorclient_test DESTINATION bin)
+endif()

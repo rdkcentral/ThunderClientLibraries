@@ -1,7 +1,7 @@
-# If not stated otherwise in this file or this component's license file the
+# If not stated otherwise in this file or this component's LICENSE file the
 # following copyright and licenses apply:
 #
-# Copyright 2023 Metrological
+# Copyright 2020 Metrological
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,29 +15,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+find_package(EGL REQUIRED)
 
 find_package(CompileSettingsDebug CONFIG REQUIRED)
-find_package(${NAMESPACE}Core CONFIG REQUIRED)
-find_package(${NAMESPACE}COM CONFIG REQUIRED)
-
-find_package(gbm REQUIRED)
-find_package(libdrm REQUIRED)
-find_package(EGL REQUIRED)
-find_package(GLESv2 REQUIRED)
+find_package(${NAMESPACE}Core REQUIRED)
+find_package(${NAMESPACE}COM REQUIRED)
 
 add_library(${PLUGIN_COMPOSITOR_IMPLEMENTATION} OBJECT Implementation.cpp)
 
+if(VC6)
+    find_package(gbm REQUIRED)
+    find_package(libdrm REQUIRED)
+    
+    target_sources(${PLUGIN_COMPOSITOR_IMPLEMENTATION} PRIVATE ModeSet.cpp)
+    target_compile_definitions(${PLUGIN_COMPOSITOR_IMPLEMENTATION} PRIVATE VC6)
+endif()
+
 target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
-    PUBLIC
+    PRIVATE
+        common::include
         CompileSettingsDebug::CompileSettingsDebug
+    PUBLIC
         ${NAMESPACE}Core::${NAMESPACE}Core
         ${NAMESPACE}VirtualInput::${NAMESPACE}VirtualInput
         ${NAMESPACE}COM::${NAMESPACE}COM
-        libdrm::libdrm
-        gbm::gbm
-        EGL::EGL
-        GLESv2::GLESv2
+        ${EGL_LIBRARIES}
 )
+
+if(VC6)
+    target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
+        PUBLIC
+            libdrm::libdrm
+    )
+endif()
 
 set_target_properties(${PLUGIN_COMPOSITOR_IMPLEMENTATION} PROPERTIES
         CXX_STANDARD 11
@@ -46,7 +56,15 @@ set_target_properties(${PLUGIN_COMPOSITOR_IMPLEMENTATION} PROPERTIES
         SOVERSION ${PROJECT_VERSION_MAJOR}
 )
 
-target_compile_definitions(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
+target_compile_options (${PLUGIN_COMPOSITOR_IMPLEMENTATION} PRIVATE -Wno-psabi)
+
+target_include_directories(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
     PUBLIC
-        EGL_NO_X11
-    )
+        $<INSTALL_INTERFACE:include/${NAMESPACE}>
+    PRIVATE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/..>
+        ${EGL_INCLUDE_DIRS})
+
+target_compile_definitions(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
+    PRIVATE
+        ${EGL_DEFINITIONS})

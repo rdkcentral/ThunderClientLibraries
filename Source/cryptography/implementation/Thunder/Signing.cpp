@@ -19,7 +19,6 @@
 
 #include "../../Module.h"
 
-#include <ICryptographic.h>
 #include <signing_implementation.h>
 
 #include <core/core.h>

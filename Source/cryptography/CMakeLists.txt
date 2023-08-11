@@ -35,17 +35,9 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-as-needed")
 
 option(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY "Include explicitly a software based cryptography library" OFF)
 
-find_package(ProxyStubGenerator REQUIRED)
-
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
 find_package(${NAMESPACE}COM REQUIRED)
-
-ProxyStubGenerator(
-    NAMESPACE "WPEFramework::Cryptography" 
-    INPUT "${CMAKE_CURRENT_LIST_DIR}"
-    OUTDIR "${CMAKE_CURRENT_BINARY_DIR}/generated/proxystubs"
-)
 
 add_subdirectory(implementation)
 
@@ -53,8 +45,6 @@ add_library(${TARGET} SHARED
     Module.cpp
     Cryptography.cpp
     NetflixSecurity.cpp
-    "${CMAKE_CURRENT_BINARY_DIR}/generated/proxystubs/ProxyStubs_Cryptography.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/generated/proxystubs/ProxyStubs_NetflixSecurity.cpp"
 )
 
 target_link_libraries(${TARGET}
@@ -73,11 +63,8 @@ target_include_directories(${TARGET}
 )
 
 set(PUBLIC_HEADERS
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/ICryptography.h>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/Module.h>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/INetflixSecurity.h>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/cryptography.h>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/cryptography_vault_ids.h>
 )
 
 set_target_properties(${TARGET} PROPERTIES
