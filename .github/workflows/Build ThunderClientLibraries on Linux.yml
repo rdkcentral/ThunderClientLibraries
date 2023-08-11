@@ -2,14 +2,14 @@ name: Build ThunderClientLibraries on Linux
 
 on:
   push:
-    branches: ["development/actions-warnings"] # CHANGE TO MASTER
+    branches: ["master"]
   pull_request:
     branches: ["master"]
   workflow_call:
 
 jobs:
   ThunderInterfaces:
-    uses: VeithMetro/ThunderInterfaces/.github/workflows/Build ThunderInterfaces on Linux.yml@master # CHANGE TO RDKCENTRAL
+    uses: rdkcentral/ThunderInterfaces/.github/workflows/Build ThunderInterfaces on Linux.yml@master
 
   ThunderClientLibraries:
     needs: ThunderInterfaces
@@ -63,7 +63,6 @@ jobs:
       with:
         path: ThunderClientLibraries
         repository: ${{github.repository_owner}}/ThunderClientLibraries
-        ref: development/actions-warnings # REMOVE
 
     - name: Regex ThunderClientLibraries
       if: contains(github.event.pull_request.body, '[Options:')
