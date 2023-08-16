@@ -257,73 +257,73 @@ public:
     uint32_t IsAudioPassthrough(bool& outIsEnabled) const
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_displayConnection != nullptr ? _displayConnection->IsAudioPassthrough(outIsEnabled) : Core::ERROR_UNAVAILABLE);
+        return (_displayConnection != nullptr ? _displayConnection->IsAudioPassthrough(outIsEnabled) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
     }
 
     uint32_t Connected(bool& outIsConnected) const
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_displayConnection != nullptr ? _displayConnection->Connected(outIsConnected) : Core::ERROR_UNAVAILABLE);
+        return (_displayConnection != nullptr ? _displayConnection->Connected(outIsConnected) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
     }
 
     uint32_t Width(uint32_t& outWidth) const
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_displayConnection != nullptr ? _displayConnection->Width(outWidth) : Core::ERROR_UNAVAILABLE);
+        return (_displayConnection != nullptr ? _displayConnection->Width(outWidth) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
     }
 
     uint32_t Height(uint32_t& outHeight) const
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_displayConnection != nullptr ? _displayConnection->Height(outHeight) : Core::ERROR_UNAVAILABLE);
+        return (_displayConnection != nullptr ? _displayConnection->Height(outHeight) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
     }
 
     uint32_t WidthInCentimeters(uint8_t& outWidthInCentimeters) const
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_displayConnection != nullptr ? _displayConnection->WidthInCentimeters(outWidthInCentimeters) : Core::ERROR_UNAVAILABLE);
+        return (_displayConnection != nullptr ? _displayConnection->WidthInCentimeters(outWidthInCentimeters) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
     }
 
     uint32_t HeightInCentimeters(uint8_t& outHeightInCentimeters) const
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_displayConnection != nullptr ? _displayConnection->HeightInCentimeters(outHeightInCentimeters) : Core::ERROR_UNAVAILABLE);
+        return (_displayConnection != nullptr ? _displayConnection->HeightInCentimeters(outHeightInCentimeters) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
     }
 
     uint32_t VerticalFreq(uint32_t& outVerticalFreq) const
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_displayConnection != nullptr ? _displayConnection->VerticalFreq(outVerticalFreq) : Core::ERROR_UNAVAILABLE);
+        return (_displayConnection != nullptr ? _displayConnection->VerticalFreq(outVerticalFreq) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
     }
 
     uint32_t EDID(uint16_t& len, uint8_t outData[])
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_displayConnection != nullptr ? _displayConnection->EDID(len, outData) : Core::ERROR_UNAVAILABLE);
+        return (_displayConnection != nullptr ? _displayConnection->EDID(len, outData) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
     }
 
     uint32_t HDR(Exchange::IHDRProperties::HDRType& outHdrType) const
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_hdrProperties != nullptr ? _hdrProperties->HDRSetting(outHdrType) : Core::ERROR_UNAVAILABLE);
+        return (_hdrProperties != nullptr ? _hdrProperties->HDRSetting(outHdrType) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
     }
 
     uint32_t HDCPProtection(Exchange::IConnectionProperties::HDCPProtectionType& outType) const
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_displayConnection != nullptr ? _displayConnection->HDCPProtection(outType) : Core::ERROR_UNAVAILABLE);
+        return (_displayConnection != nullptr ? _displayConnection->HDCPProtection(outType) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
     }
 
     uint32_t TotalGpuRam(uint64_t& outTotalRam) const
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_graphicsProperties != nullptr ? _graphicsProperties->TotalGpuRam(outTotalRam) : Core::ERROR_UNAVAILABLE);
+        return (_graphicsProperties != nullptr ? _graphicsProperties->TotalGpuRam(outTotalRam) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
     }
 
     uint32_t FreeGpuRam(uint64_t& outFreeRam) const
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_graphicsProperties != nullptr ? _graphicsProperties->FreeGpuRam(outFreeRam) : Core::ERROR_UNAVAILABLE);
+        return (_graphicsProperties != nullptr ? _graphicsProperties->FreeGpuRam(outFreeRam) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
     }
 };
 
