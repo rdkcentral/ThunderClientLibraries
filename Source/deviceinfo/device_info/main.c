@@ -444,6 +444,7 @@ int main()
                 deviceinfo_maximum_output_resolution(DEVICEINFO_VIDEO_DISPLAYPORT, &res);
                 Trace("%i: Output Resolution: %d", count, res);
             }
+            break;
         }
         case '?': {
             ShowMenu();
