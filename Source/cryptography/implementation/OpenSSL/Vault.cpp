@@ -88,7 +88,7 @@ namespace Netflix {
                     TRACE_L1(_T("Set label to default \"%s\""), label.c_str());
                 }
 
-PUSH_WARNING(DISABLE_WARNING_NON_STANDARD_EXTENSION_USED)
+PUSH_WARNING(DISABLE_WARNING_NON_STANDARD_EXTENSION_USED, DISABLE_WARNING_PEDANTIC)
                 struct NetflixData {
                     uint8_t salt[16];
                     uint8_t kpe[16];
@@ -152,7 +152,7 @@ POP_WARNING()
         WPEFramework::Core::File file(path);
 
         if (file.Open(true) == true) {
-PUSH_WARNING(DISABLE_WARNING_NON_STANDARD_EXTENSION_USED)
+PUSH_WARNING(DISABLE_WARNING_NON_STANDARD_EXTENSION_USED, DISABLE_WARNING_PEDANTIC)
             struct NetflixData {
                 uint8_t salt[16];
                 uint8_t kpe[16];

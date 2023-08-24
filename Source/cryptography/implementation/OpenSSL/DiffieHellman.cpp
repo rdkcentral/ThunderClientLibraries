@@ -198,7 +198,7 @@ private:
         uint16_t generatorSize;
         uint16_t privateKeySize;
         uint16_t publicKeySize;
-PUSH_WARNING(DISABLE_WARNING_NON_STANDARD_EXTENSION_USED)
+PUSH_WARNING(DISABLE_WARNING_NON_STANDARD_EXTENSION_USED, DISABLE_WARNING_PEDANTIC)
         uint8_t data[0];
 POP_WARNING()
 
