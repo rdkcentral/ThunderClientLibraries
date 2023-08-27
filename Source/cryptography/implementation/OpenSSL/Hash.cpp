@@ -226,7 +226,7 @@ HashImplementation* hash_create(const hash_type type)
     }
 
     return (implementation);
-};
+}
 
 HashImplementation* hash_create_hmac(const VaultImplementation* vault, const hash_type type, const uint32_t secret_id)
 {

@@ -105,7 +105,7 @@ target_link_libraries(${TARGET}
         )
 
 target_include_directories( ${TARGET}
-        PRIVATE
+        SYSTEM PRIVATE
         ${GSTREAMER_INCLUDES}
         ${GSTREAMER_BASE_INCLUDES}
         )
