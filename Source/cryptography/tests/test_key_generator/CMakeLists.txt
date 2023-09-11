@@ -16,6 +16,7 @@
 # limitations under the License.
 
 find_package(${NAMESPACE}Core REQUIRED)
+find_package(${NAMESPACE}Cryptography REQUIRED)
 find_package(OpenSSL)
 
 add_executable(cgkeygen
@@ -31,8 +32,8 @@ set_target_properties(cgkeygen PROPERTIES
 
 target_link_libraries(cgkeygen
         PRIVATE
-        ${NAMESPACE}Cryptography
         ${NAMESPACE}Core::${NAMESPACE}Core
+        ${NAMESPACE}Cryptography::${NAMESPACE}Cryptography
         ssl
         crypto)
 

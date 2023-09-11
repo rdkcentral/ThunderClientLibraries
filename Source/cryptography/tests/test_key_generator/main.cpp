@@ -31,9 +31,8 @@ namespace {
 
 using namespace WPEFramework;
 
-static constexpr Exchange::CryptographyVault VAULT = Exchange::CRYPTOGRAPHY_VAULT_PLATFORM;
-
-static bool GenerateAESKey(const std::string passphrase, const uint32_t iterations, const uint16_t sizeBits, const std::string name, const string connector = "")
+static bool GenerateAESKey(const std::string passphrase, const uint32_t iterations, const uint16_t sizeBits, const std::string name,
+                           const Exchange::CryptographyVault vaultId, const string connector = "")
 {
     bool result = false;
 
@@ -46,7 +45,7 @@ static bool GenerateAESKey(const std::string passphrase, const uint32_t iteratio
     }
     else if ((iterations != 0) && (sizeBits % 8 == 0) && (sizeBits <= 512)) {
 
-        Exchange::IVault* vault = crypto->Vault(VAULT);
+        Exchange::IVault* vault = crypto->Vault(vaultId);
 
         const uint16_t size = (sizeBits / 8);
 
@@ -101,16 +100,37 @@ int main(const int argc, const char* argv[])
 {
     int result = 0;
 
-    if ((argc == 5) || (argc == 4)) {
-        uint32_t iterations = (argc == 5? atoi(argv[4]) : 500000);
+    if ((argc == 6) || (argc == 5)) {
+        uint32_t iterations = (argc == 6? atoi(argv[5]) : 500000);
 
-        if (GenerateAESKey(argv[2], iterations, atoi(argv[3]), argv[1]) == false) {
-            printf("FAILED to generate a key!\n");
+        Exchange::CryptographyVault vaultId = static_cast<Exchange::CryptographyVault>(~0);
+
+        if (::strcmp(argv[4], "netflix") == 0) {
+            vaultId = Exchange::CRYPTOGRAPHY_VAULT_NETFLIX;
+        }
+        else if (::strcmp(argv[4], "provisionig") == 0) {
+            vaultId = Exchange::CRYPTOGRAPHY_VAULT_PROVISIONING;
+        }
+        else if (::strcmp(argv[4], "platform") == 0) {
+            vaultId = Exchange::CRYPTOGRAPHY_VAULT_PLATFORM;
+        }
+        else if (::strcmp(argv[4], "default") == 0) {
+            vaultId = Exchange::CRYPTOGRAPHY_VAULT_DEFAULT;
+        }
+
+        if (vaultId != static_cast<Exchange::CryptographyVault>(~0)) {
+            if (GenerateAESKey(argv[2], iterations, atoi(argv[3]), argv[1], vaultId) == false) {
+                printf("FAILED to generate a key!\n");
+                result = 1;
+            }
+        }
+        else {
+            printf("invalid vault (must be default, netflix, provisioning or platform)\n");
             result = 1;
         }
     }
     else {
-        printf("usage: %s <filename> <passphrase> <sizebits> [iterations]\n", argv[0]);
+        printf("usage: %s <filename> <passphrase> <sizebits> <vault> [iterations]\n", argv[0]);
     }
 
     return (result);
