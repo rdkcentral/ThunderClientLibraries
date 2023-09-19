@@ -136,7 +136,7 @@ private:
                 ERR_clear_error();
                 int len = 0;
                 int initResult = EVP_CipherInit_ex(_context, _cipher, nullptr, keyBuf, iv, encrypt);
-                ::memset(keyBuf, 0xFF, length);
+                ::memset(keyBuf, 0x00, length);
 
                 if (initResult == 0) {
                     TRACE_L1("EVP_CipherInit_ex() failed: %s", GetSSLError().c_str());

@@ -2,7 +2,7 @@
  * If not stated otherwise in this file or this component's LICENSE file the
  * following copyright and licenses apply:
  *
- * Copyright 2020 Metrological
+ * Copyright 2023 Metrological
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,22 +17,20 @@
  * limitations under the License.
  */
 
-#ifndef CRYPTOGRAPHY_H
-#define CRYPTOGRAPHY_H
+#ifndef RANDOMIMPLEMENTATION_H
+#define RANDOMIMPLEMENTATION_H
 
-#include "Module.h"
+#include <stdint.h>
+#include "vault_implementation.h"
 
-#include <interfaces/ICryptography.h>
-#include <interfaces/INetflixSecurity.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-namespace WPEFramework {
+EXTERNAL uint16_t random_generate(const uint16_t length, uint8_t data[]);
 
-namespace Cryptography {
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
-EXTERNAL Exchange::CryptographyVault VaultId(const string& label);
-
-} // namespace Cryptography
-
-}
-
-#endif // CRYPTOGRAPHY_H
+#endif // DIFFIEHELLMAN_IMPLEMENTATION_H

@@ -147,7 +147,7 @@ public:
                 _pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, nullptr, secret, secretLen);
                 ASSERT(_pkey != nullptr);
 
-                ::memset(secret, 0xFF, secretLen);
+                ::memset(secret, 0x00, secretLen);
 
                 if (OPERATION::Init(_ctx, nullptr, digest, _pkey) == 0) {
                     TRACE_L1("Init() failed");

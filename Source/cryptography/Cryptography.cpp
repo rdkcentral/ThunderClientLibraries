@@ -26,16 +26,17 @@
 #include "implementation/hash_implementation.h"
 #include "implementation/vault_implementation.h"
 #include "implementation/persistent_implementation.h"
+#include "implementation/random_implementation.h"
 
 #include <com/com.h>
 #include <plugins/Types.h>
 
 namespace WPEFramework {
 namespace Implementation {
+
     static constexpr uint16_t TimeOut = 3000;
-    static constexpr const TCHAR* PluginConnector = "/tmp/communicator";
-    static constexpr const TCHAR* Callsign = "Svalbard";
-    static constexpr const TCHAR* CryptographyConnector = "/tmp/svalbard";
+    static constexpr const TCHAR* Callsign = _T("Svalbard");
+    // static constexpr const TCHAR* CryptographyConnector = "/tmp/svalbard";
 
     class CryptographyLink : public RPC::SmartInterfaceType<PluginHost::IPlugin> {
     private:
@@ -57,7 +58,7 @@ namespace Implementation {
         }
         static CryptographyLink& Instance(const std::string& callsign = Callsign)
         {
-            static CryptographyLink *instance = new CryptographyLink(TimeOut, PluginConnector, callsign);
+            static CryptographyLink *instance = new CryptographyLink(TimeOut, SmartInterfaceType::Connector(), callsign);
             ASSERT(instance!=nullptr);
             return *instance;
         }
@@ -65,16 +66,24 @@ namespace Implementation {
         {
             ASSERT(_singleton != nullptr);
 
-            if(_singleton != nullptr)
-            {
+            if (_singleton != nullptr) {
                 delete _singleton;
             }
         }
-        Exchange::ICryptography* Acquire(const Core::NodeId& nodeId)
-        {
-            return BaseClass::Acquire<Exchange::ICryptography>(3000, nodeId, _T(""), ~0);
-        }
+
         Exchange::ICryptography* Cryptography(const std::string& connectionPoint);
+
+        Exchange::IDeviceObjects* DeviceObjects()
+        {
+            PluginHost::IPlugin* plugin = Interface();
+            ASSERT(plugin != nullptr);
+
+            Exchange::IDeviceObjects* iface = plugin->QueryInterface<Exchange::IDeviceObjects>();
+
+            plugin->Release();
+
+            return (iface);
+        }
 
         template <typename TYPE, typename... Args>
         Core::ProxyType<Core::IUnknown> Register(Args&&... args)
@@ -139,7 +148,7 @@ namespace Implementation {
         }
 
     private:
-        Core::CriticalSection _adminLock;
+        mutable Core::CriticalSection _adminLock;
         Exchange::IDiffieHellman* _accessor;
     };
 
@@ -187,6 +196,42 @@ namespace Implementation {
     private:
         mutable Core::CriticalSection _adminLock;
         Exchange::ICipher* _accessor;
+    };
+
+    class RPCRandomImpl : public Exchange::IRandom {
+    public:
+        RPCRandomImpl(Exchange::IRandom* random)
+            : _accessor(random)
+        {
+            if (_accessor != nullptr) {
+                _accessor->AddRef();
+            }
+        }
+        ~RPCRandomImpl() override = default;
+
+        BEGIN_INTERFACE_MAP(RPCRandomImpl)
+        INTERFACE_ENTRY(Exchange::IRandom)
+        END_INTERFACE_MAP
+
+    public:
+        uint16_t Generate(const uint16_t length, uint8_t data[]) const override
+        {
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+            return (_accessor != nullptr ? _accessor->Generate(length, data) : 0);
+        }
+
+        void Unlink()
+        {
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+            if (_accessor != nullptr) {
+                _accessor->Release();
+                _accessor = nullptr;
+            }
+        }
+
+    private:
+        mutable Core::CriticalSection _adminLock;
+        Exchange::IRandom* _accessor;
     };
 
     class RPCHashImpl : public Exchange::IHash {
@@ -284,6 +329,13 @@ namespace Implementation {
         {
             Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
             return (_accessor != nullptr ? _accessor->Get(id, maxLength, blob) : 0);
+        }
+
+        // Set encrypted data blob in the vault (returns blob ID)
+        uint32_t Generate(const uint16_t length) override
+        {
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+            return (_accessor != nullptr ? _accessor->Generate(length) : 0);
         }
 
         // Delete a data blob from the vault
@@ -403,6 +455,30 @@ namespace Implementation {
         END_INTERFACE_MAP
 
     public:
+        // Retrieve a random number calculator
+        Exchange::IRandom* Random() override
+        {
+            Exchange::IRandom* iface = nullptr;
+
+            Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+
+            if (_accessor != nullptr) {
+                iface = _accessor->Random();
+
+                if (iface != nullptr) {
+                    Core::ProxyType<Core::IUnknown> object = CryptographyLink::Instance().Register<RPCRandomImpl>(iface);
+
+                    ASSERT(object.IsValid() == true);
+
+                    iface->Release();
+
+                    iface = reinterpret_cast<Exchange::IRandom*>(object->QueryInterface(Exchange::IRandom::ID));
+                }
+            }
+
+            return iface;
+        }
+
         // Retrieve a hash calculator
         Exchange::IHash* Hash(const Exchange::hashtype hashType) override
         {
@@ -486,7 +562,27 @@ namespace Implementation {
         return iface;
     }
 
-    class HashImpl : public WPEFramework::Exchange::IHash {
+    class RandomImpl : public Exchange::IRandom {
+    public:
+        RandomImpl(const RandomImpl&) = delete;
+        RandomImpl& operator=(const RandomImpl&) = delete;
+
+        RandomImpl() = default;
+        ~RandomImpl() override = default;
+
+    public:
+        uint16_t Generate(const uint16_t length, uint8_t data[]) const override
+        {
+            return (random_generate(length, data));
+        }
+
+    public:
+        BEGIN_INTERFACE_MAP(RandomImpl)
+        INTERFACE_ENTRY(Exchange::IRandom)
+        END_INTERFACE_MAP
+    }; // class RandomImpl
+
+    class HashImpl : public Exchange::IHash {
     public:
         HashImpl() = delete;
         HashImpl(const HashImpl&) = delete;
@@ -516,14 +612,15 @@ namespace Implementation {
 
     public:
         BEGIN_INTERFACE_MAP(HashImpl)
-        INTERFACE_ENTRY(WPEFramework::Exchange::IHash)
+        INTERFACE_ENTRY(Exchange::IHash)
         END_INTERFACE_MAP
 
     private:
         HashImplementation* _implementation;
     }; // class HashImpl
 
-    class VaultImpl : public WPEFramework::Exchange::IVault, public WPEFramework::Exchange::IPersistent {
+    class VaultImpl : public Exchange::IVault
+                    , public Exchange::IPersistent {
     public:
         VaultImpl() = delete;
         VaultImpl(const VaultImpl&) = delete;
@@ -563,11 +660,16 @@ namespace Implementation {
             return (vault_get(_implementation, id, maxLength, blob));
         }
 
+        uint32_t Generate(const uint16_t length) override
+        {
+            return (vault_generate(_implementation, length));
+        }
+
         bool Delete(const uint32_t id) override
         {
             return (vault_delete(_implementation, id));
         }
-   
+
         uint32_t Exists(const string& locator,bool& result) const override
         {
             return(persistent_key_exists(_implementation,locator.c_str(),&result));
@@ -587,7 +689,7 @@ namespace Implementation {
         {
             return(persistent_flush(_implementation));
         }
- 
+
         VaultImplementation* Implementation()
         {
             return _implementation;
@@ -621,7 +723,7 @@ namespace Implementation {
             VaultImpl* _vault;
         }; // class HMACImpl
 
-        class CipherImpl : public WPEFramework::Exchange::ICipher {
+        class CipherImpl : public Exchange::ICipher {
         public:
             CipherImpl() = delete;
             CipherImpl(const CipherImpl&) = delete;
@@ -659,7 +761,7 @@ namespace Implementation {
 
         public:
             BEGIN_INTERFACE_MAP(CipherImpl)
-            INTERFACE_ENTRY(WPEFramework::Exchange::ICipher)
+            INTERFACE_ENTRY(Exchange::ICipher)
             END_INTERFACE_MAP
 
         private:
@@ -667,7 +769,7 @@ namespace Implementation {
             CipherImplementation* _implementation;
         }; // class CipherImpl
 
-        class DiffieHellmanImpl : public WPEFramework::Exchange::IDiffieHellman {
+        class DiffieHellmanImpl : public Exchange::IDiffieHellman {
         public:
             DiffieHellmanImpl() = delete;
             DiffieHellmanImpl(const DiffieHellmanImpl&) = delete;
@@ -699,22 +801,22 @@ namespace Implementation {
 
         public:
             BEGIN_INTERFACE_MAP(DiffieHellmanImpl)
-            INTERFACE_ENTRY(WPEFramework::Exchange::IDiffieHellman)
+            INTERFACE_ENTRY(Exchange::IDiffieHellman)
             END_INTERFACE_MAP
 
         private:
             VaultImpl* _vault;
         }; // class DiffieHellmanImpl
 
-        WPEFramework::Exchange::IHash* HMAC(const WPEFramework::Exchange::hashtype hashType,
+        Exchange::IHash* HMAC(const Exchange::hashtype hashType,
             const uint32_t secretId) override
         {
-            WPEFramework::Exchange::IHash* hmac(nullptr);
+            Exchange::IHash* hmac(nullptr);
 
             HashImplementation* impl = hash_create_hmac(_implementation, static_cast<hash_type>(hashType), secretId);
 
             if (impl != nullptr) {
-                hmac = WPEFramework::Core::Service<HMACImpl>::Create<WPEFramework::Exchange::IHash>(this, impl);
+                hmac = Core::Service<HMACImpl>::Create<Exchange::IHash>(this, impl);
                 ASSERT(hmac != nullptr);
 
                 if (hmac == nullptr) {
@@ -725,15 +827,15 @@ namespace Implementation {
             return (hmac);
         }
 
-        WPEFramework::Exchange::ICipher* AES(const WPEFramework::Exchange::aesmode aesMode,
+        Exchange::ICipher* AES(const Exchange::aesmode aesMode,
             const uint32_t keyId) override
         {
-            WPEFramework::Exchange::ICipher* cipher(nullptr);
+            Exchange::ICipher* cipher(nullptr);
 
             CipherImplementation* impl = cipher_create_aes(_implementation, static_cast<aes_mode>(aesMode), keyId);
 
             if (impl != nullptr) {
-                cipher = Core::Service<CipherImpl>::Create<WPEFramework::Exchange::ICipher>(this, impl);
+                cipher = Core::Service<CipherImpl>::Create<Exchange::ICipher>(this, impl);
                 ASSERT(cipher != nullptr);
 
                 if (cipher == nullptr) {
@@ -744,24 +846,24 @@ namespace Implementation {
             return (cipher);
         }
 
-        WPEFramework::Exchange::IDiffieHellman* DiffieHellman() override
+        Exchange::IDiffieHellman* DiffieHellman() override
         {
-            WPEFramework::Exchange::IDiffieHellman* dh = Core::Service<DiffieHellmanImpl>::Create<WPEFramework::Exchange::IDiffieHellman>(this);
+            Exchange::IDiffieHellman* dh = Core::Service<DiffieHellmanImpl>::Create<Exchange::IDiffieHellman>(this);
             ASSERT(dh != nullptr);
             return (dh);
         }
 
     public:
         BEGIN_INTERFACE_MAP(VaultImpl)
-        INTERFACE_ENTRY(WPEFramework::Exchange::IVault)
-        INTERFACE_ENTRY(WPEFramework::Exchange::IPersistent)
+        INTERFACE_ENTRY(Exchange::IVault)
+        INTERFACE_ENTRY(Exchange::IPersistent)
         END_INTERFACE_MAP
 
     private:
         VaultImplementation* _implementation;
     }; // class VaultImpl
 
-    class CryptographyImpl : public WPEFramework::Exchange::ICryptography {
+    class CryptographyImpl : public Exchange::ICryptography {
     public:
         CryptographyImpl(const CryptographyImpl&) = delete;
         CryptographyImpl& operator=(const CryptographyImpl&) = delete;
@@ -769,13 +871,21 @@ namespace Implementation {
         ~CryptographyImpl() override = default;
 
     public:
-        WPEFramework::Exchange::IHash* Hash(const WPEFramework::Exchange::hashtype hashType) override
+        Exchange::IRandom* Random() override
         {
-            WPEFramework::Exchange::IHash* hash(nullptr);
+            Exchange::IRandom* random = Core::Service<Implementation::RandomImpl>::Create<Exchange::IRandom>();
+            ASSERT(random != nullptr);
+
+            return (random);
+        }
+
+        Exchange::IHash* Hash(const Exchange::hashtype hashType) override
+        {
+            Exchange::IHash* hash(nullptr);
 
             HashImplementation* impl = hash_create(static_cast<hash_type>(hashType));
             if (impl != nullptr) {
-                hash = WPEFramework::Core::Service<Implementation::HashImpl>::Create<WPEFramework::Exchange::IHash>(impl);
+                hash = Core::Service<Implementation::HashImpl>::Create<Exchange::IHash>(impl);
                 ASSERT(hash != nullptr);
 
                 if (hash == nullptr) {
@@ -786,13 +896,13 @@ namespace Implementation {
             return (hash);
         }
 
-        WPEFramework::Exchange::IVault* Vault(const Exchange::CryptographyVault id) override
+        Exchange::IVault* Vault(const Exchange::CryptographyVault id) override
         {
-            WPEFramework::Exchange::IVault* vault(nullptr);
+            Exchange::IVault* vault(nullptr);
             VaultImplementation* impl = vault_instance(static_cast<cryptographyvault>(id));
 
             if (impl != nullptr) {
-                vault = WPEFramework::Core::Service<Implementation::VaultImpl>::Create<WPEFramework::Exchange::IVault>(impl);
+                vault = Core::Service<Implementation::VaultImpl>::Create<Exchange::IVault>(impl);
                 ASSERT(vault != nullptr);
             }
 
@@ -801,14 +911,14 @@ namespace Implementation {
 
     public:
         BEGIN_INTERFACE_MAP(CryptographyImpl)
-        INTERFACE_ENTRY(WPEFramework::Exchange::ICryptography)
+        INTERFACE_ENTRY(Exchange::ICryptography)
         END_INTERFACE_MAP
     }; // class CryptographyImpl
 
 } // namespace Implementation
 
 namespace Exchange {
-     
+
     /* static */ ICryptography* ICryptography::Instance(const std::string& connectionPoint)
     {
         Exchange::ICryptography* result(nullptr);
@@ -823,6 +933,43 @@ namespace Exchange {
 
         return result;
     }
-}
 
-} // namespace WPEFramework
+    /* static */ IDeviceObjects* IDeviceObjects::Instance()
+    {
+        Exchange::IDeviceObjects* result(nullptr);
+
+        result = Implementation::CryptographyLink::Instance().DeviceObjects();
+
+        return result;
+    }
+
+} // namespace Exchange
+
+namespace Cryptography {
+
+    Exchange::CryptographyVault VaultId(const string& label)
+    {
+        Exchange::CryptographyVault vaultId = static_cast<Exchange::CryptographyVault>(~0);
+
+        if (label == "default") {
+            vaultId = Exchange::CRYPTOGRAPHY_VAULT_DEFAULT;
+        }
+        else if (label == "platform") {
+            vaultId = Exchange::CRYPTOGRAPHY_VAULT_PLATFORM;
+        }
+        else if (label == "provisioning") {
+            vaultId = Exchange::CRYPTOGRAPHY_VAULT_PROVISIONING;
+        }
+        else if (label == "netflix") {
+            vaultId = Exchange::CRYPTOGRAPHY_VAULT_NETFLIX;
+        }
+        else {
+            TRACE_L1("Invalid cryptography vault label: '%s'", label.c_str());
+        }
+
+        return (vaultId);
+    }
+
+} // namespace Cryptography
+
+}

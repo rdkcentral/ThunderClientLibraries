@@ -28,7 +28,7 @@ add_library(${TARGET} STATIC
     VaultNetflix.cpp
     HashTypeNetflix.cpp
     CipherNetflix.cpp
-
+    Random.cpp
 )
 
 target_link_libraries(${TARGET}
