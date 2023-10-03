@@ -51,6 +51,9 @@
     <ClInclude Include="implementation\vault_implementation.h">
       <Filter>C Interface</Filter>
     </ClInclude>
+    <ClInclude Include="implementation\random_implementation.h">
+      <Filter>C Interface</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Cryptography.cpp">
@@ -72,6 +75,9 @@
       <Filter>Implementation\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="implementation\OpenSSL\Vault.cpp">
+      <Filter>Implementation\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="implementation\OpenSSL\Random.cpp">
       <Filter>Implementation\Source Files</Filter>
     </ClCompile>
   </ItemGroup>
