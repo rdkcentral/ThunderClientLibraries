@@ -27,6 +27,7 @@
     <ClInclude Include="implementation\OpenSSL\Derive.h" />
     <ClInclude Include="implementation\OpenSSL\Vault.h" />
     <ClInclude Include="implementation\vault_implementation.h" />
+    <ClInclude Include="implementation\random_implementation.h" />
     <ClInclude Include="Module.h" />
   </ItemGroup>
   <ItemGroup>
@@ -36,6 +37,7 @@
     <ClCompile Include="implementation\OpenSSL\DiffieHellman.cpp" />
     <ClCompile Include="implementation\OpenSSL\Hash.cpp" />
     <ClCompile Include="implementation\OpenSSL\Vault.cpp" />
+    <ClCompile Include="implementation\OpenSSL\Random.cpp" />
     <ClCompile Include="NetflixSecurity.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
