@@ -116,7 +116,7 @@ jobs:
     - name: Build ThunderClientLibraries
       shell: cmd
       run: |
-        set -e
+        $ErrorActionPreference = "Stop"
         cd ThunderOnWindows
         "%devEnv%" /Build "${{matrix.type}}|x${{matrix.version}}" /Project "%cryptography%"  "%solution%"
         "%devEnv%" /Build "${{matrix.type}}|x${{matrix.version}}" /Project "%deviceinfo%"  "%solution%"
