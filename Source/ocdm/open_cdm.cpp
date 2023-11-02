@@ -492,6 +492,25 @@ OpenCDMError opencdm_session_resetoutputprotection(struct OpenCDMSession* sessio
 }
 
 /**
+ * Set a name/value pair into the CDM
+ * \param session \ref OpenCDMSession instance.
+ * \return Zero on success, non-zero on error.
+ */
+OpenCDMError opencdm_session_set_parameter(struct OpenCDMSession* session,
+    const std::string& name,
+    const std::string& value)
+{
+    OpenCDMError result(ERROR_INVALID_SESSION);
+
+    if (session != nullptr) {
+        session->SetParameter(name, value);
+        result = OpenCDMError::ERROR_NONE;
+    }
+
+    return (result);
+}
+
+/**
  * Closes a session.
  * \param session \ref OpenCDMSession instance.
  * \return zero on success, non-zero on error.
