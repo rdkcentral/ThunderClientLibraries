@@ -25,7 +25,7 @@
 #include <gst/base/gstbytereader.h>
 
 #include <gst_svp_meta.h>
-#include "rdk_perf.h"
+#include <rdk_perf.h>
 #include "../CapsParser.h"
 
 //void Log(const char* file, int line, LogLevel ll, const char* fmt, ...);
