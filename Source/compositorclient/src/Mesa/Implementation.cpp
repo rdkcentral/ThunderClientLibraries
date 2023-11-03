@@ -1010,7 +1010,7 @@ namespace Linux {
             (*it)->Process(); // render
         }
 
-        uint32_t delay((next_frame - Core::Time::Now()).MilliSeconds());
+        // uint32_t delay((next_frame - Core::Time::Now()).MilliSeconds());
 
         return Core::ERROR_NONE;
     }
@@ -1027,7 +1027,7 @@ namespace Linux {
         uint32_t realWidth = width;
 
         if (_remoteDisplay != nullptr) {
-            Exchange::IComposition::ScreenResolution resolution = _remoteDisplay->Resolution();
+            // Exchange::IComposition::ScreenResolution resolution = _remoteDisplay->Resolution();
 
             // Let the compositor choose if we go full screen or not.
 
