@@ -98,96 +98,96 @@ namespace Linux {
             return connector;
         }
 
-        uint32_t WidthFromResolution(Exchange::IComposition::ScreenResolution const resolution)
-        {
-            // Assume an invalid width equals 0
-            uint32_t width = 0;
+        // uint32_t WidthFromResolution(Exchange::IComposition::ScreenResolution const resolution) const
+        // {
+        //     // Assume an invalid width equals 0
+        //     uint32_t width = 0;
 
-            switch (resolution) {
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_480p: // 720x480
-                width = 720;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_576p50Hz: // 1024x576 progressive
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_576i: // 1024x576
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_576p: // 1024x576 progressive
-                width = 1024;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_720p: // 1280x720 progressive
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_720p50Hz: // 1280x720 @ 50 Hz
-                width = 1280;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p: // 1280x720 progressive
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i: // 1280x720 progressive
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p24Hz: // 1920x1080 progressive @ 24 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i25Hz: // 1920x1080 interlaced @ 25 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p25Hz: // 1920x1080 progressive @ 25 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i50Hz: // 1920x1080 interlaced  @ 50 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p50Hz: // 1920x1080 progressive @ 50 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p60Hz: // 1920x1080 progressive @ 60 Hz
-                width = 1920;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_2160p50Hz: // 4K, 3840x2160 progressive @ 50 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_2160p60Hz: // 4K, 3840x2160 progressive @ 60 Hz
-                width = 3840;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_4320p30Hz: // 8K, 7680x4320 progressive @ 30 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_4320p60Hz: // 8K, 7680x4320 progressive @ 60 Hz
-                width = 7680;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_480i: // Unknown according to the standards (?)
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_Unknown:
-            default:
-                width = 0;
-            }
+        //     switch (resolution) {
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_480p: // 720x480
+        //         width = 720;
+        //         break;
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_576p50Hz: // 1024x576 progressive
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_576i: // 1024x576
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_576p: // 1024x576 progressive
+        //         width = 1024;
+        //         break;
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_720p: // 1280x720 progressive
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_720p50Hz: // 1280x720 @ 50 Hz
+        //         width = 1280;
+        //         break;
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p: // 1280x720 progressive
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i: // 1280x720 progressive
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p24Hz: // 1920x1080 progressive @ 24 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i25Hz: // 1920x1080 interlaced @ 25 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p25Hz: // 1920x1080 progressive @ 25 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i50Hz: // 1920x1080 interlaced  @ 50 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p50Hz: // 1920x1080 progressive @ 50 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p60Hz: // 1920x1080 progressive @ 60 Hz
+        //         width = 1920;
+        //         break;
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_2160p50Hz: // 4K, 3840x2160 progressive @ 50 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_2160p60Hz: // 4K, 3840x2160 progressive @ 60 Hz
+        //         width = 3840;
+        //         break;
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_4320p30Hz: // 8K, 7680x4320 progressive @ 30 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_4320p60Hz: // 8K, 7680x4320 progressive @ 60 Hz
+        //         width = 7680;
+        //         break;
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_480i: // Unknown according to the standards (?)
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_Unknown:
+        //     default:
+        //         width = 0;
+        //     }
 
-            return width;
-        }
+        //     return width;
+        // }
 
-        uint32_t HeightFromResolution(Exchange::IComposition::ScreenResolution const resolution)
-        {
-            // Assume an invalid height equals 0
-            uint32_t height = 0;
+        // uint32_t HeightFromResolution(Exchange::IComposition::ScreenResolution const resolution)
+        // {
+        //     // Assume an invalid height equals 0
+        //     uint32_t height = 0;
 
-            switch (resolution) {
-            // For descriptions see WidthFromResolution
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_480i: // 720x480
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_480p: // 720x480 progressive
-                height = 480;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_576p50Hz: // 1024x576 progressive
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_576i: // 1024x576
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_576p: // 1024x576 progressive
-                height = 576;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_720p: // 1280x720 progressive
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_720p50Hz: // 1280x720 progressive @ 50 Hz
-                height = 720;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p: // 1280x720 progressive
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i: // 1280x720 progressive
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p24Hz: // 1920x1080 progressive @ 24 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i25Hz: // 1920x1080 interlaced @ 25 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p25Hz: // 1920x1080 progressive @ 25 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i50Hz: // 1920x1080 interlaced @ 50 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p50Hz: // 1920x1080 progressive @ 50 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p60Hz: // 1920x1080 progressive @ 60 Hz
-                height = 1080;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_2160p50Hz: // 4K, 3840x2160 progressive @ 50 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_2160p60Hz: // 4K, 3840x2160 progressive @ 60 Hz
-                height = 2160;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_4320p30Hz: // 8K, 7680x4320 progressive @ 30 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_4320p60Hz: // 8K, 7680x4320 progressive @ 60 Hz
-                height = 4320;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_Unknown:
-            default:
-                height = 0;
-            }
+        //     switch (resolution) {
+        //     // For descriptions see WidthFromResolution
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_480i: // 720x480
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_480p: // 720x480 progressive
+        //         height = 480;
+        //         break;
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_576p50Hz: // 1024x576 progressive
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_576i: // 1024x576
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_576p: // 1024x576 progressive
+        //         height = 576;
+        //         break;
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_720p: // 1280x720 progressive
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_720p50Hz: // 1280x720 progressive @ 50 Hz
+        //         height = 720;
+        //         break;
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p: // 1280x720 progressive
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i: // 1280x720 progressive
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p24Hz: // 1920x1080 progressive @ 24 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i25Hz: // 1920x1080 interlaced @ 25 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p25Hz: // 1920x1080 progressive @ 25 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i50Hz: // 1920x1080 interlaced @ 50 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p50Hz: // 1920x1080 progressive @ 50 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p60Hz: // 1920x1080 progressive @ 60 Hz
+        //         height = 1080;
+        //         break;
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_2160p50Hz: // 4K, 3840x2160 progressive @ 50 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_2160p60Hz: // 4K, 3840x2160 progressive @ 60 Hz
+        //         height = 2160;
+        //         break;
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_4320p30Hz: // 8K, 7680x4320 progressive @ 30 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_4320p60Hz: // 8K, 7680x4320 progressive @ 60 Hz
+        //         height = 4320;
+        //         break;
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_Unknown:
+        //     default:
+        //         height = 0;
+        //     }
 
-            return height;
-        }
+        //     return height;
+        // }
 
         uint8_t RefreshRateFromResolution(Exchange::IComposition::ScreenResolution const resolution)
         {
