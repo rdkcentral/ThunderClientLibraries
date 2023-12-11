@@ -84,7 +84,7 @@ namespace Linux {
         {
             string connector;
             if ((Core::SystemInfo::GetEnvironment(_T("COMPOSITOR_COMMUNICATOR"), connector) == false) || (connector.empty() == true)) {
-                connector = _T("/tmp/Compositor/communicator");
+                connector = _T("/tmp/communicator");
             }
             return (Core::NodeId(connector.c_str()));
         }
