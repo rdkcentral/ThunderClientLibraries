@@ -15,46 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if(BLUETOOTHAUDIOSINK)
-    add_subdirectory(bluetoothaudiosink)
-endif()
-
-if(COMPOSITORCLIENT)
-    add_subdirectory(compositorclient)
-endif()
-
-if(DEVICEINFO)
-    add_subdirectory(deviceinfo)
-endif()
-
-if(DISPLAYINFO)
-    add_subdirectory(displayinfo)
-endif()
-
-if(SECURITYAGENT)
-    add_subdirectory(securityagent)
-endif()
-
-if(PLAYERINFO)
-    add_subdirectory(playerinfo)
-endif()
-
-if(PROVISIONPROXY)
-    add_subdirectory(provisionproxy)
-endif()
-
-if(VIRTUALINPUT)
-    add_subdirectory(virtualinput)
-endif()
-
 if(CDMI)
-    add_subdirectory(ocdm)
+    add_subdirectory(ocdmtest)
 endif()
 
-if(CRYPTOGRAPHY)
-    add_subdirectory(cryptography)
-endif()
 
-if(LOCALTRACER)
-    add_subdirectory(localtracer)
-endif()

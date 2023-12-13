@@ -65,6 +65,7 @@ target_link_libraries(${TARGET}
 target_include_directories( ${TARGET}
         PUBLIC
           $<INSTALL_INTERFACE:include/opencdm>
+          $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/..>
         )
 
 target_include_directories( ${TARGET}
