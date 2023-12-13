@@ -63,6 +63,7 @@ protected:
         , _sessionKeys()
     {
         TRACE_L1("Trying to open an OCDM connection @ %s\n", domainName);
+        Reconnect(); // make sure ResourceMonitor singleton is created before OpenCDMAccessor so the destruction order is correct
     }
 
     void Reconnect() const
