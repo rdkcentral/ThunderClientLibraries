@@ -26,8 +26,6 @@
 using namespace WPEFramework;
 namespace {
 
-
-
 deviceinfo_hdcp_type Convert(const Exchange::IDeviceVideoCapabilities::CopyProtection from)
 {
     static struct LUT {
