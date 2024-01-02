@@ -23,11 +23,9 @@
 #include "include/bluetoothaudiosink.h"
 #include <interfaces/IBluetoothAudio.h>
 
-
 #define CONNECTOR _T("/tmp/bluetoothaudiosink")
 
 #define PRINT(format, ...) fprintf(stderr, _T("bluetoothaudiosink: ") format _T("\n"), ##__VA_ARGS__)
-
 
 namespace WPEFramework {
 
