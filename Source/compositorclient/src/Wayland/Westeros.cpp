@@ -281,7 +281,7 @@ static const struct wl_simple_shell_listener simpleShellListener = {
 
         // Have no idea if this is true, just lets see...
         assert(shell == context._simpleShell);
-        context.Constructed(surfaceId, surface);
+        context.Constructed(reinterpret_cast<void*>(surfaceId), surface);
 
         Wayland::Display::Surface waylandSurface;
         context.Get(surfaceId, waylandSurface);
@@ -320,7 +320,8 @@ static const struct wl_simple_shell_listener simpleShellListener = {
 
         context.Dimensions(surfaceId, visible, x, y, width, height, opacity, zorder);
 
-        context.Constructed(surfaceId, name);
+        context.Constructed(reinterpret_cast<void*>(surfaceId), name);
+
         Trace("wl_simple_shell_listener.surface_status surfaceId=%d\n", surfaceId);
     },
     // getSurfacesDone
@@ -1011,7 +1012,7 @@ namespace Wayland {
         return (Image(*new ImageImplementation(*this, texture, width, height)));
     }
 
-    void Display::Constructed(const uint32_t id, wl_surface* surface)
+    void Display::Constructed(const void* id, wl_surface* surface)
     {
         _adminLock.Lock();
 
@@ -1038,7 +1039,7 @@ namespace Wayland {
         _adminLock.Unlock();
     }
 
-    void Display::Constructed(const uint32_t id, const char* name)
+    void Display::Constructed(const void* id, const char* name)
     {
         _adminLock.Lock();
 
@@ -1087,7 +1088,7 @@ namespace Wayland {
         _adminLock.Unlock();
     }
 
-    void Display::Destructed(const uint32_t id)
+    void Display::Destructed(const void* id)
     {
         _adminLock.Lock();
 

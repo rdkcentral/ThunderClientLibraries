@@ -272,7 +272,7 @@ namespace Wayland {
             static PFNEGLDESTROYIMAGEKHRPROC _eglDestroyImagePtr;
         };
 
-        typedef std::map<const uint32_t, SurfaceImplementation*> SurfaceMap;
+        typedef std::map<const void*, SurfaceImplementation*> SurfaceMap;
         typedef std::map<struct wl_surface*, SurfaceImplementation*> WaylandSurfaceMap;
 
         Display(const std::string& displayName)
@@ -592,7 +592,7 @@ namespace Wayland {
         {
             return (_physical);
         }
-        void Get(const uint32_t id, Surface& surface)
+        void Get(const void* id, Surface& surface)
         {
             _adminLock.Lock();
 
@@ -638,9 +638,9 @@ namespace Wayland {
         }
 
         void InitializeEGL();
-        void Constructed(const uint32_t id, wl_surface* surface);
-        void Constructed(const uint32_t id, const char* name = nullptr);
-        void Destructed(const uint32_t id);
+        void Constructed(const void* id, wl_surface* surface);
+        void Constructed(const void* id, const char* name = nullptr);
+        void Destructed(const void* id);
         void Dimensions(
             const uint32_t id, const uint32_t visible, const int32_t x, const int32_t y, const int32_t width,
             const int32_t height, const uint32_t opacity, const uint32_t zorder);
