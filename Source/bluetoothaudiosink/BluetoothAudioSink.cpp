@@ -578,7 +578,7 @@ namespace BluetoothAudioSinkClient {
     private:
         static AudioSink* _singleton;
 
-        Core::Sink<Callback> _callback;
+        Core::SinkType<Callback> _callback;
 
         mutable Core::CriticalSection _lock;
         OperationalStateUpdateCallbacks _operationalStateCallbacks;

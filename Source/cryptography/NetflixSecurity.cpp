@@ -84,7 +84,7 @@ namespace Implementation {
 
 /* static */ Exchange::INetflixSecurity* Exchange::INetflixSecurity::Instance()
 {
-    return (Core::Service<Implementation::NetflixSecurity>::Create<Exchange::INetflixSecurity>());
+    return (Core::ServiceType<Implementation::NetflixSecurity>::Create<Exchange::INetflixSecurity>());
 }
 
 }
