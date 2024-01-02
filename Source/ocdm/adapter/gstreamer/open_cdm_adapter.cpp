@@ -17,15 +17,12 @@
  * limitations under the License.
  */
  
-#define MODULE_NAME OCDMAdapter_GStreamer
-
-#include <core/core.h>
-#include "open_cdm_adapter.h"
-#include <stdlib.h>
 #include <gst/gst.h>
 #include <gst/base/gstbytereader.h>
-#include "../CapsParser.h"
 
+#include "Module.h"
+#include "CapsParser.h"
+#include "open_cdm_adapter.h"
 
 inline bool mappedBuffer(GstBuffer *buffer, bool writable, uint8_t **data, uint32_t *size)
 {
