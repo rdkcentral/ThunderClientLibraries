@@ -131,7 +131,7 @@ private:
 
     DolbyModeAudioUpdateCallbacks _dolbyCallbacks;
     OperationalStateChangeCallbacks _operationalStateCallbacks;
-    Core::Sink<Notification> _dolbyNotification;
+    Core::SinkType<Notification> _dolbyNotification;
     static PlayerInfo* _singleton;
 
 public:

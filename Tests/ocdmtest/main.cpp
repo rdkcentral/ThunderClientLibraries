@@ -29,6 +29,8 @@
 using namespace std;
 using namespace WPEFramework;
 
+MODULE_NAME_DECLARATION(BUILD_REFERENCE)
+
 int main(int argc, const char* argv [])
 {
     cout << "<keysystem> <0,1,2,3> [1=ocdm dispose, 2=singleton dispose, 3=both, 0 is none]" << endl;

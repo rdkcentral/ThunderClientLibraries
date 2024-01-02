@@ -817,7 +817,7 @@ private:
     Exchange::ISession* _session;
     Exchange::ISessionExt* _sessionExt;
     uint32_t _refCount;
-    Core::Sink<Sink> _sink;
+    Core::SinkType<Sink> _sink;
     std::string _URL;
     OpenCDMSessionCallbacks* _callback;
     void* _userData; 
