@@ -1,7 +1,7 @@
 # If not stated otherwise in this file or this component's LICENSE file the
 # following copyright and licenses apply:
 #
-# Copyright 2020 Metrological
+# Copyright 2021 Metrological
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,32 +15,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(TARGET implementation)
+project(ocdmtest)
 
-#find_package(OpenSSL REQUIRED)
+set(TARGET ${PROJECT_NAME})
 
-add_library(${TARGET} STATIC
-    Vault.cpp
-    Hash.cpp
-    Cipher.cpp
-    #Derive.cpp
-    DiffieHellman.cpp
-    VaultNetflix.cpp
-    HashTypeNetflix.cpp
-    CipherNetflix.cpp
-    Random.cpp
+cmake_minimum_required(VERSION 3.0)
+
+find_package(${NAMESPACE}Core REQUIRED)
+
+if(NOT TARGET ocdm::ocdm)
+    find_package(ocdm REQUIRED)
+endif()
+
+find_package(CompileSettingsDebug CONFIG REQUIRED)
+
+add_executable(${PROJECT_NAME}
+    main.cpp
 )
 
 target_link_libraries(${TARGET}
-    PUBLIC
+   PRIVATE 
         ${NAMESPACE}Core::${NAMESPACE}Core
-	-lsec_api
-	-lsec_api_netflix
+        CompileSettingsDebug::CompileSettingsDebug
+        ocdm::ocdm
 )
-#OpenSSL::SSL
-#        OpenSSL::Crypto
 
-target_include_directories(${TARGET}
-    PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../..>)
+if(INSTALL_TESTS)
+    install(TARGETS ${PROJECT_NAME} DESTINATION bin)
+endif()

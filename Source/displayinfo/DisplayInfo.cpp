@@ -141,7 +141,7 @@ private:
 
     DisplayOutputUpdatedCallbacks _displayChangeCallbacks;
     OperationalStateChangeCallbacks _operationalStateCallbacks;
-    Core::Sink<Notification> _displayUpdatedNotification;
+    Core::SinkType<Notification> _displayUpdatedNotification;
     static DisplayInfo* _singleton;
 
 public:

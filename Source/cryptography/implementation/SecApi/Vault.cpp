@@ -667,6 +667,12 @@ extern "C" {
         return size;
     }
 
+    uint32_t vault_generate(const uint16_t length)
+    {
+        // TODO
+        return (0);
+    }
+
     bool vault_delete(VaultImplementation* vault, const uint32_t id)
     {
         ASSERT(vault != nullptr);

@@ -60,6 +60,8 @@ EXTERNAL uint32_t vault_set(struct VaultImplementation* vault, const uint16_t le
 
 EXTERNAL uint16_t vault_get(const struct VaultImplementation* vault, const uint32_t id, const uint16_t max_length, uint8_t blob[]);
 
+EXTERNAL uint32_t vault_generate(struct VaultImplementation* vault, const uint16_t length);
+
 EXTERNAL bool vault_delete(struct VaultImplementation* vault, const uint32_t id);
 
 

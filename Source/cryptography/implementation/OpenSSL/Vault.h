@@ -70,6 +70,7 @@ public:
     uint16_t Export(const uint32_t id, const uint16_t size, uint8_t blob[], bool allowSealed = false) const;
     uint32_t Put(const uint16_t size, const uint8_t blob[]);
     uint16_t Get(const uint32_t id, const uint16_t size, uint8_t blob[]) const;
+    uint32_t Generate(const uint16_t length);
     bool Delete(const uint32_t id);
 
 private:

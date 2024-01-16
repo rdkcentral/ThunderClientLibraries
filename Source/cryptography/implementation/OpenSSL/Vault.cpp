@@ -242,7 +242,7 @@ Vault::~Vault()
 
 uint16_t Vault::Cipher(bool encrypt, const uint16_t inSize, const uint8_t input[], const uint16_t maxOutSize, uint8_t output[]) const
 {
-    uint16_t totalLen = 0;
+    uint16_t result = 0;
 
     ASSERT(maxOutSize >= (inSize + (encrypt ? IV_SIZE : -IV_SIZE)));
 
@@ -252,6 +252,7 @@ uint16_t Vault::Cipher(bool encrypt, const uint16_t inSize, const uint8_t input[
         const uint8_t* inputBuffer = nullptr;
         uint16_t inputSize = 0;
         uint8_t* outputBuffer = nullptr;
+        uint16_t totalLen = 0;
 
         if (encrypt) {
             RAND_bytes(newIv, sizeof(newIv));
@@ -268,18 +269,24 @@ uint16_t Vault::Cipher(bool encrypt, const uint16_t inSize, const uint8_t input[
             outputBuffer = output;
         }
 
-        int outLen = 0;
-
         EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
         ASSERT(ctx != nullptr);
 
         // AES-CTR ensures same buffer size after encryption
-        EVP_CipherInit_ex(ctx, EVP_aes_128_ctr(), nullptr, reinterpret_cast<const unsigned char*>(_vaultKey.data()), iv, encrypt);
-        EVP_CipherUpdate(ctx, outputBuffer, &outLen, inputBuffer, inputSize);
-        totalLen += outLen;
-        outLen = 0;
-        EVP_EncryptFinal_ex(ctx, (outputBuffer + totalLen), &outLen);
-        totalLen += outLen;
+        if (EVP_CipherInit_ex(ctx, EVP_aes_128_ctr(), nullptr, reinterpret_cast<const unsigned char*>(_vaultKey.data()), iv, encrypt) != 0) {
+
+            int outLen = 0;
+
+            if (EVP_CipherUpdate(ctx, outputBuffer, &outLen, inputBuffer, inputSize) != 0) {
+                totalLen += outLen;
+                outLen = 0;
+
+                if (EVP_CipherFinal_ex(ctx, (outputBuffer + totalLen), &outLen) != 0) {
+                    totalLen += outLen;
+                    result = totalLen;
+                }
+            }
+        }
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
         EVP_CIPHER_CTX_reset(ctx);
@@ -288,7 +295,7 @@ uint16_t Vault::Cipher(bool encrypt, const uint16_t inSize, const uint8_t input[
 #endif
     }
 
-    return (totalLen);
+    return (result);
 }
 
 uint16_t Vault::Size(const uint32_t id, bool allowSealed) const
@@ -405,6 +412,28 @@ uint16_t Vault::Get(const uint32_t id, const uint16_t size, uint8_t blob[]) cons
     return (result);
 }
 
+uint32_t Vault::Generate(const uint16_t size)
+{
+    uint32_t id = 0;
+
+    if (size > 0) {
+        uint8_t* buffer = static_cast<uint8_t*>(ALLOCA(size));
+        ASSERT(buffer != nullptr);
+
+        if (RAND_bytes(buffer, size) != 0) {
+            id = Import(size, buffer);
+            TRACE_L2("Generated random blob id 0x%08x of size %d bytes", id, size);
+        }
+        else {
+            TRACE_L2("PRNG not available");
+        }
+
+        ::memset(buffer, 0x00, size);
+    }
+
+    return (id);
+}
+
 bool Vault::Delete(const uint32_t id)
 {
     bool result = false;
@@ -478,6 +507,13 @@ uint16_t vault_get(const VaultImplementation* vault, const uint32_t id, const ui
     ASSERT(vault != nullptr);
     const Implementation::Vault* vaultImpl = reinterpret_cast<const Implementation::Vault*>(vault);
     return (vaultImpl->Get(id, max_length, data));
+}
+
+uint32_t vault_generate(VaultImplementation* vault, const uint16_t length)
+{
+    ASSERT(vault != nullptr);
+    Implementation::Vault* vaultImpl = reinterpret_cast<Implementation::Vault*>(vault);
+    return (vaultImpl->Generate(length));
 }
 
 bool vault_delete(VaultImplementation* vault, const uint32_t id)

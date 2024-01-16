@@ -27,10 +27,11 @@ add_library(${TARGET} STATIC
     Cipher.cpp
     DiffieHellman.cpp
     Derive.cpp
+    Random.cpp
 )
 
 target_link_libraries(${TARGET}
-    PUBLIC
+    PRIVATE
         ${NAMESPACE}Core::${NAMESPACE}Core
         OpenSSL::SSL
         OpenSSL::Crypto
@@ -45,7 +46,7 @@ if(USE_PROVISIONING)
         USE_PROVISIONING)
 
     target_link_libraries(${TARGET}
-        PUBLIC
+        PRIVATE
             libprovision::libprovision
     )
 endif()
