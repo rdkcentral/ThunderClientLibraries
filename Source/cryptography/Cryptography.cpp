@@ -817,7 +817,7 @@ namespace Implementation {
             HashImplementation* impl = hash_create_hmac(_implementation, static_cast<hash_type>(hashType), secretId);
 
             if (impl != nullptr) {
-                hmac = Core::Service<HMACImpl>::Create<Exchange::IHash>(this, impl);
+                hmac = Core::ServiceType<HMACImpl>::Create<Exchange::IHash>(this, impl);
                 ASSERT(hmac != nullptr);
 
                 if (hmac == nullptr) {
@@ -836,7 +836,7 @@ namespace Implementation {
             CipherImplementation* impl = cipher_create_aes(_implementation, static_cast<aes_mode>(aesMode), keyId);
 
             if (impl != nullptr) {
-                cipher = Core::Service<CipherImpl>::Create<Exchange::ICipher>(this, impl);
+                cipher = Core::ServiceType<CipherImpl>::Create<Exchange::ICipher>(this, impl);
                 ASSERT(cipher != nullptr);
 
                 if (cipher == nullptr) {
@@ -849,7 +849,7 @@ namespace Implementation {
 
         Exchange::IDiffieHellman* DiffieHellman() override
         {
-            Exchange::IDiffieHellman* dh = Core::Service<DiffieHellmanImpl>::Create<Exchange::IDiffieHellman>(this);
+            Exchange::IDiffieHellman* dh = Core::ServiceType<DiffieHellmanImpl>::Create<Exchange::IDiffieHellman>(this);
             ASSERT(dh != nullptr);
             return (dh);
         }
@@ -874,7 +874,7 @@ namespace Implementation {
     public:
         Exchange::IRandom* Random() override
         {
-            Exchange::IRandom* random = Core::Service<Implementation::RandomImpl>::Create<Exchange::IRandom>();
+            Exchange::IRandom* random = Core::ServiceType<Implementation::RandomImpl>::Create<Exchange::IRandom>();
             ASSERT(random != nullptr);
 
             return (random);
@@ -886,7 +886,7 @@ namespace Implementation {
 
             HashImplementation* impl = hash_create(static_cast<hash_type>(hashType));
             if (impl != nullptr) {
-                hash = Core::Service<Implementation::HashImpl>::Create<Exchange::IHash>(impl);
+                hash = Core::ServiceType<Implementation::HashImpl>::Create<Exchange::IHash>(impl);
                 ASSERT(hash != nullptr);
 
                 if (hash == nullptr) {
@@ -903,7 +903,7 @@ namespace Implementation {
             VaultImplementation* impl = vault_instance(static_cast<cryptographyvault>(id));
 
             if (impl != nullptr) {
-                vault = Core::Service<Implementation::VaultImpl>::Create<Exchange::IVault>(impl);
+                vault = Core::ServiceType<Implementation::VaultImpl>::Create<Exchange::IVault>(impl);
                 ASSERT(vault != nullptr);
             }
 
@@ -925,7 +925,7 @@ namespace Exchange {
         Exchange::ICryptography* result(nullptr);
 
         if (connectionPoint.empty() == true) {
-            result = Core::Service<Implementation::CryptographyImpl>::Create<Exchange::ICryptography>();
+            result = Core::ServiceType<Implementation::CryptographyImpl>::Create<Exchange::ICryptography>();
         }
         else {
             // Seems we received a connection point

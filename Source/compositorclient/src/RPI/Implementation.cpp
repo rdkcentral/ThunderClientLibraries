@@ -892,7 +892,7 @@ Display::SurfaceImplementation::SurfaceImplementation(
 
     _display.Register(this);
 
-    _remoteAccess = Core::Service<RemoteAccess>::Create<RemoteAccess>(nativeSurface, name, realWidth, realHeight);
+    _remoteAccess = Core::ServiceType<RemoteAccess>::Create<RemoteAccess>(nativeSurface, name, realWidth, realHeight);
 
     _display.OfferClientInterface(_remoteAccess);
 }

@@ -44,11 +44,12 @@ set(PUBLIC_HEADERS
         )
 
 target_link_libraries(${TARGET}
-        PRIVATE
+        PUBLIC
           ${NAMESPACE}Core::${NAMESPACE}Core
           ${NAMESPACE}COM::${NAMESPACE}COM
           ${NAMESPACE}Messaging::${NAMESPACE}Messaging
           libprovision::libprovision
+        PRIVATE
           CompileSettingsDebug::CompileSettingsDebug
         )
 

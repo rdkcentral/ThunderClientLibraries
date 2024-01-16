@@ -927,8 +927,8 @@ namespace BluetoothAudioSourceClient {
 
         string _callsign;
 
-        Core::Sink<Callback> _callback;
-        Core::Sink<SinkStream> _sinkStream;
+        Core::SinkType<Callback> _callback;
+        Core::SinkType<SinkStream> _sinkStream;
 
         mutable Core::CriticalSection _lock;
         Exchange::IBluetoothAudio::ISource* _source;

@@ -32,18 +32,6 @@ find_package(NXCLIENT)
 
 add_library(${PLUGIN_COMPOSITOR_IMPLEMENTATION} OBJECT ${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}.cpp)
 
-if ("${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}" STREQUAL "Weston")
-    target_sources(${PLUGIN_COMPOSITOR_IMPLEMENTATION} xdg-shell-client-protocol.c)
-
-    find_package(GLESv2 REQUIRED)
-    if (GLESV2_FOUND)
-        target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
-            PRIVATE
-                GLESv2::GLESv2
-        )
-    endif (GLESV2_FOUND)
-endif ()
-
 target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
     PRIVATE
         common::include
@@ -68,6 +56,18 @@ if ("${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}" STREQUAL "Westeros")
         PUBLIC
             ${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}Client::${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}Client)
 endif()
+
+if ("${PLUGIN_COMPOSITOR_SUB_IMPLEMENTATION}" STREQUAL "Weston")
+    target_sources(${PLUGIN_COMPOSITOR_IMPLEMENTATION} PRIVATE xdg-shell-client-protocol.c)
+
+    find_package(GLESv2 REQUIRED)
+    if (GLESV2_FOUND)
+        target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
+            PRIVATE
+                GLESv2::GLESv2
+        )
+    endif (GLESV2_FOUND)
+endif ()
 
 if (NXCLIENT_FOUND)
     target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
