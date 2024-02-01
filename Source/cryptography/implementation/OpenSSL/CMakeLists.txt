@@ -21,6 +21,18 @@ find_package(OpenSSL REQUIRED)
 
 option(USE_PROVISIONING "Load Netflix data from a provisioning label" OFF)
 
+# FIXME: As of OpenSSL 3.0 the low level low-level key exchange and object 
+#        creation functions are deprecated. We should mirgrate to use 
+#        the high-level EVP_PKEY API.  
+#
+#        More info: 
+#        https://www.openssl.org/docs/man3.0/man7/migration_guide.html#Deprecated-low-level-object-creation
+#        https://jira.rdkcentral.com/jira/projects/METROL/issues/METROL-506
+#        
+#        For now force deprecated declarations to be a warning.
+add_compile_options( 
+    -Wno-deprecated-declarations)
+
 add_library(${TARGET} STATIC
     Vault.cpp
     Hash.cpp
