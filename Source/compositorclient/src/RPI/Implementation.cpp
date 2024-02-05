@@ -703,12 +703,12 @@ public:
         return (*result);
     } 
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
         if (Core::InterlockedIncrement(_refCount) == 1) {
             const_cast<Display*>(this)->Initialize();
         }
-        return;
+        return (Core::ERROR_NONE);
     }
 
     uint32_t Release() const override
