@@ -721,12 +721,12 @@ namespace Linux {
             return (*result);
         }
 
-        void AddRef() const override
+        uint32_t AddRef() const override
         {
             if (Core::InterlockedIncrement(_refCount) == 1) {
                 const_cast<Display*>(this)->Initialize();
             }
-            return;
+            return Core::ERROR_NONE;
         }
         uint32_t Release() const override
         {
@@ -743,7 +743,7 @@ namespace Linux {
 
                 const_cast<Display*>(this)->Deinitialize();
 
-                return (Core::ERROR_CONNECTION_CLOSED);
+                return (Core::ERROR_DESTRUCTION_SUCCEEDED);
             }
             return (Core::ERROR_NONE);
         }
