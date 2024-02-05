@@ -58,7 +58,7 @@ namespace Compositor {
             };
 
             // Lifetime management
-            virtual void AddRef() const = 0;
+            virtual uint32_t AddRef() const = 0;
             virtual uint32_t Release() const = 0;
 
             // Methods
@@ -78,7 +78,7 @@ namespace Compositor {
             };
 
             // Lifetime management
-            virtual void AddRef() const = 0;
+            virtual uint32_t AddRef() const = 0;
             virtual uint32_t Release() const = 0;
 
             // Methods
@@ -90,7 +90,7 @@ namespace Compositor {
             virtual ~IWheel() {}
 
             // Lifetime management
-            virtual void AddRef() const = 0;
+            virtual uint32_t AddRef() const = 0;
             virtual uint32_t Release() const = 0;
 
             // Methods
@@ -107,7 +107,7 @@ namespace Compositor {
             };
 
             // Lifetime management
-            virtual void AddRef() const = 0;
+            virtual uint32_t AddRef() const = 0;
             virtual uint32_t Release() const = 0;
 
             // Methods
@@ -118,7 +118,7 @@ namespace Compositor {
             virtual ~ISurface(){};
 
             // Lifetime management
-            virtual void AddRef() const = 0;
+            virtual uint32_t AddRef() const = 0;
             virtual uint32_t Release() const = 0;
 
             // Methods
@@ -187,7 +187,7 @@ namespace Compositor {
         virtual ~IDisplay() {}
 
         // Lifetime management
-        virtual void AddRef() const = 0;
+        virtual uint32_t AddRef() const = 0;
         virtual uint32_t Release() const = 0;
 
         // Methods
