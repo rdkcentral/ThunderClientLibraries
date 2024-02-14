@@ -75,18 +75,18 @@ namespace Linux {
         {
             string connector;
             if ((Core::SystemInfo::GetEnvironment(_T("COMPOSITOR_CLIENTBRIDGE"), connector) == false) || (connector.empty() == true)) {
-                connector = _T("/tmp/Compositor/clientbridge");
+                connector = _T("/tmp/clientbridge");
             }
             return connector;
         }
 
-        Core::NodeId CompositorConnector()
+        const string CompositorConnector()
         {
             string connector;
             if ((Core::SystemInfo::GetEnvironment(_T("COMPOSITOR_COMMUNICATOR"), connector) == false) || (connector.empty() == true)) {
                 connector = _T("/tmp/communicator");
             }
-            return (Core::NodeId(connector.c_str()));
+            return connector;
         }
 
         const string InputConnector()
@@ -189,7 +189,7 @@ namespace Linux {
         //     return height;
         // }
 
-        uint8_t RefreshRateFromResolution(Exchange::IComposition::ScreenResolution const resolution)
+        uint8_t RefreshRateFromResolution(const Exchange::IComposition::ScreenResolution resolution)
         {
             // Assume 'unknown' rate equals 60 Hz
             uint8_t rate = 60;
@@ -489,7 +489,7 @@ namespace Linux {
                 _remoteClient = _display.CreateRemoteSurface(name, width, height);
 
                 if (_remoteClient != nullptr) {
-                    TRACE(Trace::Information, (_T("Created remote surface %s  %dx%d (hxb)"), name.c_str(), height, width));
+                    TRACE(Trace::Information, (_T("Created remote surface %s  %dx%d"), name.c_str(), width, height));
 
                     Core::PrivilegedRequest::Container descriptors;
                     Core::PrivilegedRequest request;
@@ -499,6 +499,8 @@ namespace Linux {
                     }
 
                     if (_remoteBuffer != nullptr) {
+                        TRACE(Trace::Information, (_T("Remote buffer %p ready %dx%d format=0x%04X"), _remoteBuffer, _remoteBuffer->Width(), _remoteBuffer->Height(), _remoteBuffer->Format()));
+
                         _surface = gbm_surface_create(
                             static_cast<gbm_device*>(_display.Native()),
                             _remoteBuffer->Width(), _remoteBuffer->Height(), _remoteBuffer->Format(),
@@ -651,9 +653,9 @@ namespace Linux {
                     if (_eglImage == EGL_NO_IMAGE) {
                         CreateImage(dpy);
                     }
-                    
+
                     // Lock the buffer
-                    _remoteBuffer->Planes(10); 
+                    _remoteBuffer->Planes(10);
 
                     RenderImage();
 
@@ -798,6 +800,10 @@ namespace Linux {
     private:
         void Initialize()
         {
+            TRACE(Trace::Information, (_T("PID: %d: Compositor connector: %s"), getpid(), CompositorConnector().c_str()));
+            TRACE(Trace::Information, (_T("PID: %d: Client connector: %s"), getpid(), ClientBridge().c_str()));
+            TRACE(Trace::Information, (_T("PID: %d: Input connector: %s"), getpid(), InputConnector().c_str()));
+
             _adminLock.Lock();
 
             if (WPEFramework::Core::WorkerPool::IsAvailable() == true) {
@@ -805,13 +811,13 @@ namespace Linux {
                 // hosting process) use, it!
                 Core::ProxyType<RPC::InvokeServer> engine = Core::ProxyType<RPC::InvokeServer>::Create(&Core::WorkerPool::Instance());
 
-                _compositorServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(CompositorConnector(), Core::ProxyType<Core::IIPCServer>(engine));
+                _compositorServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(CompositorConnector().c_str()), Core::ProxyType<Core::IIPCServer>(engine));
             } else {
                 // Seems we are not in a process space initiated from the Main framework process or its hosting process.
                 // Nothing more to do than to create a workerpool for RPC our selves !
                 Core::ProxyType<RPC::InvokeServerType<2, 0, 8>> engine = Core::ProxyType<RPC::InvokeServerType<2, 0, 8>>::Create();
 
-                _compositorServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(CompositorConnector(), Core::ProxyType<Core::IIPCServer>(engine));
+                _compositorServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(CompositorConnector().c_str()), Core::ProxyType<Core::IIPCServer>(engine));
             }
 
             // if (display != nullptr) {
@@ -944,8 +950,6 @@ namespace Linux {
         , _nativeDisplay()
     {
         TRACE(Trace::Information, (_T("Constructing Display build @ %s"), __TIMESTAMP__));
-
-        Initialize();
 
         std::vector<std::string> nodes;
 
@@ -1151,8 +1155,7 @@ namespace Linux {
 
 } // namespace Linux
 
-Compositor::IDisplay*
-Compositor::IDisplay::Instance(const string& displayName)
+Compositor::IDisplay* Compositor::IDisplay::Instance(const string& displayName)
 {
     return (&(Linux::Display::Instance(displayName)));
 }
