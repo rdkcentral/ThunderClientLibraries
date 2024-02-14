@@ -75,18 +75,18 @@ namespace Linux {
         {
             string connector;
             if ((Core::SystemInfo::GetEnvironment(_T("COMPOSITOR_CLIENTBRIDGE"), connector) == false) || (connector.empty() == true)) {
-                connector = _T("/tmp/Compositor/clientbridge");
+                connector = _T("/tmp/clientbridge");
             }
             return connector;
         }
 
-        Core::NodeId CompositorConnector()
+        const string CompositorConnector()
         {
             string connector;
             if ((Core::SystemInfo::GetEnvironment(_T("COMPOSITOR_COMMUNICATOR"), connector) == false) || (connector.empty() == true)) {
-                connector = _T("/tmp/Compositor/communicator");
+                connector = _T("/tmp/communicator");
             }
-            return (Core::NodeId(connector.c_str()));
+            return connector;
         }
 
         const string InputConnector()
@@ -98,98 +98,98 @@ namespace Linux {
             return connector;
         }
 
-        uint32_t WidthFromResolution(Exchange::IComposition::ScreenResolution const resolution)
-        {
-            // Assume an invalid width equals 0
-            uint32_t width = 0;
+        // uint32_t WidthFromResolution(Exchange::IComposition::ScreenResolution const resolution) const
+        // {
+        //     // Assume an invalid width equals 0
+        //     uint32_t width = 0;
 
-            switch (resolution) {
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_480p: // 720x480
-                width = 720;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_576p50Hz: // 1024x576 progressive
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_576i: // 1024x576
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_576p: // 1024x576 progressive
-                width = 1024;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_720p: // 1280x720 progressive
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_720p50Hz: // 1280x720 @ 50 Hz
-                width = 1280;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p: // 1280x720 progressive
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i: // 1280x720 progressive
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p24Hz: // 1920x1080 progressive @ 24 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i25Hz: // 1920x1080 interlaced @ 25 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p25Hz: // 1920x1080 progressive @ 25 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i50Hz: // 1920x1080 interlaced  @ 50 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p50Hz: // 1920x1080 progressive @ 50 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p60Hz: // 1920x1080 progressive @ 60 Hz
-                width = 1920;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_2160p50Hz: // 4K, 3840x2160 progressive @ 50 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_2160p60Hz: // 4K, 3840x2160 progressive @ 60 Hz
-                width = 3840;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_4320p30Hz: // 8K, 7680x4320 progressive @ 30 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_4320p60Hz: // 8K, 7680x4320 progressive @ 60 Hz
-                width = 7680;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_480i: // Unknown according to the standards (?)
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_Unknown:
-            default:
-                width = 0;
-            }
+        //     switch (resolution) {
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_480p: // 720x480
+        //         width = 720;
+        //         break;
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_576p50Hz: // 1024x576 progressive
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_576i: // 1024x576
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_576p: // 1024x576 progressive
+        //         width = 1024;
+        //         break;
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_720p: // 1280x720 progressive
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_720p50Hz: // 1280x720 @ 50 Hz
+        //         width = 1280;
+        //         break;
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p: // 1280x720 progressive
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i: // 1280x720 progressive
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p24Hz: // 1920x1080 progressive @ 24 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i25Hz: // 1920x1080 interlaced @ 25 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p25Hz: // 1920x1080 progressive @ 25 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i50Hz: // 1920x1080 interlaced  @ 50 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p50Hz: // 1920x1080 progressive @ 50 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p60Hz: // 1920x1080 progressive @ 60 Hz
+        //         width = 1920;
+        //         break;
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_2160p50Hz: // 4K, 3840x2160 progressive @ 50 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_2160p60Hz: // 4K, 3840x2160 progressive @ 60 Hz
+        //         width = 3840;
+        //         break;
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_4320p30Hz: // 8K, 7680x4320 progressive @ 30 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_4320p60Hz: // 8K, 7680x4320 progressive @ 60 Hz
+        //         width = 7680;
+        //         break;
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_480i: // Unknown according to the standards (?)
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_Unknown:
+        //     default:
+        //         width = 0;
+        //     }
 
-            return width;
-        }
+        //     return width;
+        // }
 
-        uint32_t HeightFromResolution(Exchange::IComposition::ScreenResolution const resolution)
-        {
-            // Assume an invalid height equals 0
-            uint32_t height = 0;
+        // uint32_t HeightFromResolution(Exchange::IComposition::ScreenResolution const resolution)
+        // {
+        //     // Assume an invalid height equals 0
+        //     uint32_t height = 0;
 
-            switch (resolution) {
-            // For descriptions see WidthFromResolution
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_480i: // 720x480
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_480p: // 720x480 progressive
-                height = 480;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_576p50Hz: // 1024x576 progressive
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_576i: // 1024x576
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_576p: // 1024x576 progressive
-                height = 576;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_720p: // 1280x720 progressive
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_720p50Hz: // 1280x720 progressive @ 50 Hz
-                height = 720;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p: // 1280x720 progressive
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i: // 1280x720 progressive
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p24Hz: // 1920x1080 progressive @ 24 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i25Hz: // 1920x1080 interlaced @ 25 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p25Hz: // 1920x1080 progressive @ 25 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i50Hz: // 1920x1080 interlaced @ 50 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p50Hz: // 1920x1080 progressive @ 50 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p60Hz: // 1920x1080 progressive @ 60 Hz
-                height = 1080;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_2160p50Hz: // 4K, 3840x2160 progressive @ 50 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_2160p60Hz: // 4K, 3840x2160 progressive @ 60 Hz
-                height = 2160;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_4320p30Hz: // 8K, 7680x4320 progressive @ 30 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_4320p60Hz: // 8K, 7680x4320 progressive @ 60 Hz
-                height = 4320;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_Unknown:
-            default:
-                height = 0;
-            }
+        //     switch (resolution) {
+        //     // For descriptions see WidthFromResolution
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_480i: // 720x480
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_480p: // 720x480 progressive
+        //         height = 480;
+        //         break;
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_576p50Hz: // 1024x576 progressive
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_576i: // 1024x576
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_576p: // 1024x576 progressive
+        //         height = 576;
+        //         break;
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_720p: // 1280x720 progressive
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_720p50Hz: // 1280x720 progressive @ 50 Hz
+        //         height = 720;
+        //         break;
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p: // 1280x720 progressive
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i: // 1280x720 progressive
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p24Hz: // 1920x1080 progressive @ 24 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i25Hz: // 1920x1080 interlaced @ 25 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p25Hz: // 1920x1080 progressive @ 25 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i50Hz: // 1920x1080 interlaced @ 50 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p50Hz: // 1920x1080 progressive @ 50 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p60Hz: // 1920x1080 progressive @ 60 Hz
+        //         height = 1080;
+        //         break;
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_2160p50Hz: // 4K, 3840x2160 progressive @ 50 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_2160p60Hz: // 4K, 3840x2160 progressive @ 60 Hz
+        //         height = 2160;
+        //         break;
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_4320p30Hz: // 8K, 7680x4320 progressive @ 30 Hz
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_4320p60Hz: // 8K, 7680x4320 progressive @ 60 Hz
+        //         height = 4320;
+        //         break;
+        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_Unknown:
+        //     default:
+        //         height = 0;
+        //     }
 
-            return height;
-        }
+        //     return height;
+        // }
 
-        uint8_t RefreshRateFromResolution(Exchange::IComposition::ScreenResolution const resolution)
+        uint8_t RefreshRateFromResolution(const Exchange::IComposition::ScreenResolution resolution)
         {
             // Assume 'unknown' rate equals 60 Hz
             uint8_t rate = 60;
@@ -489,7 +489,7 @@ namespace Linux {
                 _remoteClient = _display.CreateRemoteSurface(name, width, height);
 
                 if (_remoteClient != nullptr) {
-                    TRACE(Trace::Information, (_T("Created remote surface %s  %dx%d (hxb)"), name.c_str(), height, width));
+                    TRACE(Trace::Information, (_T("Created remote surface %s  %dx%d"), name.c_str(), width, height));
 
                     Core::PrivilegedRequest::Container descriptors;
                     Core::PrivilegedRequest request;
@@ -499,6 +499,8 @@ namespace Linux {
                     }
 
                     if (_remoteBuffer != nullptr) {
+                        TRACE(Trace::Information, (_T("Remote buffer %p ready %dx%d format=0x%04X"), _remoteBuffer, _remoteBuffer->Width(), _remoteBuffer->Height(), _remoteBuffer->Format()));
+
                         _surface = gbm_surface_create(
                             static_cast<gbm_device*>(_display.Native()),
                             _remoteBuffer->Width(), _remoteBuffer->Height(), _remoteBuffer->Format(),
@@ -651,9 +653,9 @@ namespace Linux {
                     if (_eglImage == EGL_NO_IMAGE) {
                         CreateImage(dpy);
                     }
-                    
+
                     // Lock the buffer
-                    _remoteBuffer->Planes(10); 
+                    _remoteBuffer->Planes(10);
 
                     RenderImage();
 
@@ -798,6 +800,10 @@ namespace Linux {
     private:
         void Initialize()
         {
+            TRACE(Trace::Information, (_T("PID: %d: Compositor connector: %s"), getpid(), CompositorConnector().c_str()));
+            TRACE(Trace::Information, (_T("PID: %d: Client connector: %s"), getpid(), ClientBridge().c_str()));
+            TRACE(Trace::Information, (_T("PID: %d: Input connector: %s"), getpid(), InputConnector().c_str()));
+
             _adminLock.Lock();
 
             if (WPEFramework::Core::WorkerPool::IsAvailable() == true) {
@@ -805,13 +811,13 @@ namespace Linux {
                 // hosting process) use, it!
                 Core::ProxyType<RPC::InvokeServer> engine = Core::ProxyType<RPC::InvokeServer>::Create(&Core::WorkerPool::Instance());
 
-                _compositorServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(CompositorConnector(), Core::ProxyType<Core::IIPCServer>(engine));
+                _compositorServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(CompositorConnector().c_str()), Core::ProxyType<Core::IIPCServer>(engine));
             } else {
                 // Seems we are not in a process space initiated from the Main framework process or its hosting process.
                 // Nothing more to do than to create a workerpool for RPC our selves !
                 Core::ProxyType<RPC::InvokeServerType<2, 0, 8>> engine = Core::ProxyType<RPC::InvokeServerType<2, 0, 8>>::Create();
 
-                _compositorServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(CompositorConnector(), Core::ProxyType<Core::IIPCServer>(engine));
+                _compositorServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(CompositorConnector().c_str()), Core::ProxyType<Core::IIPCServer>(engine));
             }
 
             // if (display != nullptr) {
@@ -945,8 +951,6 @@ namespace Linux {
     {
         TRACE(Trace::Information, (_T("Constructing Display build @ %s"), __TIMESTAMP__));
 
-        Initialize();
-
         std::vector<std::string> nodes;
 
         GetDRMNodes(DRM_NODE_RENDER, nodes); // /dev/dri/Renderer128
@@ -1010,7 +1014,7 @@ namespace Linux {
             (*it)->Process(); // render
         }
 
-        uint32_t delay((next_frame - Core::Time::Now()).MilliSeconds());
+        // uint32_t delay((next_frame - Core::Time::Now()).MilliSeconds());
 
         return Core::ERROR_NONE;
     }
@@ -1027,7 +1031,7 @@ namespace Linux {
         uint32_t realWidth = width;
 
         if (_remoteDisplay != nullptr) {
-            Exchange::IComposition::ScreenResolution resolution = _remoteDisplay->Resolution();
+            // Exchange::IComposition::ScreenResolution resolution = _remoteDisplay->Resolution();
 
             // Let the compositor choose if we go full screen or not.
 
@@ -1151,8 +1155,7 @@ namespace Linux {
 
 } // namespace Linux
 
-Compositor::IDisplay*
-Compositor::IDisplay::Instance(const string& displayName)
+Compositor::IDisplay* Compositor::IDisplay::Instance(const string& displayName)
 {
     return (&(Linux::Display::Instance(displayName)));
 }
