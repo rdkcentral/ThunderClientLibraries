@@ -39,6 +39,19 @@ inline bool mappedBuffer(GstBuffer *buffer, bool writable, uint8_t **data, uint3
     return true;
 }
 
+uint32_t opencdm_construct_session_private(struct OpenCDMSession* session, void* &pvtData)
+{
+    pvtData = nullptr;
+    TRACE_L1("opencdm_construct_session_private: nothing to construct");
+    return ERROR_NONE;
+}
+
+uint32_t opencdm_destruct_session_private(struct OpenCDMSession* session, void* &pvtData)
+{
+    TRACE_L1("opencdm_destruct_session_private: nothing to destruct");
+    return ERROR_NONE;
+}
+
 OpenCDMError opencdm_gstreamer_session_decrypt(struct OpenCDMSession* session, GstBuffer* buffer, GstBuffer* subSampleBuffer, const uint32_t subSampleCount,
                                                GstBuffer* IV, GstBuffer* keyID, uint32_t initWithLast15)
 {
