@@ -1,7 +1,7 @@
 # If not stated otherwise in this file or this component's LICENSE file the
 # following copyright and licenses apply:
 #
-# Copyright 2020 Metrological
+# Copyright 2021 Metrological
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,46 +15,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if(BLUETOOTHAUDIOSINK)
-    add_subdirectory(bluetoothaudiosink)
+project(ocdmtest)
+
+set(TARGET ${PROJECT_NAME})
+
+cmake_minimum_required(VERSION 3.0)
+
+find_package(${NAMESPACE}Core REQUIRED)
+
+if(NOT TARGET ocdm::ocdm)
+    find_package(ocdm REQUIRED)
 endif()
 
-if(COMPOSITORCLIENT)
-    add_subdirectory(compositorclient)
-endif()
+find_package(CompileSettingsDebug CONFIG REQUIRED)
 
-if(DEVICEINFO)
-    add_subdirectory(deviceinfo)
-endif()
+add_executable(${PROJECT_NAME}
+    main.cpp
+)
 
-if(DISPLAYINFO)
-    add_subdirectory(displayinfo)
-endif()
+target_link_libraries(${TARGET}
+   PRIVATE 
+        ${NAMESPACE}Core::${NAMESPACE}Core
+        CompileSettingsDebug::CompileSettingsDebug
+        ocdm::ocdm
+)
 
-if(SECURITYAGENT)
-    add_subdirectory(securityagent)
-endif()
-
-if(PLAYERINFO)
-    add_subdirectory(playerinfo)
-endif()
-
-if(PROVISIONPROXY)
-    add_subdirectory(provisionproxy)
-endif()
-
-if(VIRTUALINPUT)
-    add_subdirectory(virtualinput)
-endif()
-
-if(CDMI)
-    add_subdirectory(ocdm)
-endif()
-
-if(CRYPTOGRAPHY)
-    add_subdirectory(cryptography)
-endif()
-
-if(LOCALTRACER)
-    add_subdirectory(localtracer)
+if(INSTALL_TESTS)
+    install(TARGETS ${PROJECT_NAME} DESTINATION bin)
 endif()
