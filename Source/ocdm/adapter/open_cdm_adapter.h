@@ -36,7 +36,7 @@ extern "C" {
  * \brief Creates private data required for decryption.
  *
  * This method allows for creation of private data that is associated with the session. The private data itself is
- * opaque to OpenCDMSession.
+ * opaque to OpenCDMSession and it lives until the lifetime of the \ref OpenCDMSession.
  *
  * \param session \ref OpenCDMSession instance.
  * \param pvtData Output parameter that will contain the Opaque private data created
