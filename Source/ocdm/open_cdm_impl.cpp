@@ -17,6 +17,7 @@
  * limitations under the License.
  */
 
+#include "Module.h"
 #include "open_cdm_impl.h"
 
 class SessionPrivate {
@@ -88,7 +89,8 @@ OpenCDMError OpenCDMSession::CreateSession(struct OpenCDMSystem* system,
         result = (*session != nullptr ? OpenCDMError::ERROR_NONE
                                       : OpenCDMError::ERROR_INVALID_SESSION);
         if(result == OpenCDMError::ERROR_NONE) {
-            void *pvtData;
+            void *pvtData = nullptr;
+            (*session)->_pvtData = nullptr;
             OpenCDMError pvt_result(OpenCDMError::ERROR_METHOD_NOT_IMPLEMENTED);
             pvt_result = SessionPvt.Construct(*session, pvtData);
             if(pvt_result == OpenCDMError::ERROR_NONE) {
