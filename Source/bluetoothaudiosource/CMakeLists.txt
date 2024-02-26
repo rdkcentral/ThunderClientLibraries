@@ -31,7 +31,7 @@ find_package(${NAMESPACE}Core REQUIRED)
 find_package(${NAMESPACE}COM REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 
-option(BLUETOOTHAUDIOSOURCE_EXAMPLERECORDER "Build audio recorder" ON)
+option(BLUETOOTHAUDIOSOURCE_EXAMPLERECORDER "Build audio recorder" OFF)
 set(PUBLIC_HEADERS "include/bluetoothaudiosource.h")
 
 add_library(${TARGET} SHARED
