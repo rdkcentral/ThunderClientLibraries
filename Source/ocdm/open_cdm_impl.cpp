@@ -68,7 +68,6 @@ class SessionPrivate {
     private:
         ConstructSessionPrivate _constructSessionPvt;
         DestructSessionPrivate _destructSessionPvt;
-        bool _bLoaded;
 };
 
 static SessionPrivate SessionPvt;
