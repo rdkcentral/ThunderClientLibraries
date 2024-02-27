@@ -75,7 +75,7 @@ class SessionPrivate {
 
 static SessionPrivate SessionPvt;
 
-OpenCDMError OpenCDMSession::CreateSession(struct OpenCDMSystem* system,
+/* static */ OpenCDMError OpenCDMSession::CreateSession(struct OpenCDMSystem* system,
                             const LicenseType licenseType, const char initDataType[],
                             const uint8_t initData[], const uint16_t initDataLength,
                             const uint8_t CDMData[], const uint16_t CDMDataLength,
