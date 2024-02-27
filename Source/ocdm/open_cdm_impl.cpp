@@ -42,6 +42,9 @@ class SessionPrivate {
             if(_constructSessionPvt != nullptr) {
                 result = ( _constructSessionPvt(session, pvtData) == 0 ? OpenCDMError::ERROR_NONE : OpenCDMError::ERROR_UNKNOWN);
             }
+            else {
+                pvtData = nullptr;
+            }
             return result;
         }
 
@@ -85,17 +88,14 @@ OpenCDMError OpenCDMSession::CreateSession(struct OpenCDMSystem* system,
         *session = new OpenCDMSession(system, std::string(initDataType),
                             initData, initDataLength, CDMData,
                             CDMDataLength, licenseType, callbacks, userData);
+
         result = (*session != nullptr ? OpenCDMError::ERROR_NONE
                                       : OpenCDMError::ERROR_INVALID_SESSION);
+
         if(result == OpenCDMError::ERROR_NONE) {
-            void *pvtData = nullptr;
-            (*session)->_pvtData = nullptr;
             OpenCDMError pvt_result(OpenCDMError::ERROR_METHOD_NOT_IMPLEMENTED);
-            pvt_result = SessionPvt.Construct(*session, pvtData);
-            if(pvt_result == OpenCDMError::ERROR_NONE) {
-                (*session)->_pvtData = pvtData;
-            }
-            else if(pvt_result != OpenCDMError::ERROR_METHOD_NOT_IMPLEMENTED)
+            pvt_result = SessionPvt.Construct(*session, (*session)->_pvtData);
+            if(pvt_result != OpenCDMError::ERROR_NONE && pvt_result != OpenCDMError::ERROR_METHOD_NOT_IMPLEMENTED)
             {
                 //Method is available but resulted in internal error. Not good for decryption.
                 result = OpenCDMError::ERROR_INVALID_SESSION;
