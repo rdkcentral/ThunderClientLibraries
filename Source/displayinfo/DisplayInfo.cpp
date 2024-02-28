@@ -815,7 +815,7 @@ bool displayinfo_is_atmos_supported()
 
 void displayinfo_dispose()
 {
-    DisplayInfo::Dispose();
+    Core::SingletonType<DisplayInfo>::Dispose();
 }
 
 } // extern "C"

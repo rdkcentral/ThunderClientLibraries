@@ -153,6 +153,6 @@ int GetDRMId(const char label[], const unsigned short maxIdLength, char outId[])
 
 void provisioningproxy_dispose()
 {
-    Core::Singleton::Dispose();
+    Core::SingletonType<Provisioning>::Dispose();
 }
 } // extern "C"

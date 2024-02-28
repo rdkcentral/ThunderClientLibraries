@@ -654,6 +654,6 @@ uint32_t playerinfo_get_dolby_mode(playerinfo_dolby_mode_t* mode)
 }
 
 void playerinfo_dispose() {
-    PlayerInfo::Dispose();
+    Core::SingletonType<PlayerInfo>::Dispose();
 }
 }

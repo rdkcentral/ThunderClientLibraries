@@ -91,7 +91,7 @@ int GetToken(unsigned short maxLength, unsigned short inLength, unsigned char bu
 }
 
 void securityagent_dispose() {
-    Core::Singleton::Dispose();
+    Core::SingletonType<SecurityAgent>::Dispose();
 }
 
 }
