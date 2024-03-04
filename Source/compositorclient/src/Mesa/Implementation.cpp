@@ -555,6 +555,14 @@ namespace Linux {
                     gbm_surface_destroy(_surface);
                 }
 
+                if (_remoteBuffer != nullptr) {
+                    _remoteBuffer->Release();
+                }
+
+                if (_remoteClient != nullptr) {
+                    _remoteClient->Release();
+                }
+
                 _display.Release();
             }
 
@@ -565,6 +573,7 @@ namespace Linux {
 
             std::string Name() const override
             {
+                ASSERT(_remoteClient != nullptr);
                 return _remoteClient->Name();
             }
 
@@ -595,10 +604,12 @@ namespace Linux {
 
             int32_t Width() const override
             {
+                ASSERT(_remoteClient != nullptr);
                 return _remoteClient->Geometry().width;
             }
             int32_t Height() const override
             {
+                ASSERT(_remoteClient != nullptr);
                 return _remoteClient->Geometry().height;
             }
 
