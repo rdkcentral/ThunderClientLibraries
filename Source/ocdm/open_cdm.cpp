@@ -130,12 +130,17 @@ KeyStatus CDMState(const Exchange::ISession::KeyStatus state)
  */
 OpenCDMError opencdm_destruct_system(struct OpenCDMSystem* system)
 {
-    OpenCDMAccessor::Instance()->SystemBeingDestructed(system);
-    assert(system != nullptr);
+    OpenCDMError result(OpenCDMError::ERROR_INVALID_ARG);
+
+    ASSERT(system != nullptr);
+
     if (system != nullptr) {
-       delete system;
+        OpenCDMAccessor::Instance()->SystemBeingDestructed(system);
+        delete system;
+        result = OpenCDMError::ERROR_NONE;
     }
-    return (OpenCDMError::ERROR_NONE);
+
+    return (result);
 }
 
 /**
@@ -150,12 +155,17 @@ OpenCDMError opencdm_destruct_system(struct OpenCDMSystem* system)
 OpenCDMError opencdm_is_type_supported(const char keySystem[],
     const char mimeType[])
 {
-    OpenCDMAccessor * accessor = OpenCDMAccessor::Instance();
-    OpenCDMError result(OpenCDMError::ERROR_KEYSYSTEM_NOT_SUPPORTED);
+    OpenCDMError result(OpenCDMError::ERROR_INVALID_ARG);
 
-    if ((accessor != nullptr) && (accessor->IsTypeSupported(std::string(keySystem), std::string(mimeType)) == true)) {
-        result = OpenCDMError::ERROR_NONE;
+    ASSERT(keySystem != nullptr);
+    ASSERT(mimeType != nullptr);
+
+    if ((keySystem != nullptr) && (mimeType != nullptr)) {
+        if (OpenCDMAccessor::Instance()->IsTypeSupported(std::string(keySystem), std::string(mimeType)) == true) {
+            result = OpenCDMError::ERROR_NONE;
+        }
     }
+
     return (result);
 }
 
@@ -176,11 +186,15 @@ OpenCDMError opencdm_system_get_metadata(struct OpenCDMSystem* system,
     char metadata[], 
     uint16_t* metadataSize)
 {
-    OpenCDMError result(ERROR_INVALID_ACCESSOR);
+    OpenCDMError result(OpenCDMError::ERROR_INVALID_ARG);
 
-    if(system != nullptr) {
+    ASSERT(system != nullptr);
+    ASSERT(metadataSize != nullptr);
+
+    if ((system != nullptr) && (metadataSize != nullptr)) {
         result = StringToAllocatedBuffer(system->Metadata(), metadata, *metadataSize);
     }
+
     return result;
 }
 
@@ -199,12 +213,15 @@ OpenCDMError opencdm_system_get_metadata(struct OpenCDMSystem* system,
 
 EXTERNAL OpenCDMError opencdm_get_metric_system_data(struct OpenCDMSystem* system,
     uint32_t* bufferLength,
-    uint8_t* buffer) {
-    OpenCDMError result(ERROR_INVALID_ACCESSOR);
-    OpenCDMAccessor* accessor = OpenCDMAccessor::Instance();
+    uint8_t* buffer)
+{
+    OpenCDMError result(OpenCDMError::ERROR_INVALID_ARG);
 
-    if (accessor != nullptr) {
-	result = static_cast<OpenCDMError>(accessor->Metricdata(system->keySystem(), *bufferLength, buffer));
+    ASSERT(system != nullptr);
+    ASSERT(bufferLength != nullptr);
+
+    if ((system != nullptr) && (bufferLength != nullptr)) {
+        result = static_cast<OpenCDMError>(OpenCDMAccessor::Instance()->Metricdata(system->keySystem(), *bufferLength, buffer));
     }
 
     return (result);
@@ -235,12 +252,12 @@ struct OpenCDMSession* opencdm_get_session(const uint8_t keyId[],
 struct OpenCDMSession* opencdm_get_system_session(struct OpenCDMSystem* system, const uint8_t keyId[],
     const uint8_t length, const uint32_t waitTime)
 {
-    OpenCDMAccessor * accessor = OpenCDMAccessor::Instance();
     struct OpenCDMSession* result = nullptr;
 
     std::string sessionId;
-    if ((accessor != nullptr) && (accessor->WaitForKey(length, keyId, waitTime, Exchange::ISession::Usable, sessionId, system) == true)) {
-        result = accessor->Session(sessionId);
+
+    if (OpenCDMAccessor::Instance()->WaitForKey(length, keyId, waitTime, Exchange::ISession::Usable, sessionId, system) == true) {
+        result = OpenCDMAccessor::Instance()->Session(sessionId);
     }
 
     return (result);
@@ -272,13 +289,15 @@ EXTERNAL OpenCDMBool opencdm_system_supports_server_certificate(
 OpenCDMError opencdm_system_set_server_certificate(struct OpenCDMSystem* system,
     const uint8_t serverCertificate[], const uint16_t serverCertificateLength)
 {
-    OpenCDMAccessor * accessor = OpenCDMAccessor::Instance();
-    OpenCDMError result(ERROR_INVALID_ACCESSOR);
+    OpenCDMError result(OpenCDMError::ERROR_INVALID_ARG);
+
+    ASSERT(system != nullptr);
 
     if (system != nullptr) {
-        result = static_cast<OpenCDMError>(accessor->SetServerCertificate(
+        result = static_cast<OpenCDMError>(OpenCDMAccessor::Instance()->SetServerCertificate(
             system->keySystem(), serverCertificate, serverCertificateLength));
     }
+
     return (result);
 }
 
@@ -291,6 +310,8 @@ OpenCDMError opencdm_system_set_server_certificate(struct OpenCDMSystem* system,
 OpenCDMError opencdm_destruct_session(struct OpenCDMSession* session)
 {
     OpenCDMError result(OpenCDMError::ERROR_INVALID_SESSION);
+
+    ASSERT(session != nullptr);
 
     if (session != nullptr) {
         result = OpenCDMError::ERROR_NONE;
@@ -307,7 +328,9 @@ OpenCDMError opencdm_destruct_session(struct OpenCDMSession* session)
  */
 OpenCDMError opencdm_session_load(struct OpenCDMSession* session)
 {
-    OpenCDMError result(ERROR_INVALID_SESSION);
+    OpenCDMError result(OpenCDMError::ERROR_INVALID_SESSION);
+
+    ASSERT(session != nullptr);
 
     if (session != nullptr) {
         result = static_cast<OpenCDMError>(session->Load());
@@ -333,11 +356,20 @@ OpenCDMError opencdm_session_metadata(const struct OpenCDMSession* session,
     char metadata[], 
     uint16_t* metadataSize)
 {
-    OpenCDMError result(ERROR_INVALID_SESSION);
+    OpenCDMError result(OpenCDMError::ERROR_INVALID_SESSION);
 
-    if(session != nullptr) {
-        result = StringToAllocatedBuffer(session->Metadata(), metadata, *metadataSize);
+    ASSERT(session != nullptr);
+
+    if (session != nullptr) {
+        ASSERT(metadataSize != nullptr);
+
+        if (metadataSize != nullptr) {
+            result = StringToAllocatedBuffer(session->Metadata(), metadata, *metadataSize);
+        } else {
+            result = OpenCDMError::ERROR_INVALID_ARG;
+        }
     }
+
     return result;
 }
 
@@ -349,9 +381,13 @@ OpenCDMError opencdm_session_metadata(const struct OpenCDMSession* session,
 const char* opencdm_session_id(const struct OpenCDMSession* session)
 {
     const char* result = EmptyString;
+
+    ASSERT(session != nullptr);
+
     if (session != nullptr) {
         result = session->SessionId().c_str();
     }
+
     return (result);
 }
 
@@ -363,9 +399,13 @@ const char* opencdm_session_id(const struct OpenCDMSession* session)
 const char* opencdm_session_buffer_id(const struct OpenCDMSession* session)
 {
     const char* result = EmptyString;
+
+    ASSERT(session != nullptr);
+
     if (session != nullptr) {
         result = session->BufferId().c_str();
     }
+
     return (result);
 }
 
@@ -380,10 +420,13 @@ uint32_t opencdm_session_has_key_id(struct OpenCDMSession* session,
     const uint8_t length, const uint8_t keyId[])
 {
     bool result = false;
+
+    ASSERT(session != nullptr);
+
     if (session != nullptr) {
         result = session->HasKeyId(length, keyId);
     }
-    
+
     return result ? 1 : 0;
 }
 
@@ -398,6 +441,8 @@ KeyStatus opencdm_session_status(const struct OpenCDMSession* session,
     const uint8_t keyId[], uint8_t length)
 {
     KeyStatus result(KeyStatus::InternalError);
+
+    ASSERT(session != nullptr);
 
     if (session != nullptr) {
         result = CDMState(session->Status(length, keyId));
@@ -418,6 +463,8 @@ uint32_t opencdm_session_error(const struct OpenCDMSession* session,
 {
     uint32_t result(~0);
 
+    ASSERT(session != nullptr);
+
     if (session != nullptr) {
         result = session->Error(keyId, length);
     }
@@ -433,7 +480,9 @@ uint32_t opencdm_session_error(const struct OpenCDMSession* session,
 OpenCDMError
 opencdm_session_system_error(const struct OpenCDMSession* session)
 {
-    OpenCDMError result(ERROR_INVALID_SESSION);
+    OpenCDMError result(OpenCDMError::ERROR_INVALID_SESSION);
+
+    ASSERT(session != nullptr);
 
     if (session != nullptr) {
         result = static_cast<OpenCDMError>(session->Error());
@@ -453,7 +502,9 @@ OpenCDMError opencdm_session_update(struct OpenCDMSession* session,
     const uint8_t keyMessage[],
     uint16_t keyLength)
 {
-    OpenCDMError result(ERROR_INVALID_SESSION);
+    OpenCDMError result(OpenCDMError::ERROR_INVALID_SESSION);
+
+    ASSERT(session != nullptr);
 
     if (session != nullptr) {
         session->Update(keyMessage, keyLength);
@@ -470,7 +521,9 @@ OpenCDMError opencdm_session_update(struct OpenCDMSession* session,
  */
 OpenCDMError opencdm_session_remove(struct OpenCDMSession* session)
 {
-    OpenCDMError result(ERROR_INVALID_SESSION);
+    OpenCDMError result(OpenCDMError::ERROR_INVALID_SESSION);
+
+    ASSERT(session != nullptr);
 
     if (session != nullptr) {
         result = static_cast<OpenCDMError>(session->Remove());
@@ -486,7 +539,9 @@ OpenCDMError opencdm_session_remove(struct OpenCDMSession* session)
  */
 OpenCDMError opencdm_session_resetoutputprotection(struct OpenCDMSession* session)
 {
-    OpenCDMError result(ERROR_INVALID_SESSION);
+    OpenCDMError result(OpenCDMError::ERROR_INVALID_SESSION);
+
+    ASSERT(session != nullptr);
 
     if (session != nullptr) {
         session->ResetOutputProtection();
@@ -503,8 +558,9 @@ OpenCDMError opencdm_session_resetoutputprotection(struct OpenCDMSession* sessio
  */
 OpenCDMError opencdm_session_close(struct OpenCDMSession* session)
 {
+    OpenCDMError result(OpenCDMError::ERROR_INVALID_SESSION);
 
-    OpenCDMError result(ERROR_INVALID_SESSION);
+    ASSERT(session != nullptr);
 
     if (session != nullptr) {
         session->Close();
@@ -541,7 +597,10 @@ OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
     const uint8_t* keyId, const uint16_t keyIdLength,
     uint32_t initWithLast15 /* = 0 */)
 {
-    OpenCDMError result(ERROR_INVALID_SESSION);
+    OpenCDMError result(OpenCDMError::ERROR_INVALID_SESSION);
+
+    ASSERT(session != nullptr);
+
     if (session != nullptr) {
         SampleInfo sampleInfo;
         sampleInfo.subSample = nullptr;
@@ -553,8 +612,9 @@ OpenCDMError opencdm_session_decrypt(struct OpenCDMSession* session,
         sampleInfo.ivLength = static_cast<uint8_t>(IVLength);
         sampleInfo.keyId = const_cast<uint8_t*>(keyId);
         sampleInfo.keyIdLength = static_cast<uint8_t>(keyIdLength);
+
         result = encryptedLength > 0 ? static_cast<OpenCDMError>(session->Decrypt(
-            encrypted, encryptedLength, const_cast<const SampleInfo*>(&sampleInfo), initWithLast15, nullptr)) : ERROR_NONE;
+            encrypted, encryptedLength, const_cast<const SampleInfo*>(&sampleInfo), initWithLast15, nullptr)) : OpenCDMError::ERROR_NONE;
     }
 
     return (result);
@@ -565,13 +625,16 @@ OpenCDMError opencdm_session_decrypt_v2(struct OpenCDMSession* session,
     uint8_t encrypted[],
     const uint32_t encryptedLength,
     const SampleInfo* sampleInfo,
-    const MediaProperties* properties) {
+    const MediaProperties* properties)
+{
+    OpenCDMError result(OpenCDMError::ERROR_INVALID_SESSION);
 
-    OpenCDMError result(ERROR_INVALID_SESSION);
+    ASSERT(session != nullptr);
+
     if (session != nullptr) {
         uint32_t initWithLast15 = 0;
         result = encryptedLength > 0 ? static_cast<OpenCDMError>(session->Decrypt(
-            encrypted, encryptedLength, sampleInfo, initWithLast15, properties)) : ERROR_NONE;
+            encrypted, encryptedLength, sampleInfo, initWithLast15, properties)) : OpenCDMError::ERROR_NONE;
     }
 
     return (result);
@@ -592,8 +655,12 @@ OpenCDMError opencdm_session_decrypt_v2(struct OpenCDMSession* session,
 
 OpenCDMError opencdm_get_metric_session_data(struct OpenCDMSession* session,
     uint32_t* bufferLength,
-    uint8_t* buffer) {
-    OpenCDMError result(ERROR_INVALID_SESSION);
+    uint8_t* buffer)
+{
+    OpenCDMError result(OpenCDMError::ERROR_INVALID_SESSION);
+
+    ASSERT(session != nullptr);
+
     if (session != nullptr) {
         result = static_cast<OpenCDMError>(session->Metricdata(
             *bufferLength, buffer));
@@ -656,10 +723,14 @@ bool OpenCDMAccessor::WaitForKey(const uint8_t keyLength, const uint8_t keyId[],
         OpenCDMSession* result = nullptr;
         KeyMap::iterator index = _sessionKeys.find(sessionId);
 
+        _adminLock.Lock();
+
         if(index != _sessionKeys.end()){
             result = index->second;
             result->AddRef();
         }
+
+        _adminLock.Unlock();
 
         return (result);
     }
@@ -683,7 +754,6 @@ bool OpenCDMAccessor::WaitForKey(const uint8_t keyLength, const uint8_t keyId[],
     }
     void OpenCDMAccessor::RemoveSession(const string& sessionId)
     {
-
         _adminLock.Lock();
 
         KeyMap::iterator index(_sessionKeys.find(sessionId));
