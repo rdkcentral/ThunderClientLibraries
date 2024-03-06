@@ -59,7 +59,10 @@
     <ClCompile Include="Cryptography.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="NetflixSecurity.cpp">
+    <ClCompile Include="Module.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+     <ClCompile Include="NetflixSecurity.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="implementation\OpenSSL\Cipher.cpp">
