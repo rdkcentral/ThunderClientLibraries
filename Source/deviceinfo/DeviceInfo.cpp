@@ -1577,7 +1577,7 @@ uint32_t deviceinfo_platform_name(char buffer[], uint8_t* length)
 }
 
 void deviceinfo_dispose() {
-    Core::SingletonType<DeviceInfoLink>::Dispose();
+    DeviceInfoLink::Dispose();
 }
 } // extern "C"
 

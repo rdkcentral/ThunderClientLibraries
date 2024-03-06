@@ -1056,7 +1056,7 @@ uint32_t bluetoothaudiosource_relinquish(void)
 
 uint32_t bluetoothaudiosource_dispose(void)
 {
-    Core::SingletonType<BluetoothAudioSourceClient::AudioSource>::Dispose();
+    BluetoothAudioSourceClient::AudioSource::Dispose();
     return (Core::ERROR_NONE);
 }
 
