@@ -32,6 +32,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Cryptography.cpp" />
+    <ClCompile Include="Module.cpp" />
     <ClCompile Include="implementation\OpenSSL\Cipher.cpp" />
     <ClCompile Include="implementation\OpenSSL\Derive.cpp" />
     <ClCompile Include="implementation\OpenSSL\DiffieHellman.cpp" />

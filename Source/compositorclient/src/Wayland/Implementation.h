@@ -120,17 +120,18 @@ namespace Wayland {
             virtual ~SurfaceImplementation();
 
         public:
-            void AddRef() const override
+            uint32_t AddRef() const override
             {
                 _refcount++;
-                return;
+                return Core::ERROR_NONE;
             }
             uint32_t Release() const override
             {
                 if (--_refcount == 0) {
                     delete const_cast<SurfaceImplementation*>(this);
+                    return Core::ERROR_DESTRUCTION_SUCCEEDED;
                 }
-                return (0);
+                return Core::ERROR_NONE;
             }
             EGLNativeWindowType Native() const override
             {
@@ -531,7 +532,7 @@ namespace Wayland {
 
     public:
         // Lifetime management
-        virtual void AddRef() const;
+        virtual uint32_t AddRef() const;
         virtual uint32_t Release() const;
 
         // Methods

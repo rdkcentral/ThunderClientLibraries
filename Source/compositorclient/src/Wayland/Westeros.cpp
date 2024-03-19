@@ -1213,12 +1213,12 @@ namespace Wayland {
         return result;
     }
 
-    void Display::AddRef() const
+    uint32_t Display::AddRef() const
     {
         if (Core::InterlockedIncrement(_refCount) == 1) {
             const_cast<Display*>(this)->Initialize();
         }
-        return;
+        return Core::ERROR_NONE;
     }
 
     uint32_t Display::Release() const
@@ -1227,7 +1227,7 @@ namespace Wayland {
             const_cast<Display*>(this)->Deinitialize();
 
             //Indicate Wayland connection is closed properly
-            return (Core::ERROR_CONNECTION_CLOSED);
+            return (Core::ERROR_DESTRUCTION_SUCCEEDED);
         }
         return (Core::ERROR_NONE);
     }
