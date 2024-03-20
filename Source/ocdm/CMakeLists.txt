@@ -44,6 +44,7 @@ add_library(${TARGET} SHARED
         CapsParser.cpp
         open_cdm.cpp
         open_cdm_ext.cpp
+        open_cdm_impl.cpp
         )
 
 set(PUBLIC_HEADERS

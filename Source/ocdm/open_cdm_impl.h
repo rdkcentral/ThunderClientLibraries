@@ -504,6 +504,7 @@ PUSH_WARNING(DISABLE_WARNING_THIS_IN_MEMBER_INITIALIZER_LIST)
         , _errorCode(~0)
         , _sysError(Exchange::OCDM_RESULT::OCDM_SUCCESS)
         , _system(system)
+        , _pvtData(nullptr)
     {
         OpenCDMAccessor* accessor = OpenCDMAccessor::Instance();
         std::string bufferId;
@@ -522,29 +523,18 @@ PUSH_WARNING(DISABLE_WARNING_THIS_IN_MEMBER_INITIALIZER_LIST)
         }
     }
 
+    virtual ~OpenCDMSession();
+
 POP_WARNING()
 
-    virtual ~OpenCDMSession()
-    {
-        OpenCDMAccessor* system = OpenCDMAccessor::Instance();
-
-        system->RemoveSession(_sessionId);
-
-        if (IsValid()) {
-           _session->Revoke(&_sink);
-        }
-
-        if (_session != nullptr) {
-            Session(nullptr);
-        }
-        if (_decryptSession != nullptr) {
-            DecryptSession(nullptr);
-        }
-
-        TRACE_L1("Destructed the Session Client side: %p", this);
-    }
-
 public:
+    static OpenCDMError CreateSession(struct OpenCDMSystem* system,
+                            const LicenseType licenseType, const char initDataType[],
+                            const uint8_t initData[], const uint16_t initDataLength,
+                            const uint8_t CDMData[], const uint16_t CDMDataLength,
+                            OpenCDMSessionCallbacks* callbacks, void* userData,
+                            struct OpenCDMSession** session);
+
     void AddRef() { Core::InterlockedIncrement(_refCount); }
     bool Release()
     {
@@ -651,6 +641,11 @@ public:
             }
         }
         return (result);
+    }
+
+    void* SessionPrivateData() const
+    {
+        return _pvtData;
     }
 
     uint32_t SessionIdExt() const
@@ -827,5 +822,6 @@ private:
     uint32_t _errorCode;
     Exchange::OCDM_RESULT _sysError;
     OpenCDMSystem* _system;
+    void* _pvtData;
 };
 

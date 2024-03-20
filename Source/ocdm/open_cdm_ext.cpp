@@ -332,47 +332,6 @@ OpenCDMError opencdm_get_secure_store_hash_ext(struct OpenCDMSystem* system,
     return result;
 }
 
-/**
- * \brief Create DRM session (for actual decrypting of data).
- *
- * Creates an instance of \ref OpenCDMSession using initialization data.
- * \param keySystem DRM system to create the session for.
- * \param licenseType DRM specifc signed integer selecting License Type (e.g.
- * "Limited Duration" for PlayReady).
- * \param initDataType Type of data passed in \ref initData.
- * \param initData Initialization data.
- * \param initDataLength Length (in bytes) of initialization data.
- * \param CDMData CDM data.
- * \param CDMDataLength Length (in bytes) of \ref CDMData.
- * \param session Output parameter that will contain pointer to instance of \ref
- * OpenCDMSession.
- * \return Zero on success, non-zero on error.
- */
-OpenCDMError
-opencdm_construct_session(struct OpenCDMSystem* system,
-    const LicenseType licenseType, const char initDataType[],
-    const uint8_t initData[], const uint16_t initDataLength,
-    const uint8_t CDMData[], const uint16_t CDMDataLength,
-    OpenCDMSessionCallbacks* callbacks, void* userData,
-    struct OpenCDMSession** session)
-{
-    ASSERT(system != nullptr);
-    OpenCDMError result(ERROR_INVALID_ACCESSOR);
-
-    TRACE_L1("Creating a Session for %s", system->keySystem().c_str());
-
-    if (system != nullptr) {
-        *session = new OpenCDMSession(system, std::string(initDataType),
-                            initData, initDataLength, CDMData,
-                            CDMDataLength, licenseType, callbacks, userData);
-        result = (*session != nullptr ? OpenCDMError::ERROR_NONE
-                                      : OpenCDMError::ERROR_INVALID_SESSION);
-    }
-
-    TRACE_L1("Created a Session, result %p, %d", *session, result);
-    return result;
-}
-
 OpenCDMError opencdm_system_ext_get_properties(struct PlayLevels* system, const char* propertiesJSONText) 
 {
     using namespace Core ;

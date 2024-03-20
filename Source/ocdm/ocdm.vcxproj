@@ -31,6 +31,7 @@
   <ItemGroup>
     <ClCompile Include="open_cdm.cpp" />
     <ClCompile Include="open_cdm_ext.cpp" />
+    <ClCompile Include="open_cdm_impl.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
