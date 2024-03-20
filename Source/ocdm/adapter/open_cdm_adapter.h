@@ -33,6 +33,31 @@ extern "C" {
 #endif
 
 /**
+ * \brief Creates private data required for decryption.
+ *
+ * This method allows for creation of private data that is associated with the session. The private data itself is
+ * opaque to OpenCDMSession and it lives until the lifetime of the \ref OpenCDMSession.
+ *
+ * \param session \ref OpenCDMSession instance.
+ * \param pvtData Output parameter that will contain the Opaque private data created
+ *
+ * \return Zero on success, non-zero on error.
+ */
+EXTERNAL uint32_t opencdm_construct_session_private(struct OpenCDMSession* session, void* &pvtData);
+
+/**
+ * \brief Destroys private data associated with the Session.
+ *
+ * This method destroys the private data that is associated with the session.
+ *
+ * \param session \ref OpenCDMSession instance.
+ * \param pvtData Input parameter pointer to private data.
+ *
+ * \return Zero on success, non-zero on error.
+ */
+EXTERNAL uint32_t opencdm_destruct_session_private(struct OpenCDMSession* session, void* &pvtData);
+
+/**
  * \brief Performs decryption based on adapter implementation.
  *
  * This method accepts encrypted data and will typically decrypt it out-of-process (for security reasons). The actual data copying is performed
