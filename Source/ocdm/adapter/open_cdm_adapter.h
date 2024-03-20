@@ -113,6 +113,45 @@ EXTERNAL uint32_t opencdm_destruct_session_private(struct OpenCDMSession* sessio
     
     EXTERNAL OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* session, GstBuffer* buffer, GstCaps* caps);
 
+/**
+ * \brief adds SVP related features to the caps structure (only if needed by the platform)
+ *
+ * \param caps GstCaps to be updated
+ *
+ * \return Zero on success, non-zero on error.
+ */
+
+    EXTERNAL OpenCDMError opencdm_gstreamer_transform_caps(GstCaps** caps);
+
+/**
+ * \brief Create DRM session (for actual decrypting of data).
+ *
+ * Creates an instance of \ref OpenCDMSession using initialization data.
+ * \param system Instance of \ref OpenCDMAccessor.
+ * \param keySystem DRM system to create the session for.
+ * \param licenseType DRM specifc signed integer selecting License Type (e.g.
+ * "Limited Duration" for PlayReady).
+ * \param initDataType Type of data passed in \ref initData.
+ * \param initData Initialization data.
+ * \param initDataLength Length (in bytes) of initialization data.
+ * \param CDMData CDM data.
+ * \param CDMDataLength Length (in bytes) of \ref CDMData.
+ * \param callbacks the instance of \ref OpenCDMSessionCallbacks with callbacks to be called on events.
+ * \param userData the user data to be passed back to the \ref OpenCDMSessionCallbacks callbacks.
+ * \param session Output parameter that will contain pointer to instance of \ref OpenCDMSession.
+ * \return Zero on success, non-zero on error.
+ */
+     EXTERNAL OpenCDMError opencdm_adapter_construct_session(struct OpenCDMSystem* system, const LicenseType licenseType,
+                                                    const char initDataType[], const uint8_t initData[], const uint16_t initDataLength,
+                                                    const uint8_t CDMData[], const uint16_t CDMDataLength, OpenCDMSessionCallbacks* callbacks, void* userData,
+                                                    struct OpenCDMSession** session);
+
+/**
+ * Destructs an \ref OpenCDMSession instance.
+ * \param system \ref OpenCDMSession instance to desctruct.
+ * \return Zero on success, non-zero on error.
+ */
+     EXTERNAL OpenCDMError opencdm_adapter_destruct_session(struct OpenCDMSession* session);
 
 #ifdef __cplusplus
 }
