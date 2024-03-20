@@ -153,6 +153,6 @@ int GetDRMId(const char label[], const unsigned short maxIdLength, char outId[])
 
 void provisioningproxy_dispose()
 {
-    Core::Singleton::Dispose();
+    // Currently no singletons to dispose of
 }
 } // extern "C"

@@ -705,7 +705,7 @@ uint32_t bluetoothaudiosink_frame(const uint16_t length, const uint8_t data[], u
 
 uint32_t bluetoothaudiosink_dispose()
 {
-    Core::BluetoothAudioSinkClient::AudioSink::Dispose();
+    BluetoothAudioSinkClient::AudioSink::Dispose();
     return (Core::ERROR_NONE);
 }
 
