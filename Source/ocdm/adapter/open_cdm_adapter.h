@@ -113,6 +113,15 @@ EXTERNAL uint32_t opencdm_destruct_session_private(struct OpenCDMSession* sessio
     
     EXTERNAL OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* session, GstBuffer* buffer, GstCaps* caps);
 
+/**
+ * \brief adds SVP related features to the caps structure (only if needed by the platform)
+ *
+ * \param caps GstCaps to be updated
+ *
+ * \return Zero on success, non-zero on error.
+ */
+
+    EXTERNAL OpenCDMError opencdm_gstreamer_transform_caps(GstCaps** caps);
 
 #ifdef __cplusplus
 }
