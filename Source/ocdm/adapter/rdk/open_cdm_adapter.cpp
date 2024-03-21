@@ -101,7 +101,7 @@ OpenCDMError opencdm_gstreamer_session_decrypt(struct OpenCDMSession* session, G
 
         media_type mediaType = Data;
 
-		if(subSample == NULL && IV == NULL && keyID == NULL) {
+        if(subSample == NULL && IV == NULL && keyID == NULL) {
             // no encrypted data, skip decryption...
             // But still need to transform buffer for SVP support
             gst_buffer_svp_transform_from_cleardata(session->SessionPrivateData(), buffer, mediaType);
