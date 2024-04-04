@@ -899,6 +899,8 @@ namespace Linux {
 
             std::list<SurfaceImplementation*>::iterator index(std::find(_surfaces.begin(), _surfaces.end(), surface));
 
+            ASSERT(index == _surfaces.end());
+
             if (index == _surfaces.end()) {
                 _surfaces.push_back(surface);
             }
