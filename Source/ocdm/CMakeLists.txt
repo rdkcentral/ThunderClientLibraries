@@ -130,7 +130,6 @@ if (${CDMI_ADAPTER_IMPLEMENTATION} STREQUAL "broadcom-svp-secbuf")
 endif()
 
 if (${CDMI_ADAPTER_IMPLEMENTATION} STREQUAL "rdk")
-    add_definitions( -DUSE_SVP=1 )
     target_link_libraries(${TARGET}
             PRIVATE
             -lgstsvpext

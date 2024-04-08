@@ -113,6 +113,7 @@ EXTERNAL uint32_t opencdm_destruct_session_private(struct OpenCDMSession* sessio
     
     EXTERNAL OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* session, GstBuffer* buffer, GstCaps* caps);
 
+
 #ifdef __cplusplus
 }
 #endif
