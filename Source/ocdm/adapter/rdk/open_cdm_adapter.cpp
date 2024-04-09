@@ -39,7 +39,7 @@
 //#define LOGV(...) Log(__FILE__, __LINE__, CDMi::VERBOSE,  __VA_ARGS__)
 
 typedef uint32_t SEC_SIZE;
-struct My_Sec_OpaqueBufferHandle_struct
+struct Secure_OpaqueBufferHandle_struct
 {
     SEC_SIZE dataBufSize;
     void *sess;
@@ -407,6 +407,7 @@ OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* ses
             // no encrypted data, skip decryption...
             // But still need to transform buffer for SVP support
                 gst_buffer_svp_transform_from_cleardata(session->SessionPrivateData(), buffer, mediaType);
+                gst_buffer_unmap(buffer, &dataMap);
                 return(ERROR_NONE);
             }
 
