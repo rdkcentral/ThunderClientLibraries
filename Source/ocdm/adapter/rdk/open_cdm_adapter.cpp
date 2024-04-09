@@ -27,28 +27,6 @@
 #include <gst_svp_meta.h>
 #include "../CapsParser.h"
 
-//void Log(const char* file, int line, LogLevel ll, const char* fmt, ...);
-//void LogTelemetry(const char* file, int line,  int x);
-// Log APIs
-//#define LOGT(X) LogTelemetry(__FILE__, __LINE__, X)
-//#define LOGE(...) Log(__FILE__, __LINE__, CDMi::ERROR,  __VA_ARGS__)
-
-//#define LOGW(...) Log(__FILE__, __LINE__, CDMi::WARNING,  __VA_ARGS__)
-//#define LOGI(...) Log(__FILE__, __LINE__, CDMi::INFO, __VA_ARGS__)
-//#define LOGD(...) Log(__FILE__, __LINE__, CDMi::DEBUG,  __VA_ARGS__)
-//#define LOGV(...) Log(__FILE__, __LINE__, CDMi::VERBOSE,  __VA_ARGS__)
-
-typedef uint32_t SEC_SIZE;
-struct Secure_OpaqueBufferHandle_struct
-{
-    SEC_SIZE dataBufSize;
-    void *sess;
-    SEC_SIZE align;
-    int ion_fd;
-    int map_fd;
-    unsigned int register_shm;
-    void *rtkmem_handle;
-};
 
 EXTERNAL OpenCDMError opencdm_gstreamer_transform_caps(GstCaps** caps)
 {
