@@ -119,19 +119,19 @@ SigningImplementation* signing_create_hash(const hash_type type)
 
     switch (type) {
     case hash_type::HASH_SHA1:
-        implementation = new Implementation::SigningType<WPEFramework::Crypto::SHA1>();
+        implementation = new Implementation::SigningType<Thunder::Crypto::SHA1>();
         break;
     case hash_type::HASH_SHA224:
-        implementation = new Implementation::SigningType<WPEFramework::Crypto::SHA224>();
+        implementation = new Implementation::SigningType<Thunder::Crypto::SHA224>();
         break;
     case hash_type::HASH_SHA256:
-        implementation = new Implementation::SigningType<WPEFramework::Crypto::SHA256>();
+        implementation = new Implementation::SigningType<Thunder::Crypto::SHA256>();
         break;
     case hash_type::HASH_SHA384:
-        implementation = new Implementation::SigningType<WPEFramework::Crypto::SHA384>();
+        implementation = new Implementation::SigningType<Thunder::Crypto::SHA384>();
         break;
     case hash_type::HASH_SHA512:
-        implementation = new Implementation::SigningType<WPEFramework::Crypto::SHA512>();
+        implementation = new Implementation::SigningType<Thunder::Crypto::SHA512>();
         break;
     default:
         TRACE_L1(_T("Hashing algorithm %i not supported"), type);
@@ -151,19 +151,19 @@ SigningImplementation* signing_create_hmac(const hash_type type, const uint32_t 
     } else {
         switch (type) {
         case hash_type::HASH_SHA1:
-            implementation = new Implementation::SigningType<WPEFramework::Crypto::HMACType<WPEFramework::Crypto::SHA1>>(secret_id, secretLength);
+            implementation = new Implementation::SigningType<Thunder::Crypto::HMACType<Thunder::Crypto::SHA1>>(secret_id, secretLength);
             break;
         case hash_type::HASH_SHA224:
-            implementation = new Implementation::SigningType<WPEFramework::Crypto::HMACType<WPEFramework::Crypto::SHA224>>(secret_id, secretLength);
+            implementation = new Implementation::SigningType<Thunder::Crypto::HMACType<Thunder::Crypto::SHA224>>(secret_id, secretLength);
             break;
         case hash_type::HASH_SHA256:
-            implementation = new Implementation::SigningType<WPEFramework::Crypto::HMACType<WPEFramework::Crypto::SHA256>>(secret_id, secretLength);
+            implementation = new Implementation::SigningType<Thunder::Crypto::HMACType<Thunder::Crypto::SHA256>>(secret_id, secretLength);
             break;
         case hash_type::HASH_SHA384:
-            implementation = new Implementation::SigningType<WPEFramework::Crypto::HMACType<WPEFramework::Crypto::SHA384>>(secret_id, secretLength);
+            implementation = new Implementation::SigningType<Thunder::Crypto::HMACType<Thunder::Crypto::SHA384>>(secret_id, secretLength);
             break;
         case hash_type::HASH_SHA512:
-            implementation = new Implementation::SigningType<WPEFramework::Crypto::HMACType<WPEFramework::Crypto::SHA512>>(secret_id, secretLength);
+            implementation = new Implementation::SigningType<Thunder::Crypto::HMACType<Thunder::Crypto::SHA512>>(secret_id, secretLength);
             break;
         default:
             TRACE_L1(_T("Hashing algorithm %i not supported for HMAC"), type);

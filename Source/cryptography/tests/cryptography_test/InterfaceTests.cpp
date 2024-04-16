@@ -27,8 +27,8 @@
 #include "Test.h"
 
 
-static WPEFramework::Exchange::ICryptography* cg;
-static WPEFramework::Exchange::IVault *vault = nullptr;
+static Thunder::Exchange::ICryptography* cg;
+static Thunder::Exchange::IVault *vault = nullptr;
 
 static const uint8_t testVector[] = { 0x74, 0x74, 0x74, 0x74, 0x74, 0x74, 0x74, 0x74, 0x74, 0x74, 0x74, 0x74, 0x74, 0x74, 0x74, 0x7 };
 
@@ -117,7 +117,7 @@ TEST(Hash, Hash)
 	                                        0x03, 0xCD, 0x78, 0x1D, 0x2E, 0x85, 0x13, 0x11, 0x72, 0x7D, 0xCE, 0x8E,
 	                                        0xD7, 0x25, 0x51, 0x0F, 0xE1, 0x3B, 0x78, 0x35 };
 
-    WPEFramework::Exchange::IHash* hashImpl = cg->Hash(WPEFramework::Exchange::hashtype::SHA256);
+    Thunder::Exchange::IHash* hashImpl = cg->Hash(Thunder::Exchange::hashtype::SHA256);
     EXPECT_NE(hashImpl, nullptr);
     if (hashImpl != nullptr) {
         uint8_t* output = new uint8_t[sizeof(hash_sha256)];
@@ -146,7 +146,7 @@ TEST(Hash, Hash)
 	                                         0xED, 0xD3, 0x47, 0x09, 0x7B, 0xC2, 0x4C, 0xB1, 0x78, 0x32, 0x41, 0xF8,
 	                                         0x8A, 0x9D, 0x3D, 0x91, 0xB6, 0xD6, 0x4D, 0x60};
 
-    WPEFramework::Exchange::IHash* lhashImpl = cg->Hash(WPEFramework::Exchange::hashtype::SHA256);
+    Thunder::Exchange::IHash* lhashImpl = cg->Hash(Thunder::Exchange::hashtype::SHA256);
     EXPECT_NE(lhashImpl, nullptr);
     if (lhashImpl != nullptr) {
         uint8_t* output = new uint8_t[sizeof(lhash_sha256)];
@@ -175,7 +175,7 @@ TEST(Hash, HMAC)
     uint32_t keyId = vault->Import(sizeof(password), password);
     EXPECT_NE(keyId, 0);
     if (keyId != 0) {
-        WPEFramework::Exchange::IHash* hashImpl = vault->HMAC(WPEFramework::Exchange::hashtype::SHA256, keyId);
+        Thunder::Exchange::IHash* hashImpl = vault->HMAC(Thunder::Exchange::hashtype::SHA256, keyId);
         EXPECT_NE(hashImpl, nullptr);
         if (hashImpl != nullptr) {
             uint8_t* output = new uint8_t[128];
@@ -226,7 +226,7 @@ TEST(Cipher, AES)
     uint32_t key128Id = vault->Import(sizeof(key128), key128);
     EXPECT_NE(key128Id, 0);
     if (key128Id != 0) {
-        WPEFramework::Exchange::ICipher* aes = vault->AES(WPEFramework::Exchange::aesmode::CBC, key128Id);
+        Thunder::Exchange::ICipher* aes = vault->AES(Thunder::Exchange::aesmode::CBC, key128Id);
         EXPECT_NE(aes, nullptr);
         if (aes) {
                 uint8_t* output = new uint8_t[bufferSize];
@@ -269,7 +269,7 @@ static bool GenerateDHKeyPair(const uint32_t generator, const uint8_t modulus[],
     uint32_t dhPrivateKey = 0;
     uint32_t dhPublicKey = 0;
 
-    WPEFramework::Exchange::IDiffieHellman* dh = vault->DiffieHellman();
+    Thunder::Exchange::IDiffieHellman* dh = vault->DiffieHellman();
     EXPECT_NE(dh, nullptr);
     if (dh != nullptr) {
         uint32_t DHStatus = dh->Generate(generator, modulusSize, modulus, dhPrivateKey, dhPublicKey);
@@ -332,7 +332,7 @@ TEST(DH, Generate)
 
 int main(int argc, char **argv)
 {
-    cg = WPEFramework::Exchange::ICryptography::Instance("");
+    cg = Thunder::Exchange::ICryptography::Instance("");
     int len;
     if (cg != nullptr) {
 
@@ -342,31 +342,31 @@ int main(int argc, char **argv)
 	    if ( (len == 9) && !strncmp( (const char*)argv[i], "--netflix", len) )
             {
 		 printf("\nAcquiring Netflix instance\n");
-                 vault = cg->Vault(WPEFramework::Exchange::CryptographyVault::CRYPTOGRAPHY_VAULT_NETFLIX);
+                 vault = cg->Vault(Thunder::Exchange::CryptographyVault::CRYPTOGRAPHY_VAULT_NETFLIX);
             }
 	    else if ( (len == 9) && !strncmp( (const char*)argv[i], "--default", len) )
             {
 		 printf("\nAcquiring DEFAULT instance\n");
-	         vault = cg->Vault(WPEFramework::Exchange::CryptographyVault::CRYPTOGRAPHY_VAULT_DEFAULT);
+	         vault = cg->Vault(Thunder::Exchange::CryptographyVault::CRYPTOGRAPHY_VAULT_DEFAULT);
             }
 	    else if ( (len == 10) && !strncmp( (const char*)argv[i], "--platform", len) )
             {
 		 printf("\nAcquiring PLATFORM instance\n");
-		 vault = cg->Vault(WPEFramework::Exchange::CryptographyVault::CRYPTOGRAPHY_VAULT_PLATFORM);
+		 vault = cg->Vault(Thunder::Exchange::CryptographyVault::CRYPTOGRAPHY_VAULT_PLATFORM);
 	    }
 	    else if ( (len == 21) && !strncmp( (const char*)argv[i], "--testdefaultinstance", len) )
             {
 #ifdef SecApi
 		 printf("\nAcquiring DEFAULT instance for SecApi\n");
-		 vault = cg->Vault(WPEFramework::Exchange::CryptographyVault::CRYPTOGRAPHY_VAULT_DEFAULT);
+		 vault = cg->Vault(Thunder::Exchange::CryptographyVault::CRYPTOGRAPHY_VAULT_DEFAULT);
 #else
 		 printf("\nAcquiring PLATFORM instance\n");
-		 vault = cg->Vault(WPEFramework::Exchange::CryptographyVault::CRYPTOGRAPHY_VAULT_PLATFORM);
+		 vault = cg->Vault(Thunder::Exchange::CryptographyVault::CRYPTOGRAPHY_VAULT_PLATFORM);
 #endif
 	     }
         }
 	if (vault == nullptr)
-	    vault = cg->Vault(WPEFramework::Exchange::CryptographyVault::CRYPTOGRAPHY_VAULT_NETFLIX);
+	    vault = cg->Vault(Thunder::Exchange::CryptographyVault::CRYPTOGRAPHY_VAULT_NETFLIX);
 
         if (vault != nullptr) {
             CALL(Vault, ImportExport);

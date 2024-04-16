@@ -23,7 +23,7 @@
 
 #include <interfaces/IDRM.h>
 
-namespace WPEFramework {
+namespace Thunder {
     namespace Plugin {
 
         class CapsParser {

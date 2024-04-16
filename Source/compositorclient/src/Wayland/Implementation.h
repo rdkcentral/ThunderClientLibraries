@@ -56,7 +56,7 @@ struct wl_shell_surface;
 struct xdg_surface;
 struct xdg_toplevel;
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Wayland {
 
     class EXTERNAL Display : public Compositor::IDisplay {
@@ -813,4 +813,4 @@ namespace Wayland {
         mutable uint32_t _refCount;
     };
 } // Wayland
-} // WPEFramework
+} // Thunder

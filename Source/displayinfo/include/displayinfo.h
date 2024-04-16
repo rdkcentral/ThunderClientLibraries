@@ -217,7 +217,7 @@ typedef struct displayinfo_edid_cea_extension_info_type {
 * @brief Will be called if there are changes regarding operational state of the
 *        instance - if it is not operational that means any function calls using it
 *        will not succeed (will return Core::ERROR_UNAVAILABLE). Not operational state
-*        can occur if the plugin inside WPEFramework has been deactivated.
+*        can occur if the plugin inside Thunder has been deactivated.
 *
 *
 * @param userData Pointer passed along when @ref displayinfo_register was issued.

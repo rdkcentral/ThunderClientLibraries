@@ -21,7 +21,7 @@
 
 #include "Module.h"
 
-using namespace WPEFramework;
+using namespace Thunder;
 
 namespace IPC {
 

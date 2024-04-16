@@ -18,7 +18,7 @@
  **/
 #include <compositorbuffer/CompositorBufferType.h>
 
-using namespace WPEFramework;
+using namespace Thunder;
 
 MODULE_NAME_ARCHIVE_DECLARATION
 namespace Test {
@@ -30,9 +30,9 @@ const char* descriptors[] = {
 
 const char bridgeConnector[] = _T("/tmp/connector");
 
-class CompositorBuffer : public WPEFramework::Compositor::CompositorBufferType<4>, public Core::IReferenceCounted {
+class CompositorBuffer : public Thunder::Compositor::CompositorBufferType<4>, public Core::IReferenceCounted {
 private:
-    using BaseClass = WPEFramework::Compositor::CompositorBufferType<4>;
+    using BaseClass = Thunder::Compositor::CompositorBufferType<4>;
 
 protected:
     CompositorBuffer(const string& callsign, const uint32_t id, 
@@ -91,9 +91,9 @@ private:
 
 /* static */ Core::ProxyMapType<string, CompositorBuffer> CompositorBuffer::_map;
 
-class ClientBuffer : public WPEFramework::Compositor::CompositorBufferType<4>, public Core::IReferenceCounted {
+class ClientBuffer : public Thunder::Compositor::CompositorBufferType<4>, public Core::IReferenceCounted {
 private:
-    using BaseClass = WPEFramework::Compositor::CompositorBufferType<4>;
+    using BaseClass = Thunder::Compositor::CompositorBufferType<4>;
 
 protected:
     ClientBuffer(const uint32_t id, Core::PrivilegedRequest::Container& descriptors)
@@ -132,7 +132,7 @@ public:
     Dispatcher() = default;
     ~Dispatcher() override = default;
 
-    void Add(const uint32_t id, WPEFramework::Compositor::CompositorBufferType<4>& buffer)
+    void Add(const uint32_t id, Thunder::Compositor::CompositorBufferType<4>& buffer)
     {
         _id = id;
         _buffer = &buffer;
@@ -163,7 +163,7 @@ public:
 
 private:
     uint32_t _id;
-    WPEFramework::Compositor::CompositorBufferType<4>* _buffer;
+    Thunder::Compositor::CompositorBufferType<4>* _buffer;
 };
 
 } // namespace Test
@@ -254,7 +254,7 @@ int main(int argc, const char* argv[])
                     printf("Height: %d\n", buffer->Height());
                     printf("Format: %d\n", buffer->Format());
                     printf("Type: %d\n", buffer->Type());
-                    WPEFramework::Compositor::CompositorBufferType<4>* info = dynamic_cast<WPEFramework::Compositor::CompositorBufferType<4>*>(buffer);
+                    Thunder::Compositor::CompositorBufferType<4>* info = dynamic_cast<Thunder::Compositor::CompositorBufferType<4>*>(buffer);
                     if (info != nullptr) {
                         printf("Dirty:  %s\n", info->IsDirty() ? _T("true") : _T("false"));
                     }
