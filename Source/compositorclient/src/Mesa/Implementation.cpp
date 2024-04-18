@@ -102,31 +102,36 @@ namespace Linux {
         private:
             using BaseClass = WPEFramework::Compositor::CompositorBufferType<4>;
 
-        protected:
-            RemoteBuffer(const uint32_t id, Core::PrivilegedRequest::Container& descriptors)
-                : BaseClass(id, descriptors)
-            {
-                TRACE(Trace::Information, (_T("Remote buffer %p ready %dx%d format=0x%04X"), this, Width(), Height(), Format()));
-            }
-
         public:
             RemoteBuffer() = delete;
             RemoteBuffer(RemoteBuffer&&) = delete;
             RemoteBuffer(const RemoteBuffer&) = delete;
             RemoteBuffer& operator=(const RemoteBuffer&) = delete;
 
-            // static Exchange::ICompositionBuffer* Create(const uint32_t id, Core::PrivilegedRequest::Container& descriptors)
-            // {
-            //     Core::ProxyType<RemoteBuffer> element();
-            //     Exchange::ICompositionBuffer* result = &(*element);
-            //     result->AddRef();
-            //     return (result);
-            // }
+            RemoteBuffer(const uint32_t id, Core::PrivilegedRequest::Container& descriptors)
+                : BaseClass(id, descriptors)
+            {
+                TRACE(Trace::Information, (_T("RemoteBuffer[%p] ready %dx%d format=0x%04X"), this, Width(), Height(), Format()));
+            }
 
-        public:
+            virtual ~RemoteBuffer()
+            {
+                TRACE(Trace::Information, (_T("RemoteBuffer[%p] Destructed"), this));
+            }
+
             void Render() override
             {
                 ASSERT(false); // This should never be called, we are a remote buffer
+            }
+
+            uint32_t AddRef() const override
+            {
+                return Core::ERROR_COMPOSIT_OBJECT;
+            }
+
+            uint32_t Release() const override
+            {
+                return Core::ERROR_COMPOSIT_OBJECT;
             }
         };
 
@@ -150,7 +155,7 @@ namespace Linux {
             bool CreateImage(EGLDisplay dpy)
             {
                 ASSERT(_remoteClient != nullptr);
-                ASSERT(_remoteBuffer.IsValid() == true);
+                ASSERT((_remoteBuffer.get() != nullptr) && (_remoteBuffer->IsValid() == true));
 
                 Exchange::ICompositionBuffer::IIterator* planes = _remoteBuffer->Planes(10);
                 ASSERT(planes != nullptr);
@@ -316,10 +321,10 @@ namespace Linux {
                     Core::PrivilegedRequest request;
 
                     if (request.Request(1000, BufferConnector(), _remoteClient->Native(), descriptors) == Core::ERROR_NONE) {
-                        _remoteBuffer = Core::ProxyType<RemoteBuffer>::Create(_remoteClient->Native(), descriptors);
+                        _remoteBuffer.reset(new RemoteBuffer(_remoteClient->Native(), descriptors));
 
-                        if (_remoteBuffer.IsValid() == true) {
-                            TRACE(Trace::Information, (_T("Remote buffer %p ready %dx%d format=0x%04X"), _remoteBuffer, _remoteBuffer->Width(), _remoteBuffer->Height(), _remoteBuffer->Format()));
+                        if (_remoteBuffer.get() != nullptr) {
+                            TRACE(Trace::Information, (_T("Remote buffer %p ready %dx%d format=0x%04X"), _remoteBuffer.get(), _remoteBuffer->Width(), _remoteBuffer->Height(), _remoteBuffer->Format()));
 
                             _surface = gbm_surface_create(
                                 static_cast<gbm_device*>(_display.Native()),
@@ -336,7 +341,7 @@ namespace Linux {
                 _display.Register(this);
             }
 
-            ~SurfaceImplementation() override
+            virtual ~SurfaceImplementation() /*override*/
             {
                 _display.Unregister(this);
 
@@ -378,7 +383,7 @@ namespace Linux {
                     gbm_surface_destroy(_surface);
                 }
 
-                _remoteBuffer->Release();
+                _remoteBuffer.reset(nullptr);
 
                 if (_remoteClient != nullptr) {
                     _remoteClient->Release();
@@ -470,7 +475,7 @@ namespace Linux {
                 EGLDisplay dpy = eglGetCurrentDisplay();
 
                 // A remote ClientSurface has been created and the IRender interface is supported so the compositor is able to support scan out for this client
-                if ((_remoteBuffer.IsValid() == true) && (_remoteClient != nullptr) && (dpy != EGL_NO_DISPLAY)) {
+                if ((_remoteBuffer.get() != nullptr) && (_remoteBuffer->IsValid() == true) && (_remoteClient != nullptr) && (dpy != EGL_NO_DISPLAY)) {
 
                     if (_eglSync == nullptr) {
                         _eglSync = _egl.eglCreateSync(dpy, EGL_SYNC_FENCE, NULL);
@@ -491,7 +496,7 @@ namespace Linux {
                     // Signal the other side to render the buffer
                     _remoteBuffer->Completed(true);
                 } else {
-                    TRACE(Trace::Error, ("Failed to process, _remoteBuffer: %s, _remoteClient: %s, EGLDisplay: %s", ((_remoteBuffer.IsValid() == true) ? "OK" : "NOK"), ((_remoteClient != nullptr) ? "OK" : "NOK"), ((dpy != EGL_NO_DISPLAY) ? "OK" : "NOK")));
+                    TRACE(Trace::Error, ("Failed to process, _remoteBuffer: %s, _remoteClient: %s, EGLDisplay: %s", ((_remoteBuffer->IsValid() == true) ? "OK" : "NOK"), ((_remoteClient != nullptr) ? "OK" : "NOK"), ((dpy != EGL_NO_DISPLAY) ? "OK" : "NOK")));
                 }
 
                 return Core::ERROR_NONE;
@@ -501,7 +506,7 @@ namespace Linux {
             mutable Core::CriticalSection _adminLock;
             Display& _display;
             Exchange::IComposition::IClient* _remoteClient;
-            Core::ProxyType<RemoteBuffer> _remoteBuffer;
+            std::unique_ptr<RemoteBuffer> _remoteBuffer;
             IKeyboard* _keyboard;
             IWheel* _wheel;
             IPointer* _pointer;
@@ -518,7 +523,7 @@ namespace Linux {
     public:
         typedef std::map<const string, Display*> DisplayMap;
 
-        ~Display() override;
+        virtual ~Display();
 
         static Display& Instance(const string& displayName)
         {
@@ -783,7 +788,7 @@ namespace Linux {
             TRACE(Trace::Error, (_T ( "Failed to get display file descriptor from compositor server")));
         }
 
-        TRACE(Trace::Information, (_T("Constructing Display build @ %s"), __TIMESTAMP__));
+        TRACE(Trace::Information, (_T("Display[%p] Constructed build @ %s"), this, __TIMESTAMP__));
     }
 
     Display::~Display()
@@ -799,6 +804,8 @@ namespace Linux {
             ::close(_gpuId);
             _gpuId = -1;
         }
+
+        TRACE(Trace::Information, (_T ( "Display[%p] Destructed"), this));
     }
 
     Compositor::IDisplay::ISurface* Display::Create(const std::string& name, const uint32_t width, const uint32_t height)
