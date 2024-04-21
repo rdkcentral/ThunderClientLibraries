@@ -81,9 +81,12 @@ static SessionPrivate SessionPvt;
                             OpenCDMSessionCallbacks* callbacks, void* userData,
                             struct OpenCDMSession** session)
 {
-    OpenCDMError result(ERROR_INVALID_ACCESSOR);
+    OpenCDMError result(ERROR_INVALID_ARG);
 
-    if (system != nullptr) {
+    ASSERT(system != nullptr);
+    ASSERT(session != nullptr);
+
+    if ((system != nullptr) && (session != nullptr)) {
         *session = new OpenCDMSession(system, std::string(initDataType),
                             initData, initDataLength, CDMData,
                             CDMDataLength, licenseType, callbacks, userData);
@@ -108,19 +111,15 @@ static SessionPrivate SessionPvt;
 
 OpenCDMSession::~OpenCDMSession()
 {
-    OpenCDMAccessor* system = OpenCDMAccessor::Instance();
-
     SessionPvt.Destruct(this, _pvtData);
 
-    system->RemoveSession(_sessionId);
-
-    if (IsValid()) {
-        _session->Revoke(&_sink);
-    }
+    OpenCDMAccessor::Instance()->RemoveSession(_sessionId);
 
     if (_session != nullptr) {
+        _session->Revoke(&_sink);
         Session(nullptr);
     }
+
     if (_decryptSession != nullptr) {
         DecryptSession(nullptr);
     }
