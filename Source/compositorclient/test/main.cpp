@@ -40,8 +40,8 @@ namespace WPEFramework {
 int main(VARIABLE_IS_NOT_USED int argc, VARIABLE_IS_NOT_USED const char* argv[])
 {
 
-    WPEFramework::Core::SystemInfo::SetEnvironment(_T("COMPOSITOR_CLIENTBRIDGE"), "/tmp/Compositor/buffer", true);
-    WPEFramework::Core::SystemInfo::SetEnvironment(_T("COMPOSITOR_COMMUNICATOR"), "/tmp/Compositor/display", true);
+    WPEFramework::Core::SystemInfo::SetEnvironment(_T("COMPOSITOR_BUFFER_CONNECTOR"), "/tmp/Compositor/buffer", true);
+    WPEFramework::Core::SystemInfo::SetEnvironment(_T("COMPOSITOR_DISPLAY_CONNECTOR"), "/tmp/Compositor/display", true);
 
     WPEFramework::Messaging::LocalTracer& tracer = WPEFramework::Messaging::LocalTracer::Open();
 
@@ -75,9 +75,8 @@ int main(VARIABLE_IS_NOT_USED int argc, VARIABLE_IS_NOT_USED const char* argv[])
             case 'C': {
                 ASSERT(display != nullptr);
 
-                if (surface == nullptr) {
+                if (surface != nullptr) {
                     surface = display->Create("TestClient", 1280, 720);
-                    ASSERT(surface != nullptr);
                     TRACE_GLOBAL(WPEFramework::Trace::Information, ("Create %s surface", surface->Name().c_str()));
                 } else {
                     TRACE_GLOBAL(WPEFramework::Trace::Information, ("Release %s surface", surface->Name().c_str()));
@@ -88,8 +87,11 @@ int main(VARIABLE_IS_NOT_USED int argc, VARIABLE_IS_NOT_USED const char* argv[])
                 break;
             }
             case 'I': {
-                if (surface != nullptr) {
-                    TRACE_GLOBAL(WPEFramework::Trace::Information, ("Surface Info\n Name: %s\n Width: %d\n Height: %d\n", surface->Name().c_str(), surface->Width(), surface->Height()));
+                if(surface != nullptr) {
+                    TRACE_GLOBAL(WPEFramework::Trace::Information, ("Surface Info\n Name: %s\n Width: %d\n Height: %d\n",   
+                        surface->Name().c_str(), 
+                        surface->Width(), 
+                        surface->Height())); 
                 }
             }
             default:

@@ -44,47 +44,25 @@ extern "C" {
 #include <compositorbuffer/CompositorBufferType.h>
 
 #include <compositor/Client.h>
-
 #include "RenderAPI.h"
-
-// Copied from previous macros
-#define XSTRINGIFY(X) STRINGIFY(X)
-#define STRINGIFY(X) #X
-
-#ifndef EGL_VERSION_1_5
-#define _KHRFIX(left, right) left##right
-#define KHRFIX(name) _KHRFIX(name, KHR)
-#define EGL_SYNC_FENCE EGL_SYNC_FENCE_KHR
-#define EGL_NO_SYNC EGL_NO_SYNC_KHR
-#define EGL_FOREVER EGL_FOREVER_KHR
-#define EGL_NO_IMAGE EGL_NO_IMAGE_KHR
-#define EGL_CONDITION_SATISFIED EGL_CONDITION_SATISFIED_KHR
-#define EGL_SYNC_FLUSH_COMMANDS_BIT EGL_SYNC_FLUSH_COMMANDS_BIT_KHR
-#define EGL_SIGNALED EGL_SIGNALED_KHR
-#define EGL_SYNC_STATUS EGL_SYNC_STATUS_KHR
-using EGLAttrib = EGLint;
-using EGLImage = EGLImageKHR;
-#else
-#define KHRFIX(name) name
-#endif
 
 namespace WPEFramework {
 namespace Linux {
     namespace {
-        const string ClientBridge()
+        const string BufferConnector()
         {
             string connector;
-            if ((Core::SystemInfo::GetEnvironment(_T("COMPOSITOR_CLIENTBRIDGE"), connector) == false) || (connector.empty() == true)) {
-                connector = _T("/tmp/clientbridge");
+            if ((Core::SystemInfo::GetEnvironment(_T("COMPOSITOR_BUFFER_CONNECTOR"), connector) == false) || (connector.empty() == true)) {
+                connector = _T("/tmp/bufferconnector");
             }
             return connector;
         }
 
-        const string CompositorConnector()
+        const string DisplayConnector()
         {
             string connector;
-            if ((Core::SystemInfo::GetEnvironment(_T("COMPOSITOR_COMMUNICATOR"), connector) == false) || (connector.empty() == true)) {
-                connector = _T("/tmp/communicator");
+            if ((Core::SystemInfo::GetEnvironment(_T("COMPOSITOR_DISPLAY_CONNECTOR"), connector) == false) || (connector.empty() == true)) {
+                connector = _T("/tmp/displayconnector");
             }
             return connector;
         }
@@ -97,173 +75,10 @@ namespace Linux {
             }
             return connector;
         }
-
-        // uint32_t WidthFromResolution(Exchange::IComposition::ScreenResolution const resolution) const
-        // {
-        //     // Assume an invalid width equals 0
-        //     uint32_t width = 0;
-
-        //     switch (resolution) {
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_480p: // 720x480
-        //         width = 720;
-        //         break;
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_576p50Hz: // 1024x576 progressive
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_576i: // 1024x576
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_576p: // 1024x576 progressive
-        //         width = 1024;
-        //         break;
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_720p: // 1280x720 progressive
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_720p50Hz: // 1280x720 @ 50 Hz
-        //         width = 1280;
-        //         break;
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p: // 1280x720 progressive
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i: // 1280x720 progressive
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p24Hz: // 1920x1080 progressive @ 24 Hz
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i25Hz: // 1920x1080 interlaced @ 25 Hz
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p25Hz: // 1920x1080 progressive @ 25 Hz
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i50Hz: // 1920x1080 interlaced  @ 50 Hz
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p50Hz: // 1920x1080 progressive @ 50 Hz
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p60Hz: // 1920x1080 progressive @ 60 Hz
-        //         width = 1920;
-        //         break;
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_2160p50Hz: // 4K, 3840x2160 progressive @ 50 Hz
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_2160p60Hz: // 4K, 3840x2160 progressive @ 60 Hz
-        //         width = 3840;
-        //         break;
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_4320p30Hz: // 8K, 7680x4320 progressive @ 30 Hz
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_4320p60Hz: // 8K, 7680x4320 progressive @ 60 Hz
-        //         width = 7680;
-        //         break;
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_480i: // Unknown according to the standards (?)
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_Unknown:
-        //     default:
-        //         width = 0;
-        //     }
-
-        //     return width;
-        // }
-
-        // uint32_t HeightFromResolution(Exchange::IComposition::ScreenResolution const resolution)
-        // {
-        //     // Assume an invalid height equals 0
-        //     uint32_t height = 0;
-
-        //     switch (resolution) {
-        //     // For descriptions see WidthFromResolution
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_480i: // 720x480
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_480p: // 720x480 progressive
-        //         height = 480;
-        //         break;
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_576p50Hz: // 1024x576 progressive
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_576i: // 1024x576
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_576p: // 1024x576 progressive
-        //         height = 576;
-        //         break;
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_720p: // 1280x720 progressive
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_720p50Hz: // 1280x720 progressive @ 50 Hz
-        //         height = 720;
-        //         break;
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p: // 1280x720 progressive
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i: // 1280x720 progressive
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p24Hz: // 1920x1080 progressive @ 24 Hz
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i25Hz: // 1920x1080 interlaced @ 25 Hz
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p25Hz: // 1920x1080 progressive @ 25 Hz
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i50Hz: // 1920x1080 interlaced @ 50 Hz
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p50Hz: // 1920x1080 progressive @ 50 Hz
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p60Hz: // 1920x1080 progressive @ 60 Hz
-        //         height = 1080;
-        //         break;
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_2160p50Hz: // 4K, 3840x2160 progressive @ 50 Hz
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_2160p60Hz: // 4K, 3840x2160 progressive @ 60 Hz
-        //         height = 2160;
-        //         break;
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_4320p30Hz: // 8K, 7680x4320 progressive @ 30 Hz
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_4320p60Hz: // 8K, 7680x4320 progressive @ 60 Hz
-        //         height = 4320;
-        //         break;
-        //     case Exchange::IComposition::ScreenResolution::ScreenResolution_Unknown:
-        //     default:
-        //         height = 0;
-        //     }
-
-        //     return height;
-        // }
-
-        uint8_t RefreshRateFromResolution(const Exchange::IComposition::ScreenResolution resolution)
-        {
-            // Assume 'unknown' rate equals 60 Hz
-            uint8_t rate = 60;
-
-            switch (resolution) {
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p24Hz: // 1920x1080 progressive @ 24 Hz
-                rate = 24;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i25Hz: // 1920x1080 interlaced @ 25 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p25Hz: // 1920x1080 progressive @ 25 Hz
-                rate = 25;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p30Hz: // 1920x1080 progressive @ 30 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_2160p30Hz: // 4K, 3840x2160 progressive @ 30 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_4320p30Hz: // 8K, 7680x4320 progressive @ 30 Hz
-                rate = 30;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_576p50Hz: // 1024x576 progressive
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_720p50Hz: // 1280x720 progressive @ 50 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i50Hz: // 1920x1080 interlaced @ 50 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p50Hz: // 1920x1080 progressive @ 50 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_2160p50Hz: // 4K, 3840x2160 progressive @ 50 Hz
-                rate = 50;
-                break;
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_480i: // 720x480
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_480p: // 720x480 progressive
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_576p: // 1024x576 progressive
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_576i: // 1024x576 progressive
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_720p: // 1280x720 progressive
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p: // 1280x720 progressive
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080i: // 1280x720 progressive
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_1080p60Hz: // 1920x1080 progressive @ 60 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_2160p60Hz: // 4K, 3840x2160 progressive @ 60 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_4320p60Hz: // 8K, 7680x4320 progressive @ 60 Hz
-            case Exchange::IComposition::ScreenResolution::ScreenResolution_Unknown:
-                rate = 60;
-            }
-
-            return rate;
-        };
-
-        void GetDRMNodes(const uint32_t type, std::vector<std::string>& list)
-        {
-            // Just an arbitrary choice
-            /* static */ constexpr const uint8_t DrmMaxDevices = 16;
-
-            drmDevicePtr devices[DrmMaxDevices];
-
-            int device_count = drmGetDevices2(0 /* flags */, &devices[0], static_cast<int>(DrmMaxDevices));
-
-            if (device_count > 0) {
-                for (int i = 0; i < device_count; i++) {
-                    switch (type) {
-                    case DRM_NODE_PRIMARY: // card<num>, always created, KMS, privileged
-                    case DRM_NODE_CONTROL: // ControlD<num>, currently unused
-                    case DRM_NODE_RENDER: // Solely for render clients, unprivileged
-                    {
-                        if ((1 << type) == (devices[i]->available_nodes & (1 << type))) {
-                            list.push_back(std::string(devices[i]->nodes[type]));
-                        }
-                        break;
-                    }
-                    case DRM_NODE_MAX:
-                    default: // Unknown (new) node type
-                        break;
-                    }
-                }
-
-                drmFreeDevices(&devices[0], device_count);
-            }
-        }
     }
 
     class Display : public Compositor::IDisplay {
+        static constexpr uint32_t DisplayId = 0;
 
     public:
         Display() = delete;
@@ -287,35 +102,45 @@ namespace Linux {
         private:
             using BaseClass = WPEFramework::Compositor::CompositorBufferType<4>;
 
-        protected:
-            RemoteBuffer(const uint32_t id, Core::PrivilegedRequest::Container& descriptors)
-                : BaseClass(id, descriptors)
-            {
-            }
-
         public:
             RemoteBuffer() = delete;
             RemoteBuffer(RemoteBuffer&&) = delete;
             RemoteBuffer(const RemoteBuffer&) = delete;
             RemoteBuffer& operator=(const RemoteBuffer&) = delete;
 
-            static Exchange::ICompositionBuffer* Create(const uint32_t id, Core::PrivilegedRequest::Container& descriptors)
+            RemoteBuffer(const uint32_t id, Core::PrivilegedRequest::Container& descriptors)
+                : BaseClass(id, descriptors)
             {
-                Core::ProxyType<RemoteBuffer> element(Core::ProxyType<RemoteBuffer>::Create(id, descriptors));
-                Exchange::ICompositionBuffer* result = &(*element);
-                result->AddRef();
-                return (result);
+                TRACE(Trace::Information, (_T("RemoteBuffer[%p] ready %dx%d format=0x%04X"), this, Width(), Height(), Format()));
             }
 
-        public:
+            virtual ~RemoteBuffer()
+            {
+                TRACE(Trace::Information, (_T("RemoteBuffer[%p] Destructed"), this));
+            }
+
             void Render() override
             {
                 ASSERT(false); // This should never be called, we are a remote buffer
+            }
+
+            uint32_t AddRef() const override
+            {
+                return Core::ERROR_COMPOSIT_OBJECT;
+            }
+
+            uint32_t Release() const override
+            {
+                return Core::ERROR_COMPOSIT_OBJECT;
             }
         };
 
         class SurfaceImplementation : public Compositor::IDisplay::ISurface {
         private:
+            static constexpr GLuint target = GL_TEXTURE_2D;
+            static constexpr GLuint filter = GL_LINEAR;
+            static constexpr GLuint wrap = GL_CLAMP_TO_EDGE;
+
             void Fence(const EGLDisplay dpy)
             {
                 ASSERT(dpy != EGL_NO_DISPLAY);
@@ -330,7 +155,7 @@ namespace Linux {
             bool CreateImage(EGLDisplay dpy)
             {
                 ASSERT(_remoteClient != nullptr);
-                ASSERT(_remoteBuffer != nullptr);
+                ASSERT((_remoteBuffer.get() != nullptr) && (_remoteBuffer->IsValid() == true));
 
                 Exchange::ICompositionBuffer::IIterator* planes = _remoteBuffer->Planes(10);
                 ASSERT(planes != nullptr);
@@ -467,18 +292,19 @@ namespace Linux {
             SurfaceImplementation(Display& display, const std::string& name, const uint32_t width, const uint32_t height)
                 : _adminLock()
                 , _display(display)
+                , _remoteClient(nullptr)
+                , _remoteBuffer()
                 , _keyboard(nullptr)
                 , _wheel(nullptr)
                 , _pointer(nullptr)
                 , _touchpanel(nullptr)
-                , _remoteClient(nullptr)
                 , _surface(nullptr)
                 , _eglImage(EGL_NO_IMAGE)
                 , _textureId(0)
                 , _frameBuffer(0)
-                , _remoteBuffer(nullptr)
                 , _egl()
                 , _gl()
+                , _eglSync(nullptr)
             {
 
                 TRACE(Trace::Information, (_T("Construct surface %s  %dx%d (hxb)"), name.c_str(), height, width));
@@ -494,22 +320,20 @@ namespace Linux {
                     Core::PrivilegedRequest::Container descriptors;
                     Core::PrivilegedRequest request;
 
-                    if (request.Request(1000, ClientBridge(), _remoteClient->Native(), descriptors) == Core::ERROR_NONE) {
-                        _remoteBuffer = RemoteBuffer::Create(_remoteClient->Native(), descriptors);
+                    if (request.Request(1000, BufferConnector(), _remoteClient->Native(), descriptors) == Core::ERROR_NONE) {
+                        _remoteBuffer.reset(new RemoteBuffer(_remoteClient->Native(), descriptors));
+
+                        if (_remoteBuffer.get() != nullptr) {
+                            TRACE(Trace::Information, (_T("Remote buffer %p ready %dx%d format=0x%04X"), _remoteBuffer.get(), _remoteBuffer->Width(), _remoteBuffer->Height(), _remoteBuffer->Format()));
+
+                            _surface = gbm_surface_create(
+                                static_cast<gbm_device*>(_display.Native()),
+                                _remoteBuffer->Width(), _remoteBuffer->Height(), _remoteBuffer->Format(),
+                                GBM_BO_USE_RENDERING /* used for rendering */);
+                        }
+
+                        ASSERT(_surface != nullptr);
                     }
-
-                    if (_remoteBuffer != nullptr) {
-                        TRACE(Trace::Information, (_T("Remote buffer %p ready %dx%d format=0x%04X"), _remoteBuffer, _remoteBuffer->Width(), _remoteBuffer->Height(), _remoteBuffer->Format()));
-
-                        _surface = gbm_surface_create(
-                            static_cast<gbm_device*>(_display.Native()),
-                            _remoteBuffer->Width(), _remoteBuffer->Height(), _remoteBuffer->Format(),
-                            GBM_BO_USE_RENDERING /* used for rendering */);
-
-                        TRACE(Trace::Information, (_T("GBM surface %p ready %dx%d(hxb) format=0x%04X"), _surface, _remoteBuffer->Width(), _remoteBuffer->Height(), _remoteBuffer->Format()));
-                    }
-
-                    ASSERT(_surface != nullptr);
                 } else {
                     TRACE(Trace::Error, (_T("Could not create remote surface for surface %s." ), name.c_str()));
                 }
@@ -517,7 +341,7 @@ namespace Linux {
                 _display.Register(this);
             }
 
-            ~SurfaceImplementation() override
+            virtual ~SurfaceImplementation() /*override*/
             {
                 _display.Unregister(this);
 
@@ -547,6 +371,10 @@ namespace Linux {
 
                 EGLDisplay dpy = eglGetCurrentDisplay();
 
+                if (_eglSync != nullptr) {
+                    _egl.eglDestroySync(dpy, _eglSync);
+                }
+
                 if (_eglImage != EGL_NO_IMAGE) {
                     _egl.eglDestroyImage(dpy, _eglImage);
                 }
@@ -555,9 +383,7 @@ namespace Linux {
                     gbm_surface_destroy(_surface);
                 }
 
-                if (_remoteBuffer != nullptr) {
-                    _remoteBuffer->Release();
-                }
+                _remoteBuffer.reset(nullptr);
 
                 if (_remoteClient != nullptr) {
                     _remoteClient->Release();
@@ -646,20 +472,14 @@ namespace Linux {
 
             uint32_t Process()
             {
-                // TRACE(Trace::Information, (_T("Processing surface %p"), this));
-
-                // Changes of currents cannot be reliably be monitored
                 EGLDisplay dpy = eglGetCurrentDisplay();
-                EGLContext ctx = eglGetCurrentContext();
-                // EGLSurface surf = eglGetCurrentSurface(EGL_DRAW);
-
-                bool status = (dpy != EGL_NO_DISPLAY && ctx != EGL_NO_CONTEXT /*&& surf != EGL_NO_SURFACE*/);
-
-                ASSERT(status == true); // Process need to be called in a active GL context
 
                 // A remote ClientSurface has been created and the IRender interface is supported so the compositor is able to support scan out for this client
-                if ((status == true) && (_remoteBuffer != nullptr) && (_remoteClient != nullptr)) {
-                    EGLSync fence = _egl.eglCreateSync(dpy, EGL_SYNC_FENCE, NULL);
+                if ((_remoteBuffer.get() != nullptr) && (_remoteBuffer->IsValid() == true) && (_remoteClient != nullptr) && (dpy != EGL_NO_DISPLAY)) {
+
+                    if (_eglSync == nullptr) {
+                        _eglSync = _egl.eglCreateSync(dpy, EGL_SYNC_FENCE, NULL);
+                    }
 
                     if (_eglImage == EGL_NO_IMAGE) {
                         CreateImage(dpy);
@@ -671,13 +491,12 @@ namespace Linux {
                     RenderImage();
 
                     // Wait for all EGL actions to be completed
-                    _egl.eglClientWaitSync(dpy, fence, EGL_SYNC_FLUSH_COMMANDS_BIT_KHR, EGL_FOREVER_KHR);
+                    _egl.eglClientWaitSync(dpy, _eglSync, EGL_SYNC_FLUSH_COMMANDS_BIT_KHR, EGL_FOREVER_KHR);
 
                     // Signal the other side to render the buffer
                     _remoteBuffer->Completed(true);
-                    _egl.eglDestroySync(dpy, fence);
                 } else {
-                    TRACE(Trace::Error, (_T ( "Remote scan out is not (yet) supported. Has a remote surface been created? Is the IRender interface available?" )));
+                    TRACE(Trace::Error, ("Failed to process, _remoteBuffer: %s, _remoteClient: %s, EGLDisplay: %s", ((_remoteBuffer->IsValid() == true) ? "OK" : "NOK"), ((_remoteClient != nullptr) ? "OK" : "NOK"), ((dpy != EGL_NO_DISPLAY) ? "OK" : "NOK")));
                 }
 
                 return Core::ERROR_NONE;
@@ -685,32 +504,26 @@ namespace Linux {
 
         private:
             mutable Core::CriticalSection _adminLock;
-
             Display& _display;
-
+            Exchange::IComposition::IClient* _remoteClient;
+            std::unique_ptr<RemoteBuffer> _remoteBuffer;
             IKeyboard* _keyboard;
             IWheel* _wheel;
             IPointer* _pointer;
             ITouchPanel* _touchpanel;
-
-            Exchange::IComposition::IClient* _remoteClient;
-
             struct gbm_surface* _surface;
-
             EGLImage _eglImage;
             GLuint _textureId;
             GLuint _frameBuffer;
-
-            Exchange::ICompositionBuffer* _remoteBuffer;
-
             Compositor::API::EGL _egl;
             Compositor::API::GL _gl;
+            EGLSync _eglSync;
         };
 
     public:
         typedef std::map<const string, Display*> DisplayMap;
 
-        ~Display() override;
+        virtual ~Display();
 
         static Display& Instance(const string& displayName)
         {
@@ -763,8 +576,7 @@ namespace Linux {
 
         EGLNativeDisplayType Native() const override
         {
-            TRACE(Trace::Information, (_T("Get native display")));
-            return static_cast<EGLNativeDisplayType>(_nativeDisplay.device);
+            return static_cast<EGLNativeDisplayType>(_gbmDevice);
         }
 
         const std::string& Name() const final override
@@ -774,9 +586,18 @@ namespace Linux {
 
         ISurface* Create(const std::string& name, const uint32_t width, const uint32_t height) override;
 
-        int Process(const uint32_t data) override;
+        int Process(const uint32_t data VARIABLE_IS_NOT_USED) override
+        {
+            for (auto begin = _surfaces.begin(), it = begin, end = _surfaces.end(); it != end; it++) {
+                (*it)->Process(); // render
+            }
+            return Core::ERROR_NONE;
+        }
 
-        int FileDescriptor() const override;
+        int FileDescriptor() const override
+        {
+            return _gpuId;
+        }
 
         ISurface* SurfaceByName(const std::string& name) override
         {
@@ -811,8 +632,8 @@ namespace Linux {
     private:
         void Initialize()
         {
-            TRACE(Trace::Information, (_T("PID: %d: Compositor connector: %s"), getpid(), CompositorConnector().c_str()));
-            TRACE(Trace::Information, (_T("PID: %d: Client connector: %s"), getpid(), ClientBridge().c_str()));
+            TRACE(Trace::Information, (_T("PID: %d: Compositor connector: %s"), getpid(), DisplayConnector().c_str()));
+            TRACE(Trace::Information, (_T("PID: %d: Client connector: %s"), getpid(), BufferConnector().c_str()));
             TRACE(Trace::Information, (_T("PID: %d: Input connector: %s"), getpid(), InputConnector().c_str()));
 
             _adminLock.Lock();
@@ -822,19 +643,15 @@ namespace Linux {
                 // hosting process) use, it!
                 Core::ProxyType<RPC::InvokeServer> engine = Core::ProxyType<RPC::InvokeServer>::Create(&Core::WorkerPool::Instance());
 
-                _compositorServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(CompositorConnector().c_str()), Core::ProxyType<Core::IIPCServer>(engine));
+                _compositorServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(DisplayConnector().c_str()), Core::ProxyType<Core::IIPCServer>(engine));
             } else {
                 // Seems we are not in a process space initiated from the Main framework process or its hosting process.
                 // Nothing more to do than to create a workerpool for RPC our selves !
                 Core::ProxyType<RPC::InvokeServerType<2, 0, 8>> engine = Core::ProxyType<RPC::InvokeServerType<2, 0, 8>>::Create();
 
-                _compositorServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(CompositorConnector().c_str()), Core::ProxyType<Core::IIPCServer>(engine));
+                _compositorServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(DisplayConnector().c_str()), Core::ProxyType<Core::IIPCServer>(engine));
             }
 
-            // if (display != nullptr) {
-            //     _remoteDisplay = display;
-            //     _remoteDisplay->AddRef();
-            // } else {
             uint32_t result = _compositorServerRPCConnection->Open(RPC::CommunicationTimeOut);
 
             if (result == Core::ERROR_NONE) {
@@ -847,7 +664,6 @@ namespace Linux {
                 TRACE(Trace::Error, (_T("Could not open connection to Compositor with node %s. Error: %s"), _compositorServerRPCConnection->Source().RemoteId().c_str(), Core::NumberType<uint32_t>(result).Text().c_str()));
                 _compositorServerRPCConnection.Release();
             }
-            // }
 
             _virtualinput = virtualinput_open(_displayName.c_str(), InputConnector().c_str(), VirtualKeyboardCallback, VirtualMouseCallback, VirtualTouchScreenCallback);
 
@@ -942,11 +758,8 @@ namespace Linux {
         std::list<SurfaceImplementation*> _surfaces;
         Core::ProxyType<RPC::CommunicatorClient> _compositorServerRPCConnection;
         Exchange::IComposition::IDisplay* _remoteDisplay;
-
-        struct {
-            struct gbm_device* device;
-            int fd;
-        } _nativeDisplay;
+        int _gpuId;
+        gbm_device* _gbmDevice;
     }; // class Display
 
     Display::DisplayMap Display::_displays;
@@ -960,109 +773,46 @@ namespace Linux {
         , _surfaces()
         , _compositorServerRPCConnection()
         , _remoteDisplay(nullptr)
-        , _nativeDisplay()
+        , _gpuId(-1)
+        , _gbmDevice(nullptr)
     {
-        TRACE(Trace::Information, (_T("Constructing Display build @ %s"), __TIMESTAMP__));
+        Core::PrivilegedRequest::Container descriptors;
+        Core::PrivilegedRequest request;
 
-        std::vector<std::string> nodes;
-
-        GetDRMNodes(DRM_NODE_RENDER, nodes); // /dev/dri/Renderer128
-
-        for (const auto& node : nodes) {
-            TRACE(Trace::Information, (_T("Found render node %s"), node.c_str()));
+        if (request.Request(1000, BufferConnector(), DisplayId, descriptors) == Core::ERROR_NONE) {
+            ASSERT(descriptors.size() == 1);
+            _gpuId = descriptors[0].Move();
+            _gbmDevice = gbm_create_device(_gpuId);
+            TRACE(Trace::Information, (_T ( "Opened GBM[%p] device on fd: %d,  RenderDevice: %s"), _gbmDevice, _gpuId, drmGetRenderDeviceNameFromFd(_gpuId)));
+        } else {
+            TRACE(Trace::Error, (_T ( "Failed to get display file descriptor from compositor server")));
         }
 
-        int& fd = _nativeDisplay.fd;
-        struct gbm_device*& device = _nativeDisplay.device;
-
-        fd = 0;
-        device = nullptr;
-
-        for (const auto& node : nodes) {
-            fd = open(node.c_str(), O_RDWR);
-
-            if (fd) {
-                device = gbm_create_device(fd);
-
-                if (device) {
-                    TRACE(Trace::Information, (_T ( "Opened RenderDevice: %s"), node.c_str()));
-                    break;
-                } else {
-                    TRACE(Trace::Information, (_T ( "Failed to create GBM device using node %s" ), node.c_str()));
-                    close(fd);
-                    fd = 0;
-                }
-            }
-        }
-
-        ASSERT((device != nullptr) && (fd != 0));
+        TRACE(Trace::Information, (_T("Display[%p] Constructed build @ %s"), this, __TIMESTAMP__));
     }
 
     Display::~Display()
     {
-        int& fd = _nativeDisplay.fd;
-        struct gbm_device*& device = _nativeDisplay.device;
-
-        if (device != nullptr) {
-            gbm_device_destroy(device);
-        }
-
-        if (fd != 0) {
-            close(fd);
-        }
-
-        device = nullptr;
-        fd = 0;
-
         Deinitialize();
-    }
 
-    int Display::Process(const uint32_t data VARIABLE_IS_NOT_USED)
-    {
-        static uint8_t rate = RefreshRateFromResolution((_remoteDisplay != nullptr) ? _remoteDisplay->Resolution() : Exchange::IComposition::ScreenResolution::ScreenResolution_Unknown);
-
-        Core::Time next_frame = Core::Time::Now().Add(Core::Time::MilliSecondsPerSecond / rate);
-
-        for (auto begin = _surfaces.begin(), it = begin, end = _surfaces.end(); it != end; it++) {
-            (*it)->Process(); // render
+        if (_gbmDevice != nullptr) {
+            gbm_device_destroy(_gbmDevice);
+            _gbmDevice = nullptr;
         }
 
-        // uint32_t delay((next_frame - Core::Time::Now()).MilliSeconds());
+        if (_gpuId > 0) {
+            ::close(_gpuId);
+            _gpuId = -1;
+        }
 
-        return Core::ERROR_NONE;
-    }
-
-    int Display::FileDescriptor() const
-    {
-        TRACE(Trace::Error, (_T("TODO!!!")));
-        return 0;
+        TRACE(Trace::Information, (_T ( "Display[%p] Destructed"), this));
     }
 
     Compositor::IDisplay::ISurface* Display::Create(const std::string& name, const uint32_t width, const uint32_t height)
     {
-        uint32_t realHeight = height;
-        uint32_t realWidth = width;
-
-        if (_remoteDisplay != nullptr) {
-            // Exchange::IComposition::ScreenResolution resolution = _remoteDisplay->Resolution();
-
-            // Let the compositor choose if we go full screen or not.
-
-            // realHeight = HeightFromResolution(resolution);
-            // realWidth = WidthFromResolution(resolution);
-
-            // if (realWidth != width || realHeight != height) {
-            //     TRACE(Trace::Information, (_T ( "Requested surface dimensions (%d x %d) differ from true (real) display dimensions (%d x %d). Continuing with the latter!" ), width, height, realWidth, realHeight));
-            // }
-        } else {
-            TRACE(Trace::Information, (_T ( "No remote display exist. Unable to query its dimensions. Expect the unexpected!")));
-        }
-
-        Core::ProxyType<SurfaceImplementation> retval = (Core::ProxyType<SurfaceImplementation>::Create(*this, name, realWidth, realHeight));
-
+        Core::ProxyType<SurfaceImplementation> retval = (Core::ProxyType<SurfaceImplementation>::Create(*this, name, width, height));
         Compositor::IDisplay::ISurface* result = &(*retval);
         result->AddRef();
-
         return result;
     }
 

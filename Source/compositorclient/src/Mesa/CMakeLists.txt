@@ -17,7 +17,6 @@
 
 find_package(${NAMESPACE}Core CONFIG REQUIRED)
 find_package(${NAMESPACE}COM CONFIG REQUIRED)
-find_package(${NAMESPACE}CompositorBufferType REQUIRED)
 find_package(${NAMESPACE}PrivilegedRequest REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 
