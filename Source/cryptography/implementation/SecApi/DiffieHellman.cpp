@@ -124,7 +124,7 @@ namespace Implementation {
                 hmacKeyId = _vault->AddKey(hKeyHMAC);
                 wrappingKeyId = _vault->AddKey(hKeyWrap);
                 result = RET_OK;
-                TRACE_L2(_T("SEC:Netflix Derive  enc %d  hmac %d  wrapping handle %d \n", encryptionKeyId, hmacKeyId, wrappingKeyId));
+                TRACE_L2(_T("SEC:Netflix Derive  enc %d  hmac %d  wrapping handle %d \n"), encryptionKeyId, hmacKeyId, wrappingKeyId);
             }
             else {
                 TRACE_L1(_T("SEC:SecNetflix_NetflixDHDerive failed ,retval = %d \n"),result_sec);
