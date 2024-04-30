@@ -41,7 +41,7 @@ namespace Implementation {
         ASSERT(vault != nullptr);
         ASSERT(keyId != 0);
         ASSERT(keyLength != 0);
-        ASSERT(ivLength != 0)
+        ASSERT(ivLength != 0);
 
     }
 
