@@ -116,7 +116,7 @@ namespace Implementation {
         std::string outputbuf;
 
         if (inputLength % AES_128_BLOCK_SIZE != 0) {
-            outputbuf.resize(inputLength + (AES_128_BLOCK_SIZE - (inputLength % AES_128_BLOCK_SIZE)));
+            outputbuf.resize(inputLength + 2 * AES_128_BLOCK_SIZE - (inputLength % AES_128_BLOCK_SIZE));
             TRACE_L2(_T("SecNetflix_Aescbc adding pad to output buffer %d\n", outputbuf.size()));
         }
         else {
