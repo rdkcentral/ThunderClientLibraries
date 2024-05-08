@@ -23,6 +23,10 @@ if(BLUETOOTHAUDIOSOURCE)
     add_subdirectory(bluetoothaudiosource)
 endif()
 
+if(COMPOSITORBUFFER)
+    add_subdirectory(compositorbuffer)
+endif()
+
 if(COMPOSITORCLIENT)
     add_subdirectory(compositorclient)
 endif()
@@ -58,4 +62,3 @@ endif()
 if(CRYPTOGRAPHY)
     add_subdirectory(cryptography)
 endif()
-

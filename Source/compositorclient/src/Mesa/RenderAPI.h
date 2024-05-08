@@ -304,6 +304,8 @@ namespace Compositor {
                 , eglDestroySync(nullptr)
                 , eglWaitSync(nullptr)
                 , eglClientWaitSync(nullptr)
+                , eglExportDmaBufImageQueryMesa(nullptr)
+                , eglExportDmaBufImageMesa(nullptr)
             {
                 eglGetPlatformDisplayEXT = reinterpret_cast<PFNEGLGETPLATFORMDISPLAYEXTPROC>(eglGetProcAddress("eglGetPlatformDisplayEXT"));
                 eglQueryDmaBufFormatsEXT = reinterpret_cast<PFNEGLQUERYDMABUFFORMATSEXTPROC>(eglGetProcAddress("eglQueryDmaBufFormatsEXT"));
@@ -321,6 +323,9 @@ namespace Compositor {
                 eglDestroySync = reinterpret_cast<PFNEGLDESTROYSYNCPROC>(eglGetProcAddress(eglDestroySyncProc));
                 eglWaitSync = reinterpret_cast<PFNEGLWAITSYNCPROC>(eglGetProcAddress(eglWaitSyncProc));
                 eglClientWaitSync = reinterpret_cast<PFNEGLCLIENTWAITSYNCPROC>(eglGetProcAddress(eglClientWaitSyncProc));
+
+                eglExportDmaBufImageQueryMesa = reinterpret_cast<PFNEGLEXPORTDMABUFIMAGEQUERYMESAPROC>(eglGetProcAddress("eglExportDMABUFImageQueryMESA"));
+                eglExportDmaBufImageMesa = reinterpret_cast<PFNEGLEXPORTDMABUFIMAGEMESAPROC>(eglGetProcAddress("eglExportDMABUFImageMESA"));
             }
 
         public:
@@ -341,6 +346,9 @@ namespace Compositor {
             PFNEGLDESTROYSYNCPROC eglDestroySync;
             PFNEGLWAITSYNCPROC eglWaitSync;
             PFNEGLCLIENTWAITSYNCPROC eglClientWaitSync;
+
+            PFNEGLEXPORTDMABUFIMAGEQUERYMESAPROC eglExportDmaBufImageQueryMesa;
+            PFNEGLEXPORTDMABUFIMAGEMESAPROC eglExportDmaBufImageMesa;
         }; // class EGL
 
     } // namespace API

@@ -25,8 +25,8 @@ option(BLUETOOTHAUDIOSINK
         "Include the bluetoothaudiosink library." OFF)
 option(BLUETOOTHAUDIOSOURCE
         "Include the bluetoothaudiosource library." OFF)
-option(PROTOCOLS
-        "Include the protocols library." ON)
+option(COMPOSITORBUFFER
+        "Include the compositor buffer library." OFF)
 option(COMPOSITORCLIENT
         "Include a graphics backend abstraction for external applications." OFF)
 option(DEVICEINFO
@@ -37,6 +37,8 @@ option(SECURITYAGENT
         "Include the securityagent library." OFF)
 option(PLAYERINFO
         "Include the playerinfo COMRPC abstraction library." OFF)
+option(PROTOCOLS
+        "Include the protocols library." ON)
 option(PROVISIONPROXY
         "Include the provisionproxy library." OFF)
 option(CDMI
