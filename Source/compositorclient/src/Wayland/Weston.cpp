@@ -57,17 +57,17 @@ using namespace WPEFramework;
 #define DEPTH_SIZE (0)
 
 static const struct wl_shell_surface_listener g_ShellSurfaceListener = {
-    //handle_ping,
+    // handle_ping,
     [](void*, struct wl_shell_surface* shell_surface, uint32_t serial) {
         wl_shell_surface_pong(shell_surface, serial);
     },
-    //handle_configure,
+    // handle_configure,
     [](void*, struct wl_shell_surface*, uint32_t, int32_t width, int32_t height) {
         Trace("handle_configure: width=%d height=%d \n", width, height);
         //  Wayland::Display::Sur *wayland = static_cast<Wayland *>(data);
         // wl_egl_window_resize(wayland->eglWindow, width, height, 0, 0);
     },
-    //handle_popup_done
+    // handle_popup_done
     [](void*, struct wl_shell_surface*) {
     }
 };
@@ -213,11 +213,11 @@ static const struct wl_pointer_listener pointerListener = {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
         Trace("wl_pointer_listener.pointerButton [%u,%u]\n", button, state);
 
-        //align with what WPEBackend-rdk wpeframework backend is expecting
+        // align with what WPEBackend-rdk wpeframework backend is expecting
         if (button >= BTN_MOUSE)
-          button = button - BTN_MOUSE;
+            button = button - BTN_MOUSE;
         else
-          button = 0;
+            button = 0;
 
         context.SendPointerButton(button, static_cast<Wayland::Display::IPointer::state>(state));
     },
@@ -270,7 +270,7 @@ static const struct wl_seat_listener seatListener = {
 };
 
 static void
-xdg_wm_base_ping(void*, struct xdg_wm_base *shell, uint32_t serial)
+xdg_wm_base_ping(void*, struct xdg_wm_base* shell, uint32_t serial)
 {
     xdg_wm_base_pong(shell, serial);
 }
@@ -291,8 +291,7 @@ static const struct wl_registry_listener globalRegistryListener = {
             // I expect that a compositor is tied to a display, so expect the name here to be the one of the display.
             // Lets check :-)
             context._compositor = static_cast<struct wl_compositor*>(wl_registry_bind(registry, name, &wl_compositor_interface, 1));
-        }
-        else if (::strcmp(interface, "wl_seat") == 0) {
+        } else if (::strcmp(interface, "wl_seat") == 0) {
             struct wl_seat* result = static_cast<struct wl_seat*>(wl_registry_bind(registry, name, &wl_seat_interface, 4));
             wl_seat_add_listener(result, &seatListener, data);
             context._seat = result;
@@ -320,7 +319,7 @@ static const struct wl_registry_listener globalRegistryListener = {
 
 static void
 handle_surface_configure(void*, struct xdg_surface* id,
-             uint32_t serial)
+    uint32_t serial)
 {
     xdg_surface_ack_configure(id, serial);
 }
@@ -329,17 +328,16 @@ static const struct xdg_surface_listener xdg_surface_listener = {
     handle_surface_configure
 };
 
-
 static void
 handle_toplevel_configure(void*, struct xdg_toplevel*,
-                          int32_t, int32_t, struct wl_array*)
+    int32_t, int32_t, struct wl_array*)
 {
 }
 
 static void
 handle_toplevel_close(void*, struct xdg_toplevel*)
 {
-    //running = 0;
+    // running = 0;
 }
 
 static const struct xdg_toplevel_listener xdg_toplevel_listener = {
@@ -685,7 +683,6 @@ namespace Wayland {
 #endif
     }
 
-
     void Display::Initialize()
     {
         Trace("Display::Initialize\n");
@@ -913,7 +910,7 @@ namespace Wayland {
 
         SurfaceImplementation* surface = new SurfaceImplementation(*this, name, width, height);
 
-        if(_wm_base != nullptr) {
+        if (_wm_base != nullptr) {
             surface->_xdg_surface = xdg_wm_base_get_xdg_surface(_wm_base, surface->_surface);
             assert(surface->_xdg_surface != NULL);
             xdg_surface_add_listener(surface->_xdg_surface, &xdg_surface_listener, this);
@@ -924,7 +921,7 @@ namespace Wayland {
             xdg_toplevel_set_title(surface->_xdg_toplevel, name.c_str());
 
             _waylandSurfaces.insert(std::pair<struct wl_surface*, SurfaceImplementation*>(surface->_surface, surface));
-            _surfaces.insert(std::pair<void*, SurfaceImplementation*>(reinterpret_cast<Display*>(surface->_xdg_surface), surface));
+            _surfaces.insert(std::pair<const void*, SurfaceImplementation*>(reinterpret_cast<Display*>(surface->_xdg_surface), surface));
             wl_surface_commit(surface->_surface);
             result = surface;
         }
@@ -1091,7 +1088,7 @@ namespace Wayland {
         if (Core::InterlockedDecrement(_refCount) == 0) {
             const_cast<Display*>(this)->Deinitialize();
 
-            //Indicate Wayland connection is closed properly
+            // Indicate Wayland connection is closed properly
             return (Core::ERROR_DESTRUCTION_SUCCEEDED);
         }
         return (Core::ERROR_NONE);
