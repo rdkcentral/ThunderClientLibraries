@@ -37,4 +37,4 @@ target_link_libraries(${TARGET}
         pthread
 )
 
-install(TARGETS ${PROJECT_NAME} DESTINATION bin)
+install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR})
