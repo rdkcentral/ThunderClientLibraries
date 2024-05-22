@@ -105,6 +105,35 @@ if (BUILD_NETFLIX_VAULT_GENERATOR)
    add_subdirectory(NetflixVaultGenerator)
 endif (BUILD_NETFLIX_VAULT_GENERATOR)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../implementation/Icrypto-nexus/cmake")
+
+find_package(NXCLIENT REQUIRED)
+
+add_executable(cobalttests
+        CobaltInterfaceTests.cpp
+        Helpers.cpp
+        Test.c
+    )
+
+set_target_properties(cobalttests PROPERTIES
+        CXX_STANDARD 11
+        CXX_STANDARD_REQUIRED YES
+   )
+
+target_compile_options(cobalttests PUBLIC -DVALIDATE_VALUES -DTEST_PLATFORM_APOLLOV1PLUS)
+target_link_libraries(cobalttests
+        PRIVATE
+        ${NAMESPACE}Cryptography
+        ssl
+        crypto
+        utility
+        NXCLIENT::NXCLIENT
+        -Wl,--no-undefined
+    )
+
+install(TARGETS cobalttests DESTINATION bin)
+
+
 if(${CRYPTOGRAPHY_IMPLEMENTATION} STREQUAL "OpenSSL")
    add_definitions(-DOpenSSL)
 elseif (${CRYPTOGRAPHY_IMPLEMENTATION} STREQUAL "SecApi")
