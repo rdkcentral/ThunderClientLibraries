@@ -118,5 +118,5 @@ set_target_properties(${PLUGIN_COMPOSITOR_IMPLEMENTATION} PROPERTIES
 
 install(
 	FILES Implementation.h
-        DESTINATION include/${NAMESPACE}/compositorclient
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}/compositorclient
 )

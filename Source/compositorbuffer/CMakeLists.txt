@@ -43,7 +43,7 @@ target_compile_features(${MODULE_NAME} INTERFACE cxx_std_11)
 install(TARGETS ${MODULE_NAME} EXPORT ${MODULE_NAME}Targets)
 
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/compositorbuffer/CompositorBufferType.h 
-        DESTINATION include/${NAMESPACE}/compositorbuffer)
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}/compositorbuffer)
 
 include(HeaderOnlyInstall)
 
