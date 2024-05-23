@@ -28,4 +28,4 @@ target_link_libraries(display_info
         ${NAMESPACE}DisplayInfo)
 
 install(TARGETS display_info 
-    DESTINATION bin)
+    DESTINATION ${CMAKE_INSTALL_BINDIR})
