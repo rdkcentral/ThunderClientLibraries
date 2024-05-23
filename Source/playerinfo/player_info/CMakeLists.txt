@@ -28,4 +28,4 @@ target_link_libraries(player_info
         playerinfo)
 
 install(TARGETS player_info 
-    DESTINATION bin)
+    DESTINATION ${CMAKE_INSTALL_BINDIR})
