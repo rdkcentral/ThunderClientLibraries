@@ -334,7 +334,7 @@ OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* ses
 
             std::string perfString(__FUNCTION__);
             //Get Stream Properties from GstCaps
-            MediaProperties *spPtr = nullptr;
+            MediaProperties streamProperties = { 0 };
             if(caps != nullptr){
                 gchar *capsStr = gst_caps_to_string (caps);
                 if (capsStr != nullptr) {
@@ -372,7 +372,6 @@ OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* ses
                        perfString += "_clearData";
                     }
 
-                    spPtr = &streamProperties;
                     g_free(capsStr);
                 } else {
                     perfString += "_NoGstCaps";
@@ -441,7 +440,7 @@ OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* ses
                                                 svpData,
                                                 dataBlockSize,
                                                 &sampleInfo,
-                                                spPtr);
+                                                &streamProperties);
                 delete ocdm_perf;
 
                if(result == ERROR_NONE) {
