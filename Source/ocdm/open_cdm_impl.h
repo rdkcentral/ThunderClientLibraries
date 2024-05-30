@@ -768,12 +768,6 @@ public:
 
         _session->ResetOutputProtection();
     }
-    inline void SetParameter(const std::string& name, const std::string& value)
-    {
-        ASSERT (_session != nullptr);
-
-        _session->SetParameter(name, value);
-    }
     inline int Remove()
     {
         ASSERT(_session != nullptr);

@@ -56,7 +56,7 @@ uint32_t opencdm_construct_session_private(struct OpenCDMSession* session, void*
     const char* session_id = opencdm_session_id(session);
     TRACE_L1("Initializing SVP context for server side ID = %s\n", session_id);
     bool success = gst_svp_ext_get_context(&pvtData, Server, session_id);
-    session->SetParameter("serverIntialized", success ? "true" : "false");
+    session->Load();
     return (success ? 0 : 1);
 }
 
