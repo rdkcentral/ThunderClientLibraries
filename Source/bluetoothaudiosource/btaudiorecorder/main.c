@@ -256,7 +256,7 @@ static bluetoothaudiosource_sink_t callbacks = {
     on_frame_received
 };
 
-static void state_changed(const bluetoothaudiosource_state_t state, void *user_data)
+static void state_changed(const bluetoothaudiosource_state_t state, __attribute__((unused)) void *user_data)
 {
     assert(user_data != nullptr);
 
