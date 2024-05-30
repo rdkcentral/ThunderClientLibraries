@@ -339,7 +339,6 @@ OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* ses
                 gchar *capsStr = gst_caps_to_string (caps);
                 if (capsStr != nullptr) {
                     WPEFramework::Plugin::CapsParser capsParser;
-                    MediaProperties streamProperties;
                     capsParser.Parse(reinterpret_cast<const uint8_t*>(capsStr), strlen(capsStr));
                     streamProperties.height = capsParser.GetHeight();
                     streamProperties.width = capsParser.GetWidth();
