@@ -38,4 +38,4 @@ target_link_libraries(${TARGET}
 )
 
 install(TARGETS ${TARGET}  
-    DESTINATION ${CMAKE_INSTALL_BINDIR})
+    DESTINATION bin)

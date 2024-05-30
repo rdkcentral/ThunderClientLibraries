@@ -97,9 +97,9 @@ target_link_libraries(cgnfsecuritytests
         crypto
     )
 
-install(TARGETS cgimptests DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(TARGETS cgfacetests DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(TARGETS cgnfsecuritytests DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS cgimptests DESTINATION bin)
+install(TARGETS cgfacetests DESTINATION bin)
+install(TARGETS cgnfsecuritytests DESTINATION bin)
 
 if (BUILD_NETFLIX_VAULT_GENERATOR)
    add_subdirectory(NetflixVaultGenerator)

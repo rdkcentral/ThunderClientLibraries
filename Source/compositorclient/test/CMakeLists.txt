@@ -34,5 +34,5 @@ target_link_libraries(compositorclient_test
 )
 
 if(INSTALL_TESTS)
-    install(TARGETS compositorclient_test DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(TARGETS compositorclient_test DESTINATION bin)
 endif()

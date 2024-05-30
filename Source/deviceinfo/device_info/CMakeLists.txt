@@ -30,4 +30,4 @@ target_link_libraries(device_info
         ${NAMESPACE}DeviceInfo)
 
 install(TARGETS device_info 
-    DESTINATION ${CMAKE_INSTALL_BINDIR})
+    DESTINATION bin)
