@@ -258,8 +258,7 @@ static bluetoothaudiosource_sink_t callbacks = {
 
 static void state_changed(const bluetoothaudiosource_state_t state, void *user_data)
 {
-    context_t *context = (context_t *) user_data;
-    assert(context);
+    assert(user_data != nullptr);
 
     switch (state) {
     case BLUETOOTHAUDIOSOURCE_STATE_DISCONNECTED:
