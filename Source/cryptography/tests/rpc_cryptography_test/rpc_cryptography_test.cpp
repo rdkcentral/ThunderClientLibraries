@@ -27,7 +27,7 @@
 
 #include <cryptography.h>
 
-namespace Thunder = WPEFramework;
+namespace Thunder;
 
 static constexpr uint32_t TimeOut = 1000; //Thunder::Core::infinite;
 static constexpr const TCHAR* PluginConnector = "/tmp/communicator";

@@ -19,7 +19,7 @@ project(CompositorBufferType LANGUAGES CXX)
 
 cmake_minimum_required(VERSION 3.12)
 
-find_package(WPEFramework)
+find_package(Thunder)
 
 project_version(1.0.0)
 

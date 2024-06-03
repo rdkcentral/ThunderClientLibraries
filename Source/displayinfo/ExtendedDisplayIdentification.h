@@ -27,7 +27,7 @@
 #include "displayinfo.h"
 
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
     class ExtendedDisplayIdentification {

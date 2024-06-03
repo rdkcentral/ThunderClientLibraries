@@ -27,7 +27,7 @@
 #include <iostream>
 
 using namespace std;
-using namespace WPEFramework;
+using namespace Thunder;
 
 MODULE_NAME_DECLARATION(BUILD_REFERENCE)
 

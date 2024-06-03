@@ -43,7 +43,7 @@
 #define nullptr NULL
 #endif
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Compositor {
 
     struct EXTERNAL IDisplay {
@@ -199,6 +199,6 @@ namespace Compositor {
         virtual ISurface* SurfaceByName(const std::string& name) = 0;
     };
 } // Compositor
-} // WPEFramework
+} // Thunder
 
 #endif // COMPOSITOR_CPP_ABSTRACTION_H

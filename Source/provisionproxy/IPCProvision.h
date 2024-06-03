@@ -22,7 +22,7 @@
 
 #include <core/core.h>
 
-using namespace WPEFramework;
+using namespace Thunder;
 
 namespace IPC {
 

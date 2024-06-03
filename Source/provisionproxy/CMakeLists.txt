@@ -17,7 +17,7 @@
 
 cmake_minimum_required(VERSION 3.3)
 
-find_package(WPEFramework)
+find_package(Thunder)
 
 project(ProvisionProxy)
 

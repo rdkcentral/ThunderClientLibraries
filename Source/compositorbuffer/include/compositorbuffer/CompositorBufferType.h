@@ -30,7 +30,7 @@
 #include <sys/eventfd.h>
 #include <sys/mman.h>
 
-namespace WPEFramework {
+namespace Thunder {
 
 namespace Compositor {
 

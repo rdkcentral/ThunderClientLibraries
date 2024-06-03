@@ -20,7 +20,7 @@
 #include "IPCSecurityToken.h"
 #include "securityagent.h"
 
-using namespace WPEFramework;
+using namespace Thunder;
 
 static string GetEndPoint()
 {

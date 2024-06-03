@@ -25,7 +25,7 @@ static constexpr TCHAR WidthTag[]        = _T("width");
 static constexpr TCHAR HeightTag[]       = _T("height");
 static constexpr TCHAR MediaTag[]        = _T("original-media-type");
 
-namespace WPEFramework {
+namespace Thunder {
     namespace Plugin {
 
         CapsParser::CapsParser() 
