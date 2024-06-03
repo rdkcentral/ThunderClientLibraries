@@ -25,7 +25,7 @@
 
 #include <plugins/Types.h>
 
-namespace WPEFramework {
+namespace Thunder {
 
 class PlayerInfo : protected RPC::SmartInterfaceType<Exchange::IPlayerProperties> {
 private:
@@ -442,9 +442,9 @@ public:
 
 PlayerInfo* PlayerInfo::_singleton=nullptr;
 
-} //namespace WPEFramework
+} //namespace Thunder
 
-using namespace WPEFramework;
+using namespace Thunder;
 extern "C" {
 
 uint32_t playerinfo_register_operational_state_change_callback(

@@ -404,7 +404,7 @@ OpenCDMError opencdm_system_ext_get_properties(struct PlayLevels* system, const 
 
     public:
         PlayLevelsJSON()
-            : WPEFramework::Core::JSON::Container()
+            : Thunder::Core::JSON::Container()
             , _compressedVideo()
             , _uncompressedVideo()
             , _analogVideo()

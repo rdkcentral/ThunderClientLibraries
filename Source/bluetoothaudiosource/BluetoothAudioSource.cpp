@@ -23,7 +23,7 @@
 #include "include/bluetoothaudiosource.h"
 #include <interfaces/IBluetoothAudio.h>
 
-namespace WPEFramework {
+namespace Thunder {
 
 namespace BluetoothAudioSourceClient {
 
@@ -950,7 +950,7 @@ namespace BluetoothAudioSourceClient {
 }
 
 
-using namespace WPEFramework;
+using namespace Thunder;
 
 extern "C" {
 

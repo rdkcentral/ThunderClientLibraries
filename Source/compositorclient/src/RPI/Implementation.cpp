@@ -104,7 +104,7 @@ static void VirtualTouchScreenCallback(touchactiontype type, unsigned short inde
 
 namespace {
 
-using namespace WPEFramework;
+using namespace Thunder;
 
 #ifdef VC6
 
@@ -405,7 +405,7 @@ public:
         vc_dispmanx_update_submit_sync(dispmanUpdate);
     }
 
-    void Geometry (const EGLSurface& surface, const WPEFramework::Exchange::IComposition::Rectangle& rectangle) 
+    void Geometry (const EGLSurface& surface, const Thunder::Exchange::IComposition::Rectangle& rectangle)
     {
         VC_RECT_T srcRect;
         Surface* object = reinterpret_cast<Surface*>(surface);
@@ -458,7 +458,7 @@ public:
 
 }
 
-namespace WPEFramework {
+namespace Thunder {
 namespace RPI {
 
 static Core::NodeId Connector()
@@ -1110,4 +1110,4 @@ Compositor::IDisplay* Compositor::IDisplay::Instance(const string& displayName)
 {
     return (&(RPI::Display::Instance(displayName)));
 }
-} // WPEFramework
+} // Thunder

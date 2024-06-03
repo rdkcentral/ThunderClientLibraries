@@ -25,7 +25,7 @@
 #include <interfaces/ICryptography.h>
 #include <interfaces/INetflixSecurity.h>
 
-namespace WPEFramework {
+namespace Thunder {
 
 namespace Cryptography {
 

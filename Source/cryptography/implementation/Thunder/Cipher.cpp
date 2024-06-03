@@ -45,14 +45,14 @@ namespace Operation {
     // Wrappers to get around different method names for encryption/decryption.
 
     struct Encrypt {
-        typedef WPEFramework::Crypto::AESEncryption Implementation;
+        typedef Thunder::Crypto::AESEncryption Implementation;
         static int32_t Operation(Implementation& impl, const uint32_t length, const uint8_t input[], uint8_t output[]) {
             return (impl.Encrypt(length, input, output));
         }
     };
 
     struct Decrypt {
-        typedef WPEFramework::Crypto::AESDecryption Implementation;
+        typedef Thunder::Crypto::AESDecryption Implementation;
         static int32_t Operation(Implementation& impl, const uint32_t length, const uint8_t input[], uint8_t output[]) {
             return (impl.Decrypt(length, input, output));
         }
@@ -70,7 +70,7 @@ public:
     AESCryptor& operator=(const AESCryptor<OPERATION>) = delete;
     AESCryptor() = delete;
 
-    AESCryptor(WPEFramework::Crypto::aesType blockMode, const uint32_t keyId)
+    AESCryptor(Thunder::Crypto::aesType blockMode, const uint32_t keyId)
         : _cryptor(blockMode)
         , _keyId(keyId)
     {
@@ -133,27 +133,27 @@ CryptImplementation* CreateCryptor(const cipher_algorithm algorithm, const ciphe
 {
     CryptImplementation* crypt = nullptr;
 
-    auto AESBlockMode = [](const cipher_mode mode, WPEFramework::Crypto::aesType aesType) -> bool {
+    auto AESBlockMode = [](const cipher_mode mode, Thunder::Crypto::aesType aesType) -> bool {
         bool converted = false;
         switch (mode) {
         case cipher_mode::CIPHER_MODE_ECB:
-            aesType = WPEFramework::Crypto::aesType::AES_ECB;
+            aesType = Thunder::Crypto::aesType::AES_ECB;
             converted = true;
             break;
         case cipher_mode::CIPHER_MODE_CBC:
-            aesType = WPEFramework::Crypto::aesType::AES_CBC;
+            aesType = Thunder::Crypto::aesType::AES_CBC;
             converted = true;
             break;
         case cipher_mode::CIPHER_MODE_OFB:
-            aesType = WPEFramework::Crypto::aesType::AES_CBC;
+            aesType = Thunder::Crypto::aesType::AES_CBC;
             converted = true;
             break;
         case cipher_mode::CIPHER_MODE_CFB8:
-            aesType = WPEFramework::Crypto::aesType::AES_CFB8;
+            aesType = Thunder::Crypto::aesType::AES_CFB8;
             converted = true;
             break;
         case cipher_mode::CIPHER_MODE_CFB128:
-            aesType = WPEFramework::Crypto::aesType::AES_CFB128;
+            aesType = Thunder::Crypto::aesType::AES_CFB128;
             converted = true;
             break;
         default:
@@ -165,7 +165,7 @@ CryptImplementation* CreateCryptor(const cipher_algorithm algorithm, const ciphe
 
     switch (algorithm) {
     case cipher_algorithm::CIPHER_ALGORITHM_AES: {
-        WPEFramework::Crypto::aesType aesType = WPEFramework::Crypto::aesType::AES_ECB;
+        Thunder::Crypto::aesType aesType = Thunder::Crypto::aesType::AES_ECB;
         if (AESBlockMode(mode, aesType) == true) {
             crypt = new AESCryptor<OPERATION>(aesType, keyId);
         }

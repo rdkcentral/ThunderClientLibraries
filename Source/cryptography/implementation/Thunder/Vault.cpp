@@ -241,22 +241,22 @@ bool vault_clear(const uint32_t id)
 
 uint32_t persistent_key_exists( struct VaultImplementation* vault ,const char locator[],bool* result)
 {
-    return(WPEFramework::Core::ERROR_UNAVAILABLE);
+    return(Thunder::Core::ERROR_UNAVAILABLE);
 }
 
 uint32_t persistent_key_load(struct VaultImplementation* vault,const char locator[],uint32_t*  id)
 {
-    return(WPEFramework::Core::ERROR_UNAVAILABLE);
+    return(Thunder::Core::ERROR_UNAVAILABLE);
 }
 
 uint32_t persistent_key_create( struct VaultImplementation* vault,const char locator[],const key_type keyType,uint32_t* id)
 {
-    return(WPEFramework::Core::ERROR_UNAVAILABLE);
+    return(Thunder::Core::ERROR_UNAVAILABLE);
 }
 
 uint32_t persistent_flush(struct VaultImplementation* vault)
 {
-    return(WPEFramework::Core::ERROR_UNAVAILABLE);
+    return(Thunder::Core::ERROR_UNAVAILABLE);
 }
 
 } // extern "C"

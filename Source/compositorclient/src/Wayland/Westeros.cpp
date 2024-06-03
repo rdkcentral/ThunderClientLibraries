@@ -50,7 +50,7 @@
 // logical xor
 #define XOR(a, b) ((!a && b) || (a && !b))
 
-using namespace WPEFramework;
+using namespace Thunder;
 
 #define Trace(fmt, args...) fprintf(stderr, "[pid=%d][Client %s:%d] : " fmt, getpid(), __FILE__, __LINE__, ##args)
 
@@ -217,7 +217,7 @@ static const struct wl_pointer_listener pointerListener = {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
         Trace("wl_pointer_listener.pointerButton [%u,%u]\n", button, state);
 
-        // align with what WPEBackend-rdk wpeframework backend is expecting
+        // align with what WPEBackend-rdk thunder backend is expecting
         if (button >= BTN_MOUSE)
             button = button - BTN_MOUSE;
         else
@@ -376,7 +376,7 @@ static const struct wl_registry_listener globalRegistryListener = {
     },
 };
 
-namespace WPEFramework {
+namespace Thunder {
 
 namespace Wayland {
     /*static*/ Display::CriticalSection Display::_adminLock;

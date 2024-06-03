@@ -693,13 +693,13 @@ extern "C" {
         ASSERT(vault != nullptr);
         if (Implementation::vaultId == CRYPTOGRAPHY_VAULT_NETFLIX) {
             //NOT IMPLEMENTED FOR SEC_NETFLIX
-            return (WPEFramework::Core::ERROR_UNAVAILABLE);
+            return (Thunder::Core::ERROR_UNAVAILABLE);
         }
         else {
             TRACE_L2(_T("SEC:persistent_key_create generic\n"));
             Implementation::Vault* vaultImpl = reinterpret_cast<Implementation::Vault*>(vault);
             (*id) = vaultImpl->CreateNamedKey(locator,false,keyType) ; //SEC keys are not exportable
-            return (((*id)!=0)?(WPEFramework::Core::ERROR_NONE):(WPEFramework::Core::ERROR_GENERAL)) ;
+            return (((*id)!=0)?(Thunder::Core::ERROR_NONE):(Thunder::Core::ERROR_GENERAL)) ;
         }
     }
 
@@ -708,13 +708,13 @@ extern "C" {
         ASSERT(vault != nullptr);
         if (Implementation::vaultId == CRYPTOGRAPHY_VAULT_NETFLIX) {
             //NOT IMPLEMENTED FOR SEC_NETFLIX
-            return (WPEFramework::Core::ERROR_UNAVAILABLE);
+            return (Thunder::Core::ERROR_UNAVAILABLE);
         }
         else {
             TRACE_L2(_T("SEC:persistent_key_load  generic\n"));
             Implementation::Vault* vaultImpl = reinterpret_cast<Implementation::Vault*>(vault);
             (*id) = vaultImpl->ImportNamedKey(locator);
-            return (((*id)!=0)?(WPEFramework::Core::ERROR_NONE):(WPEFramework::Core::ERROR_GENERAL)) ;
+            return (((*id)!=0)?(Thunder::Core::ERROR_NONE):(Thunder::Core::ERROR_GENERAL)) ;
         }
 
     }
@@ -724,13 +724,13 @@ extern "C" {
         ASSERT(vault != nullptr);
         if (Implementation::vaultId == CRYPTOGRAPHY_VAULT_NETFLIX) {
             //NOT IMPLEMENTED FOR SEC_NETFLIX
-            return (WPEFramework::Core::ERROR_UNAVAILABLE);
+            return (Thunder::Core::ERROR_UNAVAILABLE);
         }
         else {
             TRACE_L2(_T("SEC:persistent_key_exists generic\n"));
             Implementation::Vault* vaultImpl = reinterpret_cast<Implementation::Vault*>(vault);
             (*result)= vaultImpl->CheckNamedKey(locator);
-            return (WPEFramework::Core::ERROR_NONE);
+            return (Thunder::Core::ERROR_NONE);
         }
 
     }
@@ -742,10 +742,10 @@ extern "C" {
             TRACE_L2(_T("SEC:persistent_flush generic\n"));
             Implementation::Vault* vaultImpl = reinterpret_cast<Implementation::Vault*>(vault);
             vaultImpl->ProcessorRelease();
-            return (WPEFramework::Core::ERROR_NONE);
+            return (Thunder::Core::ERROR_NONE);
         }
         else {
-            return (WPEFramework::Core::ERROR_UNAVAILABLE);
+            return (Thunder::Core::ERROR_UNAVAILABLE);
         }
 
     }
