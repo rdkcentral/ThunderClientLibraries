@@ -28,7 +28,7 @@
 #include <interfaces/IProvisioning.h>
 #include <provision/DRMInfo.h>
 
-using namespace WPEFramework;
+using namespace Thunder;
 #endif
 
 #include <openssl/evp.h>
@@ -148,8 +148,8 @@ POP_WARNING()
 
     auto ctor = [](Vault& vault) {
         std::string path;
-        WPEFramework::Core::SystemInfo::GetEnvironment(_T("NETFLIX_VAULT"), path);
-        WPEFramework::Core::File file(path);
+        Thunder::Core::SystemInfo::GetEnvironment(_T("NETFLIX_VAULT"), path);
+        Thunder::Core::File file(path);
 
         if (file.Open(true) == true) {
 PUSH_WARNING(DISABLE_WARNING_NON_STANDARD_EXTENSION_USED, DISABLE_WARNING_PEDANTIC)
@@ -551,22 +551,22 @@ uint32_t netflix_security_wrapping_key(void)
 
 uint32_t persistent_key_exists(struct VaultImplementation* /* vault */, const char* /* locator[] */, bool* /* result */)
 {
-    return (WPEFramework::Core::ERROR_UNAVAILABLE);
+    return (Thunder::Core::ERROR_UNAVAILABLE);
 }
 
 uint32_t persistent_key_load(struct VaultImplementation* /* vault */, const char* /* locator[] */, uint32_t* /* id */)
 {
-    return (WPEFramework::Core::ERROR_UNAVAILABLE);
+    return (Thunder::Core::ERROR_UNAVAILABLE);
 }
 
 uint32_t persistent_key_create(struct VaultImplementation* /* vault */, const char* /* locator[] */, const key_type /* keyType */, uint32_t* /* id */)
 {
-    return (WPEFramework::Core::ERROR_UNAVAILABLE);
+    return (Thunder::Core::ERROR_UNAVAILABLE);
 }
 
 uint32_t persistent_flush(struct VaultImplementation* /* vault */)
 {
-    return (WPEFramework::Core::ERROR_UNAVAILABLE);
+    return (Thunder::Core::ERROR_UNAVAILABLE);
 }
 
 } // extern "C"

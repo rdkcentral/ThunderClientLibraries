@@ -40,16 +40,16 @@ public:
     void operator=(Vault const&) = delete;
 
 public:
-    class Element : public WPEFramework::Core::DataStore {
+    class Element : public Thunder::Core::DataStore {
     public:
         Element(bool exportable, const uint16_t size)
-            : WPEFramework::Core::DataStore(size)
+            : Thunder::Core::DataStore(size)
             , _exportable(exportable)
         {
         }
 
         Element(bool exportable, const uint16_t size, const uint8_t* buffer)
-            : WPEFramework::Core::DataStore(size)
+            : Thunder::Core::DataStore(size)
             , _exportable(exportable)
         {
             Copy(buffer, size);
@@ -77,7 +77,7 @@ private:
     uint16_t Cipher(bool encrypt, const uint16_t inSize, const uint8_t input[], const uint16_t maxOutSize, uint8_t output[]) const;
 
 private:
-    mutable WPEFramework::Core::CriticalSection _lock;
+    mutable Thunder::Core::CriticalSection _lock;
     std::map<uint32_t, Element> _items;
     uint32_t _lastHandle;
     string _vaultKey;

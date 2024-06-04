@@ -40,5 +40,5 @@ if(USE_PROVISIONING)
    )
 endif()
 
-install(TARGETS NetflixVaultGenerator DESTINATION bin)
+install(TARGETS NetflixVaultGenerator DESTINATION ${CMAKE_INSTALL_BINDIR})
 

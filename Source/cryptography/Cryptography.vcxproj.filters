@@ -83,5 +83,8 @@
     <ClCompile Include="implementation\OpenSSL\Random.cpp">
       <Filter>Implementation\Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Module.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
