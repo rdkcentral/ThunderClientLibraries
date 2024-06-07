@@ -19,7 +19,7 @@ project(ocdmtest)
 
 set(TARGET ${PROJECT_NAME})
 
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.15)
 
 find_package(${NAMESPACE}Core REQUIRED)
 
