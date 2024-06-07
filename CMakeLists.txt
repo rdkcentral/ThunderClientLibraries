@@ -18,7 +18,6 @@
 
 cmake_minimum_required(VERSION 3.3)
 project(ClientLibraries)
-include(GNUInstallDirs)
 
 find_package(Thunder)
 
