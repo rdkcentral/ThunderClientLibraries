@@ -54,9 +54,9 @@ uint32_t opencdm_construct_session_private(struct OpenCDMSession* session, void*
 {
     bool success = gst_svp_ext_get_context(&pvtData, Server, (unsigned int)session);
     if (success) {
-      TRACE_L1("Initialized SVP context for server side ID \n");
+      TRACE_L1("Initialized SVP context for server side ID = %X\n",(unsigned int)session);
       char buf[25] = { 0 };
-      snprintf(buf, 25, "%X", (unsigned int)this);
+      snprintf(buf, 25, "%X", (unsigned int)session);
       session->SetParameter("rpcId", buf);
       return 0;
     }
