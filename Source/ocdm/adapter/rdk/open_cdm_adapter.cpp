@@ -58,8 +58,9 @@ uint32_t opencdm_construct_session_private(struct OpenCDMSession* session, void*
       char buf[25] = { 0 };
       snprintf(buf, 25, "%X", (unsigned int)this);
       session->SetParameter("rpcId", buf);
-	  return 0;
+      return 0;
     }
+    return 1;
 }
 
 uint32_t opencdm_destruct_session_private(struct OpenCDMSession* session, void* &pvtData)
