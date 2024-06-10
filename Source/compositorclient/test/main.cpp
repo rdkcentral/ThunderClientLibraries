@@ -33,22 +33,22 @@
 
 MODULE_NAME_DECLARATION(BUILD_REFERENCE)
 
-namespace WPEFramework {
+namespace Thunder {
 
-} // namespace WPEFramework
+} // namespace Thunder
 
 int main(VARIABLE_IS_NOT_USED int argc, VARIABLE_IS_NOT_USED const char* argv[])
 {
 
-    WPEFramework::Core::SystemInfo::SetEnvironment(_T("COMPOSITOR_BUFFER_CONNECTOR"), "/tmp/Compositor/buffer", true);
-    WPEFramework::Core::SystemInfo::SetEnvironment(_T("COMPOSITOR_DISPLAY_CONNECTOR"), "/tmp/Compositor/display", true);
+    Thunder::Core::SystemInfo::SetEnvironment(_T("COMPOSITOR_BUFFER_CONNECTOR"), "/tmp/Compositor/buffer", true);
+    Thunder::Core::SystemInfo::SetEnvironment(_T("COMPOSITOR_DISPLAY_CONNECTOR"), "/tmp/Compositor/display", true);
 
-    WPEFramework::Messaging::LocalTracer& tracer = WPEFramework::Messaging::LocalTracer::Open();
+    Thunder::Messaging::LocalTracer& tracer = Thunder::Messaging::LocalTracer::Open();
 
-    const char* executableName(WPEFramework::Core::FileNameOnly(argv[0]));
+    const char* executableName(Thunder::Core::FileNameOnly(argv[0]));
 
     {
-        WPEFramework::Messaging::ConsolePrinter printer(true);
+        Thunder::Messaging::ConsolePrinter printer(true);
 
         tracer.Callback(&printer);
 
@@ -61,10 +61,10 @@ int main(VARIABLE_IS_NOT_USED int argc, VARIABLE_IS_NOT_USED const char* argv[])
             tracer.EnableMessage(module, "", true);
         }
 
-        TRACE_GLOBAL(WPEFramework::Trace::Information, ("%s - build: %s", executableName, __TIMESTAMP__));
+        TRACE_GLOBAL(Thunder::Trace::Information, ("%s - build: %s", executableName, __TIMESTAMP__));
 
-        WPEFramework::Compositor::IDisplay* display = WPEFramework::Compositor::IDisplay::Instance("HDMI-1");
-        WPEFramework::Compositor::IDisplay::ISurface* surface = nullptr;
+        Thunder::Compositor::IDisplay* display = Thunder::Compositor::IDisplay::Instance("HDMI-1");
+        Thunder::Compositor::IDisplay::ISurface* surface = nullptr;
 
         char keyPress;
 
@@ -77,9 +77,9 @@ int main(VARIABLE_IS_NOT_USED int argc, VARIABLE_IS_NOT_USED const char* argv[])
 
                 if (surface != nullptr) {
                     surface = display->Create("TestClient", 1280, 720);
-                    TRACE_GLOBAL(WPEFramework::Trace::Information, ("Create %s surface", surface->Name().c_str()));
+                    TRACE_GLOBAL(Thunder::Trace::Information, ("Create %s surface", surface->Name().c_str()));
                 } else {
-                    TRACE_GLOBAL(WPEFramework::Trace::Information, ("Release %s surface", surface->Name().c_str()));
+                    TRACE_GLOBAL(Thunder::Trace::Information, ("Release %s surface", surface->Name().c_str()));
                     surface->Release();
                     surface = nullptr;
                 }
@@ -88,10 +88,10 @@ int main(VARIABLE_IS_NOT_USED int argc, VARIABLE_IS_NOT_USED const char* argv[])
             }
             case 'I': {
                 if(surface != nullptr) {
-                    TRACE_GLOBAL(WPEFramework::Trace::Information, ("Surface Info\n Name: %s\n Width: %d\n Height: %d\n",   
-                        surface->Name().c_str(), 
-                        surface->Width(), 
-                        surface->Height())); 
+                    TRACE_GLOBAL(Thunder::Trace::Information, ("Surface Info\n Name: %s\n Width: %d\n Height: %d\n",
+                        surface->Name().c_str(),
+                        surface->Width(),
+                        surface->Height()));
                 }
             }
             default:
@@ -99,7 +99,7 @@ int main(VARIABLE_IS_NOT_USED int argc, VARIABLE_IS_NOT_USED const char* argv[])
             }
         } while (keyPress != 'Q');
 
-        TRACE_GLOBAL(WPEFramework::Trace::Information, ("Exiting %s.... ", executableName));
+        TRACE_GLOBAL(Thunder::Trace::Information, ("Exiting %s.... ", executableName));
 
         if (surface != nullptr) {
             surface->Release();
@@ -111,7 +111,7 @@ int main(VARIABLE_IS_NOT_USED int argc, VARIABLE_IS_NOT_USED const char* argv[])
     }
 
     tracer.Close();
-    WPEFramework::Core::Singleton::Dispose();
+    Thunder::Core::Singleton::Dispose();
 
     return 0;
 }

@@ -23,7 +23,7 @@
 #include "deviceinfo.h"
 #include <interfaces/IDeviceInfo.h>
 
-using namespace WPEFramework;
+using namespace Thunder;
 namespace {
 
 
@@ -199,9 +199,9 @@ static string Callsign()
     return (Default);
 }
 
-class DeviceInfoLink : public WPEFramework::RPC::SmartInterfaceType<WPEFramework::Exchange::IDeviceInfo> {
+class DeviceInfoLink : public Thunder::RPC::SmartInterfaceType<Thunder::Exchange::IDeviceInfo> {
 private:
-    using BaseClass = WPEFramework::RPC::SmartInterfaceType<WPEFramework::Exchange::IDeviceInfo>;
+    using BaseClass = Thunder::RPC::SmartInterfaceType<Thunder::Exchange::IDeviceInfo>;
     struct AudioOutputCapability {
         deviceinfo_audio_output_t type;
         std::vector<deviceinfo_audio_capability_t> audioCapabilities;
@@ -269,7 +269,7 @@ public:
     DeviceInfoLink& operator=(const DeviceInfoLink&) = delete;
     ~DeviceInfoLink() override
     {
-        BaseClass::Close(WPEFramework::Core::infinite);
+        BaseClass::Close(Thunder::Core::infinite);
         
         _lock.Lock();
 

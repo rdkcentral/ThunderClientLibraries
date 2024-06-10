@@ -27,7 +27,7 @@
 
 #define PRINT(format, ...) fprintf(stderr, _T("bluetoothaudiosink: ") format _T("\n"), ##__VA_ARGS__)
 
-namespace WPEFramework {
+namespace Thunder {
 
 static bluetoothaudiosink_state_t ConvertState(const Exchange::IBluetoothAudio::state state)
 {
@@ -596,7 +596,7 @@ namespace BluetoothAudioSinkClient {
 }
 
 
-using namespace WPEFramework;
+using namespace Thunder;
 
 extern "C" {
 

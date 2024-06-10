@@ -1,6 +1,6 @@
 #
-# If not stated otherwise in this file or this component's LICENSE file the
-# following copyright and licenses apply:
+# If not stated otherwise in this file or this component's LICENSE file the 
+# following copyright and licenses apply: 
 #
 # Copyright 2020 Metrological
 #
@@ -18,8 +18,9 @@
 
 cmake_minimum_required(VERSION 3.3)
 project(ClientLibraries)
+include(GNUInstallDirs)
 
-find_package(WPEFramework)
+find_package(Thunder)
 
 option(BLUETOOTHAUDIOSINK
         "Include the bluetoothaudiosink library." OFF)

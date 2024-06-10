@@ -23,7 +23,7 @@
 #include <interfaces/INetflixSecurity.h>
 #include "implementation/netflix_security_implementation.h"
 
-namespace WPEFramework {
+namespace Thunder {
 
 namespace Implementation {
 

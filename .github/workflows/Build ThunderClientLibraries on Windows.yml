@@ -1,11 +1,11 @@
 name: Build ThunderClientLibraries on Windows
 
 on:
+  workflow_dispatch:
   push:
     branches: ["master"]
   pull_request:
     branches: ["master"]
-  workflow_call:
 
 env:
   cryptography: ThunderClientLibraries\Source\cryptography\Cryptography.vcxproj
@@ -26,10 +26,11 @@ jobs:
         type: [Debug, Release]
         version: [64, 86]
 
+# ----- Checkouts & Regex -----
     name: Build type - ${{matrix.type}}${{matrix.version}}
     steps:
     - name: Checkout ThunderOnWindows
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         path: ThunderOnWindows
         repository: WebPlatformForEmbedded/ThunderOnWindows
@@ -37,7 +38,7 @@ jobs:
 # ----- Thunder -----
     - name: Checkout Thunder - default
       if: ${{ !contains(github.event.pull_request.body, '[DependsOn=Thunder:') }}
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         path: ThunderOnWindows/Thunder
         repository: ${{github.repository_owner}}/Thunder
@@ -53,7 +54,7 @@ jobs:
 
     - name: Checkout Thunder - ${{steps.thunder.outputs.first_match}}
       if: contains(github.event.pull_request.body, '[DependsOn=Thunder:')
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         path: ThunderOnWindows/Thunder
         repository: ${{github.repository_owner}}/Thunder
@@ -62,7 +63,7 @@ jobs:
 # ----- ThunderTools -----
     - name: Checkout ThunderTools - default
       if: ${{ !contains(github.event.pull_request.body, '[DependsOn=ThunderTools:') }}
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         path: ThunderOnWindows/ThunderTools
         repository: ${{github.repository_owner}}/ThunderTools
@@ -78,7 +79,7 @@ jobs:
 
     - name: Checkout ThunderTools - ${{steps.tools.outputs.first_match}}
       if: contains(github.event.pull_request.body, '[DependsOn=ThunderTools:')
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         path: ThunderOnWindows/ThunderTools
         repository: ${{github.repository_owner}}/ThunderTools
@@ -86,30 +87,30 @@ jobs:
 
 # ----- Other checkouts -----
     - name: Checkout ThunderClientLibraries
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         path: ThunderOnWindows/ThunderClientLibraries
         repository: ${{github.repository_owner}}/ThunderClientLibraries
 
     - name: Checkout ThunderInterfaces
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         path: ThunderOnWindows/ThunderInterfaces
         repository: ${{github.repository_owner}}/ThunderInterfaces
 
     - name: Checkout ThunderNanoServices
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         path: ThunderOnWindows/ThunderNanoServices
         repository: ${{github.repository_owner}}/ThunderNanoServices
 
     - name: Checkout ThunderNanoServicesRDK
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         path: ThunderOnWindows/ThunderNanoServicesRDK
         repository: WebPlatformForEmbedded/ThunderNanoServicesRDK
 
-# ----- Building -----
+# ----- Building & uploading artifacts -----
     - name: Install jsonref
       run: pip install jsonref
 
@@ -128,7 +129,7 @@ jobs:
       run: tar -czvf ${{matrix.type}}${{matrix.version}}.tar.gz artifacts
 
     - name: Upload
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ThunderClientLibraries-${{matrix.type}}${{matrix.version}}-artifact
         path: ${{matrix.type}}${{matrix.version}}.tar.gz

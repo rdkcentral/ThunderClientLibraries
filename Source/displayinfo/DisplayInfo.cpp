@@ -25,7 +25,7 @@
 #include <interfaces/IDisplayInfo.h>
 #include "ExtendedDisplayIdentification.h"
 
-namespace WPEFramework {
+namespace Thunder {
 class DisplayInfo : protected RPC::SmartInterfaceType<Exchange::IConnectionProperties> {
 private:
     using BaseClass = RPC::SmartInterfaceType<Exchange::IConnectionProperties>;
@@ -329,9 +329,9 @@ public:
 
 DisplayInfo* DisplayInfo::_singleton = nullptr;
 
-} // namespace WPEFramework
+} // namespace Thunder
 
-using namespace WPEFramework;
+using namespace Thunder;
 
 extern "C" {
 

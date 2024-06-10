@@ -46,7 +46,7 @@ extern "C" {
 #include <compositor/Client.h>
 #include "RenderAPI.h"
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Linux {
     namespace {
         const string BufferConnector()
@@ -98,9 +98,9 @@ namespace Linux {
         static void VirtualMouseCallback(mouseactiontype, const unsigned short, const signed short, const signed short);
         static void VirtualTouchScreenCallback(touchactiontype, const unsigned short, const unsigned short, const unsigned short);
 
-        class RemoteBuffer : public WPEFramework::Compositor::CompositorBufferType<4> {
+        class RemoteBuffer : public Thunder::Compositor::CompositorBufferType<4> {
         private:
-            using BaseClass = WPEFramework::Compositor::CompositorBufferType<4>;
+            using BaseClass = Thunder::Compositor::CompositorBufferType<4>;
 
         public:
             RemoteBuffer() = delete;
@@ -638,7 +638,7 @@ namespace Linux {
 
             _adminLock.Lock();
 
-            if (WPEFramework::Core::WorkerPool::IsAvailable() == true) {
+            if (Thunder::Core::WorkerPool::IsAvailable() == true) {
                 // If we are in the same process space as where a WorkerPool is registered (Main Process or
                 // hosting process) use, it!
                 Core::ProxyType<RPC::InvokeServer> engine = Core::ProxyType<RPC::InvokeServer>::Create(&Core::WorkerPool::Instance());
@@ -741,7 +741,7 @@ namespace Linux {
             _adminLock.Unlock();
         }
 
-        WPEFramework::Exchange::IComposition::IClient* CreateRemoteSurface(const std::string& name, const uint32_t width, const uint32_t height)
+        Thunder::Exchange::IComposition::IClient* CreateRemoteSurface(const std::string& name, const uint32_t width, const uint32_t height)
         {
             return (_remoteDisplay != nullptr ? _remoteDisplay->CreateClient(name, width, height) : nullptr);
         }
@@ -922,4 +922,4 @@ Compositor::IDisplay* Compositor::IDisplay::Instance(const string& displayName)
 {
     return (&(Linux::Display::Instance(displayName)));
 }
-} // namespace WPEFramework
+} // namespace Thunder

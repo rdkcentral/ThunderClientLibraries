@@ -39,7 +39,6 @@
     <ClCompile Include="implementation\OpenSSL\Hash.cpp" />
     <ClCompile Include="implementation\OpenSSL\Vault.cpp" />
     <ClCompile Include="implementation\OpenSSL\Random.cpp" />
-    <ClCompile Include="Module.cpp" />
     <ClCompile Include="NetflixSecurity.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

@@ -21,7 +21,7 @@
 #include <plugins/IVirtualInput.h>
 #include "virtualinput.h"
 
-namespace WPEFramework {
+namespace Thunder {
 namespace VirtualInput{
 
     class KeyEventHandler : public Core::IIPCServer {
@@ -219,7 +219,7 @@ namespace VirtualInput{
 extern "C" {
 #endif
 
-using namespace WPEFramework;
+using namespace Thunder;
 
 // Producer, Consumer, We produce the virtual keyboard, the receiver needs
 // to destruct it once the done with the virtual keyboard.

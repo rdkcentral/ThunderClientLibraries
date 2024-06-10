@@ -35,8 +35,8 @@ namespace Implementation {
         auto ctor = [](VaultNetflix& netflix)
         {
             std::string path;
-            WPEFramework::Core::SystemInfo::GetEnvironment(_T("NETFLIX_VAULT"), path);
-            WPEFramework::Core::File file(path);
+            Thunder::Core::SystemInfo::GetEnvironment(_T("NETFLIX_VAULT"), path);
+            Thunder::Core::File file(path);
             /*Send an empty buffer for cases where boundndkymsg File is not required or  present.
             The buffer content will be ignored by Secapi-Netflix lib for such cases*/    
             static constexpr uint32_t MaxFileSize = 4096;

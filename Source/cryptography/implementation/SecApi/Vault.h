@@ -75,7 +75,7 @@ namespace Implementation {
             return  _secProcHandle;
         }
 
-        class MapStore :public WPEFramework::Core::DataStore {
+        class MapStore :public Thunder::Core::DataStore {
         public:
             MapStore(bool exportable, struct IdStore ids, uint16_t keyLength)
                 : _exportable(exportable)
@@ -86,7 +86,7 @@ namespace Implementation {
             }
 
             MapStore(bool exportable, uint8_t* buffer, uint16_t size)
-                :WPEFramework::Core::DataStore(size)
+                :Thunder::Core::DataStore(size)
                 , _exportable(exportable)
             {
                 Copy(buffer, size);
@@ -121,7 +121,7 @@ namespace Implementation {
         void ProcessorRelease();
 
     private:
-        mutable WPEFramework::Core::CriticalSection _lock;
+        mutable Thunder::Core::CriticalSection _lock;
         Sec_ProcessorHandle* _secProcHandle;
         std::map<uint32_t, MapStore> _items;
         uint32_t _lastHandle;
@@ -168,7 +168,7 @@ namespace Implementation {
         uint32_t FindNamedKey(std::string keyName, uint32_t& keyHandle);
 
     private:
-        mutable WPEFramework::Core::CriticalSection _lock;
+        mutable Thunder::Core::CriticalSection _lock;
         uint32_t _lastHandle;
         uint8_t* _pubKeyStore = NULL;
         uint16_t _peerPubSize = 0;

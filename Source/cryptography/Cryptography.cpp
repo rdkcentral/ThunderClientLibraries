@@ -32,7 +32,7 @@
 #include <com/com.h>
 #include <plugins/Types.h>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Implementation {
 
     static constexpr uint16_t TimeOut = 3000;

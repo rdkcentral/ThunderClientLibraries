@@ -31,7 +31,7 @@
 
 #include <string>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Compositor {
 
 #ifndef EGL_VERSION_1_5
@@ -353,4 +353,4 @@ namespace Compositor {
 
     } // namespace API
 } // namespace Compositor
-} // namespace WPEFramework
+} // namespace Thunder

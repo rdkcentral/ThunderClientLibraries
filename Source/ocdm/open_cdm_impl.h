@@ -27,7 +27,7 @@
 
 #include <atomic>
 
-using namespace WPEFramework;
+using namespace Thunder;
 
 extern Core::CriticalSection _systemLock;
 
