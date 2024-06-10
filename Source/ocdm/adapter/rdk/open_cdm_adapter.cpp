@@ -52,12 +52,14 @@ bool swapIVBytes(uint8_t *mappedIV,uint32_t mappedIVSize)
 
 uint32_t opencdm_construct_session_private(struct OpenCDMSession* session, void* &pvtData)
 {
-    ASSERT(session != nullptr);
-    const char* session_id = opencdm_session_id(session);
-    TRACE_L1("Initializing SVP context for server side ID = %s\n", session_id);
-    bool success = gst_svp_ext_get_context(&pvtData, Server, session_id);
-    session->Load();
-    return (success ? 0 : 1);
+    bool success = gst_svp_ext_get_context(&pvtData, Server, nID);
+    if (success) {
+      TRACE_L1("Initialized SVP context for server side ID \n");
+      char buf[25] = { 0 };
+      snprintf(buf, 25, "%X", (unsigned int)this);
+      session->SetParameter("rpcId", buf);
+	  return 0;
+    }
 }
 
 uint32_t opencdm_destruct_session_private(struct OpenCDMSession* session, void* &pvtData)
