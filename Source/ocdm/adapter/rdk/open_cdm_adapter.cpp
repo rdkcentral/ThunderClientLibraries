@@ -380,7 +380,7 @@ OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* ses
                     TRACE_L1("Could not convert caps to string\n");
                 }
             }
-            RDKPerf perf(perfString.c_str());
+            GstPerf perf(perfString.c_str());
 
             if (subSample == nullptr && IV == nullptr && keyID == nullptr) {
             // no encrypted data, skip decryption...
