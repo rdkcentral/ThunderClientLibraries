@@ -129,6 +129,13 @@ if (${CDMI_ADAPTER_IMPLEMENTATION} STREQUAL "broadcom-svp-secbuf")
             )
 endif()
 
+if (${CDMI_ADAPTER_IMPLEMENTATION} STREQUAL "rdk")
+    target_link_libraries(${TARGET}
+            PRIVATE
+            -lgstsvpext
+            )
+endif()
+
 set_target_properties(${TARGET} PROPERTIES
         CXX_STANDARD 11
         CXX_STANDARD_REQUIRED YES
