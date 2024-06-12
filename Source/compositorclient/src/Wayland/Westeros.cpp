@@ -61,17 +61,17 @@ using namespace Thunder;
 #define DEPTH_SIZE (0)
 
 static const struct wl_shell_surface_listener g_ShellSurfaceListener = {
-    //handle_ping,
+    // handle_ping,
     [](void*, struct wl_shell_surface* shell_surface, uint32_t serial) {
         wl_shell_surface_pong(shell_surface, serial);
     },
-    //handle_configure,
+    // handle_configure,
     [](void*, struct wl_shell_surface*, uint32_t, int32_t width, int32_t height) {
         Trace("handle_configure: width=%d height=%d \n", width, height);
         //  Wayland::Display::Sur *wayland = static_cast<Wayland *>(data);
         // wl_egl_window_resize(wayland->eglWindow, width, height, 0, 0);
     },
-    //handle_popup_done
+    // handle_popup_done
     [](void*, struct wl_shell_surface*) {
     }
 };
@@ -217,11 +217,11 @@ static const struct wl_pointer_listener pointerListener = {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
         Trace("wl_pointer_listener.pointerButton [%u,%u]\n", button, state);
 
-        //align with what WPEBackend-rdk thunder backend is expecting
+        // align with what WPEBackend-rdk thunder backend is expecting
         if (button >= BTN_MOUSE)
-          button = button - BTN_MOUSE;
+            button = button - BTN_MOUSE;
         else
-          button = 0;
+            button = 0;
 
         context.SendPointerButton(button, static_cast<Wayland::Display::IPointer::state>(state));
     },
@@ -284,7 +284,7 @@ static const struct wl_simple_shell_listener simpleShellListener = {
         context.Constructed(reinterpret_cast<void*>(surfaceId), surface);
 
         Wayland::Display::Surface waylandSurface;
-        context.Get(surfaceId, waylandSurface);
+        context.Get(reinterpret_cast<void*>(surfaceId), waylandSurface);
 
         if (waylandSurface.IsValid() == true) {
             Trace("wl_simple_shell_listener.surface_id upscaling %s to (%dx%d)\n",
@@ -306,7 +306,7 @@ static const struct wl_simple_shell_listener simpleShellListener = {
         // Have no idea if this is true, just lets see...
         assert(shell == context._simpleShell);
 
-        context.Destructed(surfaceId);
+        context.Destructed(reinterpret_cast<void*>(surfaceId));
         Trace("wl_simple_shell_listener.surface_destroyed surfaceId=%d\n", surfaceId);
     },
     // surfaceStatus
@@ -387,7 +387,7 @@ namespace Wayland {
     /*static*/ PFNEGLCREATEIMAGEKHRPROC Display::ImageImplementation::_eglCreateImagePtr = nullptr;
     /*static*/ PFNEGLDESTROYIMAGEKHRPROC Display::ImageImplementation::_eglDestroyImagePtr = nullptr;
 
-    /* 
+    /*
     Copyright (C) 2007 The Android Open Source Project
     Licensed under the Apache License, Version 2.0
     */
@@ -564,7 +564,7 @@ namespace Wayland {
     {
         // Max layers supported by Westeros have a limitation with 255, hence the ZOrder fraction
         // difference calculation is limiting with std::numeric_limits<uint8_t>::max()
-        ASSERT (order <= std::numeric_limits<uint8_t>::max());
+        ASSERT(order <= std::numeric_limits<uint8_t>::max());
 
         double fractionalOrder = 1.0 - (static_cast<double>(order) / static_cast<double>(std::numeric_limits<uint8_t>::max()));
 
@@ -761,7 +761,6 @@ namespace Wayland {
         bcm_host_deinit();
 #endif
     }
-
 
     void Display::Initialize()
     {
@@ -1019,21 +1018,21 @@ namespace Wayland {
         WaylandSurfaceMap::iterator index = _waylandSurfaces.find(surface);
 
         if (index != _waylandSurfaces.end()) {
-            wl_simple_shell_set_name(_simpleShell, id, index->second->Name().c_str());
+            wl_simple_shell_set_name(_simpleShell, reinterpret_cast<uint32_t>(id), index->second->Name().c_str());
             // Do not forget to update the actual surface, it is now alive..
-            index->second->_id = id;
+            index->second->_id = reinterpret_cast<uint32_t>(id);
             index->second->AddRef();
-            _surfaces.insert(std::pair<uint32_t, Display::SurfaceImplementation*>(id, index->second));
+            _surfaces.insert(std::pair<const void*, Display::SurfaceImplementation*>(id, index->second));
         } else if (_collect == true) {
             // Seems this is a surface, we did not create.
-            Display::SurfaceImplementation* entry(new Display::SurfaceImplementation(*this, id, surface));
+            Display::SurfaceImplementation* entry(new Display::SurfaceImplementation(*this, reinterpret_cast<uint32_t>(id), surface));
             entry->AddRef();
-            _surfaces.insert(std::pair<uint32_t, Display::SurfaceImplementation*>(id, entry));
+            _surfaces.insert(std::pair<const void*, Display::SurfaceImplementation*>(id, entry));
             _waylandSurfaces.insert(std::pair<wl_surface*, Display::SurfaceImplementation*>(surface, entry));
         }
 
         if (_clientHandler != nullptr) {
-            _clientHandler->Attached(id);
+            _clientHandler->Attached(reinterpret_cast<uint32_t>(id));
         }
 
         _adminLock.Unlock();
@@ -1050,17 +1049,17 @@ namespace Wayland {
         }
 
         if (_collect == true) {
-            Display::SurfaceImplementation* entry = new Display::SurfaceImplementation(*this, id, name);
+            Display::SurfaceImplementation* entry = new Display::SurfaceImplementation(*this, reinterpret_cast<uint32_t>(id), name);
 
             // manual increase the refcount for the _waylandSurfaces map.
             entry->AddRef();
 
             // Somewhere, someone, created a surface, register it.
-            _surfaces.insert(std::pair<uint32_t, Display::SurfaceImplementation*>(id, entry));
+            _surfaces.insert(std::pair<const void*, Display::SurfaceImplementation*>(id, entry));
         }
 
         if (_clientHandler != nullptr) {
-            _clientHandler->Attached(id);
+            _clientHandler->Attached(reinterpret_cast<uint32_t>(id));
         }
         _adminLock.Unlock();
     }
@@ -1075,14 +1074,14 @@ namespace Wayland {
         Trace("Updated Dimensions surfaceId=%d width=%d  height=%d x=%d, y=%d visible=%d opacity=%d zorder=%d\n", id, width, height, x, y, visible, opacity, zorder);
         _adminLock.Lock();
 
-        SurfaceMap::iterator index = _surfaces.find(id);
+        SurfaceMap::iterator index = _surfaces.find(reinterpret_cast<void*>(id));
 
         if (index != _surfaces.end()) {
             Trace("Updated Dimensions surfaceId=%d name=%s width=%d  height=%d x=%d, y=%d visible=%d opacity=%d zorder=%d\n", id, index->second->Name().c_str(), width, height, x, y, visible, opacity, zorder);
             index->second->Dimensions(visible, x, y, width, height, opacity, zorder);
         } else {
             // TODO: Seems this is a surface, we did not create. maybe we need to collect it in future.
-            //Trace("Unidentified surface: id=%d.\n");
+            // Trace("Unidentified surface: id=%d.\n");
         }
 
         _adminLock.Unlock();
@@ -1114,10 +1113,9 @@ namespace Wayland {
                 index->second->Release();
                 _surfaces.erase(index);
             }
-
         }
         if (_clientHandler != nullptr) {
-            _clientHandler->Detached(id);
+            _clientHandler->Detached(reinterpret_cast<uint32_t>(id));
         }
         _adminLock.Unlock();
     }
@@ -1226,7 +1224,7 @@ namespace Wayland {
         if (Core::InterlockedDecrement(_refCount) == 0) {
             const_cast<Display*>(this)->Deinitialize();
 
-            //Indicate Wayland connection is closed properly
+            // Indicate Wayland connection is closed properly
             return (Core::ERROR_DESTRUCTION_SUCCEEDED);
         }
         return (Core::ERROR_NONE);
