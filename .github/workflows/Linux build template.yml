@@ -63,6 +63,8 @@ jobs:
         -DCMAKE_INSTALL_PREFIX="${{matrix.build_type}}/install/usr" \
         -DCMAKE_MODULE_PATH="${PWD}/${{matrix.build_type}}/install/usr/include/WPEFramework/Modules" \
         -DBLUETOOTHAUDIOSINK=ON \
+        -DBLUETOOTHAUDIOSOURCE=ON \
+        -DCDMI=ON \
         -DDEVICEINFO=ON \
         -DDISPLAYINFO=ON \
         -DLOCALTRACER=ON \
@@ -70,7 +72,6 @@ jobs:
         -DPLAYERINFO=ON \
         -DPROTOCOLS=ON \
         -DVIRTUALINPUT=ON \
-        -DCDMI=ON \
         ${{steps.clientlibs.outputs.first_match}}
         cmake --build ${{matrix.build_type}}/build/ThunderClientLibraries --target install
 
