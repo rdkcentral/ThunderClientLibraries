@@ -34,9 +34,6 @@ find_package(${NAMESPACE}Core REQUIRED)
 find_package(${NAMESPACE}COM REQUIRED)
 find_package(${NAMESPACE}Messaging REQUIRED)
 
-find_package(GSTREAMER REQUIRED)
-find_package(GSTREAMER_BASE REQUIRED)
-
 option(CDMI_ADAPTER_IMPLEMENTATION "Defines which implementation is used." "None")
 
 
@@ -77,27 +74,32 @@ target_include_directories( ${TARGET}
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
         )
 
-if(("${CDMI_ADAPTER_IMPLEMENTATION}" STREQUAL "broadcom-svp") OR ("${CDMI_ADAPTER_IMPLEMENTATION}" STREQUAL "broadcom-svp-secbuf"))
-    if (OCDM_IMPLEMENTATION_PATH)
-        target_sources(${TARGET} PRIVATE ${OCDM_IMPLEMENTATION_PATH}/open_cdm_adapter.cpp)
-    else()
-        include(GetExternalCode)
-        set(OCDM_IMPLEMENTATION_VERSION "master" CACHE STRING "ocdmadapter implementation version: commit_id_or_tag_or_branch_name")
-        set(OCDM_IMPLEMENTATION_REPOSITORY "https://code.rdkcentral.com/r/soc/broadcom/components/rdkcentral/thunder/ocdmadapter" CACHE STRING "ocdmadapter implementation repository")
-        GetExternalCode(
-            GIT_REPOSITORY ${OCDM_IMPLEMENTATION_REPOSITORY}
-            GIT_VERSION ${OCDM_IMPLEMENTATION_VERSION}
-            SOURCE_DIR "adapter/broadcom-svp"
-        )
-        if("${CDMI_ADAPTER_IMPLEMENTATION}" STREQUAL "broadcom-svp")
-            target_sources(${TARGET} PRIVATE adapter/broadcom-svp/open_cdm_adapter.cpp)
+if(NOT "${CDMI_ADAPTER_IMPLEMENTATION}" STREQUAL "None")
+
+find_package(GSTREAMER REQUIRED)
+find_package(GSTREAMER_BASE REQUIRED)
+
+        if(("${CDMI_ADAPTER_IMPLEMENTATION}" STREQUAL "broadcom-svp") OR ("${CDMI_ADAPTER_IMPLEMENTATION}" STREQUAL "broadcom-svp-secbuf"))
+            if (OCDM_IMPLEMENTATION_PATH)
+                target_sources(${TARGET} PRIVATE ${OCDM_IMPLEMENTATION_PATH}/open_cdm_adapter.cpp)
+            else()
+                include(GetExternalCode)
+                set(OCDM_IMPLEMENTATION_VERSION "master" CACHE STRING "ocdmadapter implementation version: commit_id_or_tag_or_branch_name")
+                set(OCDM_IMPLEMENTATION_REPOSITORY "https://code.rdkcentral.com/r/soc/broadcom/components/rdkcentral/thunder/ocdmadapter" CACHE STRING "ocdmadapter implementation repository")
+                GetExternalCode(
+                    GIT_REPOSITORY ${OCDM_IMPLEMENTATION_REPOSITORY}
+                    GIT_VERSION ${OCDM_IMPLEMENTATION_VERSION}
+                    SOURCE_DIR "adapter/broadcom-svp"
+                )
+                if("${CDMI_ADAPTER_IMPLEMENTATION}" STREQUAL "broadcom-svp")
+                    target_sources(${TARGET} PRIVATE adapter/broadcom-svp/open_cdm_adapter.cpp)
+                else()
+                    target_sources(${TARGET} PRIVATE adapter/broadcom-svp/open_cdm_adapter-secbuf.cpp)
+                endif()
+            endif()
         else()
-            target_sources(${TARGET} PRIVATE adapter/broadcom-svp/open_cdm_adapter-secbuf.cpp)
+            target_sources(${TARGET} PRIVATE adapter/${CDMI_ADAPTER_IMPLEMENTATION}/open_cdm_adapter.cpp)
         endif()
-    endif()
-else()
-    target_sources(${TARGET} PRIVATE adapter/${CDMI_ADAPTER_IMPLEMENTATION}/open_cdm_adapter.cpp)
-endif()
 
 target_link_libraries(${TARGET}
         PRIVATE
@@ -111,6 +113,12 @@ target_include_directories( ${TARGET}
         ${GSTREAMER_INCLUDES}
         ${GSTREAMER_BASE_INCLUDES}
         )
+else()
+target_link_libraries(${TARGET}
+        PRIVATE
+        CompileSettingsDebug::CompileSettingsDebug
+        )
+endif()
 
 if (${CDMI_ADAPTER_IMPLEMENTATION} STREQUAL "broadcom-svp")
     find_package(NEXUS REQUIRED)
