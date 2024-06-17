@@ -75,7 +75,7 @@ target_include_directories( ${TARGET}
         )
 
 if(NOT "${CDMI_ADAPTER_IMPLEMENTATION}" STREQUAL "None")
-
+        message("${CDMI_ADAPTER_IMPLEMENTATION}")
         find_package(GSTREAMER REQUIRED)
         find_package(GSTREAMER_BASE REQUIRED)
 
