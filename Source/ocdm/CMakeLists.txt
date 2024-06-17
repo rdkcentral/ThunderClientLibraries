@@ -76,8 +76,8 @@ target_include_directories( ${TARGET}
 
 if(NOT "${CDMI_ADAPTER_IMPLEMENTATION}" STREQUAL "None")
 
-find_package(GSTREAMER REQUIRED)
-find_package(GSTREAMER_BASE REQUIRED)
+        find_package(GSTREAMER REQUIRED)
+        find_package(GSTREAMER_BASE REQUIRED)
 
         if(("${CDMI_ADAPTER_IMPLEMENTATION}" STREQUAL "broadcom-svp") OR ("${CDMI_ADAPTER_IMPLEMENTATION}" STREQUAL "broadcom-svp-secbuf"))
             if (OCDM_IMPLEMENTATION_PATH)
@@ -101,23 +101,23 @@ find_package(GSTREAMER_BASE REQUIRED)
             target_sources(${TARGET} PRIVATE adapter/${CDMI_ADAPTER_IMPLEMENTATION}/open_cdm_adapter.cpp)
         endif()
 
-target_link_libraries(${TARGET}
-        PRIVATE
-        ${GSTREAMER_LIBRARIES}
-        ${GSTREAMER_BASE_LIBRARIES}
-        CompileSettingsDebug::CompileSettingsDebug
-        )
-
-target_include_directories( ${TARGET}
-        SYSTEM PRIVATE
-        ${GSTREAMER_INCLUDES}
-        ${GSTREAMER_BASE_INCLUDES}
-        )
+        target_link_libraries(${TARGET}
+                PRIVATE
+                ${GSTREAMER_LIBRARIES}
+                ${GSTREAMER_BASE_LIBRARIES}
+                CompileSettingsDebug::CompileSettingsDebug
+                )
+        
+        target_include_directories( ${TARGET}
+                SYSTEM PRIVATE
+                ${GSTREAMER_INCLUDES}
+                ${GSTREAMER_BASE_INCLUDES}
+                )
 else()
-target_link_libraries(${TARGET}
-        PRIVATE
-        CompileSettingsDebug::CompileSettingsDebug
-        )
+        target_link_libraries(${TARGET}
+                PRIVATE
+                CompileSettingsDebug::CompileSettingsDebug
+                )
 endif()
 
 if (${CDMI_ADAPTER_IMPLEMENTATION} STREQUAL "broadcom-svp")
