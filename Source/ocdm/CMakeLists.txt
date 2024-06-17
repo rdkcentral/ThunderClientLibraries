@@ -34,8 +34,7 @@ find_package(${NAMESPACE}Core REQUIRED)
 find_package(${NAMESPACE}COM REQUIRED)
 find_package(${NAMESPACE}Messaging REQUIRED)
 
-option(CDMI_ADAPTER_IMPLEMENTATION "Defines which implementation is used." "None")
-
+option(CDMI_ADAPTER_IMPLEMENTATION "Defines which implementation is used." "None" CACHE STRING)
 
 add_library(${TARGET} SHARED
         CapsParser.cpp
