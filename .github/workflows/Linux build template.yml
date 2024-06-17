@@ -70,6 +70,7 @@ jobs:
         -DPLAYERINFO=ON \
         -DPROTOCOLS=ON \
         -DVIRTUALINPUT=ON \
+        -DCDMI=ON \
         ${{steps.clientlibs.outputs.first_match}}
         cmake --build ${{matrix.build_type}}/build/ThunderClientLibraries --target install
 
