@@ -58,6 +58,7 @@
 #include <string.h>
 
 #include <stdio.h>
+#include <string>
 #include <list>
 
 #ifndef EXTERNAL
@@ -483,6 +484,17 @@ EXTERNAL OpenCDMError opencdm_session_metadata(const struct OpenCDMSession* sess
  * \return Zero on success, non-zero on error.
  */
 EXTERNAL OpenCDMError opencdm_session_resetoutputprotection(struct OpenCDMSession* session);
+
+/**
+ * Set a name/value pair into the CDM
+ * \param session \ref OpenCDMSession instance.
+ * \param name \ref Name of parameter
+ * \param value \ref Value of parameter
+ * \return Zero on success, non-zero on error.
+ */
+OpenCDMError opencdm_session_set_parameter(struct OpenCDMSession* session,
+    const std::string& name,
+    const std::string& value);
 
 /**
  * Gets Session ID for a session.
