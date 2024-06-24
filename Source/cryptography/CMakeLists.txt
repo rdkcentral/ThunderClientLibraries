@@ -41,7 +41,7 @@ find_package(${NAMESPACE}COM REQUIRED)
 
 add_subdirectory(implementation)
 
-add_library(${TARGET} SHARED
+add_library(${TARGET} 
     Module.cpp
     Cryptography.cpp
     NetflixSecurity.cpp
@@ -98,7 +98,7 @@ InstallCMakeConfig(
 if(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY)
     find_package(OpenSSL REQUIRED)
 
-    add_library(${TARGET}Software SHARED
+    add_library(${TARGET}Software 
         Module.cpp
         Cryptography.cpp
         NetflixSecurity.cpp

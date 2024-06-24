@@ -44,7 +44,7 @@ else()
     add_subdirectory (${PLUGIN_COMPOSITOR_IMPLEMENTATION})
 endif()
 
-add_library(${TARGET} SHARED $<TARGET_OBJECTS:${PLUGIN_COMPOSITOR_IMPLEMENTATION}> Module.cpp) 
+add_library(${TARGET}  $<TARGET_OBJECTS:${PLUGIN_COMPOSITOR_IMPLEMENTATION}> Module.cpp) 
 
 target_link_libraries(${TARGET}
     PRIVATE

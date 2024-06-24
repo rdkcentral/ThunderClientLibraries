@@ -35,7 +35,7 @@ set(PUBLIC_HEADERS
         "include/displayinfo.h"
         )
 
-add_library(${TARGET}  SHARED 
+add_library(${TARGET}   
     Module.cpp
     DisplayInfo.cpp
 )

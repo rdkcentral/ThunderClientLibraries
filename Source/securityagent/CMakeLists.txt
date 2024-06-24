@@ -32,7 +32,7 @@ find_package(${NAMESPACE}COM REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 
 # Construct a library object
-add_library(${TARGET} SHARED
+add_library(${TARGET} 
         ipclink.cpp
         Module.cpp
         )

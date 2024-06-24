@@ -32,7 +32,7 @@ option(VIRTUALINPUT_TOOLS "Build VirtualInput tools" OFF)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
 
-add_library(${TARGET} SHARED
+add_library(${TARGET} 
         Module.cpp
         virtualinput.cpp
         )

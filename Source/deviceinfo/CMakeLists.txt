@@ -33,7 +33,7 @@ find_package(CompileSettingsDebug CONFIG REQUIRED)
 
 set(PUBLIC_HEADERS "deviceinfo.h")
 
-add_library(${TARGET}  SHARED
+add_library(${TARGET}  
     Module.cpp
     DeviceInfo.cpp
 )

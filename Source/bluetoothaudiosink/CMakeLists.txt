@@ -34,7 +34,7 @@ find_package(CompileSettingsDebug CONFIG REQUIRED)
 option(BLUETOOTHAUDIOSINK_EXAMPLEPLAYER "Build audio player" OFF)
 set(PUBLIC_HEADERS "include/bluetoothaudiosink.h")
 
-add_library(${TARGET} SHARED
+add_library(${TARGET} 
     Module.cpp
     BluetoothAudioSink.cpp
 )

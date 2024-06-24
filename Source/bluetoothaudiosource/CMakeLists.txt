@@ -34,7 +34,7 @@ find_package(CompileSettingsDebug CONFIG REQUIRED)
 option(BLUETOOTHAUDIOSOURCE_EXAMPLERECORDER "Build audio recorder" OFF)
 set(PUBLIC_HEADERS "include/bluetoothaudiosource.h")
 
-add_library(${TARGET} SHARED
+add_library(${TARGET} 
     Module.cpp
     BluetoothAudioSource.cpp
 )

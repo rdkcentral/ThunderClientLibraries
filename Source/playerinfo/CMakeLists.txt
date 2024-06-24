@@ -34,7 +34,7 @@ find_package(${NAMESPACE}COM REQUIRED)
 
 set(PUBLIC_HEADERS "include/playerinfo.h")
 
-add_library(${TARGET}  SHARED 
+add_library(${TARGET} 
     Module.cpp
     PlayerInfo.cpp
 )
