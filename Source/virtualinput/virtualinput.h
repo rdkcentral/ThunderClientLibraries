@@ -89,4 +89,6 @@ EXTERNAL void virtualinput_dispose();
 }
 #endif
 
+WPEFRAMEWORK_NESTEDNAMESPACE_COMPATIBILIY(VirtualInput)
+
 #endif // VIRTUALINPUT_H

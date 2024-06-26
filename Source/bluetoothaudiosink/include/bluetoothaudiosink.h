@@ -75,4 +75,5 @@ EXTERNAL uint32_t bluetoothaudiosink_dispose(void);
 } // extern "C"
 #endif
 
+WPEFRAMEWORK_NESTEDNAMESPACE_COMPATIBILIY(BluetoothAudioSinkClient);
 #endif // BLUETOOTHAUDIOSINK_H

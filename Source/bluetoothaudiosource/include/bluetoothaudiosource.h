@@ -92,4 +92,6 @@ EXTERNAL uint32_t bluetoothaudiosource_dispose(void);
 } // extern "C"
 #endif
 
+WPEFRAMEWORK_NESTEDNAMESPACE_COMPATIBILIY(BluetoothAudioSourceClient);
+
 #endif // BLUETOOTHAUDIOSOURCE_H

@@ -66,4 +66,7 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+
+WPEFRAMEWORK_NESTEDNAMESPACE_COMPATIBILIY(IPC)
+
 #endif // SECURITYAGENT_H
