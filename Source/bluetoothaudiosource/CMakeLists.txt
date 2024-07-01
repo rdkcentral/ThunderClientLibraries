@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.15)
 
 find_package(Thunder)
 
@@ -34,7 +34,7 @@ find_package(CompileSettingsDebug CONFIG REQUIRED)
 option(BLUETOOTHAUDIOSOURCE_EXAMPLERECORDER "Build audio recorder" OFF)
 set(PUBLIC_HEADERS "include/bluetoothaudiosource.h")
 
-add_library(${TARGET} SHARED
+add_library(${TARGET} 
     Module.cpp
     BluetoothAudioSource.cpp
 )
@@ -59,16 +59,16 @@ target_include_directories(${TARGET}
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>
-        $<INSTALL_INTERFACE:include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
 install(
     TARGETS ${TARGET} EXPORT ${TARGET}Targets
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT libs
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT libs
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT libs
-    FRAMEWORK DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT libs
-    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}/bluetoothaudiosource COMPONENT devel
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT ${NAMESPACE}_Development
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT ${NAMESPACE}_Runtime NAMELINK_COMPONENT ${NAMESPACE}_Development
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ${NAMESPACE}_Runtime 
+    FRAMEWORK DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ${NAMESPACE}_Runtime 
+    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}/bluetoothaudiosource COMPONENT ${NAMESPACE}_Development
     INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}/bluetoothaudiosource
 )
 

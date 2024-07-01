@@ -33,7 +33,7 @@ find_package(OpenSSL)
 
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../../../cryptography)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../../../cryptography/implementation)
-include_directories($<INSTALL_INTERFACE:include/${NAMESPACE}>)
+include_directories($<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}>)
 
 set_target_properties(cgimptests PROPERTIES
         CXX_STANDARD 11
@@ -59,7 +59,7 @@ find_package(OpenSSL)
 
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../../../cryptography)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../../../cryptography/implementation)
-include_directories($<INSTALL_INTERFACE:include/${NAMESPACE}>)
+include_directories($<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}>)
 
 set_target_properties(cgfacetests PROPERTIES
         CXX_STANDARD 11
@@ -82,7 +82,7 @@ add_executable(cgnfsecuritytests
 
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../../../cryptography)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../../../cryptography/implementation)
-include_directories($<INSTALL_INTERFACE:include/${NAMESPACE}>)
+include_directories($<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}>)
 
 set_target_properties(cgnfsecuritytests PROPERTIES
         CXX_STANDARD 11
@@ -97,9 +97,9 @@ target_link_libraries(cgnfsecuritytests
         crypto
     )
 
-install(TARGETS cgimptests DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(TARGETS cgfacetests DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(TARGETS cgnfsecuritytests DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS cgimptests DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ${NAMESPACE}_Test)
+install(TARGETS cgfacetests DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ${NAMESPACE}_Test)
+install(TARGETS cgnfsecuritytests DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ${NAMESPACE}_Test)
 
 if (BUILD_NETFLIX_VAULT_GENERATOR)
    add_subdirectory(NetflixVaultGenerator)

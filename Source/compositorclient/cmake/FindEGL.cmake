@@ -36,47 +36,8 @@ elseif(EGL_FIND_REQUIRED)
 endif()
 
 find_package(PkgConfig)
-pkg_check_modules(PC_EGL ${_EGL_MODE} egl)
+pkg_check_modules(egl ${_EGL_MODE} IMPORTED_TARGET GLOBAL egl)
 
-if (PC_EGL_FOUND)
-    set(EGL_CFLAGS ${PC_EGL_CFLAGS})
-    set(EGL_FOUND ${PC_EGL_FOUND})
-    set(EGL_DEFINITIONS ${PC_EGL_CFLAGS_OTHER})
-    set(EGL_NAMES ${PC_EGL_LIBRARIES})
-    foreach (_library ${EGL_NAMES})
-        find_library(EGL_LIBRARIES_${_library} ${_library}
-	    HINTS ${PC_EGL_LIBDIR} ${PC_EGL_LIBRARY_DIRS}
-        )
-        set(EGL_LIBRARIES ${EGL_LIBRARIES} ${EGL_LIBRARIES_${_library}})
-    endforeach ()
-else ()
-    set(EGL_NAMES ${EGL_NAMES} egl EGL)
-    find_library(EGL_LIBRARIES NAMES ${EGL_NAMES}
-        HINTS ${PC_EGL_LIBDIR} ${PC_EGL_LIBRARY_DIRS}
-    )
-endif ()
-
-set(EGL_NAMES ${EGL_NAMES} egl EGL)
-find_library(EGL_LIBRARY NAMES ${EGL_NAMES}
-        HINTS ${PC_EGL_LIBDIR} ${PC_EGL_LIBRARY_DIRS}
-        )
-
-find_path(EGL_INCLUDE_DIRS NAMES EGL/egl.h
-    HINTS ${PC_EGL_INCLUDEDIR} ${PC_EGL_INCLUDE_DIRS}
-)
-
-set(EGL_INCLUDE_DIRS ${PC_EGL_INCLUDE_DIRS} CACHE FILEPATH "FIXME")
-
-include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(EGL DEFAULT_MSG EGL_LIBRARY EGL_LIBRARIES EGL_INCLUDE_DIRS)
-mark_as_advanced(EGL_INCLUDE_DIRS EGL_LIBRARIES)
-
-if(EGL_FOUND AND NOT TARGET EGL::EGL)
-    add_library(EGL::EGL UNKNOWN IMPORTED)
-    set_target_properties(EGL::EGL PROPERTIES
-            IMPORTED_LOCATION "${EGL_LIBRARY}"
-            INTERFACE_LINK_LIBRARIES "${EGL_LIBRARIES}"
-            INTERFACE_COMPILE_OPTIONS "${EGL_DEFINITIONS}"
-            INTERFACE_INCLUDE_DIRECTORIES "${EGL_INCLUDE_DIRS}"
-            )
+if (egl_FOUND)
+   add_library(EGL::EGL ALIAS PkgConfig::egl)
 endif()

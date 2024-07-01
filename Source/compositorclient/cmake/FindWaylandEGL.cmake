@@ -36,22 +36,8 @@ elseif(WaylandEGL_FIND_REQUIRED)
 endif()
 
 find_package(PkgConfig)
-pkg_check_modules(WAYLAND_EGL ${_WAYLAND_EGL_MODE} wayland-egl)
+pkg_check_modules(wayland-egl ${_WAYLAND_EGL_MODE} IMPORTED_TARGET GLOBAL wayland-egl)
 
-find_library(WAYLAND_EGL_LIB NAMES wayland-egl
-        HINTS ${WAYLAND_EGL_LIBDIR} ${WAYLAND_EGL_LIBRARY_DIRS})
-
-include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(WaylandEGL DEFAULT_MSG WAYLAND_EGL_FOUND WAYLAND_EGL_INCLUDE_DIRS WAYLAND_EGL_LIBRARIES WAYLAND_EGL_LIB)
-mark_as_advanced(WAYLAND_EGL_INCLUDE_DIRS WAYLAND_EGL_LIBRARIES)
-
-if(WaylandEGL_FOUND AND NOT TARGET WaylandEGL::WaylandEGL)
-    add_library(WaylandEGL::WaylandEGL UNKNOWN IMPORTED)
-    set_target_properties(WaylandEGL::WaylandEGL PROPERTIES
-            IMPORTED_LOCATION "${WAYLAND_EGL_LIB}"
-            INTERFACE_LINK_LIBRARIES "${WAYLAND_EGL_LIBRARIES}"
-            INTERFACE_COMPILE_OPTIONS "${WAYLAND_EGL_DEFINITIONS}"
-            INTERFACE_INCLUDE_DIRECTORIES "${WAYLAND_EGL_INCLUDE_DIRS}"
-            )
+if (wayland-egl_FOUND)
+   add_library(WaylandEGL::WaylandEGL ALIAS PkgConfig::wayland-egl)
 endif()
-

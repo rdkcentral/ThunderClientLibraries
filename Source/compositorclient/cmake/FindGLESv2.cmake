@@ -31,41 +31,8 @@ elseif(GLESv2_FIND_REQUIRED)
 endif()
 
 find_package(PkgConfig)
-pkg_check_modules(PC_GLESV2 ${_GLESV2_MODE} glesv2)
+pkg_check_modules(glesv2 ${_GLESV2_MODE} IMPORTED_TARGET GLOBAL glesv2)
 
-if (PC_GLESV2_FOUND)
-    set(GLESV2_CFLAGS ${PC_GLESV2_CFLAGS})
-    set(GLESV2_FOUND ${PC_GLESV2_FOUND})
-    set(GLESV2_DEFINITIONS ${PC_GLESV2_CFLAGS_OTHER})
-    set(GLESV2_NAMES ${PC_GLESV2_LIBRARIES})
-    foreach (_library ${GLESV2_NAMES})
-        find_library(GLESV2_LIBRARIES_${_library} ${_library}
-	    HINTS ${PC_GLESV2_LIBDIR} ${PC_GLESV2_LIBRARY_DIRS}
-        )
-        set(GLESV2_LIBRARIES ${GLESV2_LIBRARIES} ${GLESV2_LIBRARIES_${_library}})
-    endforeach ()
-
-    find_library(GLESV2_LIBRARY NAMES GLESv2
-        HINTS ${PC_GLESV2_LIBDIR} ${PC_GLESV2_LIBRARY_DIRS}
-    )
-
-    find_path(GLESV2_HEADER_PATH NAMES GLES2/gl2.h
-        HINTS ${PC_GLESV2_INCLUDEDIR} ${PC_GLESV2_INCLUDE_DIRS}
-    )
-
-    set(GLESV2_INCLUDE_DIRS ${GLESV2_HEADER_PATH} CACHE FILEPATH "FIXME" FORCE)
-endif ()  
-
-include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(GLESv2 DEFAULT_MSG GLESV2_FOUND GLESV2_INCLUDE_DIRS GLESV2_LIBRARY GLESV2_LIBRARIES)
-mark_as_advanced(GLESV2_INCLUDE_DIRS GLESV2_LIBRARIES)
-
-if(GLESv2_FOUND AND NOT TARGET GLESv2::GLESv2)
-    add_library(GLESv2::GLESv2 UNKNOWN IMPORTED)
-    set_target_properties(GLESv2::GLESv2 PROPERTIES
-            IMPORTED_LOCATION "${GLESV2_LIBRARY}"
-            INTERFACE_LINK_LIBRARIES "${GLESV2_LIBRARIES}"
-            INTERFACE_COMPILE_OPTIONS "${GLESV2_DEFINITIONS}"
-            INTERFACE_INCLUDE_DIRECTORIES "${GLESV2_INCLUDE_DIRS}"
-            )
+if (glesv2_FOUND)
+   add_library(GLESv2::GLESv2 ALIAS PkgConfig::glesv2)
 endif()
