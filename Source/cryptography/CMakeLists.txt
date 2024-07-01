@@ -59,7 +59,7 @@ target_include_directories(${TARGET}
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/implementation>
-        $<INSTALL_INTERFACE:include/${NAMESPACE}/cryptography>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}/cryptography>
 )
 
 set(PUBLIC_HEADERS
@@ -122,7 +122,7 @@ if(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY)
             $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
             $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/implementation>
         PUBLIC
-            $<INSTALL_INTERFACE:include/${NAMESPACE}/cryptography>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}/cryptography>
     )
 
     set_target_properties(${TARGET}Software PROPERTIES

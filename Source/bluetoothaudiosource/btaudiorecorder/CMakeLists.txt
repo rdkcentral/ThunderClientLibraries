@@ -28,7 +28,7 @@ add_executable(${PROJECT_NAME}
 target_include_directories(btaudiorecorder
     PRIVATE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../include>
-        $<INSTALL_INTERFACE:include/bluetoothaudiosource
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/bluetoothaudiosource
 )
 
 target_link_libraries(${TARGET}

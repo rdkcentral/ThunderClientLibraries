@@ -20,7 +20,7 @@ add_executable(display_info main.c)
 target_include_directories(display_info 
     PRIVATE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../include>
-        $<INSTALL_INTERFACE:include/displayinfo> 
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/displayinfo> 
 )
 
 target_link_libraries(display_info
