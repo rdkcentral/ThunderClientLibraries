@@ -32,7 +32,7 @@ target_link_libraries(cb-test PRIVATE
     ${NAMESPACE}CompositorBufferType::${NAMESPACE}CompositorBufferType)
 
 if(INSTALL_EXAMPLES)
-    install(TARGETS cb-test DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(TARGETS cb-test DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ${NAMESPACE}_Test)
 endif()
 
 

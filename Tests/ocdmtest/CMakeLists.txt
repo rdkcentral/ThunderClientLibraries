@@ -19,7 +19,7 @@ project(ocdmtest)
 
 set(TARGET ${PROJECT_NAME})
 
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.15)
 
 find_package(${NAMESPACE}Core REQUIRED)
 
@@ -41,5 +41,5 @@ target_link_libraries(${TARGET}
 )
 
 if(INSTALL_TESTS)
-    install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ${NAMESPACE}_Test)
 endif()

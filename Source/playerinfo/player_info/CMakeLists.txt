@@ -20,7 +20,7 @@ add_executable(player_info main.c)
 target_include_directories(player_info 
     PRIVATE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../include>
-        $<INSTALL_INTERFACE:include/playerinfo.h> 
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/playerinfo.h> 
 )
 
 target_link_libraries(player_info
@@ -28,4 +28,4 @@ target_link_libraries(player_info
         playerinfo)
 
 install(TARGETS player_info 
-    DESTINATION ${CMAKE_INSTALL_BINDIR})
+    DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ${NAMESPACE}_Runtime)
