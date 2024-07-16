@@ -257,6 +257,7 @@ private:
         if (ControllerInterface!= nullptr) {
 
             _subsysInterface = ControllerInterface->SubSystems();
+            ControllerInterface->Release();
 
             if (_subsysInterface != nullptr) {
                 _identifierInterface = _subsysInterface->Get<PluginHost::ISubSystem::IIdentifier>();
