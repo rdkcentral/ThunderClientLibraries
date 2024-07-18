@@ -128,10 +128,6 @@ namespace BluetoothAudioSinkClient {
             , _buffer()
         {
             TRACE_L5("Bluetooth audio sink is being constructed...");
-
-            ASSERT(_singleton == nullptr);
-            _singleton = this;
-
             if (SmartInterfaceType::Open(RPC::CommunicationTimeOut, SmartInterfaceType::Connector(), callsign) != Core::ERROR_NONE) {
                 PRINT(_T("Failed to open the smart interface!"));
             } else {
@@ -175,9 +171,6 @@ namespace BluetoothAudioSinkClient {
             _lock.Unlock();
 
             SmartInterfaceType::Close(Core::infinite);
-
-            ASSERT(_singleton != nullptr);
-            _singleton = nullptr;
 
             TRACE_L5("Bluetooth audio sink destructed");
         }
@@ -284,15 +277,17 @@ namespace BluetoothAudioSinkClient {
     public:
         static AudioSink& Instance()
         {
-            static AudioSink* instance = new AudioSink("BluetoothAudio");
-            ASSERT(instance != nullptr);
-
-            return (*instance);
+            return (*_instance);
         }
-        static void Dispose()
+        static void Create()
         {
-            ASSERT(_singleton != nullptr);
-            delete _singleton;
+            _instance = new AudioSink("BluetoothAudio");
+            ASSERT(_instance != nullptr);
+        }
+        static void Destroy()
+        {
+            ASSERT(_instance != nullptr);
+            delete _instance;
         }
 
     public:
@@ -574,7 +569,7 @@ namespace BluetoothAudioSinkClient {
         }
 
     private:
-        static AudioSink* _singleton;
+        static AudioSink* _instance;
 
         Core::SinkType<Callback> _callback;
 
@@ -589,7 +584,7 @@ namespace BluetoothAudioSinkClient {
         std::unique_ptr<SendBuffer> _buffer;
     };
 
-    AudioSink* AudioSink::_singleton = nullptr;
+    AudioSink* AudioSink::_instance = nullptr;
 
 } // namespace BluetoothAudioSinkClient
 
@@ -703,9 +698,15 @@ uint32_t bluetoothaudiosink_frame(const uint16_t length, const uint8_t data[], u
     }
 }
 
-uint32_t bluetoothaudiosink_dispose()
+uint32_t bluetoothaudiosink_init()
 {
-    BluetoothAudioSinkClient::AudioSink::Dispose();
+    BluetoothAudioSinkClient::AudioSink::Create();
+    return (Core::ERROR_NONE);
+}
+
+uint32_t bluetoothaudiosink_deinit()
+{
+    BluetoothAudioSinkClient::AudioSink::Destroy();
     return (Core::ERROR_NONE);
 }
 

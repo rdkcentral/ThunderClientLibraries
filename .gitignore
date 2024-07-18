@@ -36,6 +36,7 @@ install_manifest.txt
 Source/deviceinfo/device_info/device_info
 Source/displayinfo/display_info/display_info
 Source/playerinfo/player_info/player_info
+Source/bluetoothaudiosink/btaudioplayer/btaudioplayer
 */*/*/*/*tests
 */*/generated
 */*/*/*/lib*.a
