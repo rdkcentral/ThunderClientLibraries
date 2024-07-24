@@ -168,7 +168,7 @@ public:
 
     uint32_t RegisterOperationalStateChangedCallback(playerinfo_operational_state_change_cb callback, void* userdata)
     {
-        uint32_t result = Core::ERROR_ALREADY_CONNECTED;
+        uint32_t result = playerinfo_status::PLAYERINFO_ERROR_ALREADY_CONNECTED;
 
         ASSERT(callback != nullptr);
 
@@ -176,7 +176,7 @@ public:
 
         if (_operationalStateCallbacks.find(callback) == _operationalStateCallbacks.end()) {
             _operationalStateCallbacks.emplace(std::piecewise_construct, std::forward_as_tuple(callback), std::forward_as_tuple(userdata));
-            result = Core::ERROR_NONE;
+            result = playerinfo_status::PLAYERINFO_OK;
         }
 
         _lock.Unlock();
@@ -186,7 +186,7 @@ public:
 
     uint32_t UnregisterOperationalStateChangedCallback(playerinfo_operational_state_change_cb callback)
     {
-        uint32_t result = Core::ERROR_ALREADY_RELEASED;
+        uint32_t result = playerinfo_status::PLAYERINFO_ERROR_ALREADY_RELEASED;
 
         ASSERT(callback != nullptr);
 
@@ -196,7 +196,7 @@ public:
 
         if (index != _operationalStateCallbacks.end()) {
             _operationalStateCallbacks.erase(index);
-            result = Core::ERROR_NONE;
+            result = playerinfo_status::PLAYERINFO_OK;
         }
 
         _lock.Unlock();
@@ -206,7 +206,7 @@ public:
 
     uint32_t RegisterDolbyAudioModeChangedCallback(playerinfo_dolby_audio_updated_cb callback, void* userdata)
     {
-        uint32_t result = Core::ERROR_ALREADY_CONNECTED;
+        uint32_t result = playerinfo_status::PLAYERINFO_ERROR_ALREADY_CONNECTED;
 
         ASSERT(callback != nullptr);
         
@@ -214,7 +214,7 @@ public:
 
         if (_dolbyCallbacks.find(callback) == _dolbyCallbacks.end()) {
             _dolbyCallbacks.emplace(std::piecewise_construct, std::forward_as_tuple(callback), std::forward_as_tuple(userdata));
-            result = Core::ERROR_NONE;
+            result = playerinfo_status::PLAYERINFO_OK;
         }
 
         _lock.Unlock();
@@ -224,7 +224,7 @@ public:
 
     uint32_t UnregisterDolbyAudioModeChangedCallback(playerinfo_dolby_audio_updated_cb callback)
     {
-        uint32_t result = Core::ERROR_ALREADY_RELEASED;
+        uint32_t result = playerinfo_status::PLAYERINFO_ERROR_ALREADY_RELEASED;
 
         ASSERT(callback != nullptr);
         
@@ -234,7 +234,7 @@ public:
 
         if (index != _dolbyCallbacks.end()) {
             _dolbyCallbacks.erase(index);
-            result = Core::ERROR_NONE;
+            result = playerinfo_status::PLAYERINFO_OK;
         }
 
         _lock.Unlock();
@@ -245,13 +245,13 @@ public:
     uint32_t IsAudioEquivalenceEnabled(bool& outIsEnabled) const
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_playerInterface != nullptr ? _playerInterface->IsAudioEquivalenceEnabled(outIsEnabled) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
+        return (_playerInterface != nullptr ? _playerInterface->IsAudioEquivalenceEnabled(outIsEnabled) : static_cast<uint32_t>(playerinfo_status::PLAYERINFO_ERROR_UNAVAILABLE));
     }
 
     uint32_t PlaybackResolution(Exchange::IPlayerProperties::PlaybackResolution& outResolution) const
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_playerInterface != nullptr ? _playerInterface->Resolution(outResolution) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
+        return (_playerInterface != nullptr ? _playerInterface->Resolution(outResolution) : static_cast<uint32_t>(playerinfo_status::PLAYERINFO_ERROR_UNAVAILABLE));
     }
 
     int8_t VideoCodecs(playerinfo_videocodec_t array[], const uint8_t length) const
@@ -262,7 +262,7 @@ public:
         _lock.Lock();
 
         if (_playerInterface != nullptr) {
-            if (_playerInterface->VideoCodecs(videoCodecs) == Core::ERROR_NONE && videoCodecs != nullptr) {
+            if (_playerInterface->VideoCodecs(videoCodecs) == playerinfo_status::PLAYERINFO_OK && videoCodecs != nullptr) {
 
                 Exchange::IPlayerProperties::VideoCodec codec;
 
@@ -329,7 +329,7 @@ public:
         _lock.Lock();
 
         if (_playerInterface != nullptr) {
-            if (_playerInterface->AudioCodecs(audioCodecs) == Core::ERROR_NONE && audioCodecs != nullptr) {
+            if (_playerInterface->AudioCodecs(audioCodecs) == playerinfo_status::PLAYERINFO_OK && audioCodecs != nullptr) {
 
                 Exchange::IPlayerProperties::AudioCodec codec;
 
@@ -405,7 +405,7 @@ public:
         _lock.Lock();
 
         if (_dolbyInterface != nullptr) {
-            if(_dolbyInterface->AtmosMetadata(isSupported) != Core::ERROR_NONE) {
+            if(_dolbyInterface->AtmosMetadata(isSupported) != playerinfo_status::PLAYERINFO_OK) {
                 isSupported = false;
             }
         }
@@ -418,25 +418,25 @@ public:
     uint32_t DolbySoundMode(Exchange::Dolby::IOutput::SoundModes& mode) const
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_dolbyInterface != nullptr ? _dolbyInterface->SoundMode(mode) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
+        return (_dolbyInterface != nullptr ? _dolbyInterface->SoundMode(mode) : static_cast<uint32_t>(playerinfo_status::PLAYERINFO_ERROR_UNAVAILABLE));
     }
 
     uint32_t EnableAtmosOutput(const bool enabled)
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_dolbyInterface != nullptr ? _dolbyInterface->EnableAtmosOutput(enabled) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
+        return (_dolbyInterface != nullptr ? _dolbyInterface->EnableAtmosOutput(enabled) : static_cast<uint32_t>(playerinfo_status::PLAYERINFO_ERROR_UNAVAILABLE));
     }
 
     uint32_t SetDolbyMode(const Exchange::Dolby::IOutput::Type& mode)
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_dolbyInterface != nullptr ? _dolbyInterface->Mode(mode) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
+        return (_dolbyInterface != nullptr ? _dolbyInterface->Mode(mode) : static_cast<uint32_t>(playerinfo_status::PLAYERINFO_ERROR_UNAVAILABLE));
     }
 
     uint32_t GetDolbyMode(Exchange::Dolby::IOutput::Type& outMode) const
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_dolbyInterface != nullptr ? static_cast<const Exchange::Dolby::IOutput*>(_dolbyInterface)->Mode(outMode) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
+        return (_dolbyInterface != nullptr ? static_cast<const Exchange::Dolby::IOutput*>(_dolbyInterface)->Mode(outMode) : static_cast<uint32_t>(playerinfo_status::PLAYERINFO_ERROR_UNAVAILABLE));
     }
 };
 
@@ -483,7 +483,7 @@ uint32_t playerinfo_playback_resolution(playerinfo_playback_resolution_t* resolu
         Exchange::IPlayerProperties::PlaybackResolution value = Exchange::IPlayerProperties::PlaybackResolution::RESOLUTION_UNKNOWN;
         *resolution = PLAYERINFO_RESOLUTION_UNKNOWN;
 
-        if (PlayerInfo::Instance().PlaybackResolution(value) == Core::ERROR_NONE) {
+        if (PlayerInfo::Instance().PlaybackResolution(value) == playerinfo_status::PLAYERINFO_OK) {
             switch (value) {
             case Exchange::IPlayerProperties::PlaybackResolution::RESOLUTION_UNKNOWN:
                 *resolution = PLAYERINFO_RESOLUTION_UNKNOWN;
@@ -518,17 +518,17 @@ uint32_t playerinfo_playback_resolution(playerinfo_playback_resolution_t* resolu
             default:
                 TRACE_GLOBAL(Trace::Warning, ("New resolution in the interface, not handled in client library!"));
                 *resolution = PLAYERINFO_RESOLUTION_UNKNOWN;
-                return Core::ERROR_UNKNOWN_KEY;
+                return playerinfo_status::PLAYERINFO_ERROR_UNKNOWN_KEY;
             }
-            return Core::ERROR_NONE;
+            return playerinfo_status::PLAYERINFO_OK;
         }
     }
-    return Core::ERROR_UNAVAILABLE;
+    return playerinfo_status::PLAYERINFO_ERROR_UNAVAILABLE;
 }
 
 uint32_t playerinfo_is_audio_equivalence_enabled(bool* is_enabled)
 {
-    return (is_enabled != nullptr ? PlayerInfo::Instance().IsAudioEquivalenceEnabled(*is_enabled) : static_cast<uint32_t>(Core::ERROR_UNAVAILABLE));
+    return (is_enabled != nullptr ? PlayerInfo::Instance().IsAudioEquivalenceEnabled(*is_enabled) : static_cast<uint32_t>(playerinfo_status::PLAYERINFO_ERROR_UNAVAILABLE));
 }
 
 int8_t playerinfo_video_codecs(playerinfo_videocodec_t array[], const uint8_t length)
@@ -548,11 +548,11 @@ bool playerinfo_is_dolby_atmos_supported()
 
 uint32_t playerinfo_set_dolby_sound_mode(playerinfo_dolby_sound_mode_t* sound_mode)
 {
-    uint32_t result = Core::ERROR_UNAVAILABLE;
+    uint32_t result = playerinfo_status::PLAYERINFO_ERROR_UNAVAILABLE;
 
     if (sound_mode != nullptr) {
         Exchange::Dolby::IOutput::SoundModes value = Exchange::Dolby::IOutput::SoundModes::UNKNOWN;
-        if (PlayerInfo::Instance().DolbySoundMode(value) == Core::ERROR_NONE) {
+        if (PlayerInfo::Instance().DolbySoundMode(value) == playerinfo_status::PLAYERINFO_OK) {
             switch (value) {
             case Exchange::Dolby::IOutput::SoundModes::UNKNOWN:
                 *sound_mode = PLAYERINFO_DOLBY_SOUND_UNKNOWN;
@@ -572,10 +572,10 @@ uint32_t playerinfo_set_dolby_sound_mode(playerinfo_dolby_sound_mode_t* sound_mo
             default:
                 TRACE_GLOBAL(Trace::Warning, ("New dolby sound mode in the interface, not handled in client library!"));
                 *sound_mode = PLAYERINFO_DOLBY_SOUND_UNKNOWN;
-                result = Core::ERROR_UNKNOWN_KEY;
+                result = playerinfo_status::PLAYERINFO_ERROR_UNKNOWN_KEY;
                 break;
             }
-            result = Core::ERROR_NONE;
+            result = playerinfo_status::PLAYERINFO_OK;
         }
     }
 
@@ -588,7 +588,7 @@ uint32_t playerinfo_enable_atmos_output(const bool is_enabled)
 
 uint32_t playerinfo_set_dolby_mode(const playerinfo_dolby_mode_t mode)
 {
-    uint32_t result = Core::ERROR_UNAVAILABLE;
+    uint32_t result = playerinfo_status::PLAYERINFO_ERROR_UNAVAILABLE;
 
     switch (mode) {
     case PLAYERINFO_DOLBY_MODE_AUTO:
@@ -608,7 +608,7 @@ uint32_t playerinfo_set_dolby_mode(const playerinfo_dolby_mode_t mode)
         break;
     default:
         TRACE_GLOBAL(Trace::Warning, ("Unknown enum value, not included in playerinfo_dolby_mode_type?"));
-        result = Core::ERROR_UNKNOWN_KEY;
+        result = playerinfo_status::PLAYERINFO_ERROR_UNKNOWN_KEY;
         break;
     }
 
@@ -617,13 +617,13 @@ uint32_t playerinfo_set_dolby_mode(const playerinfo_dolby_mode_t mode)
 
 uint32_t playerinfo_get_dolby_mode(playerinfo_dolby_mode_t* mode)
 {
-    uint32_t result = Core::ERROR_UNAVAILABLE;
+    uint32_t result = playerinfo_status::PLAYERINFO_ERROR_UNAVAILABLE;
 
     if (mode != nullptr) {
         Exchange::Dolby::IOutput::Type value = Exchange::Dolby::IOutput::Type::AUTO;
         *mode = PLAYERINFO_DOLBY_MODE_AUTO;
 
-        if (PlayerInfo::Instance().GetDolbyMode(value) == Core::ERROR_NONE) {
+        if (PlayerInfo::Instance().GetDolbyMode(value) == playerinfo_status::PLAYERINFO_OK) {
             switch (value) {
             case Exchange::Dolby::IOutput::Type::AUTO:
                 *mode = PLAYERINFO_DOLBY_MODE_AUTO;
@@ -644,10 +644,10 @@ uint32_t playerinfo_get_dolby_mode(playerinfo_dolby_mode_t* mode)
                 TRACE_GLOBAL(Trace::Warning, ("New dolby mode in the interface, not handled in client library!"));
 
                 *mode = PLAYERINFO_DOLBY_MODE_AUTO;
-                result = Core::ERROR_UNKNOWN_KEY;
+                result = playerinfo_status::PLAYERINFO_ERROR_UNKNOWN_KEY;
                 break;
             }
-            result = Core::ERROR_NONE;
+            result = playerinfo_status::PLAYERINFO_OK;
         }
     }
     return result;
