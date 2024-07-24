@@ -118,6 +118,7 @@ namespace BluetoothAudioSinkClient {
         AudioSink(const string& callsign)
             : SmartInterfaceType()
             , _callback(*this)
+            , _refCount(1)
             , _lock()
             , _operationalStateCallbacks()
             , _sinkStateCallbacks()
@@ -277,17 +278,24 @@ namespace BluetoothAudioSinkClient {
     public:
         static AudioSink& Instance()
         {
+            ASSERT(_instance != nullptr);
             return (*_instance);
         }
         static void Create()
         {
-            _instance = new AudioSink("BluetoothAudio");
+            if (_instance == nullptr) {
+                _instance = new AudioSink("BluetoothAudio");
+            } else {
+                _instance->AddRef();
+            }
             ASSERT(_instance != nullptr);
         }
         static void Destroy()
         {
             ASSERT(_instance != nullptr);
-            delete _instance;
+            if (_instance->Release() == Core::ERROR_DESTRUCTION_SUCCEEDED) {
+                _instance = nullptr;
+            }
         }
 
     public:
@@ -568,11 +576,28 @@ namespace BluetoothAudioSinkClient {
             return (result);
         }
 
+        uint32_t AddRef() const
+        {
+            Core::InterlockedIncrement(_refCount);
+            return Core::ERROR_NONE;
+        }
+
+        uint32_t Release() const
+        {
+            uint32_t result = Core::ERROR_NONE;
+            if (Core::InterlockedDecrement(_refCount) == 0) {
+                delete this;
+                result = Core::ERROR_DESTRUCTION_SUCCEEDED;
+            }
+            return result;
+        }
+
     private:
         static AudioSink* _instance;
 
         Core::SinkType<Callback> _callback;
 
+        mutable uint32_t _refCount;
         mutable Core::CriticalSection _lock;
         OperationalStateUpdateCallbacks _operationalStateCallbacks;
         SinkStateChangedCallbacks _sinkStateCallbacks;
