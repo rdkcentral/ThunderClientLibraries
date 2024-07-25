@@ -19,7 +19,7 @@ cmake_minimum_required(VERSION 3.15)
 
 find_package(Thunder)
 
-project(compositorclient)
+project(Compositor)
 
 project_version(1.0.0)
 
@@ -28,7 +28,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 add_subdirectory(include)
 add_subdirectory(src)
 
-option(BUILD_COMPOSITORCLIENT_TEST "Build compositorclient test" OFF)
+option(BUILD_COMPOSITORCLIENT_TEST "Build Compositor Client test" OFF)
 if (BUILD_COMPOSITORCLIENT_TEST)
     add_subdirectory(test)
 endif()

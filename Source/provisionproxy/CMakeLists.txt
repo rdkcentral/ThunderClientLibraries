@@ -23,7 +23,7 @@ project(ProvisionProxy)
 
 project_version(1.0.0)
 
-set(TARGET ${NAMESPACE}${PROJECT_NAME})
+set(TARGET Client${PROJECT_NAME})
 
 message("Setup ${TARGET} v${PROJECT_VERSION}")
 

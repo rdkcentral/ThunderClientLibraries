@@ -25,7 +25,7 @@ target_include_directories(player_info
 
 target_link_libraries(player_info
     PRIVATE
-        playerinfo)
+    ClientPlayerInfo)
 
 install(TARGETS player_info 
     DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ${NAMESPACE}_Runtime)
