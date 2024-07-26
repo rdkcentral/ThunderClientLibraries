@@ -27,6 +27,34 @@
 
 namespace Thunder {
 
+playerinfo_status_t PlayerInfoStatus(uint32_t status)
+{
+    playerinfo_status_t playerInfoStatus;
+    switch (status) {
+    case Core::ERROR_NONE:
+        playerInfoStatus = playerinfo_status::PLAYERINFO_OK;
+        break;
+    case Core::ERROR_UNAVAILABLE:
+        playerInfoStatus = playerinfo_status::PLAYERINFO_ERROR_UNAVAILABLE;
+        break;
+    case Core::ERROR_ALREADY_CONNECTED:
+        playerInfoStatus = playerinfo_status::PLAYERINFO_ERROR_ALREADY_CONNECTED;
+        break;
+    case Core::ERROR_ALREADY_RELEASED:
+        playerInfoStatus = playerinfo_status::PLAYERINFO_ERROR_ALREADY_RELEASED;
+        break;
+    case Core::ERROR_UNKNOWN_KEY:
+        playerInfoStatus = playerinfo_status::PLAYERINFO_ERROR_UNKNOWN_KEY;
+        break;
+    case Core::ERROR_GENERAL:
+    default:
+        playerInfoStatus = playerinfo_status::PLAYERINFO_ERROR_GENERAL;
+        break;
+    }
+
+    return playerInfoStatus;
+}
+
 class PlayerInfo : protected RPC::SmartInterfaceType<Exchange::IPlayerProperties> {
 private:
     using BaseClass = RPC::SmartInterfaceType<Exchange::IPlayerProperties>;
@@ -245,13 +273,13 @@ public:
     uint32_t IsAudioEquivalenceEnabled(bool& outIsEnabled) const
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_playerInterface != nullptr ? _playerInterface->IsAudioEquivalenceEnabled(outIsEnabled) : static_cast<uint32_t>(playerinfo_status::PLAYERINFO_ERROR_UNAVAILABLE));
+        return (_playerInterface != nullptr ? PlayerInfoStatus(_playerInterface->IsAudioEquivalenceEnabled(outIsEnabled)) : static_cast<uint32_t>(playerinfo_status::PLAYERINFO_ERROR_UNAVAILABLE));
     }
 
     uint32_t PlaybackResolution(Exchange::IPlayerProperties::PlaybackResolution& outResolution) const
     {
         Core::SafeSyncType<Core::CriticalSection> lock(_lock);
-        return (_playerInterface != nullptr ? _playerInterface->Resolution(outResolution) : static_cast<uint32_t>(playerinfo_status::PLAYERINFO_ERROR_UNAVAILABLE));
+        return (_playerInterface != nullptr ? PlayerInfoStatus(_playerInterface->Resolution(outResolution)) : static_cast<uint32_t>(playerinfo_status::PLAYERINFO_ERROR_UNAVAILABLE));
     }
 
     int8_t VideoCodecs(playerinfo_videocodec_t array[], const uint8_t length) const
@@ -262,7 +290,7 @@ public:
         _lock.Lock();
 
         if (_playerInterface != nullptr) {
-            if (_playerInterface->VideoCodecs(videoCodecs) == playerinfo_status::PLAYERINFO_OK && videoCodecs != nullptr) {
+            if (PlayerInfoStatus(_playerInterface->VideoCodecs(videoCodecs)) == playerinfo_status::PLAYERINFO_OK && videoCodecs != nullptr) {
 
                 Exchange::IPlayerProperties::VideoCodec codec;
 

@@ -39,11 +39,13 @@
 extern "C" {
 #endif
 
-typedef enum deviceinfo_status {
+typedef enum {
     DEVICEINFO_OK,
+    DEVICEINFO_ERROR_GENERAL,
     DEVICEINFO_ERROR_UNAVAILABLE,
     DEVICEINFO_ERROR_INVALID_INPUT_LENGTH ,
-} deviceinfo_status_t;
+} deviceinfo_status;
+typedef uint32_t deviceinfo_status_t;
 
 typedef enum deviceinfo_hdcp_type {
     DEVICEINFO_HDCP_UNAVAILABLE = 0,

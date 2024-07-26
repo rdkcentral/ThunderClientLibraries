@@ -26,7 +26,26 @@
 using namespace Thunder;
 namespace {
 
+deviceinfo_status_t DeviceInfoStatus(uint32_t status)
+{
+    deviceinfo_status_t deviceInfoStatus;
+    switch (status) {
+    case Core::ERROR_NONE:
+        deviceInfoStatus = deviceinfo_status::DEVICEINFO_OK;
+        break;
+    case Core::ERROR_UNAVAILABLE:
+        deviceInfoStatus = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
+        break;
+    case Core::ERROR_INVALID_INPUT_LENGTH:
+        deviceInfoStatus = deviceinfo_status::DEVICEINFO_ERROR_INVALID_INPUT_LENGTH;
+        break;
+    default:
+        deviceInfoStatus = deviceinfo_status::DEVICEINFO_ERROR_GENERAL;
+        break;
+    }
 
+    return deviceInfoStatus;
+}
 
 deviceinfo_hdcp_type Convert(const Exchange::IDeviceVideoCapabilities::CopyProtection from)
 {
@@ -410,7 +429,7 @@ private:
         }
         else {
             if (_deviceInfoInterface != nullptr) {
-                result = _deviceInfoInterface->SerialNumber(serialNumber);
+                result = DeviceInfoStatus(_deviceInfoInterface->SerialNumber(serialNumber));
                 if (result == deviceinfo_status::DEVICEINFO_OK) {
                     _serialNumber = serialNumber;
                 }
@@ -444,7 +463,7 @@ private:
         }
         else {
             if (_deviceInfoInterface != nullptr) {
-                result = _deviceInfoInterface->Sku(sku);
+                result = DeviceInfoStatus(_deviceInfoInterface->Sku(sku));
                 if (result == deviceinfo_status::DEVICEINFO_OK) {
                     _sku = sku;
                 }
@@ -479,7 +498,7 @@ private:
         }
         else {
             if (_deviceInfoInterface != nullptr ) {
-                result = _deviceInfoInterface->Make(make);
+                result = DeviceInfoStatus(_deviceInfoInterface->Make(make));
                 if (result == deviceinfo_status::DEVICEINFO_OK) {
                     _make = make;
                 }
@@ -514,7 +533,7 @@ private:
         }
         else {
             if (_deviceInfoInterface != nullptr) {
-                result = _deviceInfoInterface->DeviceType(deviceType);
+                result = DeviceInfoStatus(_deviceInfoInterface->DeviceType(deviceType));
                 if (result == deviceinfo_status::DEVICEINFO_OK) {
                     _deviceType = deviceType;
                 }
@@ -549,7 +568,7 @@ private:
         }
         else {
             if (_deviceInfoInterface != nullptr) {
-                result = _deviceInfoInterface->ModelName(modelName);
+                result = DeviceInfoStatus(_deviceInfoInterface->ModelName(modelName));
                 if (result == deviceinfo_status::DEVICEINFO_OK) {
                     _modelName = modelName;
                 }
@@ -583,7 +602,7 @@ private:
         }
         else {
             if (_deviceInfoInterface != nullptr) {
-                result = _deviceInfoInterface->ModelYear(modelYear);
+                result = DeviceInfoStatus(_deviceInfoInterface->ModelYear(modelYear));
                 if (result == deviceinfo_status::DEVICEINFO_OK) {
                     _modelYear = modelYear;
                 }
@@ -619,7 +638,7 @@ private:
         }
         else {
             if (_deviceInfoInterface != nullptr) {
-                result = _deviceInfoInterface->DistributorId(integratorName);
+                result = DeviceInfoStatus(_deviceInfoInterface->DistributorId(integratorName));
                 if (result == deviceinfo_status::DEVICEINFO_OK) {
                     _systemIntegraterName = integratorName;
                 }
@@ -654,7 +673,7 @@ private:
         }
         else {
             if (_deviceInfoInterface != nullptr) {
-                result = _deviceInfoInterface->FriendlyName(friendlyName);
+                result = DeviceInfoStatus(_deviceInfoInterface->FriendlyName(friendlyName));
                 if (result == deviceinfo_status::DEVICEINFO_OK) {
                     _friendlyName = friendlyName;
                 }
@@ -688,7 +707,7 @@ private:
         }
         else {
             if (_deviceInfoInterface != nullptr) {
-                result = _deviceInfoInterface->PlatformName(platformName);
+                result = DeviceInfoStatus(_deviceInfoInterface->PlatformName(platformName));
                 if (result == deviceinfo_status::DEVICEINFO_OK) {
                     _platformName = platformName;
                 }
@@ -1294,7 +1313,7 @@ private:
         else {
             if ((_deviceVideoCapabilitiesInterface != nullptr) && (index != _videoOutputMap.end())) {
                 Exchange::IDeviceVideoCapabilities::CopyProtection cp;
-                result = _deviceVideoCapabilitiesInterface->Hdcp(videoPort, cp);
+                result = DeviceInfoStatus(_deviceVideoCapabilitiesInterface->Hdcp(videoPort, cp));
                 if (result == deviceinfo_status::DEVICEINFO_OK) {
                     *supportsHDCP = Convert(cp);
                     index->second.hdcp = *supportsHDCP;
@@ -1321,7 +1340,7 @@ private:
         else {
             if (_deviceVideoCapabilitiesInterface != nullptr) {
 
-                result = _deviceVideoCapabilitiesInterface->HostEDID(hostEdid);
+                result = DeviceInfoStatus(_deviceVideoCapabilitiesInterface->HostEDID(hostEdid));
                 if (result == deviceinfo_status::DEVICEINFO_OK) {
                     _hostEdid = hostEdid;
                 }
@@ -1355,7 +1374,7 @@ private:
         else {
 
             if (_deviceVideoCapabilitiesInterface != nullptr) {
-                result = _deviceVideoCapabilitiesInterface->HDR(*supportsHDR);
+                result = DeviceInfoStatus(_deviceVideoCapabilitiesInterface->HDR(*supportsHDR));
                 if (result == deviceinfo_status::DEVICEINFO_OK) {
                     setHdrSupport(*supportsHDR);
                 }
@@ -1375,7 +1394,7 @@ private:
         }
         else {
             if (_deviceVideoCapabilitiesInterface != nullptr) {
-                result = _deviceVideoCapabilitiesInterface->Atmos(*supportsAtmos);
+                result = DeviceInfoStatus(_deviceVideoCapabilitiesInterface->Atmos(*supportsAtmos));
                 if (result == deviceinfo_status::DEVICEINFO_OK) {
                     setAtmosSupport(*supportsAtmos);
                 }
@@ -1396,7 +1415,7 @@ private:
         }
         else {
             if (_deviceVideoCapabilitiesInterface != nullptr) {
-                result = _deviceVideoCapabilitiesInterface->CEC(*supportsCEC);
+                result = DeviceInfoStatus(_deviceVideoCapabilitiesInterface->CEC(*supportsCEC));
                 if (result == deviceinfo_status::DEVICEINFO_OK) {
                     setCecSupport(*supportsCEC);
                 }
