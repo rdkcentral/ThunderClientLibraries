@@ -283,19 +283,23 @@ namespace BluetoothAudioSinkClient {
         }
         static void Create()
         {
+            _instanceLock.Lock();
             if (_instance == nullptr) {
                 _instance = new AudioSink("BluetoothAudio");
             } else {
                 _instance->AddRef();
             }
+            _instanceLock.Unlock();
             ASSERT(_instance != nullptr);
         }
         static void Destroy()
         {
             ASSERT(_instance != nullptr);
+            _instanceLock.Lock();
             if (_instance->Release() == Core::ERROR_DESTRUCTION_SUCCEEDED) {
                 _instance = nullptr;
             }
+            _instanceLock.Unlock();
         }
 
     public:
@@ -594,6 +598,7 @@ namespace BluetoothAudioSinkClient {
 
     private:
         static AudioSink* _instance;
+        static Core::CriticalSection _instanceLock;
 
         Core::SinkType<Callback> _callback;
 
@@ -610,6 +615,7 @@ namespace BluetoothAudioSinkClient {
     };
 
     AudioSink* AudioSink::_instance = nullptr;
+    Core::CriticalSection AudioSink::_instanceLock;
 
 } // namespace BluetoothAudioSinkClient
 
