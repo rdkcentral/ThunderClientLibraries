@@ -39,7 +39,7 @@ target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
         ${NAMESPACE}Core::${NAMESPACE}Core
         ClientVirtualInput::ClientVirtualInput
         ${NAMESPACE}COM::${NAMESPACE}COM
-        ${EGL_LIBRARIES}
+        EGL::EGL
 )
 
 if(VC6)
@@ -62,9 +62,4 @@ target_include_directories(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
     PUBLIC
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}>
     PRIVATE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/..>
-        ${EGL_INCLUDE_DIRS})
-
-target_compile_definitions(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
-    PRIVATE
-        ${EGL_DEFINITIONS})
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/..>)
