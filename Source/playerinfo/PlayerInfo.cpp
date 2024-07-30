@@ -29,7 +29,7 @@ namespace Thunder {
 
 playerinfo_status_t PlayerInfoStatus(uint32_t status)
 {
-    playerinfo_status_t playerInfoStatus;
+    playerinfo_status_t playerInfoStatus = playerinfo_status::PLAYERINFO_ERROR_GENERAL;
     switch (status) {
     case Core::ERROR_NONE:
         playerInfoStatus = playerinfo_status::PLAYERINFO_OK;
@@ -38,17 +38,18 @@ playerinfo_status_t PlayerInfoStatus(uint32_t status)
         playerInfoStatus = playerinfo_status::PLAYERINFO_ERROR_UNAVAILABLE;
         break;
     case Core::ERROR_ALREADY_CONNECTED:
-        playerInfoStatus = playerinfo_status::PLAYERINFO_ERROR_ALREADY_CONNECTED;
+        playerInfoStatus = playerinfo_status::PLAYERINFO_ERROR_ALREADY_REGISTERED;
         break;
     case Core::ERROR_ALREADY_RELEASED:
-        playerInfoStatus = playerinfo_status::PLAYERINFO_ERROR_ALREADY_RELEASED;
+        playerInfoStatus = playerinfo_status::PLAYERINFO_ERROR_ALREADY_UNREGISTERED;
         break;
     case Core::ERROR_UNKNOWN_KEY:
         playerInfoStatus = playerinfo_status::PLAYERINFO_ERROR_UNKNOWN_KEY;
         break;
     case Core::ERROR_GENERAL:
+        break;
     default:
-        playerInfoStatus = playerinfo_status::PLAYERINFO_ERROR_GENERAL;
+        ASSERT(false);
         break;
     }
 
@@ -196,7 +197,7 @@ public:
 
     uint32_t RegisterOperationalStateChangedCallback(playerinfo_operational_state_change_cb callback, void* userdata)
     {
-        uint32_t result = playerinfo_status::PLAYERINFO_ERROR_ALREADY_CONNECTED;
+        uint32_t result = playerinfo_status::PLAYERINFO_ERROR_ALREADY_REGISTERED;
 
         ASSERT(callback != nullptr);
 
@@ -214,7 +215,7 @@ public:
 
     uint32_t UnregisterOperationalStateChangedCallback(playerinfo_operational_state_change_cb callback)
     {
-        uint32_t result = playerinfo_status::PLAYERINFO_ERROR_ALREADY_RELEASED;
+        uint32_t result = playerinfo_status::PLAYERINFO_ERROR_ALREADY_UNREGISTERED;
 
         ASSERT(callback != nullptr);
 
@@ -234,7 +235,7 @@ public:
 
     uint32_t RegisterDolbyAudioModeChangedCallback(playerinfo_dolby_audio_updated_cb callback, void* userdata)
     {
-        uint32_t result = playerinfo_status::PLAYERINFO_ERROR_ALREADY_CONNECTED;
+        uint32_t result = playerinfo_status::PLAYERINFO_ERROR_ALREADY_REGISTERED;
 
         ASSERT(callback != nullptr);
         
@@ -252,7 +253,7 @@ public:
 
     uint32_t UnregisterDolbyAudioModeChangedCallback(playerinfo_dolby_audio_updated_cb callback)
     {
-        uint32_t result = playerinfo_status::PLAYERINFO_ERROR_ALREADY_RELEASED;
+        uint32_t result = playerinfo_status::PLAYERINFO_ERROR_ALREADY_UNREGISTERED;
 
         ASSERT(callback != nullptr);
         

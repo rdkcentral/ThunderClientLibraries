@@ -28,7 +28,7 @@ namespace {
 
 deviceinfo_status_t DeviceInfoStatus(uint32_t status)
 {
-    deviceinfo_status_t deviceInfoStatus;
+    deviceinfo_status_t deviceInfoStatus = deviceinfo_status::DEVICEINFO_ERROR_GENERAL;
     switch (status) {
     case Core::ERROR_NONE:
         deviceInfoStatus = deviceinfo_status::DEVICEINFO_OK;
@@ -40,7 +40,7 @@ deviceinfo_status_t DeviceInfoStatus(uint32_t status)
         deviceInfoStatus = deviceinfo_status::DEVICEINFO_ERROR_INVALID_INPUT_LENGTH;
         break;
     default:
-        deviceInfoStatus = deviceinfo_status::DEVICEINFO_ERROR_GENERAL;
+        ASSERT(false);
         break;
     }
 

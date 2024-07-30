@@ -29,7 +29,7 @@ namespace Thunder {
 
 displayinfo_status_t DisplayInfoStatus(uint32_t status)
 {
-    displayinfo_status_t displayInfoStatus;
+    displayinfo_status_t displayInfoStatus = displayinfo_status::DISPLAYINFO_ERROR_GENERAL;
     switch (status) {
     case Core::ERROR_NONE:
         displayInfoStatus = displayinfo_status::DISPLAYINFO_OK;
@@ -38,17 +38,18 @@ displayinfo_status_t DisplayInfoStatus(uint32_t status)
         displayInfoStatus = displayinfo_status::DISPLAYINFO_ERROR_UNAVAILABLE;
         break;
     case Core::ERROR_ALREADY_CONNECTED:
-        displayInfoStatus = displayinfo_status::DISPLAYINFO_ERROR_ALREADY_CONNECTED;
+        displayInfoStatus = displayinfo_status::DISPLAYINFO_ERROR_ALREADY_REGISTERED;
         break;
     case Core::ERROR_ALREADY_RELEASED:
-        displayInfoStatus = displayinfo_status::DISPLAYINFO_ERROR_ALREADY_RELEASED;
+        displayInfoStatus = displayinfo_status::DISPLAYINFO_ERROR_ALREADY_UNREGISTERED;
         break;
     case Core::ERROR_UNKNOWN_KEY:
         displayInfoStatus = displayinfo_status::DISPLAYINFO_ERROR_UNKNOWN_KEY;
         break;
     case Core::ERROR_GENERAL:
+        break;
     default:
-        displayInfoStatus = displayinfo_status::DISPLAYINFO_ERROR_GENERAL;
+        ASSERT(false);
         break;
     }
 
@@ -207,7 +208,7 @@ public:
 
     uint32_t RegisterOperationalStateChangedCallback(displayinfo_operational_state_change_cb callback, void* userdata)
     {
-        uint32_t result = displayinfo_status::DISPLAYINFO_ERROR_ALREADY_CONNECTED;
+        uint32_t result = displayinfo_status::DISPLAYINFO_ERROR_ALREADY_REGISTERED;
 
         ASSERT(callback != nullptr);
 
@@ -227,7 +228,7 @@ public:
 
     uint32_t UnregisterOperationalStateChangedCallback(displayinfo_operational_state_change_cb callback)
     {
-        uint32_t result = displayinfo_status::DISPLAYINFO_ERROR_ALREADY_RELEASED;
+        uint32_t result = displayinfo_status::DISPLAYINFO_ERROR_ALREADY_UNREGISTERED;
 
         ASSERT(callback != nullptr);
 
@@ -247,7 +248,7 @@ public:
 
     uint32_t RegisterDisplayOutputChangeCallback(displayinfo_display_output_change_cb callback, void* userdata)
     {
-        uint32_t result = displayinfo_status::DISPLAYINFO_ERROR_ALREADY_CONNECTED;
+        uint32_t result = displayinfo_status::DISPLAYINFO_ERROR_ALREADY_REGISTERED;
 
         ASSERT(callback != nullptr);
         
@@ -265,7 +266,7 @@ public:
 
     uint32_t UnregisterDolbyAudioModeChangedCallback(displayinfo_display_output_change_cb callback)
     {
-        uint32_t result = displayinfo_status::DISPLAYINFO_ERROR_ALREADY_RELEASED;
+        uint32_t result = displayinfo_status::DISPLAYINFO_ERROR_ALREADY_UNREGISTERED;
 
         ASSERT(callback != nullptr);
         

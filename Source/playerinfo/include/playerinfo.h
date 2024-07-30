@@ -45,8 +45,8 @@ typedef enum {
     PLAYERINFO_OK,
     PLAYERINFO_ERROR_GENERAL,
     PLAYERINFO_ERROR_UNAVAILABLE,
-    PLAYERINFO_ERROR_ALREADY_CONNECTED,
-    PLAYERINFO_ERROR_ALREADY_RELEASED,
+    PLAYERINFO_ERROR_ALREADY_REGISTERED,
+    PLAYERINFO_ERROR_ALREADY_UNREGISTERED,
     PLAYERINFO_ERROR_UNKNOWN_KEY
 } playerinfo_status;
 typedef uint32_t playerinfo_status_t;
@@ -159,7 +159,7 @@ EXTERNAL uint32_t playerinfo_register_operational_state_change_callback(playerin
  * @param instance Instance of playerinfo_type
  * @param callback Function to be unregistered from callbacks
  * @return PLAYERINFO_OK on succes, 
- *         PLAYERINFO_ERROR_ALREADY_RELEASED if callback not registered
+ *         PLAYERINFO_ERROR_ALREADY_UNREGISTERED if callback not registered
  *         PLAYERINFO_ERROR_UNAVAILABLE if: instance or is NULL
  */
 EXTERNAL uint32_t playerinfo_unregister_operational_state_change_callback(playerinfo_operational_state_change_cb callback);
@@ -181,7 +181,7 @@ EXTERNAL uint32_t playerinfo_register_dolby_sound_mode_updated_callback(playerin
  * @param instance Instance of @ref playerinfo_type.
  * @param callback Callback function unregister
  * @return PLAYERINFO_OK on succes, 
- *         PLAYERINFO_ERROR_ALREADY_RELEASED if callback not registered
+ *         PLAYERINFO_ERROR_ALREADY_UNREGISTERED if callback not registered
  *         PLAYERINFO_ERROR_UNAVAILABLE if: instance or is NULL */
 EXTERNAL uint32_t playerinfo_unregister_dolby_sound_mode_updated_callback(playerinfo_dolby_audio_updated_cb callback);
 
