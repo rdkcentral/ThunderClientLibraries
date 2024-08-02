@@ -41,6 +41,16 @@ extern "C" {
 
 struct playerinfo_type;
 
+typedef enum {
+    PLAYERINFO_OK,
+    PLAYERINFO_ERROR_GENERAL,
+    PLAYERINFO_ERROR_UNAVAILABLE,
+    PLAYERINFO_ERROR_ALREADY_REGISTERED,
+    PLAYERINFO_ERROR_ALREADY_UNREGISTERED,
+    PLAYERINFO_ERROR_UNKNOWN_KEY
+} playerinfo_status;
+typedef uint32_t playerinfo_status_t;
+
 typedef enum playerinfo_audiocodec_type {
     PLAYERINFO_AUDIO_UNDEFINED,
     PLAYERINFO_AUDIO_AAC,
@@ -100,7 +110,7 @@ typedef enum playerinfo_dolby_sound_mode_type {
 /**
 * @brief Will be called if there are changes regarding operational state of the
 *        instance - if it is not operational that means any function calls using it 
-*        will not succeed (will return Core::ERROR_UNAVAILABLE). Not operational state 
+*        will not succeed (will return PLAYERINFO_ERROR_UNAVAILABLE). Not operational state 
 *        can occur if the plugin inside Thunder has been deactivated.
 *
 *
@@ -137,9 +147,9 @@ EXTERNAL void playerinfo_release();
  * @param instance Instance of playerinfo_type
  * @param callback Function to be called on update
  * @param userdata Data passed to callback function
- * @return ERROR_NONE on succes, 
- *          ERROR_GENERAL if callback already registered 
- *          ERROR_UNAVAILABLE if: instance or is NULL
+ * @return PLAYERINFO_OK on succes, 
+ *          PLAYERINFO_ERROR_GENERAL if callback already registered 
+ *          PLAYERINFO_ERROR_UNAVAILABLE if: instance or is NULL
  */
 EXTERNAL uint32_t playerinfo_register_operational_state_change_callback(playerinfo_operational_state_change_cb callback,
     void* userdata);
@@ -148,9 +158,9 @@ EXTERNAL uint32_t playerinfo_register_operational_state_change_callback(playerin
  * 
  * @param instance Instance of playerinfo_type
  * @param callback Function to be unregistered from callbacks
- * @return ERROR_NONE on succes, 
- *         ERROR_NOT_EXIST if callback not registered
- *         ERROR_UNAVAILABLE if: instance or is NULL
+ * @return PLAYERINFO_OK on succes, 
+ *         PLAYERINFO_ERROR_ALREADY_UNREGISTERED if callback not registered
+ *         PLAYERINFO_ERROR_UNAVAILABLE if: instance or is NULL
  */
 EXTERNAL uint32_t playerinfo_unregister_operational_state_change_callback(playerinfo_operational_state_change_cb callback);
 /**
@@ -159,9 +169,9 @@ EXTERNAL uint32_t playerinfo_unregister_operational_state_change_callback(player
  * @param instance Instance of @ref playerinfo_type.
  * @param callback Function to be called on update
  * @param userdata Data passed to callback funcion
- * @return  ERROR_NONE on succes, 
- *          ERROR_GENERAL if callback already registered 
- *          ERROR_UNAVAILABLE if: instance or is NULL
+ * @return  PLAYERINFO_OK on succes, 
+ *          PLAYERINFO_ERROR_GENERAL if callback already registered 
+ *          PLAYERINFO_ERROR_UNAVAILABLE if: instance or is NULL
  */
 EXTERNAL uint32_t playerinfo_register_dolby_sound_mode_updated_callback(playerinfo_dolby_audio_updated_cb callback, void* userdata);
 
@@ -170,9 +180,9 @@ EXTERNAL uint32_t playerinfo_register_dolby_sound_mode_updated_callback(playerin
  * 
  * @param instance Instance of @ref playerinfo_type.
  * @param callback Callback function unregister
- * @return ERROR_NONE on succes, 
- *         ERROR_NOT_EXIST if callback not registered
- *         ERROR_UNAVAILABLE if: instance or is NULL */
+ * @return PLAYERINFO_OK on succes, 
+ *         PLAYERINFO_ERROR_ALREADY_UNREGISTERED if callback not registered
+ *         PLAYERINFO_ERROR_UNAVAILABLE if: instance or is NULL */
 EXTERNAL uint32_t playerinfo_unregister_dolby_sound_mode_updated_callback(playerinfo_dolby_audio_updated_cb callback);
 
 /**
@@ -189,9 +199,9 @@ EXTERNAL void playerinfo_name(char buffer[], const uint8_t length);
  * @param instance instance Instance of @ref playerinfo_type.
  * @param resolution The current resolution, PLAYER_INFO_RESOLUTION_UNKNOWN MIGHT occur if ThunderInterfaces contains new resolution 
  *        not defined in this library,
- * @return ERROR_NONE on succes, 
- *         ERROR_UNKNOWN_KEY if: ThunderInterfaces contains new resolution not defined in this library 
- *         ERROR_UNAVAILABLE if: instance or resolution param is NULL or invalid connection
+ * @return PLAYERINFO_OK on succes, 
+ *         PLAYERINFO_ERROR_UNKNOWN_KEY if: ThunderInterfaces contains new resolution not defined in this library 
+ *         PLAYERINFO_ERROR_UNAVAILABLE if: instance or resolution param is NULL or invalid connection
  */
 EXTERNAL uint32_t playerinfo_playback_resolution(playerinfo_playback_resolution_t* resolution);
 
@@ -199,8 +209,8 @@ EXTERNAL uint32_t playerinfo_playback_resolution(playerinfo_playback_resolution_
  * @brief Checks Loudness Equivalence in platform
  * @param instance Instance of @ref playerinfo_type.
  * @param loudness true if enabled, false if disabled
- * @return ERROR_NONE on succes,
- *         ERROR_UNAVAILABLE if instance or is_enabled param is NULL or invalid connection
+ * @return PLAYERINFO_OK on succes,
+ *         PLAYERINFO_ERROR_UNAVAILABLE if instance or is_enabled param is NULL or invalid connection
  */
 EXTERNAL uint32_t playerinfo_is_audio_equivalence_enabled(bool* is_enabled);
 
@@ -246,8 +256,8 @@ EXTERNAL bool playerinfo_is_dolby_atmos_supported();
  * 
  * @param instance Instance of @ref playerinfo_type
  * @param sound_mode Current sound mode, PLAYERINFO_DOLBY_SOUND_UNKNOWN MIGHT occur if ThunderInterfaces contains new resolution not defined in this library
- * @return ERROR_NONE on succes, 
- *         ERROR_UNAVAILABLE if instance or sound_mode param is NULL or invalid connection
+ * @return PLAYERINFO_OK on succes, 
+ *         PLAYERINFO_ERROR_UNAVAILABLE if instance or sound_mode param is NULL or invalid connection
  */
 EXTERNAL uint32_t playerinfo_set_dolby_sound_mode(playerinfo_dolby_sound_mode_t* sound_mode);
 
@@ -256,8 +266,8 @@ EXTERNAL uint32_t playerinfo_set_dolby_sound_mode(playerinfo_dolby_sound_mode_t*
  * 
  * @param instance Instance of @ref playerinfo_type
  * @param is_enabled Enable or disable Atmos Audio Output
- * @return ERROR_NONE on succes
- *         ERROR_UNAVAILABLE if instance == NULL or invalid connection
+ * @return PLAYERINFO_OK on succes
+ *         PLAYERINFO_ERROR_UNAVAILABLE if instance == NULL or invalid connection
  */
 EXTERNAL uint32_t playerinfo_enable_atmos_output(const bool is_enabled);
 
@@ -266,9 +276,9 @@ EXTERNAL uint32_t playerinfo_enable_atmos_output(const bool is_enabled);
  * 
  * @param instance Instance of @ref playerinfo_type
  * @param mode dolby mode to be set
- * @return ERROR_NONE on succes,
- *         ERROR_UNAVAILABLE on instance == NULL or invalid connection
- *         ERROR_UNKNOWN_KEY on unknown mode
+ * @return PLAYERINFO_OK on succes,
+ *         PLAYERINFO_ERROR_UNAVAILABLE on instance == NULL or invalid connection
+ *         PLAYERINFO_ERROR_UNKNOWN_KEY on unknown mode
  */
 EXTERNAL uint32_t playerinfo_set_dolby_mode(const playerinfo_dolby_mode_t mode);
 
@@ -277,9 +287,9 @@ EXTERNAL uint32_t playerinfo_set_dolby_mode(const playerinfo_dolby_mode_t mode);
  * 
  * @param instance Instance of @ref playerinfo_type
  * @param mode Current dolby mode, PLAYERINFO_DOLBY_MODE_AUTO MIGHT occur if ThunderInterfaces contains new resolution not defined in this library
- * @return ERROR_NONE on succes,
- *         ERROR_UNAVAILABLE on instance == NULL or invalid connection
- *         ERROR_UNKNOWN_KEY on unknown mode
+ * @return PLAYERINFO_OK on succes,
+ *         PLAYERINFO_ERROR_UNAVAILABLE on instance == NULL or invalid connection
+ *         PLAYERINFO_ERROR_UNKNOWN_KEY on unknown mode
  */
 EXTERNAL uint32_t playerinfo_get_dolby_mode(playerinfo_dolby_mode_t* mode);
 
