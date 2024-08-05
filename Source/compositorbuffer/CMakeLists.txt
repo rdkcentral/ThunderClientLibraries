@@ -23,7 +23,7 @@ find_package(Thunder)
 
 project_version(1.0.0)
 
-set(MODULE_NAME ${NAMESPACE}${PROJECT_NAME})
+set(MODULE_NAME Client${PROJECT_NAME})
 
 message("Setup ${MODULE_NAME} v${PROJECT_VERSION}")
 
