@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-project(playerinfo)
+project(PlayerInfo)
 
 cmake_minimum_required(VERSION 3.15)
 
@@ -23,7 +23,7 @@ find_package(Thunder)
 
 project_version(1.0.0)
 
-set(TARGET ${PROJECT_NAME})
+set(TARGET Client${PROJECT_NAME})
 
 message("Setup ${TARGET} v${PROJECT_VERSION}")
 

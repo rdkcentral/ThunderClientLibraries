@@ -69,7 +69,8 @@ EXTERNAL uint32_t bluetoothaudiosink_time(uint32_t *out_time_ms);
 EXTERNAL uint32_t bluetoothaudiosink_delay(uint32_t *out_delay_samples);
 EXTERNAL uint32_t bluetoothaudiosink_frame(const uint16_t length, const uint8_t data[], uint16_t *consumed);
 
-EXTERNAL uint32_t bluetoothaudiosink_dispose(void);
+EXTERNAL uint32_t bluetoothaudiosink_init(void);
+EXTERNAL uint32_t bluetoothaudiosink_deinit(void);
 
 #ifdef __cplusplus
 } // extern "C"

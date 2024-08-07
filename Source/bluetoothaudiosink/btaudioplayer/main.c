@@ -323,6 +323,8 @@ int main(int argc, const char* argv[])
                     clock_gettime(CLOCK_REALTIME, &ts);
                     ts.tv_sec += timeout;
 
+                    bluetoothaudiosink_init();
+
                     // Wait for connection...
                     if (sem_timedwait(&context.connect_sync, &ts) != -1) {
 
@@ -350,7 +352,7 @@ int main(int argc, const char* argv[])
                     TRACE("Cleaning up...");
                     bluetoothaudiosink_unregister_state_changed_callback(&audio_sink_state_changed); // this can fail, it's OK
                     bluetoothaudiosink_unregister_operational_state_update_callback(&audio_sink_operational_state_update);
-                    bluetoothaudiosink_dispose();
+                    bluetoothaudiosink_deinit();
                 }
             } else {
                 ERROR("Invalid file format!");

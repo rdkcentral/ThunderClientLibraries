@@ -37,7 +37,7 @@ target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
         CompileSettingsDebug::CompileSettingsDebug
     PUBLIC
         ${NAMESPACE}Core::${NAMESPACE}Core
-        ${NAMESPACE}VirtualInput::${NAMESPACE}VirtualInput
+        ClientVirtualInput::ClientVirtualInput
         ${NAMESPACE}COM::${NAMESPACE}COM
         EGL::EGL
 )

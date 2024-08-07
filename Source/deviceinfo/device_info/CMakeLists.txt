@@ -27,7 +27,7 @@ target_include_directories(device_info
 
 target_link_libraries(device_info
     PRIVATE
-        ${NAMESPACE}DeviceInfo)
+        ClientDeviceInfo)
 
 install(TARGETS device_info 
     DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ${NAMESPACE}_Runtime)

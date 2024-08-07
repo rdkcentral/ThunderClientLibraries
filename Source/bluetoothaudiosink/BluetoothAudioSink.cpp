@@ -118,6 +118,7 @@ namespace BluetoothAudioSinkClient {
         AudioSink(const string& callsign)
             : SmartInterfaceType()
             , _callback(*this)
+            , _refCount(1)
             , _lock()
             , _operationalStateCallbacks()
             , _sinkStateCallbacks()
@@ -128,10 +129,6 @@ namespace BluetoothAudioSinkClient {
             , _buffer()
         {
             TRACE_L5("Bluetooth audio sink is being constructed...");
-
-            ASSERT(_singleton == nullptr);
-            _singleton = this;
-
             if (SmartInterfaceType::Open(RPC::CommunicationTimeOut, SmartInterfaceType::Connector(), callsign) != Core::ERROR_NONE) {
                 PRINT(_T("Failed to open the smart interface!"));
             } else {
@@ -175,9 +172,6 @@ namespace BluetoothAudioSinkClient {
             _lock.Unlock();
 
             SmartInterfaceType::Close(Core::infinite);
-
-            ASSERT(_singleton != nullptr);
-            _singleton = nullptr;
 
             TRACE_L5("Bluetooth audio sink destructed");
         }
@@ -284,15 +278,28 @@ namespace BluetoothAudioSinkClient {
     public:
         static AudioSink& Instance()
         {
-            static AudioSink* instance = new AudioSink("BluetoothAudio");
-            ASSERT(instance != nullptr);
-
-            return (*instance);
+            ASSERT(_instance != nullptr);
+            return (*_instance);
         }
-        static void Dispose()
+        static void Create()
         {
-            ASSERT(_singleton != nullptr);
-            delete _singleton;
+            _instanceLock.Lock();
+            if (_instance == nullptr) {
+                _instance = new AudioSink("BluetoothAudio");
+            } else {
+                _instance->AddRef();
+            }
+            _instanceLock.Unlock();
+            ASSERT(_instance != nullptr);
+        }
+        static void Destroy()
+        {
+            ASSERT(_instance != nullptr);
+            _instanceLock.Lock();
+            if (_instance->Release() == Core::ERROR_DESTRUCTION_SUCCEEDED) {
+                _instance = nullptr;
+            }
+            _instanceLock.Unlock();
         }
 
     public:
@@ -573,11 +580,29 @@ namespace BluetoothAudioSinkClient {
             return (result);
         }
 
+        uint32_t AddRef() const
+        {
+            Core::InterlockedIncrement(_refCount);
+            return Core::ERROR_NONE;
+        }
+
+        uint32_t Release() const
+        {
+            uint32_t result = Core::ERROR_NONE;
+            if (Core::InterlockedDecrement(_refCount) == 0) {
+                delete this;
+                result = Core::ERROR_DESTRUCTION_SUCCEEDED;
+            }
+            return result;
+        }
+
     private:
-        static AudioSink* _singleton;
+        static AudioSink* _instance;
+        static Core::CriticalSection _instanceLock;
 
         Core::SinkType<Callback> _callback;
 
+        mutable uint32_t _refCount;
         mutable Core::CriticalSection _lock;
         OperationalStateUpdateCallbacks _operationalStateCallbacks;
         SinkStateChangedCallbacks _sinkStateCallbacks;
@@ -589,7 +614,8 @@ namespace BluetoothAudioSinkClient {
         std::unique_ptr<SendBuffer> _buffer;
     };
 
-    AudioSink* AudioSink::_singleton = nullptr;
+    AudioSink* AudioSink::_instance = nullptr;
+    Core::CriticalSection AudioSink::_instanceLock;
 
 } // namespace BluetoothAudioSinkClient
 
@@ -703,9 +729,15 @@ uint32_t bluetoothaudiosink_frame(const uint16_t length, const uint8_t data[], u
     }
 }
 
-uint32_t bluetoothaudiosink_dispose()
+uint32_t bluetoothaudiosink_init()
 {
-    BluetoothAudioSinkClient::AudioSink::Dispose();
+    BluetoothAudioSinkClient::AudioSink::Create();
+    return (Core::ERROR_NONE);
+}
+
+uint32_t bluetoothaudiosink_deinit()
+{
+    BluetoothAudioSinkClient::AudioSink::Destroy();
     return (Core::ERROR_NONE);
 }
 

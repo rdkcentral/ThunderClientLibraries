@@ -25,7 +25,7 @@ target_include_directories(display_info
 
 target_link_libraries(display_info
     PRIVATE
-        ${NAMESPACE}DisplayInfo)
+        ClientDisplayInfo)
 
 install(TARGETS display_info 
     DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ${NAMESPACE}_Runtime)
