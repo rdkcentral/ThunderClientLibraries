@@ -15,7 +15,7 @@ jobs:
 
     name: Build type - ${{matrix.build_type}}${{matrix.architecture == '32' && ' x86' || ''}}
     steps:
-# --------- Packages & articats ---------
+# --------- Packages & artifacts ---------
     - name: Install necessary packages
       uses: nick-fields/retry@v3
       with:
