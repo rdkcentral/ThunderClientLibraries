@@ -37,22 +37,8 @@ elseif(WaylandClient_FIND_REQUIRED)
 endif()
 
 find_package(PkgConfig)
-pkg_check_modules(WAYLANDCLIENT ${_WAYLANDCLIENT_MODE} wayland-client>=1.2 )
+pkg_check_modules(wayland-client ${_WAYLANDCLIENT_MODE} IMPORTED_TARGET GLOBAL wayland-client>=1.2)
 
-find_library(WAYLANDCLIENT_LIB NAMES wayland-client
-        HINTS ${WAYLANDCLIENT_LIBDIR} ${WAYLANDCLIENT_LIBRARY_DIRS})
-
-
-include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(WaylandClient  DEFAULT_MSG WAYLANDCLIENT_FOUND WAYLANDCLIENT_INCLUDE_DIRS WAYLANDCLIENT_LIBRARIES)
-mark_as_advanced(WAYLANDCLIENT_INCLUDE_DIRS WAYLANDCLIENT_LIBRARIES)
-
-if(WaylandClient_FOUND AND NOT TARGET WaylandClient::WaylandClient)
-    add_library(WaylandClient::WaylandClient UNKNOWN IMPORTED)
-    set_target_properties(WaylandClient::WaylandClient PROPERTIES
-            IMPORTED_LOCATION "${WAYLANDCLIENT_LIB}"
-            INTERFACE_LINK_LIBRARIES "${WAYLANDCLIENT_LIBRARIES}"
-            INTERFACE_COMPILE_OPTIONS "${WAYLANDCLIENT_CFLAGS_OTHER}"
-            INTERFACE_INCLUDE_DIRECTORIES "${WAYLANDCLIENT_INCLUDE_DIRS}"
-            )
+if (wayland-client_FOUND)
+   add_library(WaylandClient::WaylandClient ALIAS PkgConfig::wayland-client)
 endif()

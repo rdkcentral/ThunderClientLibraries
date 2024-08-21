@@ -19,7 +19,7 @@ project(btaudioplayer)
 
 set(TARGET ${PROJECT_NAME})
 
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.15)
 
 add_executable(${PROJECT_NAME}
     main.c
@@ -28,7 +28,7 @@ add_executable(${PROJECT_NAME}
 target_include_directories(btaudioplayer
     PRIVATE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../include>
-        $<INSTALL_INTERFACE:include/bluetoothaudiosink>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/bluetoothaudiosink>
 )
 
 target_link_libraries(${TARGET}
@@ -37,4 +37,4 @@ target_link_libraries(${TARGET}
         pthread
 )
 
-install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ${NAMESPACE}_Runtime)

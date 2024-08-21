@@ -28,11 +28,11 @@ target_link_libraries(compositorclient_test
         ${NAMESPACE}Core::${NAMESPACE}Core
         ${NAMESPACE}Messaging::${NAMESPACE}Messaging
         ${NAMESPACE}LocalTracer::${NAMESPACE}LocalTracer
-        ${NAMESPACE}VirtualInput::${NAMESPACE}VirtualInput
+        ClientVirtualInput::ClientVirtualInput
         CompileSettingsDebug::CompileSettingsDebug
-        compositorclient::compositorclient
+        ClientCompositor::ClientCompositor
 )
 
 if(INSTALL_TESTS)
-    install(TARGETS compositorclient_test DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(TARGETS compositorclient_test DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ${NAMESPACE}_Test)
 endif()

@@ -19,12 +19,12 @@ project(ocdmtest)
 
 set(TARGET ${PROJECT_NAME})
 
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.15)
 
 find_package(${NAMESPACE}Core REQUIRED)
 
-if(NOT TARGET ocdm::ocdm)
-    find_package(ocdm REQUIRED)
+if(NOT TARGET ClientOCDM::ClientOCDM)
+	find_package(ClientOCDM REQUIRED)
 endif()
 
 find_package(CompileSettingsDebug CONFIG REQUIRED)
@@ -37,9 +37,9 @@ target_link_libraries(${TARGET}
    PRIVATE 
         ${NAMESPACE}Core::${NAMESPACE}Core
         CompileSettingsDebug::CompileSettingsDebug
-        ocdm::ocdm
+        ClientOCDM::ClientOCDM
 )
 
 if(INSTALL_TESTS)
-    install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ${NAMESPACE}_Test)
 endif()

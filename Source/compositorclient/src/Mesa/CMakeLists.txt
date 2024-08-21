@@ -31,10 +31,10 @@ target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
     PRIVATE
         common::include
         ${NAMESPACE}Core::${NAMESPACE}Core
-        ${NAMESPACE}VirtualInput::${NAMESPACE}VirtualInput
+        ClientVirtualInput::ClientVirtualInput
         ${NAMESPACE}COM::${NAMESPACE}COM
         ${NAMESPACE}PrivilegedRequest::${NAMESPACE}PrivilegedRequest
-        ${NAMESPACE}CompositorBufferType::${NAMESPACE}CompositorBufferType
+        ClientCompositorBufferType::ClientCompositorBufferType
         CompileSettingsDebug::CompileSettingsDebug
         libdrm::libdrm
         gbm::gbm

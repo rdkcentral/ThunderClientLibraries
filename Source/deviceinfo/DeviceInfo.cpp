@@ -26,7 +26,26 @@
 using namespace Thunder;
 namespace {
 
+deviceinfo_status_t DeviceInfoStatus(uint32_t status)
+{
+    deviceinfo_status_t deviceInfoStatus = deviceinfo_status::DEVICEINFO_ERROR_GENERAL;
+    switch (status) {
+    case Core::ERROR_NONE:
+        deviceInfoStatus = deviceinfo_status::DEVICEINFO_OK;
+        break;
+    case Core::ERROR_UNAVAILABLE:
+        deviceInfoStatus = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
+        break;
+    case Core::ERROR_INVALID_INPUT_LENGTH:
+        deviceInfoStatus = deviceinfo_status::DEVICEINFO_ERROR_INVALID_INPUT_LENGTH;
+        break;
+    default:
+        ASSERT(false);
+        break;
+    }
 
+    return deviceInfoStatus;
+}
 
 deviceinfo_hdcp_type Convert(const Exchange::IDeviceVideoCapabilities::CopyProtection from)
 {
@@ -257,6 +276,7 @@ private:
         if (ControllerInterface!= nullptr) {
 
             _subsysInterface = ControllerInterface->SubSystems();
+            ControllerInterface->Release();
 
             if (_subsysInterface != nullptr) {
                 _identifierInterface = _subsysInterface->Get<PluginHost::ISubSystem::IIdentifier>();
@@ -400,26 +420,26 @@ private:
     uint32_t Deviceinfo_serial_number(char buffer[], uint8_t* length)
     {
         ASSERT(length != nullptr);
-        uint32_t result = Core::ERROR_UNAVAILABLE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
         string serialNumber;
         _lock.Lock();
         if (_modelName.IsSet() == true) {
             serialNumber = _serialNumber.Value();
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
             if (_deviceInfoInterface != nullptr) {
-                result = _deviceInfoInterface->SerialNumber(serialNumber);
-                if (result == Core::ERROR_NONE) {
+                result = DeviceInfoStatus(_deviceInfoInterface->SerialNumber(serialNumber));
+                if (result == deviceinfo_status::DEVICEINFO_OK) {
                     _serialNumber = serialNumber;
                 }
             }
         }
         _lock.Unlock();
-        if (result == Core::ERROR_NONE ) {
+        if (result == deviceinfo_status::DEVICEINFO_OK ) {
             auto size = serialNumber.size();
             if (*length <= size) {
-                result = Core::ERROR_INVALID_INPUT_LENGTH;
+                result = deviceinfo_status::DEVICEINFO_ERROR_INVALID_INPUT_LENGTH;
             } else {
                 strncpy(buffer, serialNumber.c_str(), *length);
             }
@@ -433,28 +453,28 @@ private:
     uint32_t Deviceinfo_sku(char buffer[], uint8_t* length)
     {
         ASSERT(length != nullptr);
-        uint32_t result = Core::ERROR_UNAVAILABLE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
         string sku;
 
         _lock.Lock();
         if (_sku.IsSet() == true) {
             sku = _sku.Value();
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
             if (_deviceInfoInterface != nullptr) {
-                result = _deviceInfoInterface->Sku(sku);
-                if (result == Core::ERROR_NONE) {
+                result = DeviceInfoStatus(_deviceInfoInterface->Sku(sku));
+                if (result == deviceinfo_status::DEVICEINFO_OK) {
                     _sku = sku;
                 }
             }
         }
         _lock.Unlock();
 
-        if (result == Core::ERROR_NONE) {
+        if (result == deviceinfo_status::DEVICEINFO_OK) {
             auto size = sku.size();
             if (*length <= size) {
-                result = Core::ERROR_INVALID_INPUT_LENGTH;
+                result = deviceinfo_status::DEVICEINFO_ERROR_INVALID_INPUT_LENGTH;
             } else {
                 strncpy(buffer, sku.c_str(), *length);
             }
@@ -469,27 +489,27 @@ private:
     uint32_t Deviceinfo_make(char buffer[], uint8_t* length)
     {
         ASSERT(length != nullptr);
-        uint32_t result = Core::ERROR_UNAVAILABLE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
         string make;
         _lock.Lock();
         if (_make.IsSet() == true) {
             make = _make.Value();
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
             if (_deviceInfoInterface != nullptr ) {
-                result = _deviceInfoInterface->Make(make);
-                if (result == Core::ERROR_NONE) {
+                result = DeviceInfoStatus(_deviceInfoInterface->Make(make));
+                if (result == deviceinfo_status::DEVICEINFO_OK) {
                     _make = make;
                 }
             }
         }
 
         _lock.Unlock();
-        if (result == Core::ERROR_NONE ) {
+        if (result == deviceinfo_status::DEVICEINFO_OK ) {
             auto size = make.size();
             if (*length <= size) {
-                result = Core::ERROR_INVALID_INPUT_LENGTH ;
+                result = deviceinfo_status::DEVICEINFO_ERROR_INVALID_INPUT_LENGTH ;
             } else {
                 strncpy(buffer, make.c_str(), *length);
             }
@@ -504,27 +524,27 @@ private:
     uint32_t Deviceinfo_device_type(char buffer[], uint8_t* length)
     {
         ASSERT(length != nullptr);
-        uint32_t result = Core::ERROR_UNAVAILABLE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
         string deviceType;
         _lock.Lock();
         if (_deviceType.IsSet() == true) {
             deviceType = _deviceType.Value();
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
             if (_deviceInfoInterface != nullptr) {
-                result = _deviceInfoInterface->DeviceType(deviceType);
-                if (result == Core::ERROR_NONE) {
+                result = DeviceInfoStatus(_deviceInfoInterface->DeviceType(deviceType));
+                if (result == deviceinfo_status::DEVICEINFO_OK) {
                     _deviceType = deviceType;
                 }
             }
         }
         _lock.Unlock();
 
-        if (result == Core::ERROR_NONE) {
+        if (result == deviceinfo_status::DEVICEINFO_OK) {
             auto size = deviceType.size();
             if (*length <= size) {
-                result = Core::ERROR_INVALID_INPUT_LENGTH;
+                result = deviceinfo_status::DEVICEINFO_ERROR_INVALID_INPUT_LENGTH;
             } else {
                 strncpy(buffer, deviceType.c_str(), *length);
             }
@@ -539,26 +559,26 @@ private:
     uint32_t Deviceinfo_model_name(char buffer[], uint8_t* length)
     {
         ASSERT(length != nullptr);
-        uint32_t result = Core::ERROR_UNAVAILABLE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
         string modelName;
         _lock.Lock();
         if (_modelName.IsSet() == true) {
             modelName = _modelName.Value();
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
             if (_deviceInfoInterface != nullptr) {
-                result = _deviceInfoInterface->ModelName(modelName);
-                if (result == Core::ERROR_NONE) {
+                result = DeviceInfoStatus(_deviceInfoInterface->ModelName(modelName));
+                if (result == deviceinfo_status::DEVICEINFO_OK) {
                     _modelName = modelName;
                 }
             }
         }
         _lock.Unlock();
-        if (result == Core::ERROR_NONE) {
+        if (result == deviceinfo_status::DEVICEINFO_OK) {
             auto size = modelName.size();
             if (*length <= size) {
-                result = Core::ERROR_INVALID_INPUT_LENGTH ;
+                result = deviceinfo_status::DEVICEINFO_ERROR_INVALID_INPUT_LENGTH ;
             } else {
                 strncpy(buffer, modelName.c_str(), *length);
             }
@@ -572,28 +592,28 @@ private:
     uint32_t Deviceinfo_model_year(char buffer[], uint8_t* length)
     {
         ASSERT(length != nullptr);
-        uint32_t result = Core::ERROR_UNAVAILABLE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
 
         uint16_t modelYear = 0;
         _lock.Lock();
         if (_modelYear.IsSet() == true) {
             modelYear = _modelYear.Value();
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
             if (_deviceInfoInterface != nullptr) {
-                result = _deviceInfoInterface->ModelYear(modelYear);
-                if (result == Core::ERROR_NONE) {
+                result = DeviceInfoStatus(_deviceInfoInterface->ModelYear(modelYear));
+                if (result == deviceinfo_status::DEVICEINFO_OK) {
                     _modelYear = modelYear;
                 }
             }
         }
         _lock.Unlock();
-        if (result == Core::ERROR_NONE) {
+        if (result == deviceinfo_status::DEVICEINFO_OK) {
             string year = Core::ToString(modelYear);
             auto size = year.size();
             if (*length <= size) {
-                result = Core::ERROR_INVALID_INPUT_LENGTH ;
+                result = deviceinfo_status::DEVICEINFO_ERROR_INVALID_INPUT_LENGTH ;
             } else {
                 strncpy(buffer, year.c_str(), *length);
             }
@@ -608,28 +628,28 @@ private:
     uint32_t Deviceinfo_system_integrator_name(char buffer[], uint8_t* length)
     {
         ASSERT(length != nullptr);
-        uint32_t result = Core::ERROR_UNAVAILABLE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
 
         string integratorName;
         _lock.Lock();
         if (_systemIntegraterName.IsSet() == true) {
             integratorName = _systemIntegraterName.Value();
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
             if (_deviceInfoInterface != nullptr) {
-                result = _deviceInfoInterface->DistributorId(integratorName);
-                if (result == Core::ERROR_NONE) {
+                result = DeviceInfoStatus(_deviceInfoInterface->DistributorId(integratorName));
+                if (result == deviceinfo_status::DEVICEINFO_OK) {
                     _systemIntegraterName = integratorName;
                 }
             }
         }
         _lock.Unlock();
 
-        if (result == Core::ERROR_NONE) {
+        if (result == deviceinfo_status::DEVICEINFO_OK) {
             auto size = integratorName.size();
             if (*length <= size) {
-                result = Core::ERROR_INVALID_INPUT_LENGTH;
+                result = deviceinfo_status::DEVICEINFO_ERROR_INVALID_INPUT_LENGTH;
             } else {
                 strncpy(buffer, integratorName.c_str(), *length);
             }
@@ -643,28 +663,28 @@ private:
     uint32_t Deviceinfo_friendly_name(char buffer[], uint8_t* length)
     {
         ASSERT(length != nullptr);
-        uint32_t result = Core::ERROR_UNAVAILABLE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
 
         string friendlyName;
         _lock.Lock();
         if (_friendlyName.IsSet() == true) {
             friendlyName = _friendlyName.Value();
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
             if (_deviceInfoInterface != nullptr) {
-                result = _deviceInfoInterface->FriendlyName(friendlyName);
-                if (result == Core::ERROR_NONE) {
+                result = DeviceInfoStatus(_deviceInfoInterface->FriendlyName(friendlyName));
+                if (result == deviceinfo_status::DEVICEINFO_OK) {
                     _friendlyName = friendlyName;
                 }
             }
         }
         _lock.Unlock();
-        if (result == Core::ERROR_NONE) {
+        if (result == deviceinfo_status::DEVICEINFO_OK) {
             string year = Core::ToString(friendlyName);
             auto size = friendlyName.size();
             if (*length <= size) {
-                result = Core::ERROR_INVALID_INPUT_LENGTH;
+                result = deviceinfo_status::DEVICEINFO_ERROR_INVALID_INPUT_LENGTH;
             } else {
                 strncpy(buffer, friendlyName.c_str(), *length);
             }
@@ -678,27 +698,27 @@ private:
     uint32_t Deviceinfo_platform_name(char buffer[], uint8_t* length)
     {
         ASSERT(length != nullptr);
-        uint32_t result = Core::ERROR_UNAVAILABLE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
         string platformName;
         _lock.Lock();
         if (_platformName.IsSet() == true) {
             platformName = _platformName.Value();
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
             if (_deviceInfoInterface != nullptr) {
-                result = _deviceInfoInterface->PlatformName(platformName);
-                if (result == Core::ERROR_NONE) {
+                result = DeviceInfoStatus(_deviceInfoInterface->PlatformName(platformName));
+                if (result == deviceinfo_status::DEVICEINFO_OK) {
                     _platformName = platformName;
                 }
             }
         }
         _lock.Unlock();
-        if (result == Core::ERROR_NONE ) {
+        if (result == deviceinfo_status::DEVICEINFO_OK ) {
             string year = Core::ToString(platformName) ;
             auto size = platformName.size();
             if (*length <= size) {
-                result = Core::ERROR_INVALID_INPUT_LENGTH ;
+                result = deviceinfo_status::DEVICEINFO_ERROR_INVALID_INPUT_LENGTH ;
             } else {
                 strncpy(buffer, platformName.c_str(), *length);
             }
@@ -712,28 +732,28 @@ private:
     uint32_t Deviceinfo_architecture(char buffer[], uint8_t* length)
     {
         ASSERT(length != nullptr);
-        uint32_t result = Core::ERROR_UNAVAILABLE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
         std::string newValue;
         _lock.Lock();
         if (_architecture.IsSet() == true) {
             newValue = _architecture;
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
             if (_identifierInterface != nullptr) {
                 newValue = Core::ToString(_identifierInterface->Architecture());
                 _architecture = newValue;
-                result = Core::ERROR_NONE;
+                result = deviceinfo_status::DEVICEINFO_OK;
             }
         }
         _lock.Unlock();
-        if (result == Core::ERROR_NONE) {
+        if (result == deviceinfo_status::DEVICEINFO_OK) {
             auto size = newValue.size();
             if (*length <= size) {
-                result = Core::ERROR_INVALID_INPUT_LENGTH ;
+                result = deviceinfo_status::DEVICEINFO_ERROR_INVALID_INPUT_LENGTH ;
             } else {
                 strncpy(buffer, newValue.c_str(), *length);
-                result = Core::ERROR_NONE;
+                result = deviceinfo_status::DEVICEINFO_OK;
             }
             *length = static_cast<uint8_t>(size + 1);
         } else {
@@ -745,29 +765,29 @@ private:
     uint32_t Deviceinfo_chipset(char buffer[], uint8_t* length)
     {
         ASSERT(length != nullptr);
-        uint32_t result = Core::ERROR_UNAVAILABLE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
         std::string newValue;
         _lock.Lock();
         if (_chipsetName.IsSet() == true) {
             newValue = _chipsetName.Value();
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
             if (_identifierInterface != nullptr) {
                 newValue = Core::ToString(_identifierInterface->Chipset());
                 _chipsetName = newValue;
-                result = Core::ERROR_NONE;
+                result = deviceinfo_status::DEVICEINFO_OK;
             }
         }
 
         _lock.Unlock();
-        if (result == Core::ERROR_NONE) {
+        if (result == deviceinfo_status::DEVICEINFO_OK) {
             auto size = newValue.size();
             if (*length <= size) {
-                result = Core::ERROR_INVALID_INPUT_LENGTH ;
+                result = deviceinfo_status::DEVICEINFO_ERROR_INVALID_INPUT_LENGTH ;
             } else {
                 strncpy(buffer, newValue.c_str(), *length);
-                result = Core::ERROR_NONE;
+                result = deviceinfo_status::DEVICEINFO_OK;
             }
             *length = static_cast<uint8_t>(size + 1);
         } else {
@@ -779,28 +799,28 @@ private:
     uint32_t Deviceinfo_firmware_version(char buffer[], uint8_t* length)
     {
         ASSERT(length != nullptr);
-        uint32_t result = Core::ERROR_UNAVAILABLE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
         std::string newValue;
         _lock.Lock();
         if (_firmwareVersion.IsSet() == true) {
             newValue = _firmwareVersion.Value();
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
             if (_identifierInterface != nullptr) {
                 newValue = Core::ToString(_identifierInterface->FirmwareVersion());
                 _firmwareVersion = newValue;
-                result = Core::ERROR_NONE;
+                result = deviceinfo_status::DEVICEINFO_OK;
             }
         }
         _lock.Unlock();
-        if (result == Core::ERROR_NONE) {
+        if (result == deviceinfo_status::DEVICEINFO_OK) {
             auto size = newValue.size();
             if (*length <= size) {
-                result = Core::ERROR_INVALID_INPUT_LENGTH ;
+                result = deviceinfo_status::DEVICEINFO_ERROR_INVALID_INPUT_LENGTH ;
             } else {
                 strncpy(buffer, newValue.c_str(), *length);
-                result = Core::ERROR_NONE;
+                result = deviceinfo_status::DEVICEINFO_OK;
             }
             *length = static_cast<uint8_t>(size + 1);
         } else {
@@ -812,11 +832,11 @@ private:
     uint32_t Deviceinfo_id(uint8_t buffer[], uint8_t* length)
     {
         ASSERT(length != nullptr);
-        uint32_t result = Core::ERROR_UNAVAILABLE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
         _lock.Lock();
 
         if (_id.size() > 0) {
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
             if (_identifierInterface != nullptr) {
@@ -824,10 +844,10 @@ private:
                 uint8_t size = _identifierInterface->Identifier(sizeof (tempBuffer) - 1, tempBuffer);
                 std::copy(tempBuffer, tempBuffer + size, std::back_inserter(_id));
                 _id.shrink_to_fit();
-                result = Core::ERROR_NONE;
+                result = deviceinfo_status::DEVICEINFO_OK;
             }
         }
-        if (result == Core::ERROR_NONE) {
+        if (result == deviceinfo_status::DEVICEINFO_OK) {
             uint8_t size = static_cast<uint8_t>(_id.size());
             *length = ((size > (*length) - 1) ? (*length) - 1 : size);
             std::copy_n(_id.begin(), *length, buffer);
@@ -842,12 +862,12 @@ private:
     uint32_t Deviceinfo_id_str(char buffer[], uint8_t* length)
     {
         ASSERT(length != nullptr);
-        uint32_t result = Core::ERROR_UNAVAILABLE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
         string id;
         _lock.Lock();
         if ( _idStr.IsSet() == true) {
             id = _idStr;
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
             if (_identifierInterface != nullptr) {
@@ -855,16 +875,16 @@ private:
                 id_buffer[0] = _identifierInterface->Identifier(sizeof(id_buffer) - 1, &(id_buffer[1]));
                 id = Core::SystemInfo::Instance().Id(id_buffer, ~0);
                 _idStr = id;
-                result = Core::ERROR_NONE;
+                result = deviceinfo_status::DEVICEINFO_OK;
             }
         }
         _lock.Unlock();
-        if (result == Core::ERROR_NONE) {
+        if (result == deviceinfo_status::DEVICEINFO_OK) {
             if (id.size() < *length) { 
                 strncpy(buffer, id.c_str(), *length);
-                result = Core::ERROR_NONE;
+                result = deviceinfo_status::DEVICEINFO_OK;
             } else {
-                result = Core::ERROR_INVALID_INPUT_LENGTH;
+                result = deviceinfo_status::DEVICEINFO_ERROR_INVALID_INPUT_LENGTH;
             }
             *length = static_cast<uint8_t>(id.size() + 1);
 
@@ -878,11 +898,11 @@ private:
     uint32_t Deviceinfo_audio_outputs(deviceinfo_audio_output_t value[], uint8_t* length)
     {
         ASSERT(length != nullptr);
-        uint32_t result = Core::ERROR_UNAVAILABLE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
         _lock.Lock();
 
         if (_audioOutputMap.size() > 0) {
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
             if (_deviceAudioCapabilitiesInterface != nullptr) {
@@ -898,11 +918,11 @@ private:
                         _audioOutputMap.insert(std::pair<Exchange::IDeviceAudioCapabilities::AudioOutput, AudioOutputCapability>(field, audioOutputCapability));
                     }
                     index->Release();
-                    result = Core::ERROR_NONE;
+                    result = deviceinfo_status::DEVICEINFO_OK;
                 }
             }
         }
-        if (result == Core::ERROR_NONE) {
+        if (result == deviceinfo_status::DEVICEINFO_OK) {
 
             uint8_t inserted = 0;
             AudioOutputMap::iterator iter = _audioOutputMap.begin();
@@ -921,7 +941,7 @@ private:
                 iter++;
             }
             *length = inserted;
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         } else {
             *length = 0;
         }
@@ -933,13 +953,13 @@ private:
     uint32_t Deviceinfo_audio_capabilities(const deviceinfo_audio_output_t audioOutput, deviceinfo_audio_capability_t value[], uint8_t* length)
     {
         ASSERT(length != nullptr);
-        uint32_t result = Core::ERROR_UNAVAILABLE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
         _lock.Lock();
 
         Exchange::IDeviceAudioCapabilities::AudioOutput audioPort = Convert(audioOutput);
         AudioOutputMap::iterator index = _audioOutputMap.find(audioPort);
         if ((index != _audioOutputMap.end()) && (index->second.audioCapabilities.size() > 0)) {
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
             if ((_deviceAudioCapabilitiesInterface != nullptr) && (index != _audioOutputMap.end())) {
@@ -954,11 +974,11 @@ private:
                     }
                     capabilities->Release();
                     index->second.audioCapabilities.shrink_to_fit();
-                    result = Core::ERROR_NONE;
+                    result = deviceinfo_status::DEVICEINFO_OK;
                 }
             }
         }
-        if (result == Core::ERROR_NONE) {
+        if (result == deviceinfo_status::DEVICEINFO_OK) {
 
             uint8_t inserted = 0;
             std::vector<deviceinfo_audio_capability_t>::iterator iter = index->second.audioCapabilities.begin();
@@ -977,7 +997,7 @@ private:
                 iter++;
             }
             *length = inserted;
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         } else {
             *length = 0;
         }
@@ -989,13 +1009,13 @@ private:
     uint32_t Deviceinfo_audio_ms12_capabilities(const deviceinfo_audio_output_t audioOutput, deviceinfo_audio_ms12_capability_t value[], uint8_t* length)
     {
         ASSERT(length != nullptr);
-        uint32_t result = Core::ERROR_UNAVAILABLE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
         _lock.Lock();
 
         Exchange::IDeviceAudioCapabilities::AudioOutput audioPort = Convert(audioOutput);
         AudioOutputMap::iterator index = _audioOutputMap.find(audioPort);
         if ((index != _audioOutputMap.end()) && (index->second.ms12Capabilities.size() > 0)) {
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
             if ((_deviceAudioCapabilitiesInterface != nullptr) && (index != _audioOutputMap.end())) {
@@ -1010,11 +1030,11 @@ private:
                     }
                     capabilities->Release();
                     index->second.ms12Capabilities.shrink_to_fit();
-                    result = Core::ERROR_NONE;
+                    result = deviceinfo_status::DEVICEINFO_OK;
                 }
             }
         }
-        if (result == Core::ERROR_NONE) {
+        if (result == deviceinfo_status::DEVICEINFO_OK) {
 
             uint8_t inserted = 0;
             std::vector<deviceinfo_audio_ms12_capability_t>::iterator iter = index->second.ms12Capabilities.begin();
@@ -1033,7 +1053,7 @@ private:
                 iter++;
             }
             *length = inserted;
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         } else {
             *length = 0;
         }
@@ -1045,13 +1065,13 @@ private:
     uint32_t Deviceinfo_audio_ms12_audio_profiles(const deviceinfo_audio_output_t audioOutput, deviceinfo_audio_ms12_profile_t value[], uint8_t* length)
     {
         ASSERT(length != nullptr);
-        uint32_t result = Core::ERROR_UNAVAILABLE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
         _lock.Lock();
 
         Exchange::IDeviceAudioCapabilities::AudioOutput audioPort = Convert(audioOutput);
         AudioOutputMap::iterator index = _audioOutputMap.find(audioPort);
         if ((index != _audioOutputMap.end()) && (index->second.ms12AuioProfiles.size() > 0)) {
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
             if ((_deviceAudioCapabilitiesInterface != nullptr) && (index != _audioOutputMap.end())) {
@@ -1066,11 +1086,11 @@ private:
                     }
                     profiles->Release();
                     index->second.ms12AuioProfiles.shrink_to_fit();
-                    result = Core::ERROR_NONE;
+                    result = deviceinfo_status::DEVICEINFO_OK;
                 }
             }
         }
-        if (result == Core::ERROR_NONE) {
+        if (result == deviceinfo_status::DEVICEINFO_OK) {
 
             uint8_t inserted = 0;
             std::vector<deviceinfo_audio_ms12_profile_t>::iterator iter = index->second.ms12AuioProfiles.begin();
@@ -1089,7 +1109,7 @@ private:
                 iter++;
             }
             *length = inserted;
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         } else {
             *length = 0;
         }
@@ -1101,10 +1121,10 @@ private:
     uint32_t Deviceinfo_video_outputs(deviceinfo_video_output_t value[], uint8_t* length)
     {
         ASSERT(length != nullptr);
-        uint32_t result = Core::ERROR_UNAVAILABLE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
         _lock.Lock();
         if (_videoOutputMap.size()>0) {
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
             if (_deviceVideoCapabilitiesInterface != nullptr) {
@@ -1120,12 +1140,12 @@ private:
                     }
                     index->Release();
                     //_videoOutputMap.shrink_to_fit();
-                    result = Core::ERROR_NONE;
+                    result = deviceinfo_status::DEVICEINFO_OK;
                 }
             }
         }
 
-        if (result == Core::ERROR_NONE) {
+        if (result == deviceinfo_status::DEVICEINFO_OK) {
 
             uint8_t inserted = 0;
             VideoOutputMap::iterator iter = _videoOutputMap.begin();
@@ -1144,7 +1164,7 @@ private:
                 iter++;
             }
             *length = inserted;
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         } else {
             *length = 0;
         }
@@ -1156,13 +1176,13 @@ private:
     uint32_t Deviceinfo_output_resolutions(const deviceinfo_video_output_t videoOutput, deviceinfo_output_resolution_t value[], uint8_t* length)
     {
         ASSERT(length != nullptr);
-        uint32_t result = Core::ERROR_UNAVAILABLE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
         _lock.Lock();
 
         Exchange::IDeviceVideoCapabilities::VideoOutput videoPort = Convert(videoOutput);
         VideoOutputMap::iterator index = _videoOutputMap.find(videoPort);
         if ((index != _videoOutputMap.end()) && (index->second.resolutions.size() > 0)) {
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
             if ((_deviceVideoCapabilitiesInterface != nullptr) && (index != _videoOutputMap.end())) {
@@ -1177,11 +1197,11 @@ private:
                     }
                     resolutions->Release();
                     index->second.resolutions.shrink_to_fit();
-                    result = Core::ERROR_NONE;
+                    result = deviceinfo_status::DEVICEINFO_OK;
                 }
             }
         }
-        if (result == Core::ERROR_NONE) {
+        if (result == deviceinfo_status::DEVICEINFO_OK) {
 
             uint8_t inserted = 0;
             std::vector<deviceinfo_output_resolution_t>::iterator iter = index->second.resolutions.begin();
@@ -1200,7 +1220,7 @@ private:
                 iter++;
             }
             *length = inserted;
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         } else {
             *length = 0;
         }
@@ -1212,14 +1232,14 @@ private:
     uint32_t Deviceinfo_default_output_resolution(const deviceinfo_video_output_t videoOutput, deviceinfo_output_resolution_t* value)
     {
         ASSERT(value != nullptr);
-        uint32_t result = Core::ERROR_UNAVAILABLE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
         _lock.Lock();
 
         Exchange::IDeviceVideoCapabilities::VideoOutput videoPort = Convert(videoOutput);
         VideoOutputMap::iterator index = _videoOutputMap.find(videoPort);
         if ((index != _videoOutputMap.end()) && (index->second.defaultResolution.IsSet() == true)) {
             *value = index->second.defaultResolution.Value();
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
             if ((_deviceVideoCapabilitiesInterface != nullptr) && (index != _videoOutputMap.end())) {
@@ -1228,7 +1248,7 @@ private:
                 _deviceVideoCapabilitiesInterface->DefaultResolution(videoPort, resolution);
                 index->second.defaultResolution = Convert(resolution);
                 *value = index->second.defaultResolution.Value();
-                result = Core::ERROR_NONE;
+                result = deviceinfo_status::DEVICEINFO_OK;
             }
         }
 
@@ -1239,14 +1259,14 @@ private:
     uint32_t Deviceinfo_maximum_output_resolution(const deviceinfo_video_output_t videoOutput, deviceinfo_output_resolution_t* value)
     {
         ASSERT(value != nullptr);
-        uint32_t result = Core::ERROR_UNAVAILABLE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
         _lock.Lock();
 
         Exchange::IDeviceVideoCapabilities::VideoOutput videoPort = Convert(videoOutput);
         VideoOutputMap::iterator index = _videoOutputMap.find(videoPort);
         if ((index != _videoOutputMap.end()) && (index->second.maxScreenResolution.IsSet() == true)) {
             *value = index->second.maxScreenResolution.Value();
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
             if ((_deviceVideoCapabilitiesInterface != nullptr) && (index != _videoOutputMap.end())) {
@@ -1255,9 +1275,9 @@ private:
 
                 result = Deviceinfo_output_resolutions(videoOutput, resolutions, &maxLength);
 
-                if (result == Core::ERROR_NONE) {
+                if (result == deviceinfo_status::DEVICEINFO_OK) {
                     if (maxLength == 0) {
-                        result = Core::ERROR_INVALID_INPUT_LENGTH;
+                        result = deviceinfo_status::DEVICEINFO_ERROR_INVALID_INPUT_LENGTH;
                     } else {
                         uint8_t id = 0;
                         *value = DEVICEINFO_RESOLUTION_480I;
@@ -1281,25 +1301,25 @@ private:
     uint32_t Deviceinfo_hdcp(const deviceinfo_video_output_t videoOutput, deviceinfo_hdcp_t* supportsHDCP)
     {
         ASSERT(supportsHDCP != nullptr);
-        uint32_t result = Core::ERROR_NONE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_OK;
         _lock.Lock();
 
         Exchange::IDeviceVideoCapabilities::VideoOutput videoPort = Convert(videoOutput);
         VideoOutputMap::iterator index = _videoOutputMap.find(videoPort);
         if ((index != _videoOutputMap.end()) && (index->second.hdcp.IsSet() == true)) {
             *supportsHDCP = index->second.hdcp.Value();
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
             if ((_deviceVideoCapabilitiesInterface != nullptr) && (index != _videoOutputMap.end())) {
                 Exchange::IDeviceVideoCapabilities::CopyProtection cp;
-                result = _deviceVideoCapabilitiesInterface->Hdcp(videoPort, cp);
-                if (result == Core::ERROR_NONE) {
+                result = DeviceInfoStatus(_deviceVideoCapabilitiesInterface->Hdcp(videoPort, cp));
+                if (result == deviceinfo_status::DEVICEINFO_OK) {
                     *supportsHDCP = Convert(cp);
                     index->second.hdcp = *supportsHDCP;
                 }
 
-                result = Core::ERROR_NONE;
+                result = deviceinfo_status::DEVICEINFO_OK;
             }
         }
 
@@ -1310,28 +1330,28 @@ private:
     uint32_t Deviceinfo_host_edid(char buffer[], uint8_t* length)
     {
         ASSERT(length != nullptr);
-        uint32_t result = Core::ERROR_UNAVAILABLE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
         string hostEdid;
         _lock.Lock();
         if (_hostEdid.IsSet() == true) {
             hostEdid = _hostEdid.Value();
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
             if (_deviceVideoCapabilitiesInterface != nullptr) {
 
-                result = _deviceVideoCapabilitiesInterface->HostEDID(hostEdid);
-                if (result == Core::ERROR_NONE) {
+                result = DeviceInfoStatus(_deviceVideoCapabilitiesInterface->HostEDID(hostEdid));
+                if (result == deviceinfo_status::DEVICEINFO_OK) {
                     _hostEdid = hostEdid;
                 }
             }
         }
 
         _lock.Unlock();
-        if (result == Core::ERROR_NONE) {
+        if (result == deviceinfo_status::DEVICEINFO_OK) {
             auto size = hostEdid.size();
             if (*length <= size) {
-                result = Core::ERROR_INVALID_INPUT_LENGTH ;
+                result = deviceinfo_status::DEVICEINFO_ERROR_INVALID_INPUT_LENGTH ;
             } else {
                 strncpy(buffer, hostEdid.c_str(), *length);
             }
@@ -1345,17 +1365,17 @@ private:
     uint32_t Deviceinfo_hdr(bool* supportsHDR)
     {
         ASSERT(supportsHDR != nullptr);
-        uint32_t result = Core::ERROR_UNAVAILABLE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_ERROR_UNAVAILABLE;
         _lock.Lock();
         if (isHDRSupportCached() == true) {
             *supportsHDR = getHDRSupport();
-            result = Core::ERROR_NONE;
+            result = deviceinfo_status::DEVICEINFO_OK;
         }
         else {
 
             if (_deviceVideoCapabilitiesInterface != nullptr) {
-                result = _deviceVideoCapabilitiesInterface->HDR(*supportsHDR);
-                if (result == Core::ERROR_NONE) {
+                result = DeviceInfoStatus(_deviceVideoCapabilitiesInterface->HDR(*supportsHDR));
+                if (result == deviceinfo_status::DEVICEINFO_OK) {
                     setHdrSupport(*supportsHDR);
                 }
             }
@@ -1367,15 +1387,15 @@ private:
     uint32_t Deviceinfo_atmos(bool* supportsAtmos)
     {
         ASSERT(supportsAtmos != nullptr);
-        uint32_t result = Core::ERROR_NONE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_OK;
         _lock.Lock();
         if (isAtmosSupportCached() == true) {
             *supportsAtmos = getAtmosSupport();
         }
         else {
             if (_deviceVideoCapabilitiesInterface != nullptr) {
-                result = _deviceVideoCapabilitiesInterface->Atmos(*supportsAtmos);
-                if (result == Core::ERROR_NONE) {
+                result = DeviceInfoStatus(_deviceVideoCapabilitiesInterface->Atmos(*supportsAtmos));
+                if (result == deviceinfo_status::DEVICEINFO_OK) {
                     setAtmosSupport(*supportsAtmos);
                 }
             }
@@ -1388,15 +1408,15 @@ private:
     uint32_t Deviceinfo_cec(bool* supportsCEC)
     {
         ASSERT(supportsCEC != nullptr);
-        uint32_t result = Core::ERROR_NONE;
+        uint32_t result = deviceinfo_status::DEVICEINFO_OK;
         _lock.Lock();
         if (isCecSupportCached() == true) {
             *supportsCEC = getCecSupport();
         }
         else {
             if (_deviceVideoCapabilitiesInterface != nullptr) {
-                result = _deviceVideoCapabilitiesInterface->CEC(*supportsCEC);
-                if (result == Core::ERROR_NONE) {
+                result = DeviceInfoStatus(_deviceVideoCapabilitiesInterface->CEC(*supportsCEC));
+                if (result == deviceinfo_status::DEVICEINFO_OK) {
                     setCecSupport(*supportsCEC);
                 }
             }

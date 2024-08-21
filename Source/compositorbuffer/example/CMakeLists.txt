@@ -29,10 +29,10 @@ target_link_libraries(cb-test PRIVATE
     ${NAMESPACE}Definitions::${NAMESPACE}Definitions
     ${NAMESPACE}Core::${NAMESPACE}Core
     ${NAMESPACE}PrivilegedRequest::${NAMESPACE}PrivilegedRequest
-    ${NAMESPACE}CompositorBufferType::${NAMESPACE}CompositorBufferType)
+    ClientCompositorBufferType::ClientCompositorBufferType)
 
 if(INSTALL_EXAMPLES)
-    install(TARGETS cb-test DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(TARGETS cb-test DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ${NAMESPACE}_Test)
 endif()
 
 

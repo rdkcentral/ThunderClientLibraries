@@ -42,6 +42,16 @@ extern "C" {
 #endif
 struct displayinfo_type;
 
+typedef enum {
+    DISPLAYINFO_OK,
+    DISPLAYINFO_ERROR_GENERAL,
+    DISPLAYINFO_ERROR_UNAVAILABLE,
+    DISPLAYINFO_ERROR_ALREADY_REGISTERED,
+    DISPLAYINFO_ERROR_ALREADY_UNREGISTERED,
+    DISPLAYINFO_ERROR_UNKNOWN_KEY
+} displayinfo_status;
+typedef uint32_t displayinfo_status_t;
+
 typedef enum displayinfo_hdr_type {
     DISPLAYINFO_HDR_OFF,
     DISPLAYINFO_HDR_10,
@@ -216,7 +226,7 @@ typedef struct displayinfo_edid_cea_extension_info_type {
 /**
 * @brief Will be called if there are changes regarding operational state of the
 *        instance - if it is not operational that means any function calls using it
-*        will not succeed (will return Core::ERROR_UNAVAILABLE). Not operational state
+*        will not succeed (will return PLAYERINFO_ERROR_UNAVAILABLE). Not operational state
 *        can occur if the plugin inside Thunder has been deactivated.
 *
 *

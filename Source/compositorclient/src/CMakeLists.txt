@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(TARGET ${PROJECT_NAME})
+set(TARGET Client${PROJECT_NAME})
 
 message("Setup ${TARGET} v${PROJECT_VERSION}")
 
@@ -44,7 +44,7 @@ else()
     add_subdirectory (${PLUGIN_COMPOSITOR_IMPLEMENTATION})
 endif()
 
-add_library(${TARGET} SHARED $<TARGET_OBJECTS:${PLUGIN_COMPOSITOR_IMPLEMENTATION}> Module.cpp) 
+add_library(${TARGET}  $<TARGET_OBJECTS:${PLUGIN_COMPOSITOR_IMPLEMENTATION}> Module.cpp) 
 
 target_link_libraries(${TARGET}
     PRIVATE
@@ -67,14 +67,14 @@ set_target_properties(${TARGET} PROPERTIES
 
 install(
     TARGETS ${TARGET} EXPORT ${TARGET}Targets
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT libs
-    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}/compositor
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT ${NAMESPACE}_Runtime NAMELINK_COMPONENT ${NAMESPACE}_Development
+    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}/compositor COMPONENT ${NAMESPACE}_Development
     INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}
 )
 
 target_include_directories(${TARGET} INTERFACE
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include/${NAMESPACE}>)
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}>)
 
 add_library(${TARGET}::${TARGET} ALIAS ${TARGET})
 

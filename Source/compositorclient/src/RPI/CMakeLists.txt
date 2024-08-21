@@ -37,9 +37,9 @@ target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
         CompileSettingsDebug::CompileSettingsDebug
     PUBLIC
         ${NAMESPACE}Core::${NAMESPACE}Core
-        ${NAMESPACE}VirtualInput::${NAMESPACE}VirtualInput
+        ClientVirtualInput::ClientVirtualInput
         ${NAMESPACE}COM::${NAMESPACE}COM
-        ${EGL_LIBRARIES}
+        EGL::EGL
 )
 
 if(VC6)
@@ -60,11 +60,6 @@ target_compile_options (${PLUGIN_COMPOSITOR_IMPLEMENTATION} PRIVATE -Wno-psabi)
 
 target_include_directories(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
     PUBLIC
-        $<INSTALL_INTERFACE:include/${NAMESPACE}>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}>
     PRIVATE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/..>
-        ${EGL_INCLUDE_DIRS})
-
-target_compile_definitions(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
-    PRIVATE
-        ${EGL_DEFINITIONS})
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/..>)

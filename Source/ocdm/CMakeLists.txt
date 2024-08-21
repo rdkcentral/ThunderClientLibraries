@@ -15,15 +15,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.15)
 
 find_package(Thunder)
 
-project(ocdm)
+project(OCDM)
 
 project_version(1.0.0)
 
-set(TARGET ${PROJECT_NAME})
+set(TARGET Client${PROJECT_NAME})
 
 message("Setup ${TARGET} v${PROJECT_VERSION}")
 
@@ -63,7 +63,7 @@ target_link_libraries(${TARGET}
 
 target_include_directories( ${TARGET}
         PUBLIC
-          $<INSTALL_INTERFACE:include/opencdm>
+          $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/opencdm>
           $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/..>
         )
 
@@ -152,15 +152,14 @@ set_target_properties(${TARGET} PROPERTIES
         SOVERSION ${PROJECT_VERSION_MAJOR}
         )
 
-
 install(
-        TARGETS ${TARGET}  EXPORT ${TARGET}Targets  # for downstream dependencies
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT libs      # static lib
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT libs      # shared lib
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT libs      # binaries
-        FRAMEWORK DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT libs    # for mac
-        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}/ocdm COMPONENT devel   # headers for mac (note the different component -> different package)
-        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}/ocdm   # default include path
+        TARGETS ${TARGET}  EXPORT ${TARGET}Targets
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT ${NAMESPACE}_Development
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT ${NAMESPACE}_Runtime NAMELINK_COMPONENT ${NAMESPACE}_Development
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ${NAMESPACE}_Runtime
+        FRAMEWORK DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ${NAMESPACE}_Runtime
+        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}/ocdm COMPONENT ${NAMESPACE}_Development
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}/ocdm
 )
 
 #FIXME: This needs to become a sysmlink.

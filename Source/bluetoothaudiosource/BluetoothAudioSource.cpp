@@ -648,11 +648,14 @@ namespace BluetoothAudioSourceClient {
 
             ASSERT(callback != nullptr);
 
-            if (SmartInterfaceType::ControllerInterface() == nullptr) {
+            const PluginHost::IShell* controller = SmartInterfaceType::ControllerInterface();
+
+            if (controller == nullptr) {
                 TRACE_L1("Framework is not running!");
                 result = Core::ERROR_UNAVAILABLE;
             }
             else {
+                controller->Release();
                 _sinkLock.Lock();
 
                 if (_operationalStateCallbacks.find(callback) == _operationalStateCallbacks.end()) {

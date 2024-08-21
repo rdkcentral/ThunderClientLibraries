@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.15)
 
 find_package(Thunder)
 
@@ -23,7 +23,7 @@ project(Cryptography)
 
 project_version(1.0.0)
 
-set(TARGET ${NAMESPACE}${PROJECT_NAME})
+set(TARGET Client${PROJECT_NAME})
 
 message("Setup ${TARGET} v${PROJECT_VERSION}")
 
@@ -41,7 +41,7 @@ find_package(${NAMESPACE}COM REQUIRED)
 
 add_subdirectory(implementation)
 
-add_library(${TARGET} SHARED
+add_library(${TARGET} 
     Module.cpp
     Cryptography.cpp
     NetflixSecurity.cpp
@@ -59,7 +59,7 @@ target_include_directories(${TARGET}
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/implementation>
-        $<INSTALL_INTERFACE:include/${NAMESPACE}/cryptography>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}/cryptography>
 )
 
 set(PUBLIC_HEADERS
@@ -79,10 +79,10 @@ set_target_properties(${TARGET} PROPERTIES
 
 install(
     TARGETS ${TARGET}  EXPORT ${TARGET}Targets
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT libs
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT libs
-    FRAMEWORK DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT libs
-    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}/cryptography
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT ${NAMESPACE}_Development
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT ${NAMESPACE}_Runtime NAMELINK_COMPONENT ${NAMESPACE}_Development
+    FRAMEWORK DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ${NAMESPACE}_Runtime 
+    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}/cryptography COMPONENT ${NAMESPACE}_Development
     INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}/cryptography
 )
 
@@ -98,7 +98,7 @@ InstallCMakeConfig(
 if(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY)
     find_package(OpenSSL REQUIRED)
 
-    add_library(${TARGET}Software SHARED
+    add_library(${TARGET}Software 
         Module.cpp
         Cryptography.cpp
         NetflixSecurity.cpp
@@ -122,7 +122,7 @@ if(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY)
             $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}>
             $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/implementation>
         PUBLIC
-            $<INSTALL_INTERFACE:include/${NAMESPACE}/cryptography>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}/cryptography>
     )
 
     set_target_properties(${TARGET}Software PROPERTIES
@@ -136,8 +136,8 @@ if(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY)
 
     install(
         TARGETS ${TARGET}Software EXPORT ${TARGET}SoftwareTargets
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT libs
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT libs
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT ${NAMESPACE}_Development
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT ${NAMESPACE}_Runtime NAMELINK_COMPONENT ${NAMESPACE}_Development
         FRAMEWORK DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT libs
         INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}/cryptography
     )

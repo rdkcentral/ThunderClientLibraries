@@ -17,13 +17,13 @@
 
 project(CompositorBufferType LANGUAGES CXX)
 
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.15)
 
 find_package(Thunder)
 
 project_version(1.0.0)
 
-set(MODULE_NAME ${NAMESPACE}${PROJECT_NAME})
+set(MODULE_NAME Client${PROJECT_NAME})
 
 message("Setup ${MODULE_NAME} v${PROJECT_VERSION}")
 
@@ -36,14 +36,14 @@ add_library(${MODULE_NAME}::${MODULE_NAME} ALIAS ${MODULE_NAME})
 
 target_include_directories(${MODULE_NAME} INTERFACE 
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include/${NAMESPACE}>)
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}>)
 
 target_compile_features(${MODULE_NAME} INTERFACE cxx_std_11)
 
 install(TARGETS ${MODULE_NAME} EXPORT ${MODULE_NAME}Targets)
 
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/compositorbuffer/CompositorBufferType.h 
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}/compositorbuffer)
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}/compositorbuffer COMPONENT ${NAMESPACE}_Development)
 
 include(HeaderOnlyInstall)
 
