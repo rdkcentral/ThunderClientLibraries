@@ -36,7 +36,7 @@ find_package(${NAMESPACE}Messaging REQUIRED)
 
 set(CDMI_ADAPTER_IMPLEMENTATION "None" CACHE STRING "Defines which implementation is used.")
 
-add_library(${TARGET} SHARED
+add_library(${TARGET}
         CapsParser.cpp
         open_cdm.cpp
         open_cdm_ext.cpp
