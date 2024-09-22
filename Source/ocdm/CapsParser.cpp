@@ -102,7 +102,7 @@ namespace Thunder {
             std::string retVal;
 
             size_t found = data.find(tag);
-            TRACE(Trace::Warning, (Core::Format(_T("Found tag <%s> in <%s> at location %d"), tag, data.c_str(), found)));
+            TRACE(Trace::Warning, (Core::Format(_T("Found tag <%s> in <%s> at location %zu"), tag, data.c_str(), found)));
             if(found != ::string::npos) {
                 // Found the marker
                 // Find the end of the gst caps type identifier

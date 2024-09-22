@@ -68,6 +68,8 @@ jobs:
         -DCMAKE_INSTALL_PREFIX="${{matrix.build_type}}/install/usr" \
         -DCMAKE_MODULE_PATH="${PWD}/${{matrix.build_type}}/install/usr/include/WPEFramework/Modules" \
         -DBLUETOOTHAUDIOSINK=ON \
+        -DBLUETOOTHAUDIOSOURCE=ON \
+        -DCDMI=ON \
         -DCRYPTOGRAPHY=ON \
         -DCRYPTOGRAPHY_IMPLEMENTATION="OpenSSL" \
         -DDEVICEINFO=ON \
