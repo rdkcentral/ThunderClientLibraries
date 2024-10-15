@@ -297,12 +297,13 @@ namespace Implementation {
     public:
         // Return size of a vault data blob
         // (-1 if the blob exists in the vault but is not extractable and 0 if the ID does not exist)
+PUSH_WARNING(DISABLE_WARNING_OVERLOADED_VIRTUALS)
         uint16_t Size(const uint32_t id) const override
         {
             Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
             return (_accessor != nullptr ? _accessor->Size(id) : 0);
         }
-
+POP_WARNING()
         // Import unencrypted data blob into the vault (returns blob ID)
         // Note: User IDs are always greater than 0x80000000, values below 0x80000000 are reserved for implementation-specific internal data blobs.
         uint32_t Import(const uint16_t length, const uint8_t blob[] /* @length:length */) override
