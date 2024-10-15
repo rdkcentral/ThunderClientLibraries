@@ -681,10 +681,12 @@ namespace Implementation {
             return(persistent_key_load(_implementation,locator.c_str(),&id));
         }
 
+PUSH_WARNING(DISABLE_WARNING_OVERLOADED_VIRTUALS)
         uint32_t Create(const string& locator, const keytype keyType,uint32_t&  id ) override
         {
             return(persistent_key_create(_implementation,locator.c_str(), static_cast<key_type>(keyType),&id));
         }
+POP_WARNING()
 
         uint32_t Flush() override
         {
