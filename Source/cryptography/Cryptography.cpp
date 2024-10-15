@@ -636,11 +636,6 @@ namespace Implementation {
         ~VaultImpl() override = default;
 
     public:
-        uint16_t Size(const uint32_t id) const override
-        {
-            return (vault_size(_implementation, id));
-        }
-
         uint32_t Import(const uint16_t length, const uint8_t blob[] ) override
         {
             return (vault_import(_implementation, length, blob));
@@ -682,6 +677,11 @@ namespace Implementation {
         }
 
 PUSH_WARNING(DISABLE_WARNING_OVERLOADED_VIRTUALS)
+        uint16_t Size(const uint32_t id) const override
+        {
+            return (vault_size(_implementation, id));
+        }
+
         uint32_t Create(const string& locator, const keytype keyType,uint32_t&  id ) override
         {
             return(persistent_key_create(_implementation,locator.c_str(), static_cast<key_type>(keyType),&id));
