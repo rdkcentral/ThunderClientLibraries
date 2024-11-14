@@ -55,7 +55,7 @@ static void toHexString(
         fflush(stdout);                                 \
     } while (0)
 
-void ShowMenu()
+void ShowMenu(void)
 {
     printf("Enter\n"
            "\tI : Get ID as a string.\n"
@@ -80,7 +80,7 @@ void ShowMenu()
            );
 }
 
-int main()
+int main(void)
 {
     int16_t result = 0;
 
