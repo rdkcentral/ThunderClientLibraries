@@ -252,7 +252,7 @@ void print_cea_info(displayinfo_edid_cea_extension_info_t* cea_info) {
     }
 }
 
-int main()
+int main(void)
 {
     ShowMenu();
 
