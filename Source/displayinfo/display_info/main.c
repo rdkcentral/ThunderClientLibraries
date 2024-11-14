@@ -130,6 +130,11 @@ static void toHexString(
     }
 }
 
+#if defined(__APPLE__)
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#endif
+
 #define Trace(fmt, ...)                                 \
     do {                                                \
         fprintf(stdout, "<< " fmt "\n", ##__VA_ARGS__); \
@@ -146,7 +151,7 @@ void on_operational_state_change(bool is_operational, VARIABLE_IS_NOT_USED void*
     Trace("Operational state of the instance %s operational", is_operational ? "is" : "not");
 }
 
-void ShowMenu()
+void ShowMenu(void)
 {
     printf("Version %s\n"
            "Enter\n"
