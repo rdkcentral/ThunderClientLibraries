@@ -49,6 +49,11 @@ static void toHexString(
     }
 }
 
+#if defined(__APPLE__)
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#endif
+
 #define Trace(fmt, ...)                                 \
     do {                                                \
         fprintf(stdout, "<< " fmt "\n", ##__VA_ARGS__); \
