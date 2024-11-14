@@ -9,12 +9,12 @@ on:
 
 jobs:
   Thunder:
-    uses: rdkcentral/Thunder/.github/workflows/Linux build template.yml@master
+    uses: rdkcentral/Thunder/.github/workflows/MacOS build template.yml@master
 
   ThunderInterfaces:
     needs: Thunder
-    uses: rdkcentral/ThunderInterfaces/.github/workflows/Linux build template.yml@master
+    uses: rdkcentral/ThunderInterfaces/.github/workflows/MacOS build template.yml@master
 
   ThunderClientLibraries:
     needs: ThunderInterfaces
-    uses: rdkcentral/ThunderClientLibraries/.github/workflows/Linux build template.yml@development/Actions-macOS # change back to master
+    uses: rdkcentral/ThunderClientLibraries/.github/workflows/MacOS build template.yml@development/Actions-macOS # change back to master
