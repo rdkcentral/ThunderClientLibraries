@@ -30,6 +30,11 @@
 #define VARIABLE_IS_NOT_USED
 #endif
 
+#if defined(__APPLE__)
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#endif
+
 #define Trace(fmt, ...)                                 \
     do {                                                \
         fprintf(stdout, "<< " fmt "\n", ##__VA_ARGS__); \
@@ -38,7 +43,7 @@
 
 #define BUFFER_LENGTH 15
 
-void show_menu()
+void show_menu(void)
 {
     printf("Enter\n"
            "\tI : Register operational event.\n"
@@ -68,7 +73,7 @@ void on_operational_state_change(bool is_operational, VARIABLE_IS_NOT_USED void*
     Trace("Operational state of the instance %s operational", is_operational ? "is" : "not");
 }
 
-int main()
+int main(void)
 {
     playerinfo_videocodec_t videoCodecs[BUFFER_LENGTH];
     playerinfo_audiocodec_t audioCodecs[BUFFER_LENGTH];
