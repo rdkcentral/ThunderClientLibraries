@@ -470,13 +470,13 @@ EXTERNAL uint32_t displayinfo_height_in_centimeters( uint8_t* height);
  * @param instance Instance of @ref displayinfo_type.
  * @return true if Dolby ATMOS is enabled, false otherwise.
  */
-EXTERNAL bool displayinfo_is_atmos_supported();
+EXTERNAL bool displayinfo_is_atmos_supported(void);
 
 /**
  * @brief Close the cached open connection if it exists.
  *
  */
-EXTERNAL void displayinfo_dispose();
+EXTERNAL void displayinfo_dispose(void);
 
 #ifdef __cplusplus
 } // extern "C"
