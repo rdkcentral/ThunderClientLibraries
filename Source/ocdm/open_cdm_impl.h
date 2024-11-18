@@ -914,7 +914,7 @@ protected:
     void DecryptSession(Exchange::ISession* session)
     {
         if (session == nullptr) {
-            delete _decryptSession;
+            delete _decryptSession.load();
             _decryptSession = nullptr;
         } else {
             std::string bufferid;

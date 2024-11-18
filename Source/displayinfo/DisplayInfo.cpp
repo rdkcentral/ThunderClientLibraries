@@ -214,8 +214,6 @@ public:
 
         _lock.Lock();
 
-        OperationalStateChangeCallbacks::iterator index(_operationalStateCallbacks.find(callback));
-
         if (_operationalStateCallbacks.find(callback) == _operationalStateCallbacks.end()) {
             _operationalStateCallbacks.emplace(std::piecewise_construct, std::forward_as_tuple(callback), std::forward_as_tuple(userdata));
             result = displayinfo_status::DISPLAYINFO_OK;

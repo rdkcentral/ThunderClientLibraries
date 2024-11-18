@@ -1,0 +1,20 @@
+name: Build ThunderClientLibraries on MacOS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+
+jobs:
+  Thunder:
+    uses: rdkcentral/Thunder/.github/workflows/MacOS build template.yml@master
+
+  ThunderInterfaces:
+    needs: Thunder
+    uses: rdkcentral/ThunderInterfaces/.github/workflows/MacOS build template.yml@master
+
+  ThunderClientLibraries:
+    needs: ThunderInterfaces
+    uses: rdkcentral/ThunderClientLibraries/.github/workflows/MacOS build template.yml@master
