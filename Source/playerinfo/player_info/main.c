@@ -41,6 +41,10 @@
         fflush(stdout);                                 \
     } while (0)
 
+#if defined(__APPLE__)
+    #pragma clang diagnostic pop
+#endif
+
 #define BUFFER_LENGTH 15
 
 void show_menu(void)
