@@ -60,6 +60,10 @@ static void toHexString(
         fflush(stdout);                                 \
     } while (0)
 
+#if defined(__APPLE__)
+    #pragma clang diagnostic pop
+#endif
+
 void ShowMenu(void)
 {
     printf("Enter\n"
