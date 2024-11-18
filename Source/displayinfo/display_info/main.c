@@ -141,6 +141,10 @@ static void toHexString(
         fflush(stdout);                                 \
     } while (0)
 
+#if defined(__APPLE__)
+    #pragma clang diagnostic pop
+#endif
+
 void displayinfo_display_updated(VARIABLE_IS_NOT_USED void* data)
 {
     Trace("Display updated callback!\n");
