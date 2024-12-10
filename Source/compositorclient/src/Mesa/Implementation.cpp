@@ -37,14 +37,14 @@ extern "C" {
 #include <com/com.h>
 
 #include <interfaces/IComposition.h>
-#include <virtualinput/virtualinput.h>
 #include <privilegedrequest/PrivilegedRequest.h>
+#include <virtualinput/virtualinput.h>
 
-#include <interfaces/ICompositionBuffer.h>
 #include <compositorbuffer/CompositorBufferType.h>
+#include <interfaces/ICompositionBuffer.h>
 
-#include <compositor/Client.h>
 #include "RenderAPI.h"
+#include <compositor/Client.h>
 
 namespace Thunder {
 namespace Linux {
@@ -157,7 +157,7 @@ namespace Linux {
                 ASSERT(_remoteClient != nullptr);
                 ASSERT((_remoteBuffer.get() != nullptr) && (_remoteBuffer->IsValid() == true));
 
-                Exchange::ICompositionBuffer::IIterator* planes = _remoteBuffer->Planes(10);
+                Exchange::ICompositionBuffer::IIterator* planes = _remoteBuffer->Planes(100);
                 ASSERT(planes != nullptr);
 
                 planes->Next();
@@ -484,17 +484,23 @@ namespace Linux {
                     if (_eglImage == EGL_NO_IMAGE) {
                         CreateImage(dpy);
                     }
-
+                    
                     // Lock the buffer
-                    _remoteBuffer->Planes(10);
+                    _remoteBuffer->Planes(100);
 
-                    RenderImage();
+                    bool renderResult = RenderImage();
 
-                    // Wait for all EGL actions to be completed
-                    _egl.eglClientWaitSync(dpy, _eglSync, EGL_SYNC_FLUSH_COMMANDS_BIT_KHR, EGL_FOREVER_KHR);
+                    if (renderResult == true) {
+                        // Wait for all EGL actions to be completed
+                        _egl.eglClientWaitSync(dpy, _eglSync, EGL_SYNC_FLUSH_COMMANDS_BIT_KHR, EGL_FOREVER_KHR);
+                    };
 
                     // Signal the other side to render the buffer
-                    _remoteBuffer->Completed(true);
+                    _remoteBuffer->Completed(renderResult);
+
+                    //FIXME: throttle process loop because there is no vsync yet
+                    std::this_thread::sleep_for(std::chrono::milliseconds(15));
+
                 } else {
                     TRACE(Trace::Error, ("Failed to process, _remoteBuffer: %s, _remoteClient: %s, EGLDisplay: %s", ((_remoteBuffer->IsValid() == true) ? "OK" : "NOK"), ((_remoteClient != nullptr) ? "OK" : "NOK"), ((dpy != EGL_NO_DISPLAY) ? "OK" : "NOK")));
                 }
