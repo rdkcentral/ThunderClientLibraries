@@ -23,6 +23,7 @@ set(PLUGIN_COMPOSITOR_IMPLEMENTATION "None" CACHE STRING "Defines which implemen
 
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
+find_package(${NAMESPACE}COM REQUIRED)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
@@ -50,6 +51,7 @@ target_link_libraries(${TARGET}
     PRIVATE
         ${PLUGIN_COMPOSITOR_IMPLEMENTATION}
         ${NAMESPACE}Core::${NAMESPACE}Core
+        ${NAMESPACE}COM::${NAMESPACE}COM
         CompileSettingsDebug::CompileSettingsDebug
     )
 

@@ -75,7 +75,7 @@ int main(VARIABLE_IS_NOT_USED int argc, VARIABLE_IS_NOT_USED const char* argv[])
             case 'C': {
                 ASSERT(display != nullptr);
 
-                if (surface != nullptr) {
+                if (surface == nullptr) {
                     surface = display->Create("TestClient", 1280, 720);
                     TRACE_GLOBAL(Thunder::Trace::Information, ("Create %s surface", surface->Name().c_str()));
                 } else {

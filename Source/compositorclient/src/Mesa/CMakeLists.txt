@@ -31,9 +31,9 @@ target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
     PRIVATE
         common::include
         ${NAMESPACE}Core::${NAMESPACE}Core
-        ClientVirtualInput::ClientVirtualInput
         ${NAMESPACE}COM::${NAMESPACE}COM
         ${NAMESPACE}PrivilegedRequest::${NAMESPACE}PrivilegedRequest
+        ClientVirtualInput::ClientVirtualInput
         ClientCompositorBufferType::ClientCompositorBufferType
         CompileSettingsDebug::CompileSettingsDebug
         libdrm::libdrm
