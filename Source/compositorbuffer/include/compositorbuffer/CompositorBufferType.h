@@ -77,8 +77,8 @@ namespace Compositor {
                 , _format(format)
                 , _modifier(modifier)
                 , _type(type)
-                , _count(0)
                 , _requestRender()
+                , _count(0)
             {
                 if (::pthread_mutex_init(&_mutex, nullptr) != 0) {
                     // That will be the day, if this fails...
@@ -245,10 +245,10 @@ namespace Compositor {
 
     protected:
         Buffer() 
-            : _producedFd(-1)
-            , _consumedFd(-1)
-            , _iterator(*this)
+            : _iterator(*this)
             , _virtualFd(-1)
+            , _producedFd(-1)
+            , _consumedFd(-1)
             , _storage(nullptr) {
         }
 
@@ -264,12 +264,11 @@ namespace Compositor {
         Buffer& operator=(const Buffer&) = delete;
 
         Buffer(const uint32_t id, const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::ICompositionBuffer::DataType type)
-            : _producedFd(-1)
-            , _consumedFd(-1)
-            , _iterator(*this)
+            : _iterator(*this)
             , _virtualFd(-1)
-            , _storage(nullptr)
-        {
+            , _producedFd(-1)
+            , _consumedFd(-1)
+            , _storage(nullptr) {
             string definition = _T("NotifiableBuffer") + Core::NumberType<uint32_t>(id).Text();
             _virtualFd = ::memfd_create(definition.c_str(), MFD_ALLOW_SEALING | MFD_CLOEXEC);
             if (_virtualFd != -1) {
@@ -287,12 +286,11 @@ namespace Compositor {
             }
         }
         Buffer(Core::PrivilegedRequest::Container& descriptors)
-            : _producedFd(-1)
-            , _consumedFd(-1)
-            , _iterator(*this)
+            : _iterator(*this)
             , _virtualFd(-1)
-            , _storage(nullptr)
-        {
+            , _producedFd(-1)
+            , _consumedFd(-1)
+            , _storage(nullptr) {
             Load(descriptors);
         }
         ~Buffer() override
