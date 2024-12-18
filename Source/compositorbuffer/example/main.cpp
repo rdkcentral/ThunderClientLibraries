@@ -30,17 +30,17 @@ const char* descriptors[] = {
 
 const char bridgeConnector[] = _T("/tmp/connector");
 
-class CompositorBuffer : public Thunder::Compositor::CompositorBufferType<4>, public Core::IReferenceCounted {
+class CompositorBuffer : public Compositor::CompositorBuffer {
 private:
-    using BaseClass = Thunder::Compositor::CompositorBufferType<4>;
+    using BaseClass = Compositor::CompositorBuffer;
 
 protected:
-    CompositorBuffer(const string& callsign, const uint32_t id, 
+    CompositorBuffer(const uint32_t id, 
         const uint32_t width, const uint32_t height, 
         const uint32_t format, const uint64_t modifier, 
         const Exchange::ICompositionBuffer::DataType type)
-        : BaseClass(callsign, id, width, height, format, modifier, type)
-    {
+        : BaseClass(id, width, height, format, modifier, type)
+        , _dirty(false) {
 
         printf("Constructing server buffer.\n");
 
@@ -59,13 +59,14 @@ public:
     CompositorBuffer() = delete;
     CompositorBuffer(CompositorBuffer&&) = delete;
     CompositorBuffer(const CompositorBuffer&) = delete;
+    CompositorBuffer& operator=(CompositorBuffer&&) = delete;
     CompositorBuffer& operator=(const CompositorBuffer&) = delete;
 
     static Core::ProxyType<CompositorBuffer> Create(const string& callsign, const uint32_t width, const uint32_t height, const Exchange::ICompositionBuffer::DataType type)
     {
         static uint32_t id = 1;
         uint32_t identifier = Core::InterlockedIncrement(id);
-        return (_map.Instance<CompositorBuffer>(callsign, callsign, identifier, width, height, 0xAA, 0x55, type));
+        return (_map.Instance<CompositorBuffer>(callsign, identifier, width, height, 0xAA, 0x55, type));
     }
     static Core::ProxyType<CompositorBuffer> Find(const string& callsign)
     {
@@ -79,26 +80,37 @@ public:
     }
 
 public:
-    // Methods still to be implemented....
-    void Render() override
+    bool IsDirty() const {
+        return(_dirty);
+    }
+    IIterator* Acquire() {
+        IIterator* result = BaseClass::Acquire(0);
+        if (result != nullptr) {
+            _dirty = false;
+        }
+        return (result);
+    }
+    void Action() override
     {
         printf("We need to do our magic here :-)\n");
+        _dirty = true;
     }
 
 private:
+    std::atomic<bool> _dirty;
     static Core::ProxyMapType<string, CompositorBuffer> _map;
 };
 
 /* static */ Core::ProxyMapType<string, CompositorBuffer> CompositorBuffer::_map;
 
-class ClientBuffer : public Thunder::Compositor::CompositorBufferType<4>, public Core::IReferenceCounted {
+class ClientBuffer : public Compositor::ClientBuffer {
 private:
-    using BaseClass = Thunder::Compositor::CompositorBufferType<4>;
+    using BaseClass = Compositor::ClientBuffer;
 
 protected:
-    ClientBuffer(const uint32_t id, Core::PrivilegedRequest::Container& descriptors)
-        : BaseClass(id, descriptors)
-    {
+    ClientBuffer(Core::PrivilegedRequest::Container& descriptors)
+        : BaseClass() {
+        BaseClass::Load(descriptors);
     }
 
 public:
@@ -107,17 +119,14 @@ public:
     ClientBuffer(const ClientBuffer&) = delete;
     ClientBuffer& operator=(const ClientBuffer&) = delete;
 
-    static Exchange::ICompositionBuffer* Create(const uint32_t id, Core::PrivilegedRequest::Container& descriptors)
+    static Core::ProxyType<Exchange::ICompositionBuffer> Create(Core::PrivilegedRequest::Container& descriptors)
     {
-        Core::ProxyType<ClientBuffer> element(Core::ProxyType<ClientBuffer>::Create(id, descriptors));
-        Exchange::ICompositionBuffer* result = &(*element);
-        result->AddRef();
-        return (result);
+        return (Core::ProxyType<Exchange::ICompositionBuffer>(Core::ProxyType<ClientBuffer>::Create(descriptors)));
     }
 
 public:
-    // Methods still to be implemented....
-    void Render() override
+    // seems we have been Published
+    void Action() override
     {
         ASSERT(false);
     }
@@ -127,12 +136,13 @@ class Dispatcher : public Core::PrivilegedRequest {
 public:
     Dispatcher(Dispatcher&&) = delete;
     Dispatcher(const Dispatcher&) = delete;
+    Dispatcher& operator=(Dispatcher&&) = delete;
     Dispatcher& operator=(const Dispatcher&) = delete;
 
     Dispatcher() = default;
     ~Dispatcher() override = default;
 
-    void Add(const uint32_t id, Thunder::Compositor::CompositorBufferType<4>& buffer)
+    void Add(const uint32_t id, Compositor::CompositorBuffer& buffer)
     {
         _id = id;
         _buffer = &buffer;
@@ -163,7 +173,7 @@ public:
 
 private:
     uint32_t _id;
-    Thunder::Compositor::CompositorBufferType<4>* _buffer;
+    Compositor::CompositorBuffer* _buffer;
 };
 
 } // namespace Test
@@ -211,14 +221,13 @@ int main(int argc, const char* argv[])
         printf("Running as: [%s]\n", server ? _T("server") : _T("client"));
         Test::Dispatcher bridge;
         Core::ProxyType<Test::CompositorBuffer> serverBuffer;
-        
-        Exchange::ICompositionBuffer* buffer = nullptr;
+        Core::ProxyType<Exchange::ICompositionBuffer> buffer;
 
         if (server == true) {
-            serverBuffer = Test::CompositorBuffer::Create(_T("TestCall"), 1024, 1080, Exchange::ICompositionBuffer::TYPE_RAW);
-            buffer = &(*serverBuffer);
+            serverBuffer = Test::CompositorBuffer::Create(_T("TestThing"), 1024, 1080, Exchange::ICompositionBuffer::TYPE_RAW);
+            buffer = Core::ProxyType<Exchange::ICompositionBuffer>(serverBuffer);
             bridge.Open(string(Test::bridgeConnector));
-            printf("Server has created a buffer, known as: [%d]\n", bufferId);
+            printf("Server has created a buffer, known as: [%d]\n", buffer->Identifier());
             bridge.Add(bufferId, *serverBuffer);
         } else {
             printf("Client instantiated to get information of buffer: [%d]\n", bufferId);
@@ -230,22 +239,22 @@ int main(int argc, const char* argv[])
 
             switch (element) {
             case 'O':
-                if (buffer == nullptr) {
+                if (buffer.IsValid() == false) {
                     Core::PrivilegedRequest::Container descriptors;
                     printf("Get the buffer interface, Sesame open:\n");
                     if (bridge.Request(1000, string(Test::bridgeConnector), bufferId, descriptors) == Core::ERROR_NONE) {
                         printf("Got the buffer on client side.\n");
-                        buffer = Test::ClientBuffer::Create(bufferId, descriptors);
+                        buffer = Test::ClientBuffer::Create(descriptors);
                     } else {
                         printf("Failed to get the buffer.\n");
                     }
                 } else if (server == false) {
                     printf("Where done, we put it all in, close the vault, Sesame close:\n");
-                    buffer = nullptr;
+                    buffer.Release();
                 }
                 break;
             case 'I':
-                if (buffer == nullptr) {
+                if (buffer.IsValid() == false) {
                     printf("There are no buffers\n");
                 } else {
                     printf("Buffer info:\n");
@@ -254,7 +263,7 @@ int main(int argc, const char* argv[])
                     printf("Height: %d\n", buffer->Height());
                     printf("Format: %d\n", buffer->Format());
                     printf("Type: %d\n", buffer->Type());
-                    Thunder::Compositor::CompositorBufferType<4>* info = dynamic_cast<Thunder::Compositor::CompositorBufferType<4>*>(buffer);
+                    Core::ProxyType<Test::CompositorBuffer> info = Core::ProxyType<Test::CompositorBuffer>(buffer);
                     if (info != nullptr) {
                         printf("Dirty:  %s\n", info->IsDirty() ? _T("true") : _T("false"));
                     }
@@ -264,21 +273,20 @@ int main(int argc, const char* argv[])
                 if (buffer == nullptr) {
                     printf("There are no buffers\n");
                 } else {
-                    Exchange::ICompositionBuffer::IIterator* planes = buffer->Planes(10);
+                    Exchange::ICompositionBuffer::IIterator* planes = buffer->Acquire(10);
 
                     if (planes != nullptr) {
                         printf("Iterating ove the planes to write:\n");
                         while (planes->Next() == true) {
-                            Exchange::ICompositionBuffer::IPlane* plane = planes->Plane();
-                            ASSERT(plane != nullptr);
-                            int fd = static_cast<int>(plane->Accessor());
+                            int fd = planes->Descriptor();
                             printf("Writing to [%d]:\n", fd);
                             ::write(fd, "Hello World !!!\n", 16);
                             ::fsync(fd);
                         }
                     }
                     
-                    buffer->Completed(true);
+                    buffer->Relinquish();
+                    buffer->Published();
                 }
                 break;
             case 'Q':
