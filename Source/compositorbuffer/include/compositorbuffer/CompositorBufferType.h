@@ -34,7 +34,172 @@ namespace Thunder {
 
 namespace Compositor {
 
-    class EXTERNAL Buffer : public Exchange::ICompositionBuffer, public Core::IResource {
+    class EXTERNAL SimpleBuffer : public Exchange::ISimpleBuffer {
+    public:
+        static constexpr uint8_t MaxPlanes = 4;
+
+    private:
+        class EXTERNAL Iterator : public Exchange::ICompositionBuffer::IIterator {
+        public:
+            Iterator() = delete;
+            Iterator(Iterator&&) = delete;
+            Iterator(const Iterator&) = delete;
+            Iterator& operator=(Iterator&&) = delete;
+            Iterator& operator=(const Iterator&) = delete;
+
+            Iterator(SimpleBuffer& parent)
+                : _parent(parent)
+            {
+                Reset();
+            }
+            ~Iterator() override = default;
+
+        public:
+            bool IsValid() const override
+            {
+                return ((_position > 0) && (_position <= _parent.Planes()));
+            }
+            void Reset() override
+            {
+                _position = 0;
+            }
+            bool Next() override
+            {
+                if (_position <= _parent.Planes()) {
+                    _position++;
+                }
+                return (IsValid());
+            }
+            int Descriptor() const override
+            { // Access to the actual data.
+                ASSERT(IsValid() == true);
+                return (_parent.Descriptor(_position - 1));
+            }
+            uint32_t Stride() const override
+            { // Bytes per row for a plane [(bit-per-pixel/8) * width]
+                ASSERT(IsValid() == true);
+                return (_parent.Stride(_position - 1));
+            }
+            uint32_t Offset() const override
+            { // Offset of the plane from where the pixel data starts in the buffer.
+                ASSERT(IsValid() == true);
+                return (_parent.Offset(_position - 1));
+            }
+
+        private:
+            SimpleBuffer& _parent;
+            uint8_t _position;
+        };
+
+    public:
+        SimpleBuffer(SimpleBuffer&&) = delete;
+        SimpleBuffer(const SimpleBuffer&) = delete;
+        SimpleBuffer& operator= (SimpleBuffer&&) = delete;
+        SimpleBuffer& operator= (const SimpleBuffer&) = delete;
+ 
+        SimpleBuffer(const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::ICompositionBuffer::DataType type) 
+            : _lock(false)
+            , _width(width)
+            , _height(height)
+            , _format(format)
+            , _modifier(modifier)
+            , _type(type)
+            , _count(0)
+            , _iterator(*this) {
+        }
+        ~SimpleBuffer() override {
+            for(uint8_t index = 0; index < _count; index++) {
+                ::close(_planes[index]._fd);
+            }
+        }
+
+    public:
+        //
+        // Implementation of Exchange::ISimpleBuffer
+        // -----------------------------------------------------------------
+        // Wait time in milliseconds.
+        IIterator* Acquire(const uint32_t waitTimeInMs) override
+        { 
+            // Access to the buffer planes.
+            IIterator* result = nullptr;
+            if (_lock.Lock(waitTimeInMs) == Core::ERROR_NONE) {
+                _iterator.Reset();
+                result = &_iterator;
+            }
+            return (result);
+        }
+        void Relinquish() override
+        {
+            _lock.Unlock();
+        }
+        uint32_t Width() const override
+        { 
+            return (_width);
+        }
+        uint32_t Height() const override
+        { 
+            return (_height);
+        }
+        uint32_t Format() const override
+        {
+            return (_format);
+        }
+        uint64_t Modifier() const override
+        {
+            return (_modifier);
+        }
+        Exchange::ICompositionBuffer::DataType Type() const override
+        {
+            return (_type);
+        }
+        uint8_t Planes() const
+        {
+            return (_count);
+        }   
+
+    protected:     
+        void Add(int fd, const uint32_t stride, const uint32_t offset)
+        {
+            ASSERT(fd > 0);
+            ASSERT(_count < (sizeof(_planes)/ sizeof(struct PlaneStorage)));
+            _planes[_count]._fd = ::dup(fd);
+            _planes[_count]._offset = offset; 
+            _planes[_count]._stride = stride;
+            ++_count; 
+        }
+
+    private:
+        uint32_t Stride(const uint8_t index) const
+        { 
+            return (_planes[index]._stride);
+        }
+        uint32_t Offset(const uint8_t index) const
+        {
+            return (_planes[index]._offset);
+        }
+        int Descriptor(const uint8_t index) const {
+            return (_planes[index]._fd);
+        }
+
+    private:
+        struct PlaneStorage {
+            uint32_t _stride;
+            uint32_t _offset;
+            int _fd;
+        };
+
+        Core::BinarySemaphore _lock;
+        uint32_t _width;
+        uint32_t _height;
+        uint32_t _format;
+        uint64_t _modifier;
+        Exchange::ISimpleBuffer::DataType _type;
+        uint8_t _count;
+        Iterator _iterator;
+        PlaneStorage _planes[MaxPlanes];
+    };
+
+    class EXTERNAL SharedBuffer : public Exchange::ICompositionBuffer, public Core::IResource {
     public:
         static constexpr uint8_t MaxPlanes = 4;
 
@@ -78,8 +243,7 @@ namespace Compositor {
                 , _modifier(modifier)
                 , _type(type)
                 , _requestRender()
-                , _count(0)
-            {
+                , _count(0) {
                 if (::pthread_mutex_init(&_mutex, nullptr) != 0) {
                     // That will be the day, if this fails...
                     ASSERT(false);
@@ -119,17 +283,17 @@ namespace Compositor {
             }
             uint32_t Stride(const uint8_t index) const
             { // Bytes per row for a plane [(bit-per-pixel/8) * width]
-                ASSERT (index < _count)
+                ASSERT (index < _count);
                 return (_planes[index]._stride);
             }
             uint32_t Offset(const uint8_t index) const
             { // Offset of the plane from where the pixel data starts in the buffer.
-                ASSERT (index < _count)
+                ASSERT (index < _count);
                 return (_planes[index]._offset);
             }
             void Add(const uint32_t stride, const uint32_t offset)
             {
-                ASSERT (_count < (sizeof(_planes)/sizeof(PlaneStorage)))
+                ASSERT (_count < (sizeof(_planes)/sizeof(PlaneStorage)));
                 _planes[_count]._stride = stride;
                 _planes[_count]._offset = offset;
                 _count++;
@@ -199,7 +363,7 @@ namespace Compositor {
             Iterator& operator=(Iterator&&) = delete;
             Iterator& operator=(const Iterator&) = delete;
 
-            Iterator(Buffer& parent)
+            Iterator(SharedBuffer& parent)
                 : _parent(parent)
             {
                 Reset();
@@ -239,12 +403,12 @@ namespace Compositor {
             }
 
         private:
-            Buffer& _parent;
+            SharedBuffer& _parent;
             uint8_t _position;
         };
 
     protected:
-        Buffer() 
+        SharedBuffer() 
             : _iterator(*this)
             , _virtualFd(-1)
             , _producedFd(-1)
@@ -258,12 +422,12 @@ namespace Compositor {
          */
         using EventFrame = uint64_t;
 
-        Buffer(Buffer&&) = delete;
-        Buffer(const Buffer&) = delete;
-        Buffer& operator=(Buffer&&) = delete;
-        Buffer& operator=(const Buffer&) = delete;
+        SharedBuffer(SharedBuffer&&) = delete;
+        SharedBuffer(const SharedBuffer&) = delete;
+        SharedBuffer& operator=(SharedBuffer&&) = delete;
+        SharedBuffer& operator=(const SharedBuffer&) = delete;
 
-        Buffer(const uint32_t id, const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::ICompositionBuffer::DataType type)
+        SharedBuffer(const uint32_t id, const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::ICompositionBuffer::DataType type)
             : _iterator(*this)
             , _virtualFd(-1)
             , _producedFd(-1)
@@ -285,7 +449,7 @@ namespace Compositor {
                 }
             }
         }
-        Buffer(Core::PrivilegedRequest::Container& descriptors)
+        SharedBuffer(Core::PrivilegedRequest::Container& descriptors)
             : _iterator(*this)
             , _virtualFd(-1)
             , _producedFd(-1)
@@ -293,7 +457,7 @@ namespace Compositor {
             , _storage(nullptr) {
             Load(descriptors);
         }
-        ~Buffer() override
+        ~SharedBuffer() override
         {
             if (_producedFd != -1) {
                 ::close(_producedFd);
@@ -480,19 +644,19 @@ namespace Compositor {
         int _descriptors[MaxPlanes];
     };
 
-    class EXTERNAL ClientBuffer : public Buffer {
+    class EXTERNAL ClientBuffer : public SharedBuffer {
     public:
         ClientBuffer(ClientBuffer&&) = delete;
         ClientBuffer(const ClientBuffer&) = delete;
         ClientBuffer& operator=(ClientBuffer&&) = delete;
         ClientBuffer& operator=(const ClientBuffer&) = delete;
 
-        ClientBuffer() : Buffer() { }
+        ClientBuffer() : SharedBuffer() { }
         ~ClientBuffer() override = default;
 
     public:
         void Load(Core::PrivilegedRequest::Container& descriptors) {
-            Buffer::Load(descriptors);
+            SharedBuffer::Load(descriptors);
         }
 
         //
@@ -500,7 +664,7 @@ namespace Compositor {
         // -----------------------------------------------------------------
         Core::IResource::handle Descriptor() const override
         {
-            return (Buffer::Consumer());
+            return (SharedBuffer::Consumer());
         }
         uint16_t Events() override
         {
@@ -508,9 +672,9 @@ namespace Compositor {
         }
         void Handle(const uint16_t events) override
         {
-            typename Buffer::EventFrame value;
+            typename SharedBuffer::EventFrame value;
 
-            if (((events & POLLIN) != 0) && (::read(Buffer::Consumer(), &value, sizeof(value)) == sizeof(value))) {
+            if (((events & POLLIN) != 0) && (::read(SharedBuffer::Consumer(), &value, sizeof(value)) == sizeof(value))) {
                 Action();
             }
         }
@@ -520,14 +684,14 @@ namespace Compositor {
         // -----------------------------------------------------------------
         uint32_t Published() override
         {
-            typename Buffer::EventFrame value = 1;
-            size_t result = ::write(Buffer::Producer(), &value, sizeof(value));
+            typename SharedBuffer::EventFrame value = 1;
+            size_t result = ::write(SharedBuffer::Producer(), &value, sizeof(value));
             return (result != sizeof(value) ? Core::ERROR_ILLEGAL_STATE : Core::ERROR_NONE);
         }
         void Action () override = 0;
     };
 
-    class EXTERNAL CompositorBuffer : public Buffer {
+    class EXTERNAL CompositorBuffer : public SharedBuffer {
     public:
         CompositorBuffer() = delete;
         CompositorBuffer(CompositorBuffer&&) = delete;
@@ -536,7 +700,7 @@ namespace Compositor {
         CompositorBuffer& operator=(const CompositorBuffer&) = delete;
 
         CompositorBuffer(const uint32_t id, const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::ICompositionBuffer::DataType type)
-            : Buffer(id, width, height, format, modifier, type) {
+            : SharedBuffer(id, width, height, format, modifier, type) {
         }
         ~CompositorBuffer() override = default;
 
@@ -546,7 +710,7 @@ namespace Compositor {
         // -----------------------------------------------------------------
         Core::IResource::handle Descriptor() const override
         {
-            return (Buffer::Producer());
+            return (SharedBuffer::Producer());
         }
         uint16_t Events() override
         {
@@ -554,9 +718,9 @@ namespace Compositor {
         }
         void Handle(const uint16_t events) override
         {
-            typename Buffer::EventFrame value;
+            typename SharedBuffer::EventFrame value;
 
-            if (((events & POLLIN) != 0) && (::read(Buffer::Producer(), &value, sizeof(value)) == sizeof(value))) {
+            if (((events & POLLIN) != 0) && (::read(SharedBuffer::Producer(), &value, sizeof(value)) == sizeof(value))) {
                 Action();
             }
         }
@@ -566,8 +730,8 @@ namespace Compositor {
         // -----------------------------------------------------------------
         uint32_t Published() override
         {
-            typename Buffer::EventFrame value = 1;
-            size_t result = ::write(Buffer::Consumer(), &value, sizeof(value));
+            typename SharedBuffer::EventFrame value = 1;
+            size_t result = ::write(SharedBuffer::Consumer(), &value, sizeof(value));
             return (result != sizeof(value) ? Core::ERROR_ILLEGAL_STATE : Core::ERROR_NONE);
         }
         void Action () override = 0;
