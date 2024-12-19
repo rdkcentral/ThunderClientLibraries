@@ -34,7 +34,7 @@ namespace Thunder {
 
 namespace Compositor {
 
-    class EXTERNAL SimpleBuffer : public Exchange::ISimpleBuffer {
+    class EXTERNAL LocalBuffer : public Exchange::ICompositionBuffer {
     public:
         static constexpr uint8_t MaxPlanes = 4;
 
@@ -47,7 +47,7 @@ namespace Compositor {
             Iterator& operator=(Iterator&&) = delete;
             Iterator& operator=(const Iterator&) = delete;
 
-            Iterator(SimpleBuffer& parent)
+            Iterator(LocalBuffer& parent)
                 : _parent(parent)
             {
                 Reset();
@@ -87,17 +87,17 @@ namespace Compositor {
             }
 
         private:
-            SimpleBuffer& _parent;
+            LocalBuffer& _parent;
             uint8_t _position;
         };
 
     public:
-        SimpleBuffer(SimpleBuffer&&) = delete;
-        SimpleBuffer(const SimpleBuffer&) = delete;
-        SimpleBuffer& operator= (SimpleBuffer&&) = delete;
-        SimpleBuffer& operator= (const SimpleBuffer&) = delete;
+        LocalBuffer(LocalBuffer&&) = delete;
+        LocalBuffer(const LocalBuffer&) = delete;
+        LocalBuffer& operator= (LocalBuffer&&) = delete;
+        LocalBuffer& operator= (const LocalBuffer&) = delete;
  
-        SimpleBuffer(const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::ICompositionBuffer::DataType type) 
+        LocalBuffer(const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::ICompositionBuffer::DataType type) 
             : _lock(false)
             , _width(width)
             , _height(height)
@@ -107,7 +107,7 @@ namespace Compositor {
             , _count(0)
             , _iterator(*this) {
         }
-        ~SimpleBuffer() override {
+        ~LocalBuffer() override {
             for(uint8_t index = 0; index < _count; index++) {
                 ::close(_planes[index]._fd);
             }
@@ -115,7 +115,7 @@ namespace Compositor {
 
     public:
         //
-        // Implementation of Exchange::ISimpleBuffer
+        // Implementation of Exchange::ILocalBuffer
         // -----------------------------------------------------------------
         // Wait time in milliseconds.
         IIterator* Acquire(const uint32_t waitTimeInMs) override
@@ -193,7 +193,7 @@ namespace Compositor {
         uint32_t _height;
         uint32_t _format;
         uint64_t _modifier;
-        Exchange::ISimpleBuffer::DataType _type;
+        Exchange::ICompositionBuffer::DataType _type;
         uint8_t _count;
         Iterator _iterator;
         PlaneStorage _planes[MaxPlanes];
@@ -210,6 +210,12 @@ namespace Compositor {
             struct PlaneStorage {
                 uint32_t _stride;
                 uint32_t _offset;
+            };
+            enum mode : uint8_t {
+                IDLE,
+                REQUEST,
+                RENDERED,
+                PUBLISHED
             };
 
         public:
@@ -235,14 +241,13 @@ namespace Compositor {
             SharedStorage& operator=(SharedStorage&&) = delete;
             SharedStorage& operator=(const SharedStorage&) = delete;
 
-            SharedStorage(const uint32_t id, const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::ICompositionBuffer::DataType type)
-                : _id(id)
-                , _width(width)
+            SharedStorage(const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::ICompositionBuffer::DataType type)
+                : _width(width)
                 , _height(height)
                 , _format(format)
                 , _modifier(modifier)
                 , _type(type)
-                , _requestRender()
+                , _command(mode::IDLE)
                 , _count(0) {
                 if (::pthread_mutex_init(&_mutex, nullptr) != 0) {
                     // That will be the day, if this fails...
@@ -259,9 +264,6 @@ namespace Compositor {
             }
 
         public:
-            uint32_t Id() const {
-                return (_id);
-            }
             uint8_t Planes() const {
                 return (_count);
             }
@@ -298,13 +300,53 @@ namespace Compositor {
                 _planes[_count]._offset = offset;
                 _count++;
             }
-            bool IsRenderRequested()
+            bool Request()
             {
-                return (_requestRender);
+                bool result;
+                mode set = mode::IDLE;
+                if ( (result = _command.compare_exchange_strong(set, mode::REQUEST)) == false) {
+                    set = mode::REQUEST;
+                    result = _command.compare_exchange_strong(set, mode::REQUEST);
+                }
+                return (result);
             }
-            void RequestRender()
+            bool Rendered()
             {
-                _requestRender = true;
+                bool result;
+                mode set = mode::IDLE;
+                if ( (result = _command.compare_exchange_strong(set, mode::RENDERED)) == false) {
+                    set = mode::RENDERED;
+                    if ( (result = _command.compare_exchange_strong(set, mode::RENDERED)) == false) {
+                        set = mode::PUBLISHED;
+                        result = _command.compare_exchange_strong(set, mode::RENDERED);
+                    }
+                }
+                return (result);
+            }
+            bool Published()
+            {
+                bool result;
+                mode set = mode::IDLE;
+                if ( (result = _command.compare_exchange_strong(set, mode::PUBLISHED)) == false) {
+                    set = mode::RENDERED;
+                    if ( (result = _command.compare_exchange_strong(set, mode::PUBLISHED)) == false) {
+                        set = mode::PUBLISHED;
+                        result = _command.compare_exchange_strong(set, mode::PUBLISHED);
+                    }
+                }
+                return (result);
+            }
+            bool IsRequested() const {
+                mode set = mode::REQUEST;
+                return (_command.compare_exchange_strong(set, mode::IDLE));
+            }
+            bool IsRendered() const {
+                mode set = mode::RENDERED;
+                return (_command.compare_exchange_strong(set, mode::IDLE));
+            }
+            bool IsPublished() const {
+                mode set = mode::PUBLISHED;
+                return (_command.compare_exchange_strong(set, mode::IDLE));
             }
             Exchange::ICompositionBuffer::DataType Type() const
             {
@@ -336,13 +378,12 @@ namespace Compositor {
             }
 
         private:
-            uint32_t _id;
             uint32_t _width;
             uint32_t _height;
             uint32_t _format;
             uint64_t _modifier;
             Exchange::ICompositionBuffer::DataType _type;
-            std::atomic<bool> _requestRender;
+            mutable std::atomic<mode> _command;
             #ifdef __WINDOWS__
             CRITICAL_SECTION _mutex;
             #else
@@ -427,21 +468,20 @@ namespace Compositor {
         SharedBuffer& operator=(SharedBuffer&&) = delete;
         SharedBuffer& operator=(const SharedBuffer&) = delete;
 
-        SharedBuffer(const uint32_t id, const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::ICompositionBuffer::DataType type)
+        SharedBuffer(const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::ICompositionBuffer::DataType type)
             : _iterator(*this)
             , _virtualFd(-1)
             , _producedFd(-1)
             , _consumedFd(-1)
             , _storage(nullptr) {
-            string definition = _T("NotifiableBuffer") + Core::NumberType<uint32_t>(id).Text();
-            _virtualFd = ::memfd_create(definition.c_str(), MFD_ALLOW_SEALING | MFD_CLOEXEC);
+            _virtualFd = ::memfd_create(_T("CompositorBuffer"), MFD_ALLOW_SEALING | MFD_CLOEXEC);
             if (_virtualFd != -1) {
                 int length = sizeof(struct SharedStorage);
 
                 /* Size the file as specified by our struct. */
                 if (::ftruncate(_virtualFd, length) != -1) {
                     /* map that file to a memory area we can directly access as a memory mapped file */
-                    _storage = new (_virtualFd) SharedStorage(id, width, height, format, modifier, type);
+                    _storage = new (_virtualFd) SharedStorage(width, height, format, modifier, type);
                     if (_storage != nullptr) {
                         _producedFd = ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK | EFD_SEMAPHORE);
                         _consumedFd = ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK | EFD_SEMAPHORE);
@@ -527,11 +567,6 @@ namespace Compositor {
         {
             _storage->Unlock();
         }
-        uint32_t Identifier() const override
-        {
-            ASSERT(_storage != nullptr);
-            return (_storage->Id());
-        }
         uint32_t Width() const override
         { // Width of the allocated buffer in pixels
             ASSERT(_storage != nullptr);
@@ -611,6 +646,27 @@ namespace Compositor {
         int Consumer() const {
             return (_consumedFd);
         }
+        bool Request()
+        {
+            return (_storage->Request());
+        }
+        bool Rendered()
+        {
+            return (_storage->Rendered());
+        }
+        bool Published()
+        {
+            return (_storage->Published());
+        }
+        bool IsRequested() const {
+            return (_storage->IsRequested());
+        }
+        bool IsRendered() const {
+            return (_storage->IsRendered());
+        }
+        bool IsPublished() const {
+            return (_storage->IsPublished());
+        }
 
     private:
         uint32_t Stride(const uint8_t index) const
@@ -658,6 +714,48 @@ namespace Compositor {
         void Load(Core::PrivilegedRequest::Container& descriptors) {
             SharedBuffer::Load(descriptors);
         }
+        bool RequestRender() {
+            bool requested = true;
+
+            if (SharedBuffer::Request() == false) {
+
+                // Might be that we just got a RENDERED event from the other side
+                if (SharedBuffer::IsRendered() == true) {
+                    // If so handle it..
+                    Rendered();
+                }
+                // If it was not the Rendered event it must  have been the Published event
+                else if (SharedBuffer::IsPublished() == true) {
+                    Published();
+                }
+
+                // Potentially the code in the Handle method *might* have read 
+                // the first blocking reason (IsRendered()) and cleared that
+                // state, than if the IsPubslished() state was not yet handled
+                // it might occure now before we do a second attempt to set the
+                // request.. So potentially it might still fail once!
+                if (SharedBuffer::Request() == false) {
+
+                    // This occures if the IsRendered() was picked up by the Handle
+                    // method in this class, the Publication occured after we checked
+                    // the IsPublished before we reached the second attemt to Request()
+                    if (SharedBuffer::IsPublished() == true) {
+                        Published();
+                    }
+                    
+                    // Now the request *MUST* succeed!
+                    requested = SharedBuffer::Request();
+
+                    ASSERT (requested == true);
+                }
+            }
+            if (requested == true) {
+                typename SharedBuffer::EventFrame value = 1;
+                requested = (::write(SharedBuffer::Producer(), &value, sizeof(value)) == sizeof(value));
+            }
+
+            return (requested);
+        }
 
         //
         // Implementation of Core::IResource
@@ -675,20 +773,20 @@ namespace Compositor {
             typename SharedBuffer::EventFrame value;
 
             if (((events & POLLIN) != 0) && (::read(SharedBuffer::Consumer(), &value, sizeof(value)) == sizeof(value))) {
-                Action();
+                if (SharedBuffer::IsRendered() == true) {
+                    Rendered();
+                }
+                else if (SharedBuffer::IsPublished() == true) {
+                    Published();
+                }
             }
         }
 
         //
-        // Implementation of Exchange::ICompositionBuffer
-        // -----------------------------------------------------------------
-        uint32_t Published() override
-        {
-            typename SharedBuffer::EventFrame value = 1;
-            size_t result = ::write(SharedBuffer::Producer(), &value, sizeof(value));
-            return (result != sizeof(value) ? Core::ERROR_ILLEGAL_STATE : Core::ERROR_NONE);
-        }
-        void Action () override = 0;
+        // Methods to retrieve the status of the buffer on Compositor side
+        // ----------------------------------------------------------------
+        virtual void Rendered() = 0; 
+        virtual void Published() = 0; 
     };
 
     class EXTERNAL CompositorBuffer : public SharedBuffer {
@@ -699,12 +797,61 @@ namespace Compositor {
         CompositorBuffer& operator=(CompositorBuffer&&) = delete;
         CompositorBuffer& operator=(const CompositorBuffer&) = delete;
 
-        CompositorBuffer(const uint32_t id, const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::ICompositionBuffer::DataType type)
-            : SharedBuffer(id, width, height, format, modifier, type) {
+        CompositorBuffer(const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::ICompositionBuffer::DataType type)
+            : SharedBuffer(width, height, format, modifier, type) {
         }
         ~CompositorBuffer() override = default;
 
     public:
+        bool Rendered() {
+            bool requested = true;
+
+            if (SharedBuffer::Rendered() == false) {
+
+                // Might be that we just got a REQUEST event from the other side
+                if (SharedBuffer::IsRequested() == true) {
+                    // If so handle it..
+                    Request();
+                }
+
+                // Now the request *MUST* succeed!
+                requested = SharedBuffer::Rendered();
+
+                ASSERT (requested == true);
+            }
+
+            if (requested == true) {
+                typename SharedBuffer::EventFrame value = 1;
+                requested = (::write(SharedBuffer::Consumer(), &value, sizeof(value)) == sizeof(value));
+            }
+
+            return (requested);
+        }
+        bool Published() {
+            bool requested = true;
+
+            if (SharedBuffer::Published() == false) {
+
+                // Might be that we just got a REQUEST event from the other side
+                if (SharedBuffer::IsRequested() == true) {
+                    // If so handle it..
+                    Request();
+                }
+
+                // Now the request *MUST* succeed!
+                requested = SharedBuffer::Published();
+
+                ASSERT (requested == true);
+            }
+
+            if (requested == true) {
+                typename SharedBuffer::EventFrame value = 1;
+                requested = (::write(SharedBuffer::Consumer(), &value, sizeof(value)) == sizeof(value));
+            }
+
+            return (requested);
+        }
+
         //
         // Implementation of Core::IResource
         // -----------------------------------------------------------------
@@ -721,20 +868,16 @@ namespace Compositor {
             typename SharedBuffer::EventFrame value;
 
             if (((events & POLLIN) != 0) && (::read(SharedBuffer::Producer(), &value, sizeof(value)) == sizeof(value))) {
-                Action();
+                if (SharedBuffer::IsRequested() == true) {
+                    Request();
+                }
             }
         }
 
         //
-        // Implementation of Exchange::ICompositionBuffer
-        // -----------------------------------------------------------------
-        uint32_t Published() override
-        {
-            typename SharedBuffer::EventFrame value = 1;
-            size_t result = ::write(SharedBuffer::Consumer(), &value, sizeof(value));
-            return (result != sizeof(value) ? Core::ERROR_ILLEGAL_STATE : Core::ERROR_NONE);
-        }
-        void Action () override = 0;
+        // Method to retrieve the status of the buffer on Client side
+        // ----------------------------------------------------------------
+        virtual void Request() = 0; 
     };
  
 }

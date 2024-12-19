@@ -35,11 +35,11 @@ private:
     using BaseClass = Compositor::CompositorBuffer;
 
 protected:
-    CompositorBuffer(const uint32_t id, 
+    CompositorBuffer( 
         const uint32_t width, const uint32_t height, 
         const uint32_t format, const uint64_t modifier, 
         const Exchange::ICompositionBuffer::DataType type)
-        : BaseClass(id, width, height, format, modifier, type)
+        : BaseClass(width, height, format, modifier, type)
         , _dirty(false) {
 
         printf("Constructing server buffer.\n");
@@ -64,9 +64,7 @@ public:
 
     static Core::ProxyType<CompositorBuffer> Create(const string& callsign, const uint32_t width, const uint32_t height, const Exchange::ICompositionBuffer::DataType type)
     {
-        static uint32_t id = 1;
-        uint32_t identifier = Core::InterlockedIncrement(id);
-        return (_map.Instance<CompositorBuffer>(callsign, identifier, width, height, 0xAA, 0x55, type));
+        return (_map.Instance<CompositorBuffer>(callsign, width, height, 0xAA, 0x55, type));
     }
     static Core::ProxyType<CompositorBuffer> Find(const string& callsign)
     {
@@ -90,7 +88,7 @@ public:
         }
         return (result);
     }
-    void Action() override
+    void Request() override
     {
         printf("We need to do our magic here :-)\n");
         _dirty = true;
@@ -125,8 +123,13 @@ public:
     }
 
 public:
-    // seems we have been Published
-    void Action() override
+    // seems we have been Rendered
+    void Rendered() override
+    {
+        ASSERT(false);
+    }
+    // seems we have been Rendered
+    void Published() override
     {
         ASSERT(false);
     }
@@ -227,7 +230,7 @@ int main(int argc, const char* argv[])
             serverBuffer = Test::CompositorBuffer::Create(_T("TestThing"), 1024, 1080, Exchange::ICompositionBuffer::TYPE_RAW);
             buffer = Core::ProxyType<Exchange::ICompositionBuffer>(serverBuffer);
             bridge.Open(string(Test::bridgeConnector));
-            printf("Server has created a buffer, known as: [%d]\n", buffer->Identifier());
+            printf("Server has created a buffer, known as: [%d]\n", bufferId);
             bridge.Add(bufferId, *serverBuffer);
         } else {
             printf("Client instantiated to get information of buffer: [%d]\n", bufferId);
@@ -286,7 +289,19 @@ int main(int argc, const char* argv[])
                     }
                     
                     buffer->Relinquish();
-                    buffer->Published();
+                    {
+                        Core::ProxyType<Compositor::ClientBuffer> info = Core::ProxyType<Compositor::ClientBuffer>(buffer);
+                        if (info != nullptr) {
+                            info->RequestRender();
+                        }
+                    }
+                    {
+                        Core::ProxyType<Compositor::CompositorBuffer> info = Core::ProxyType<Compositor::CompositorBuffer>(buffer);
+                        if (info != nullptr) {
+                            info->Rendered();
+                            info->Published();
+                        }
+                    }
                 }
                 break;
             case 'Q':

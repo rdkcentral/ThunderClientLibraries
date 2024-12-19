@@ -279,7 +279,10 @@ namespace Linux {
                     }
                     return (succeeded);
                 }
-                void Action() override {
+                void Rendered() override {
+                    _parent.Rendered();
+                }
+                void Published() override {
                     _parent.Rendered();
                 }
 
@@ -447,9 +450,11 @@ namespace Linux {
             }
             void Rendered() {
             }
+            void Published() {
+            }
             uint32_t Process()
             {
-                    _buffer.Render();
+                _buffer.Render();
 
                 return Core::ERROR_NONE;
             }
