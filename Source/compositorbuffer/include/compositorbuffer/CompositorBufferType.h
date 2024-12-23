@@ -622,7 +622,7 @@ namespace Compositor {
     protected:
         void Load(const Core::ProxyType<Exchange::ICompositionBuffer>& buffer)
         {
-            ASSERT (buffer.IsValid() != nullptr);
+            ASSERT (buffer.IsValid());
 
             _buffer = buffer;
             _virtualFd = ::memfd_create(_T("CompositorBuffer"), MFD_ALLOW_SEALING | MFD_CLOEXEC);
