@@ -215,7 +215,8 @@ namespace Compositor {
                 IDLE,
                 REQUEST,
                 RENDERED,
-                PUBLISHED
+                PUBLISHED,
+                DESTROYED
             };
 
         public:
@@ -335,6 +336,12 @@ namespace Compositor {
                     }
                 }
                 return (result);
+            }
+            void Destroyed() {
+                _command.store(mode::DESTROYED);
+            }
+            bool IsDestroyed() const {
+                return (_command == mode::DESTROYED);
             }
             bool IsRequested() const {
                 mode set = mode::REQUEST;
@@ -473,7 +480,8 @@ namespace Compositor {
             , _virtualFd(-1)
             , _producedFd(-1)
             , _consumedFd(-1)
-            , _storage(nullptr) {
+            , _storage(nullptr)
+            , _buffer() {
             _virtualFd = ::memfd_create(_T("CompositorBuffer"), MFD_ALLOW_SEALING | MFD_CLOEXEC);
             if (_virtualFd != -1) {
                 int length = sizeof(struct SharedStorage);
@@ -498,15 +506,17 @@ namespace Compositor {
             , _virtualFd(-1)
             , _producedFd(-1)
             , _consumedFd(-1)
-            , _storage(nullptr) {
+            , _storage(nullptr)
+            , _buffer() {
             Load(descriptors);
         }
-        SharedBuffer(Exchange::ICompositionBuffer* buffer)
+        SharedBuffer(const Core::ProxyType<Exchange::ICompositionBuffer>& buffer)
             : _iterator(*this)
             , _virtualFd(-1)
             , _producedFd(-1)
             , _consumedFd(-1)
-            , _storage(nullptr) {
+            , _storage(nullptr)
+            , _buffer() {
             Load(buffer);
         }
         ~SharedBuffer() override
@@ -610,10 +620,11 @@ namespace Compositor {
         }        
 
     protected:
-        void Load(Exchange::ICompositionBuffer* buffer)
+        void Load(const Core::ProxyType<Exchange::ICompositionBuffer>& buffer)
         {
-            ASSERT (buffer != nullptr);
+            ASSERT (buffer.IsValid() != nullptr);
 
+            _buffer = buffer;
             _virtualFd = ::memfd_create(_T("CompositorBuffer"), MFD_ALLOW_SEALING | MFD_CLOEXEC);
             if (_virtualFd != -1) {
                 int length = sizeof(struct SharedStorage);
@@ -689,6 +700,10 @@ namespace Compositor {
         int Consumer() const {
             return (_consumedFd);
         }
+        void Destroyed()
+        {
+            _storage->Destroyed();
+        }
         bool Request()
         {
             return (_storage->Request());
@@ -700,6 +715,9 @@ namespace Compositor {
         bool Published()
         {
             return (_storage->Published());
+        }
+        bool IsDestroyed() const {
+            return (_storage->IsDestroyed());
         }
         bool IsRequested() const {
             return (_storage->IsRequested());
@@ -739,6 +757,10 @@ namespace Compositor {
 
         // From the virtual memory we can map the shared data to a memory area in "our" process.
         SharedStorage* _storage;
+
+        // If we are instantiated from a buffer created elsewhere, make sure the buffer will
+        // have the samelifetime as we have..
+        Core::ProxyType<Exchange::ICompositionBuffer> _buffer; 
 
         int _descriptors[MaxPlanes];
     };
@@ -789,7 +811,7 @@ namespace Compositor {
                     // Now the request *MUST* succeed!
                     requested = SharedBuffer::Request();
 
-                    ASSERT (requested == true);
+                    ASSERT ((requested == true) || (SharedBuffer::IsDestroyed() == true));
                 }
             }
             if (requested == true) {
@@ -843,13 +865,17 @@ namespace Compositor {
         CompositorBuffer(const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::ICompositionBuffer::DataType type)
             : SharedBuffer(width, height, format, modifier, type) {
         }
-        CompositorBuffer(Exchange::ICompositionBuffer* buffer)
+        CompositorBuffer(const Core::ProxyType<Exchange::ICompositionBuffer>& buffer)
             : SharedBuffer(buffer) {
         }
-        ~CompositorBuffer() override = default;
+        ~CompositorBuffer() override {
+            // If we go out of scope, no use for the client
+            // to continue rendering. Let him know....
+            SharedBuffer::Destroyed();
+        }
 
     public:
-        void Load(Exchange::ICompositionBuffer* buffer) {
+        void Load(const Core::ProxyType<Exchange::ICompositionBuffer>& buffer) {
             SharedBuffer::Load(buffer);
         }
         bool Rendered() {
