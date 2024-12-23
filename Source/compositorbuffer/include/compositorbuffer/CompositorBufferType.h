@@ -482,7 +482,11 @@ namespace Compositor {
                 if (::ftruncate(_virtualFd, length) != -1) {
                     /* map that file to a memory area we can directly access as a memory mapped file */
                     _storage = new (_virtualFd) SharedStorage(width, height, format, modifier, type);
-                    if (_storage != nullptr) {
+                    if (_storage == nullptr) {
+                        ::close(_virtualFd);
+                        _virtualFd = -1;
+                    }
+                    else {
                         _producedFd = ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK | EFD_SEMAPHORE);
                         _consumedFd = ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK | EFD_SEMAPHORE);
                     }
@@ -496,6 +500,14 @@ namespace Compositor {
             , _consumedFd(-1)
             , _storage(nullptr) {
             Load(descriptors);
+        }
+        SharedBuffer(Exchange::ICompositionBuffer* buffer)
+            : _iterator(*this)
+            , _virtualFd(-1)
+            , _producedFd(-1)
+            , _consumedFd(-1)
+            , _storage(nullptr) {
+            Load(buffer);
         }
         ~SharedBuffer() override
         {
@@ -598,6 +610,37 @@ namespace Compositor {
         }        
 
     protected:
+        void Load(Exchange::ICompositionBuffer* buffer)
+        {
+            ASSERT (buffer != nullptr);
+
+            _virtualFd = ::memfd_create(_T("CompositorBuffer"), MFD_ALLOW_SEALING | MFD_CLOEXEC);
+            if (_virtualFd != -1) {
+                int length = sizeof(struct SharedStorage);
+
+                /* Size the file as specified by our struct. */
+                if (::ftruncate(_virtualFd, length) != -1) {
+                    /* map that file to a memory area we can directly access as a memory mapped file */
+                    _storage = new (_virtualFd) SharedStorage(buffer->Width(), buffer->Height(), buffer->Format(), buffer->Modifier(), buffer->Type());
+                    if (_storage == nullptr) {
+                        ::close(_virtualFd);
+                        _virtualFd = -1;
+                    }
+                    else {
+                        _producedFd = ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK | EFD_SEMAPHORE);
+                        _consumedFd = ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK | EFD_SEMAPHORE);
+
+                        // Iterate over the planes and create them
+                        Exchange::ICompositionBuffer::IIterator* index (buffer->Acquire(Core::infinite));
+
+                        while (index->Next()) {
+                            Add(index->Descriptor(), index->Stride(), index->Offset());
+                        }
+                    }
+                }
+            }
+
+        }
         void Load(Core::PrivilegedRequest::Container& descriptors)
         {
             ASSERT(descriptors.size() >= 3);
@@ -800,9 +843,15 @@ namespace Compositor {
         CompositorBuffer(const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::ICompositionBuffer::DataType type)
             : SharedBuffer(width, height, format, modifier, type) {
         }
+        CompositorBuffer(Exchange::ICompositionBuffer* buffer)
+            : SharedBuffer(buffer) {
+        }
         ~CompositorBuffer() override = default;
 
     public:
+        void Load(Exchange::ICompositionBuffer* buffer) {
+            SharedBuffer::Load(buffer);
+        }
         bool Rendered() {
             bool requested = true;
 
