@@ -94,10 +94,10 @@ namespace Compositor {
     public:
         LocalBuffer(LocalBuffer&&) = delete;
         LocalBuffer(const LocalBuffer&) = delete;
-        LocalBuffer& operator= (LocalBuffer&&) = delete;
-        LocalBuffer& operator= (const LocalBuffer&) = delete;
- 
-        LocalBuffer(const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::ICompositionBuffer::DataType type) 
+        LocalBuffer& operator=(LocalBuffer&&) = delete;
+        LocalBuffer& operator=(const LocalBuffer&) = delete;
+
+        LocalBuffer(const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::ICompositionBuffer::DataType type)
             : _lock(false)
             , _width(width)
             , _height(height)
@@ -105,10 +105,12 @@ namespace Compositor {
             , _modifier(modifier)
             , _type(type)
             , _count(0)
-            , _iterator(*this) {
+            , _iterator(*this)
+        {
         }
-        ~LocalBuffer() override {
-            for(uint8_t index = 0; index < _count; index++) {
+        ~LocalBuffer() override
+        {
+            for (uint8_t index = 0; index < _count; index++) {
                 ::close(_planes[index]._fd);
             }
         }
@@ -119,7 +121,7 @@ namespace Compositor {
         // -----------------------------------------------------------------
         // Wait time in milliseconds.
         IIterator* Acquire(const uint32_t waitTimeInMs) override
-        { 
+        {
             // Access to the buffer planes.
             IIterator* result = nullptr;
             if (_lock.Lock(waitTimeInMs) == Core::ERROR_NONE) {
@@ -133,11 +135,11 @@ namespace Compositor {
             _lock.Unlock();
         }
         uint32_t Width() const override
-        { 
+        {
             return (_width);
         }
         uint32_t Height() const override
-        { 
+        {
             return (_height);
         }
         uint32_t Format() const override
@@ -155,29 +157,30 @@ namespace Compositor {
         uint8_t Planes() const
         {
             return (_count);
-        }   
+        }
 
-    protected:     
+    protected:
         void Add(int fd, const uint32_t stride, const uint32_t offset)
         {
             ASSERT(fd > 0);
-            ASSERT(_count < (sizeof(_planes)/ sizeof(struct PlaneStorage)));
+            ASSERT(_count < (sizeof(_planes) / sizeof(struct PlaneStorage)));
             _planes[_count]._fd = ::dup(fd);
-            _planes[_count]._offset = offset; 
+            _planes[_count]._offset = offset;
             _planes[_count]._stride = stride;
-            ++_count; 
+            ++_count;
         }
 
     private:
         uint32_t Stride(const uint8_t index) const
-        { 
+        {
             return (_planes[index]._stride);
         }
         uint32_t Offset(const uint8_t index) const
         {
             return (_planes[index]._offset);
         }
-        int Descriptor(const uint8_t index) const {
+        int Descriptor(const uint8_t index) const
+        {
             return (_planes[index]._fd);
         }
 
@@ -230,7 +233,7 @@ namespace Compositor {
                 void* result = ::mmap(nullptr, stAllocateBlock, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
                 return (result != MAP_FAILED ? result : nullptr);
             }
-            // Somehow Purify gets lost if we do not delete it, overide the delete operator
+            // Somehow Purify gets lost if we do not delete it, override the delete operator
             void operator delete(void* stAllocateBlock)
             {
                 ::munmap(stAllocateBlock, sizeof(struct SharedStorage));
@@ -249,7 +252,8 @@ namespace Compositor {
                 , _modifier(modifier)
                 , _type(type)
                 , _command(mode::IDLE)
-                , _count(0) {
+                , _count(0)
+            {
                 if (::pthread_mutex_init(&_mutex, nullptr) != 0) {
                     // That will be the day, if this fails...
                     ASSERT(false);
@@ -257,15 +261,16 @@ namespace Compositor {
             }
             ~SharedStorage()
             {
-                #ifdef __WINDOWS__
+#ifdef __WINDOWS__
                 ::CloseHandle(&(_mutex));
-                #else
+#else
                 ::pthread_mutex_destroy(&(_mutex));
-                #endif
+#endif
             }
 
         public:
-            uint8_t Planes() const {
+            uint8_t Planes() const
+            {
                 return (_count);
             }
             uint32_t Width() const
@@ -286,17 +291,17 @@ namespace Compositor {
             }
             uint32_t Stride(const uint8_t index) const
             { // Bytes per row for a plane [(bit-per-pixel/8) * width]
-                ASSERT (index < _count);
+                ASSERT(index < _count);
                 return (_planes[index]._stride);
             }
             uint32_t Offset(const uint8_t index) const
             { // Offset of the plane from where the pixel data starts in the buffer.
-                ASSERT (index < _count);
+                ASSERT(index < _count);
                 return (_planes[index]._offset);
             }
             void Add(const uint32_t stride, const uint32_t offset)
             {
-                ASSERT (_count < (sizeof(_planes)/sizeof(PlaneStorage)));
+                ASSERT(_count < (sizeof(_planes) / sizeof(PlaneStorage)));
                 _planes[_count]._stride = stride;
                 _planes[_count]._offset = offset;
                 _count++;
@@ -305,7 +310,7 @@ namespace Compositor {
             {
                 bool result;
                 mode set = mode::IDLE;
-                if ( (result = _command.compare_exchange_strong(set, mode::REQUEST)) == false) {
+                if ((result = _command.compare_exchange_strong(set, mode::REQUEST)) == false) {
                     set = mode::REQUEST;
                     result = _command.compare_exchange_strong(set, mode::REQUEST);
                 }
@@ -315,9 +320,9 @@ namespace Compositor {
             {
                 bool result;
                 mode set = mode::IDLE;
-                if ( (result = _command.compare_exchange_strong(set, mode::RENDERED)) == false) {
+                if ((result = _command.compare_exchange_strong(set, mode::RENDERED)) == false) {
                     set = mode::RENDERED;
-                    if ( (result = _command.compare_exchange_strong(set, mode::RENDERED)) == false) {
+                    if ((result = _command.compare_exchange_strong(set, mode::RENDERED)) == false) {
                         set = mode::PUBLISHED;
                         result = _command.compare_exchange_strong(set, mode::RENDERED);
                     }
@@ -328,30 +333,35 @@ namespace Compositor {
             {
                 bool result;
                 mode set = mode::IDLE;
-                if ( (result = _command.compare_exchange_strong(set, mode::PUBLISHED)) == false) {
+                if ((result = _command.compare_exchange_strong(set, mode::PUBLISHED)) == false) {
                     set = mode::RENDERED;
-                    if ( (result = _command.compare_exchange_strong(set, mode::PUBLISHED)) == false) {
+                    if ((result = _command.compare_exchange_strong(set, mode::PUBLISHED)) == false) {
                         set = mode::PUBLISHED;
                         result = _command.compare_exchange_strong(set, mode::PUBLISHED);
                     }
                 }
                 return (result);
             }
-            void Destroyed() {
+            void Destroyed()
+            {
                 _command.store(mode::DESTROYED);
             }
-            bool IsDestroyed() const {
+            bool IsDestroyed() const
+            {
                 return (_command == mode::DESTROYED);
             }
-            bool IsRequested() const {
+            bool IsRequested() const
+            {
                 mode set = mode::REQUEST;
                 return (_command.compare_exchange_strong(set, mode::IDLE));
             }
-            bool IsRendered() const {
+            bool IsRendered() const
+            {
                 mode set = mode::RENDERED;
                 return (_command.compare_exchange_strong(set, mode::IDLE));
             }
-            bool IsPublished() const {
+            bool IsPublished() const
+            {
                 mode set = mode::PUBLISHED;
                 return (_command.compare_exchange_strong(set, mode::IDLE));
             }
@@ -363,24 +373,24 @@ namespace Compositor {
             {
                 timespec structTime;
 
-                #ifdef __WINDOWS__
+#ifdef __WINDOWS__
                 return (::WaitForSingleObjectEx(&_mutex, timeout, FALSE) == WAIT_OBJECT_0 ? Core::ERROR_NONE : Core::ERROR_TIMEDOUT);
-                #else
+#else
                 clock_gettime(CLOCK_MONOTONIC, &structTime);
                 structTime.tv_nsec += ((timeout % 1000) * 1000 * 1000); /* remainder, milliseconds to nanoseconds */
                 structTime.tv_sec += (timeout / 1000) + (structTime.tv_nsec / 1000000000); /* milliseconds to seconds */
                 structTime.tv_nsec = structTime.tv_nsec % 1000000000;
                 int result = pthread_mutex_timedlock(&_mutex, &structTime);
                 return (result == 0 ? Core::ERROR_NONE : Core::ERROR_TIMEDOUT);
-                #endif
+#endif
             }
             uint32_t Unlock()
             {
-                #ifdef __WINDOWS__
+#ifdef __WINDOWS__
                 ::LeaveCriticalSection(&_mutex);
-                #else
+#else
                 pthread_mutex_unlock(&_mutex);
-                #endif
+#endif
                 return (Core::ERROR_NONE);
             }
 
@@ -391,15 +401,15 @@ namespace Compositor {
             uint64_t _modifier;
             Exchange::ICompositionBuffer::DataType _type;
             mutable std::atomic<mode> _command;
-            #ifdef __WINDOWS__
+#ifdef __WINDOWS__
             CRITICAL_SECTION _mutex;
-            #else
+#else
             pthread_mutex_t _mutex;
-            #endif
-            // This might flutuate between the different implementations
+#endif
+            // This might fluctuate between the different implementations
             // although the shared storage space might be shared so
             // always keep this at the end of the data set..
-            uint8_t  _count;
+            uint8_t _count;
             PlaneStorage _planes[MaxPlanes];
         };
 
@@ -456,12 +466,13 @@ namespace Compositor {
         };
 
     protected:
-        SharedBuffer() 
+        SharedBuffer()
             : _iterator(*this)
             , _virtualFd(-1)
             , _producedFd(-1)
             , _consumedFd(-1)
-            , _storage(nullptr) {
+            , _storage(nullptr)
+        {
         }
 
     public:
@@ -481,7 +492,8 @@ namespace Compositor {
             , _producedFd(-1)
             , _consumedFd(-1)
             , _storage(nullptr)
-            , _buffer() {
+            , _buffer()
+        {
             _virtualFd = ::memfd_create(_T("CompositorBuffer"), MFD_ALLOW_SEALING | MFD_CLOEXEC);
             if (_virtualFd != -1) {
                 int length = sizeof(struct SharedStorage);
@@ -493,8 +505,7 @@ namespace Compositor {
                     if (_storage == nullptr) {
                         ::close(_virtualFd);
                         _virtualFd = -1;
-                    }
-                    else {
+                    } else {
                         _producedFd = ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK | EFD_SEMAPHORE);
                         _consumedFd = ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK | EFD_SEMAPHORE);
                     }
@@ -507,7 +518,8 @@ namespace Compositor {
             , _producedFd(-1)
             , _consumedFd(-1)
             , _storage(nullptr)
-            , _buffer() {
+            , _buffer()
+        {
             Load(descriptors);
         }
         SharedBuffer(const Core::ProxyType<Exchange::ICompositionBuffer>& buffer)
@@ -516,7 +528,8 @@ namespace Compositor {
             , _producedFd(-1)
             , _consumedFd(-1)
             , _storage(nullptr)
-            , _buffer() {
+            , _buffer()
+        {
             Load(buffer);
         }
         ~SharedBuffer() override
@@ -576,7 +589,7 @@ namespace Compositor {
         // -----------------------------------------------------------------
         // Wait time in milliseconds.
         IIterator* Acquire(const uint32_t waitTimeInMs) override
-        { 
+        {
             // Access to the buffer planes.
             IIterator* result = nullptr;
             if (_storage->Lock(waitTimeInMs) == Core::ERROR_NONE) {
@@ -617,12 +630,12 @@ namespace Compositor {
         uint8_t Planes() const
         {
             return (_storage->Planes());
-        }        
+        }
 
     protected:
         void Load(const Core::ProxyType<Exchange::ICompositionBuffer>& buffer)
         {
-            ASSERT (buffer.IsValid());
+            ASSERT(buffer.IsValid());
 
             _buffer = buffer;
             _virtualFd = ::memfd_create(_T("CompositorBuffer"), MFD_ALLOW_SEALING | MFD_CLOEXEC);
@@ -636,21 +649,22 @@ namespace Compositor {
                     if (_storage == nullptr) {
                         ::close(_virtualFd);
                         _virtualFd = -1;
-                    }
-                    else {
+                    } else {
+
                         _producedFd = ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK | EFD_SEMAPHORE);
                         _consumedFd = ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK | EFD_SEMAPHORE);
 
                         // Iterate over the planes and create them
-                        Exchange::ICompositionBuffer::IIterator* index (buffer->Acquire(Core::infinite));
+                        Exchange::ICompositionBuffer::IIterator* index(buffer->Acquire(Core::infinite));
 
                         while (index->Next()) {
                             Add(index->Descriptor(), index->Stride(), index->Offset());
                         }
+
+                        buffer->Relinquish();
                     }
                 }
             }
-
         }
         void Load(Core::PrivilegedRequest::Container& descriptors)
         {
@@ -688,16 +702,18 @@ namespace Compositor {
         }
         void Add(int fd, const uint32_t stride, const uint32_t offset)
         {
-            uint8_t index = _storage->Planes(); 
+            uint8_t index = _storage->Planes();
             ASSERT(fd > 0);
-            ASSERT(index < (sizeof(_descriptors)/ sizeof(int)));
+            ASSERT(index < (sizeof(_descriptors) / sizeof(int)));
             _descriptors[index] = ::dup(fd);
             _storage->Add(stride, offset);
         }
-        int Producer() const {
+        int Producer() const
+        {
             return (_producedFd);
         }
-        int Consumer() const {
+        int Consumer() const
+        {
             return (_consumedFd);
         }
         void Destroyed()
@@ -716,16 +732,20 @@ namespace Compositor {
         {
             return (_storage->Published());
         }
-        bool IsDestroyed() const {
+        bool IsDestroyed() const
+        {
             return (_storage->IsDestroyed());
         }
-        bool IsRequested() const {
+        bool IsRequested() const
+        {
             return (_storage->IsRequested());
         }
-        bool IsRendered() const {
+        bool IsRendered() const
+        {
             return (_storage->IsRendered());
         }
-        bool IsPublished() const {
+        bool IsPublished() const
+        {
             return (_storage->IsPublished());
         }
 
@@ -740,7 +760,8 @@ namespace Compositor {
             ASSERT(_storage != nullptr);
             return (_storage->Offset(index));
         }
-        int Descriptor(const uint8_t index) const {
+        int Descriptor(const uint8_t index) const
+        {
             return (_descriptors[index]);
         }
 
@@ -759,8 +780,8 @@ namespace Compositor {
         SharedStorage* _storage;
 
         // If we are instantiated from a buffer created elsewhere, make sure the buffer will
-        // have the samelifetime as we have..
-        Core::ProxyType<Exchange::ICompositionBuffer> _buffer; 
+        // have the same lifetime as we have..
+        Core::ProxyType<Exchange::ICompositionBuffer> _buffer;
 
         int _descriptors[MaxPlanes];
     };
@@ -772,18 +793,22 @@ namespace Compositor {
         ClientBuffer& operator=(ClientBuffer&&) = delete;
         ClientBuffer& operator=(const ClientBuffer&) = delete;
 
-        ClientBuffer() : SharedBuffer() { }
+        ClientBuffer()
+            : SharedBuffer()
+        {
+        }
         ~ClientBuffer() override = default;
 
     public:
-        void Load(Core::PrivilegedRequest::Container& descriptors) {
+        void Load(Core::PrivilegedRequest::Container& descriptors)
+        {
             SharedBuffer::Load(descriptors);
         }
-        bool RequestRender() {
+        bool RequestRender()
+        {
             bool requested = true;
 
             if (SharedBuffer::Request() == false) {
-
                 // Might be that we just got a RENDERED event from the other side
                 if (SharedBuffer::IsRendered() == true) {
                     // If so handle it..
@@ -794,24 +819,24 @@ namespace Compositor {
                     Published();
                 }
 
-                // Potentially the code in the Handle method *might* have read 
+                // Potentially the code in the Handle method *might* have read
                 // the first blocking reason (IsRendered()) and cleared that
-                // state, than if the IsPubslished() state was not yet handled
-                // it might occure now before we do a second attempt to set the
+                // state, than if the IsPublished() state was not yet handled
+                // it might ocurr now before we do a second attempt to set the
                 // request.. So potentially it might still fail once!
                 if (SharedBuffer::Request() == false) {
 
-                    // This occures if the IsRendered() was picked up by the Handle
-                    // method in this class, the Publication occured after we checked
-                    // the IsPublished before we reached the second attemt to Request()
+                    // This ocurres if the IsRendered() was picked up by the Handle
+                    // method in this class, the Publication occurred after we checked
+                    // the IsPublished before we reached the second attempt to Request()
                     if (SharedBuffer::IsPublished() == true) {
                         Published();
                     }
-                    
+
                     // Now the request *MUST* succeed!
                     requested = SharedBuffer::Request();
 
-                    ASSERT ((requested == true) || (SharedBuffer::IsDestroyed() == true));
+                    ASSERT((requested == true) || (SharedBuffer::IsDestroyed() == true));
                 }
             }
             if (requested == true) {
@@ -840,8 +865,7 @@ namespace Compositor {
             if (((events & POLLIN) != 0) && (::read(SharedBuffer::Consumer(), &value, sizeof(value)) == sizeof(value))) {
                 if (SharedBuffer::IsRendered() == true) {
                     Rendered();
-                }
-                else if (SharedBuffer::IsPublished() == true) {
+                } else if (SharedBuffer::IsPublished() == true) {
                     Published();
                 }
             }
@@ -850,8 +874,8 @@ namespace Compositor {
         //
         // Methods to retrieve the status of the buffer on Compositor side
         // ----------------------------------------------------------------
-        virtual void Rendered() = 0; 
-        virtual void Published() = 0; 
+        virtual void Rendered() = 0;
+        virtual void Published() = 0;
     };
 
     class EXTERNAL CompositorBuffer : public SharedBuffer {
@@ -863,22 +887,27 @@ namespace Compositor {
         CompositorBuffer& operator=(const CompositorBuffer&) = delete;
 
         CompositorBuffer(const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::ICompositionBuffer::DataType type)
-            : SharedBuffer(width, height, format, modifier, type) {
+            : SharedBuffer(width, height, format, modifier, type)
+        {
         }
         CompositorBuffer(const Core::ProxyType<Exchange::ICompositionBuffer>& buffer)
-            : SharedBuffer(buffer) {
+            : SharedBuffer(buffer)
+        {
         }
-        ~CompositorBuffer() override {
+        ~CompositorBuffer() override
+        {
             // If we go out of scope, no use for the client
             // to continue rendering. Let him know....
             SharedBuffer::Destroyed();
         }
 
     public:
-        void Load(const Core::ProxyType<Exchange::ICompositionBuffer>& buffer) {
+        void Load(const Core::ProxyType<Exchange::ICompositionBuffer>& buffer)
+        {
             SharedBuffer::Load(buffer);
         }
-        bool Rendered() {
+        bool Rendered()
+        {
             bool requested = true;
 
             if (SharedBuffer::Rendered() == false) {
@@ -892,7 +921,7 @@ namespace Compositor {
                 // Now the request *MUST* succeed!
                 requested = SharedBuffer::Rendered();
 
-                ASSERT (requested == true);
+                ASSERT(requested == true);
             }
 
             if (requested == true) {
@@ -902,11 +931,11 @@ namespace Compositor {
 
             return (requested);
         }
-        bool Published() {
+        bool Published()
+        {
             bool requested = true;
 
             if (SharedBuffer::Published() == false) {
-
                 // Might be that we just got a REQUEST event from the other side
                 if (SharedBuffer::IsRequested() == true) {
                     // If so handle it..
@@ -916,7 +945,7 @@ namespace Compositor {
                 // Now the request *MUST* succeed!
                 requested = SharedBuffer::Published();
 
-                ASSERT (requested == true);
+                ASSERT(requested == true);
             }
 
             if (requested == true) {
@@ -952,8 +981,8 @@ namespace Compositor {
         //
         // Method to retrieve the status of the buffer on Client side
         // ----------------------------------------------------------------
-        virtual void Request() = 0; 
+        virtual void Request() = 0;
     };
- 
+
 }
 }
