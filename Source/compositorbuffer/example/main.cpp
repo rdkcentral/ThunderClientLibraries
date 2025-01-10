@@ -35,12 +35,13 @@ private:
     using BaseClass = Compositor::CompositorBuffer;
 
 protected:
-    CompositorBuffer( 
-        const uint32_t width, const uint32_t height, 
-        const uint32_t format, const uint64_t modifier, 
+    CompositorBuffer(
+        const uint32_t width, const uint32_t height,
+        const uint32_t format, const uint64_t modifier,
         const Exchange::ICompositionBuffer::DataType type)
         : BaseClass(width, height, format, modifier, type)
-        , _dirty(false) {
+        , _dirty(false)
+    {
 
         printf("Constructing server buffer.\n");
 
@@ -78,10 +79,12 @@ public:
     }
 
 public:
-    bool IsDirty() const {
-        return(_dirty);
+    bool IsDirty() const
+    {
+        return (_dirty);
     }
-    IIterator* Acquire() {
+    IIterator* Acquire()
+    {
         IIterator* result = BaseClass::Acquire(0);
         if (result != nullptr) {
             _dirty = false;
@@ -92,6 +95,21 @@ public:
     {
         printf("We need to do our magic here :-)\n");
         _dirty = true;
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(4));
+
+        if (Rendered() == true) {
+            printf("Request rendered.\n");
+            std::this_thread::sleep_for(std::chrono::milliseconds(12));
+
+            if (Published() == true){
+                printf("Request published.\n");
+            } else {
+                printf("Request failed to publish.\n");
+            }
+        } else {
+            printf("Request failed to render.\n");
+        };
     }
 
 private:
@@ -107,11 +125,21 @@ private:
 
 protected:
     ClientBuffer(Core::PrivilegedRequest::Container& descriptors)
-        : BaseClass() {
+        : BaseClass()
+    {
         BaseClass::Load(descriptors);
+        // Let's start monitoring the ClientBuffer to detect changes
+        Core::ResourceMonitor::Instance().Register(*this);
     }
 
 public:
+    ~ClientBuffer() override
+    {
+        // Let's stop monitoring the ClientBuffer to detect changes
+        Core::ResourceMonitor::Instance().Unregister(*this);
+        printf("Destructing client buffer.\n");
+    }
+
     ClientBuffer() = delete;
     ClientBuffer(ClientBuffer&&) = delete;
     ClientBuffer(const ClientBuffer&) = delete;
@@ -126,12 +154,12 @@ public:
     // seems we have been Rendered
     void Rendered() override
     {
-        ASSERT(false);
+        printf("My buffer is rendered but might not be visible yet.\n");
     }
     // seems we have been Rendered
     void Published() override
     {
-        ASSERT(false);
+        printf("My buffer is published so its now visible.\n");
     }
 };
 
@@ -207,7 +235,7 @@ bool ParseOptions(int argc, const char** argv)
     }
 
     if (showHelp == true) {
-        printf("Test passing filedescriptos and information over a process boundary.\n");
+        printf("Test passing file descriptors and information over a process boundary.\n");
         printf("%s [-server] [-b <number>]\n", argv[0]);
         printf("  -server      Act as a server.\n");
         printf("  -b <number>  Act as a client and get the buffer associated with this number.\n");
@@ -287,17 +315,19 @@ int main(int argc, const char* argv[])
                             ::fsync(fd);
                         }
                     }
-                    
+
                     buffer->Relinquish();
-                    {
+
+                    if (server == false) {
                         Core::ProxyType<Compositor::ClientBuffer> info = Core::ProxyType<Compositor::ClientBuffer>(buffer);
                         if (info != nullptr) {
+                            printf("Request to render.\n");
                             info->RequestRender();
                         }
-                    }
-                    {
+                    } else {
                         Core::ProxyType<Compositor::CompositorBuffer> info = Core::ProxyType<Compositor::CompositorBuffer>(buffer);
                         if (info != nullptr) {
+                            printf("Render request handled.\n");
                             info->Rendered();
                             info->Published();
                         }
