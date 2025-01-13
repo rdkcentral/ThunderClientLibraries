@@ -316,7 +316,7 @@ namespace Linux {
             SurfaceImplementation& operator=(SurfaceImplementation&&) = delete;
             SurfaceImplementation& operator=(const SurfaceImplementation&) = delete;
 
-            SurfaceImplementation(Display& display, const std::string& name, const uint32_t width, const uint32_t height)
+            SurfaceImplementation(Display& display, const std::string& name, const uint32_t width, const uint32_t height, ICallback* callback)
                 : _adminLock()
                 , _id(Core::InterlockedIncrement(_surfaceIndex))
                 , _name()
@@ -328,6 +328,7 @@ namespace Linux {
                 , _touchpanel(nullptr)
                 , _surface(nullptr)
                 , _buffer(*this)
+                , _callback(callback)
             {
                 TRACE(Trace::Information, (_T("Construct surface[%d] %s  %dx%d (hxb)"), _id, name.c_str(), height, width));
 
@@ -497,6 +498,7 @@ namespace Linux {
             ITouchPanel* _touchpanel;
             struct gbm_surface* _surface;
             Core::SinkType<EGLBuffer> _buffer;
+            ISurface::ICallback* _callback;
 
             static uint32_t _surfaceIndex;
         };
@@ -566,7 +568,7 @@ namespace Linux {
             return _displayName;
         }
 
-        ISurface* Create(const std::string& name, const uint32_t width, const uint32_t height) override;
+        ISurface* Create(const std::string& name, const uint32_t width, const uint32_t height, ISurface::ICallback* callback) override;
 
         int Process(const uint32_t data VARIABLE_IS_NOT_USED) override
         {
@@ -583,7 +585,7 @@ namespace Linux {
             while (_pendingSurfaces != 0) {
                 _published.wait(lock);
             }
-            
+
             return Core::ERROR_NONE;
         }
 
@@ -819,9 +821,9 @@ namespace Linux {
         TRACE(Trace::Information, (_T ( "Display[%p] Destructed"), this));
     }
 
-    Compositor::IDisplay::ISurface* Display::Create(const std::string& name, const uint32_t width, const uint32_t height)
+    Compositor::IDisplay::ISurface* Display::Create(const std::string& name, const uint32_t width, const uint32_t height, ISurface::ICallback* callback)
     {
-        Core::ProxyType<SurfaceImplementation> retval = (Core::ProxyType<SurfaceImplementation>::Create(*this, name, width, height));
+        Core::ProxyType<SurfaceImplementation> retval = (Core::ProxyType<SurfaceImplementation>::Create(*this, name, width, height, callback));
         Compositor::IDisplay::ISurface* result = &(*retval);
         result->AddRef();
         return result;
