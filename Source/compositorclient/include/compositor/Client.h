@@ -115,7 +115,14 @@ namespace Compositor {
         };
 
         struct ISurface {
-            virtual ~ISurface(){};
+            virtual ~ISurface() = default;
+
+            struct ICallback {
+                virtual ~ICallback() = default;
+
+                virtual void Rendered(ISurface* surface) = 0;
+                virtual void Published(ISurface* surface) = 0;
+            };
 
             // Lifetime management
             virtual uint32_t AddRef() const = 0;
@@ -193,7 +200,7 @@ namespace Compositor {
         // Methods
         virtual EGLNativeDisplayType Native() const = 0;
         virtual const std::string& Name() const = 0;
-        virtual ISurface* Create(const std::string& name, const uint32_t width, const uint32_t height) = 0; //initial position on screen is fullscreen,x and y therefore implicit and 0
+        virtual ISurface* Create(const std::string& name, const uint32_t width, const uint32_t height, ISurface::ICallback* callback = nullptr) = 0; //initial position on screen is fullscreen,x and y therefore implicit and 0
         virtual int Process(const uint32_t data) = 0;
         virtual int FileDescriptor() const = 0;
         virtual ISurface* SurfaceByName(const std::string& name) = 0;

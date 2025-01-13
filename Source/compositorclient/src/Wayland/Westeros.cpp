@@ -987,7 +987,7 @@ namespace Wayland {
         }
     }
 
-    Compositor::IDisplay::ISurface* Display::Create(const std::string& name, const uint32_t width, const uint32_t height)
+    Compositor::IDisplay::ISurface* Display::Create(const std::string& name, const uint32_t width, const uint32_t height, ISurface::ICallback*)
     {
         IDisplay::ISurface* result = nullptr;
 

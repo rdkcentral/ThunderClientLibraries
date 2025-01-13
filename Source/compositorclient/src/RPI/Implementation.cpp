@@ -744,7 +744,7 @@ public:
     
     ISurface* Create(
         const std::string& name,
-        const uint32_t width, const uint32_t height) override;
+        const uint32_t width, const uint32_t height, ISurface::ICallback* callback) override;
 
     inline uint32_t DisplaySizeWidth() const
     {
@@ -1032,7 +1032,7 @@ Compositor::IDisplay::ISurface* Display::SurfaceByName(const std::string&)
 }
 
 Compositor::IDisplay::ISurface* Display::Create(
-    const std::string& name, const uint32_t width, const uint32_t height)
+    const std::string& name, const uint32_t width, const uint32_t height, ISurface::ICallback*)
 {
     Core::ProxyType<SurfaceImplementation> retval = (Core::ProxyType<SurfaceImplementation>::Create(this, name, width, height));
     Compositor::IDisplay::ISurface* result = &(*retval);
