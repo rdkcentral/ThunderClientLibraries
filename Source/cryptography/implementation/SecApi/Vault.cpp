@@ -567,6 +567,7 @@ extern "C" {
             Implementation::vaultId = CRYPTOGRAPHY_VAULT_NETFLIX;
             break;
         case CRYPTOGRAPHY_VAULT_DEFAULT:
+        case CRYPTOGRAPHY_VAULT_PLATFORM:
            {
                 static Implementation::Vault instance;
                 vault = &(instance);
