@@ -622,7 +622,7 @@ namespace Linux {
             return _remoteDisplay;
         }
 
-        void Rendered(SurfaceImplementation* surface)
+        void Rendered(SurfaceImplementation* /*surface*/)
         {
         }
 
