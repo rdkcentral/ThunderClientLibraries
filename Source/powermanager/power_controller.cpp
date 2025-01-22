@@ -17,7 +17,6 @@
  * limitations under the License.
  */
 
-#include "core/Trace.h"
 #include <unordered_map>
 
 #include <core/Portability.h>
@@ -26,7 +25,7 @@
 #include <interfaces/IPowerManager.h>
 #include <plugins/Types.h>
 
-#include "powermanager_client.h"
+#include "power_controller.h"
 
 using namespace WPEFramework;
 using PowerState = WPEFramework::Exchange::IPowerManager::PowerState;
@@ -37,9 +36,9 @@ using ThermalTemperature = WPEFramework::Exchange::IPowerManager::ThermalTempera
 
 namespace /*unnamed*/ {
 
-const std::unordered_map<PowerState, PowerManager_PowerState_t>& powerStateMap()
+const std::unordered_map<PowerState, PowerController_PowerState_t>& powerStateMap()
 {
-    static const std::unordered_map<PowerState, PowerManager_PowerState_t> map = {
+    static const std::unordered_map<PowerState, PowerController_PowerState_t> map = {
         { PowerState::POWER_STATE_UNKNOWN, POWER_STATE_UNKNOWN },
         { PowerState::POWER_STATE_OFF, POWER_STATE_OFF },
         { PowerState::POWER_STATE_STANDBY, POWER_STATE_STANDBY },
@@ -51,14 +50,14 @@ const std::unordered_map<PowerState, PowerManager_PowerState_t>& powerStateMap()
     return map;
 }
 
-PowerManager_PowerState_t convert(const PowerState from)
+PowerController_PowerState_t convert(const PowerState from)
 {
     auto& map = powerStateMap();
     auto it = map.find(from);
     return (it != map.end()) ? it->second : POWER_STATE_UNKNOWN;
 }
 
-PowerState convert(const PowerManager_PowerState_t from)
+PowerState convert(const PowerController_PowerState_t from)
 {
     auto& map = powerStateMap();
 
@@ -70,10 +69,9 @@ PowerState convert(const PowerManager_PowerState_t from)
     return PowerState::POWER_STATE_UNKNOWN;
 }
 
-// TODO: re-check if required
-const std::unordered_map<WakeupSrcType, PowerManager_WakeupSrcType_t>& wakeupSrcTypeMap()
+const std::unordered_map<WakeupSrcType, PowerController_WakeupSrcType_t>& wakeupSrcTypeMap()
 {
-    static const std::unordered_map<WakeupSrcType, PowerManager_WakeupSrcType_t> map = {
+    static const std::unordered_map<WakeupSrcType, PowerController_WakeupSrcType_t> map = {
         { WakeupSrcType::WAKEUP_SRC_UNKNOWN, WAKEUP_SRC_UNKNOWN },
         { WakeupSrcType::WAKEUP_SRC_VOICE, WAKEUP_SRC_VOICE },
         { WakeupSrcType::WAKEUP_SRC_PRESENCEDETECTED, WAKEUP_SRC_PRESENCEDETECTED },
@@ -89,14 +87,14 @@ const std::unordered_map<WakeupSrcType, PowerManager_WakeupSrcType_t>& wakeupSrc
     return map;
 }
 
-PowerManager_WakeupSrcType_t convert(const WakeupSrcType from)
+PowerController_WakeupSrcType_t convert(const WakeupSrcType from)
 {
     auto& map = wakeupSrcTypeMap();
     auto it = map.find(from);
     return (it != map.end()) ? it->second : WAKEUP_SRC_UNKNOWN;
 }
 
-WakeupSrcType convert(const PowerManager_WakeupSrcType_t from)
+WakeupSrcType convert(const PowerController_WakeupSrcType_t from)
 {
     auto& map = wakeupSrcTypeMap();
 
@@ -108,9 +106,9 @@ WakeupSrcType convert(const PowerManager_WakeupSrcType_t from)
     return WakeupSrcType::WAKEUP_SRC_UNKNOWN;
 }
 
-const std::unordered_map<WakeupReason, PowerManager_WakeupReason_t>& wakeupReasonMap()
+const std::unordered_map<WakeupReason, PowerController_WakeupReason_t>& wakeupReasonMap()
 {
-    static const std::unordered_map<WakeupReason, PowerManager_WakeupReason_t> map = {
+    static const std::unordered_map<WakeupReason, PowerController_WakeupReason_t> map = {
         { WakeupReason::WAKEUP_REASON_UNKNOWN, WAKEUP_REASON_UNKNOWN },
         { WakeupReason::WAKEUP_REASON_IR, WAKEUP_REASON_IR },
         { WakeupReason::WAKEUP_REASON_BLUETOOTH, WAKEUP_REASON_BLUETOOTH },
@@ -133,15 +131,14 @@ const std::unordered_map<WakeupReason, PowerManager_WakeupReason_t>& wakeupReaso
     return map;
 }
 
-PowerManager_WakeupReason_t convert(const WakeupReason from)
+PowerController_WakeupReason_t convert(const WakeupReason from)
 {
     auto& map = wakeupReasonMap();
     auto it = map.find(from);
     return (it != map.end()) ? it->second : WAKEUP_REASON_UNKNOWN;
 }
 
-// TODO: re-check required ?
-WakeupReason convert(const PowerManager_WakeupReason_t from)
+WakeupReason convert(const PowerController_WakeupReason_t from)
 {
     auto& map = wakeupReasonMap();
 
@@ -153,9 +150,9 @@ WakeupReason convert(const PowerManager_WakeupReason_t from)
     return WakeupReason::WAKEUP_REASON_UNKNOWN;
 }
 
-const std::unordered_map<PowerManager_SystemMode_t, SystemMode>& systemModeMap()
+const std::unordered_map<PowerController_SystemMode_t, SystemMode>& systemModeMap()
 {
-    static const std::unordered_map<PowerManager_SystemMode_t, SystemMode> map = {
+    static const std::unordered_map<PowerController_SystemMode_t, SystemMode> map = {
         { SYSTEM_MODE_UNKNOWN, SystemMode::SYSTEM_MODE_UNKNOWN },
         { SYSTEM_MODE_NORMAL, SystemMode::SYSTEM_MODE_NORMAL },
         { SYSTEM_MODE_EAS, SystemMode::SYSTEM_MODE_EAS },
@@ -164,16 +161,16 @@ const std::unordered_map<PowerManager_SystemMode_t, SystemMode>& systemModeMap()
     return map;
 }
 
-SystemMode convert(const PowerManager_SystemMode_t from)
+SystemMode convert(const PowerController_SystemMode_t from)
 {
     auto& map = systemModeMap();
     auto it = map.find(from);
     return (it != map.end()) ? it->second : SystemMode::SYSTEM_MODE_UNKNOWN;
 }
 
-const std::unordered_map<ThermalTemperature, PowerManager_ThermalTemperature_t>& thermalTemperatureMap()
+const std::unordered_map<ThermalTemperature, PowerController_ThermalTemperature_t>& thermalTemperatureMap()
 {
-    static const std::unordered_map<ThermalTemperature, PowerManager_ThermalTemperature_t> map = {
+    static const std::unordered_map<ThermalTemperature, PowerController_ThermalTemperature_t> map = {
         { ThermalTemperature::THERMAL_TEMPERATURE_UNKNOWN, THERMAL_TEMPERATURE_UNKNOWN },
         { ThermalTemperature::THERMAL_TEMPERATURE_NORMAL, THERMAL_TEMPERATURE_NORMAL },
         { ThermalTemperature::THERMAL_TEMPERATURE_HIGH, THERMAL_TEMPERATURE_HIGH },
@@ -182,7 +179,7 @@ const std::unordered_map<ThermalTemperature, PowerManager_ThermalTemperature_t>&
     return map;
 }
 
-PowerManager_ThermalTemperature_t convert(const ThermalTemperature from)
+PowerController_ThermalTemperature_t convert(const ThermalTemperature from)
 {
     auto& map = thermalTemperatureMap();
     auto it = map.find(from);
@@ -195,22 +192,23 @@ static string Callsign()
     return (Default);
 }
 
-class PowerManagerClient : public RPC::SmartInterfaceType<Exchange::IPowerManager> {
+class PowerController : public RPC::SmartInterfaceType<Exchange::IPowerManager> {
 private:
     using BaseClass = RPC::SmartInterfaceType<Exchange::IPowerManager>;
-    using PowerModeChangedCallbacks = std::map<PowerManager_PowerModeChangedCb, void*>;
-    using PowerModePreChangeCallbacks = std::map<PowerManager_PowerModePreChangeCb, void*>;
-    using DeepSleepTimeoutCallbacks = std::map<PowerManager_DeepSleepTimeoutCb, void*>;
-    using NetworkStandbyModeChangedCallbacks = std::map<PowerManager_NetworkStandbyModeChangedCb, void*>;
-    using ThermalModeChangedCallbacks = std::map<PowerManager_ThermalModeChangedCb, void*>;
-    using RebootBeginCallbacks = std::map<PowerManager_RebootBeginCb, void*>;
+    using OperationalStateChangeCallbacks = std::map<PowerController_OperationalStateChangeCb, void*>;
+    using PowerModeChangedCallbacks = std::map<PowerController_PowerModeChangedCb, void*>;
+    using PowerModePreChangeCallbacks = std::map<PowerController_PowerModePreChangeCb, void*>;
+    using DeepSleepTimeoutCallbacks = std::map<PowerController_DeepSleepTimeoutCb, void*>;
+    using NetworkStandbyModeChangedCallbacks = std::map<PowerController_NetworkStandbyModeChangedCb, void*>;
+    using ThermalModeChangedCallbacks = std::map<PowerController_ThermalModeChangedCb, void*>;
+    using RebootBeginCallbacks = std::map<PowerController_RebootBeginCb, void*>;
 
     class Notification : public Exchange::IPowerManager::INotification {
     private:
-        PowerManagerClient& _parent;
+        PowerController& _parent;
 
     public:
-        Notification(PowerManagerClient& parent)
+        Notification(PowerController& parent)
             : _parent(parent)
         {
         }
@@ -250,24 +248,20 @@ private:
         END_INTERFACE_MAP
     };
 
-    PowerManagerClient()
+    PowerController()
         : BaseClass()
-        , _lock()
         , _powerManagerInterface(nullptr)
         , _powerManagerNotification(*this)
+        , _shutdown(false)
     {
-        ASSERT(_singleton == nullptr);
-        _singleton = this;
-
         uint32_t res = BaseClass::Open(RPC::CommunicationTimeOut, BaseClass::Connector(), Callsign());
         ASSERT(Core::ERROR_NONE == res);
     }
 
-    ~PowerManagerClient()
+    ~PowerController()
     {
+        _shutdown = true;
         BaseClass::Close(Core::infinite);
-        ASSERT(_singleton != nullptr);
-        _singleton = nullptr;
     }
 
     virtual void Operational(const bool upAndRunning) override
@@ -275,7 +269,7 @@ private:
         _lock.Lock();
 
         if (upAndRunning) {
-            // PowerManager is Activated
+            // Communicatior opened && PowerManager is Activated
             if (_powerManagerInterface == nullptr) {
                 _powerManagerInterface = BaseClass::Interface();
                 if (_powerManagerInterface != nullptr) {
@@ -283,7 +277,7 @@ private:
                 }
             }
         } else {
-            // PowerManager is Deactivated
+            // PowerManager is Deactivated || Communicator closed
             if (_powerManagerInterface != nullptr) {
                 _powerManagerInterface->Unregister(&_powerManagerNotification);
                 _powerManagerInterface->Release();
@@ -291,27 +285,48 @@ private:
             }
         }
 
+        // avoid notifying operational state changed if shuting down because of Term
+        if (!_shutdown) {
+            for (auto& index : _operationalStateChangeCallbacks) {
+                index.first(upAndRunning, index.second);
+            }
+        }
+
         _lock.Unlock();
     }
 
 public:
-    static PowerManagerClient& Instance()
+    static void Init()
     {
-        static PowerManagerClient* instance = new PowerManagerClient;
-        ASSERT(instance != nullptr);
-        return *instance;
-    }
-
-    // TODO: foresee CRASH if instance is used after Dispose
-    static void Dispose()
-    {
-        ASSERT(_singleton != nullptr);
-        if (_singleton != nullptr) {
-            delete _singleton;
+        _lock.Lock();
+        if (nullptr == _instance) {
+            ASSERT(0 == _nClients);
+            _instance = new PowerController();
         }
+        _nClients++;
+        _lock.Unlock();
     }
 
-    uint32_t GetPowerState(PowerManager_PowerState_t* currentState, PowerManager_PowerState_t* previousState)
+    static void Term()
+    {
+        _lock.Lock();
+        if (_nClients > 0) {
+            _nClients--;
+        }
+        if (0 == _nClients && nullptr != _instance) {
+            delete _instance;
+            _instance = nullptr;
+        }
+        _lock.Unlock();
+    }
+
+    static PowerController& Instance()
+    {
+        ASSERT(nullptr != _instance);
+        return *_instance;
+    }
+
+    uint32_t GetPowerState(PowerController_PowerState_t* currentState, PowerController_PowerState_t* previousState)
     {
         uint32_t result = Core::ERROR_UNAVAILABLE;
 
@@ -334,7 +349,7 @@ public:
         return result;
     }
 
-    uint32_t SetPowerState(const int keyCode, const PowerManager_PowerState_t powerState, const char* reason)
+    uint32_t SetPowerState(const int keyCode, const PowerController_PowerState_t powerState, const char* reason)
     {
         uint32_t result = Core::ERROR_UNAVAILABLE;
 
@@ -441,7 +456,7 @@ public:
         return result;
     }
 
-    uint32_t GetLastWakeupReason(PowerManager_WakeupReason_t* wakeupReason)
+    uint32_t GetLastWakeupReason(PowerController_WakeupReason_t* wakeupReason)
     {
         uint32_t result = Core::ERROR_UNAVAILABLE;
         WakeupReason _wakeupReason = WakeupReason::WAKEUP_REASON_UNKNOWN;
@@ -550,7 +565,7 @@ public:
         return result;
     }
 
-    uint32_t SetSystemMode(const PowerManager_SystemMode_t currentMode, const PowerManager_SystemMode_t newMode)
+    uint32_t SetSystemMode(const PowerController_SystemMode_t currentMode, const PowerController_SystemMode_t newMode)
     {
         uint32_t result = Core::ERROR_UNAVAILABLE;
         SystemMode _currentMode = convert(currentMode);
@@ -567,7 +582,7 @@ public:
         return result;
     }
 
-    uint32_t GetPowerStateBeforeReboot(PowerManager_PowerState_t* powerStateBeforeReboot)
+    uint32_t GetPowerStateBeforeReboot(PowerController_PowerState_t* powerStateBeforeReboot)
     {
         uint32_t result = Core::ERROR_UNAVAILABLE;
         PowerState _powerStateBeforeReboot = PowerState::POWER_STATE_UNKNOWN;
@@ -589,8 +604,8 @@ public:
 
     void NotifyPowerModeChanged(const PowerState& currentState, const PowerState& newState)
     {
-        PowerManager_PowerState_t _currentState = convert(currentState);
-        PowerManager_PowerState_t _newState = convert(newState);
+        PowerController_PowerState_t _currentState = convert(currentState);
+        PowerController_PowerState_t _newState = convert(newState);
         _lock.Lock();
 
         for (auto& index : _powerModeChangedCallbacks) {
@@ -602,8 +617,8 @@ public:
 
     void NotifyPowerModePreChange(const PowerState& currentState, const PowerState& newState)
     {
-        PowerManager_PowerState_t _currentState = convert(currentState);
-        PowerManager_PowerState_t _newState = convert(newState);
+        PowerController_PowerState_t _currentState = convert(currentState);
+        PowerController_PowerState_t _newState = convert(newState);
         _lock.Lock();
 
         for (auto& index : _powerModePreChangeCallbacks) {
@@ -637,8 +652,8 @@ public:
 
     void NotifyThermalModeChanged(const ThermalTemperature& currentThermalLevel, const ThermalTemperature& newThermalLevel, const float& currentTemperature)
     {
-        PowerManager_ThermalTemperature_t _currentThermalLevel = convert(currentThermalLevel);
-        PowerManager_ThermalTemperature_t _newThermalLevel = convert(newThermalLevel);
+        PowerController_ThermalTemperature_t _currentThermalLevel = convert(currentThermalLevel);
+        PowerController_ThermalTemperature_t _newThermalLevel = convert(newThermalLevel);
 
         _lock.Lock();
 
@@ -703,248 +718,287 @@ public:
         return (result);
     }
 
-    uint32_t RegisterPowerModeChangedCallback(PowerManager_PowerModeChangedCb callback, void* userdata)
+    uint32_t RegisterOperationalStateChangedCallback(PowerController_OperationalStateChangeCb callback, void* userdata)
+    {
+        return RegisterCallback(_operationalStateChangeCallbacks, callback, userdata);
+    }
+
+    uint32_t UnRegisterOperationalStateChangedCallback(PowerController_OperationalStateChangeCb callback)
+    {
+        return UnRegisterCallback(_operationalStateChangeCallbacks, callback);
+    }
+
+    uint32_t RegisterPowerModeChangedCallback(PowerController_PowerModeChangedCb callback, void* userdata)
     {
         return RegisterCallback(_powerModeChangedCallbacks, callback, userdata);
     }
 
-    uint32_t UnRegisterPowerModeChangedCallback(PowerManager_PowerModeChangedCb callback)
+    uint32_t UnRegisterPowerModeChangedCallback(PowerController_PowerModeChangedCb callback)
     {
         return UnRegisterCallback(_powerModeChangedCallbacks, callback);
     }
 
-    uint32_t RegisterPowerModePreChangeCallback(PowerManager_PowerModePreChangeCb callback, void* userdata)
+    uint32_t RegisterPowerModePreChangeCallback(PowerController_PowerModePreChangeCb callback, void* userdata)
     {
         return RegisterCallback(_powerModePreChangeCallbacks, callback, userdata);
     }
 
-    uint32_t UnRegisterPowerModePreChangeCallback(PowerManager_PowerModePreChangeCb callback)
+    uint32_t UnRegisterPowerModePreChangeCallback(PowerController_PowerModePreChangeCb callback)
     {
         return UnRegisterCallback(_powerModePreChangeCallbacks, callback);
     }
 
-    uint32_t RegisterDeepSleepTimeoutCallback(PowerManager_DeepSleepTimeoutCb callback, void* userdata)
+    uint32_t RegisterDeepSleepTimeoutCallback(PowerController_DeepSleepTimeoutCb callback, void* userdata)
     {
         return RegisterCallback(_deepSleepTimeoutCallbacks, callback, userdata);
     }
 
-    uint32_t UnRegisterDeepSleepTimeoutCallback(PowerManager_DeepSleepTimeoutCb callback)
+    uint32_t UnRegisterDeepSleepTimeoutCallback(PowerController_DeepSleepTimeoutCb callback)
     {
         return UnRegisterCallback(_deepSleepTimeoutCallbacks, callback);
     }
 
-    uint32_t RegisterNetworkStandbyModeChangedCallback(PowerManager_NetworkStandbyModeChangedCb callback, void* userdata)
+    uint32_t RegisterNetworkStandbyModeChangedCallback(PowerController_NetworkStandbyModeChangedCb callback, void* userdata)
     {
         return RegisterCallback(_networkStandbyModeChangedCallbacks, callback, userdata);
     }
 
-    uint32_t UnRegisterNetworkStandbyModeChangedCallback(PowerManager_NetworkStandbyModeChangedCb callback)
+    uint32_t UnRegisterNetworkStandbyModeChangedCallback(PowerController_NetworkStandbyModeChangedCb callback)
     {
         return UnRegisterCallback(_networkStandbyModeChangedCallbacks, callback);
     }
 
-    uint32_t RegisterThermalModeChangedCallback(PowerManager_ThermalModeChangedCb callback, void* userdata)
+    uint32_t RegisterThermalModeChangedCallback(PowerController_ThermalModeChangedCb callback, void* userdata)
     {
         return RegisterCallback(_thermalModeChangedCallbacks, callback, userdata);
     }
 
-    uint32_t UnRegisterThermalModeChangedCallback(PowerManager_ThermalModeChangedCb callback)
+    uint32_t UnRegisterThermalModeChangedCallback(PowerController_ThermalModeChangedCb callback)
     {
         return UnRegisterCallback(_thermalModeChangedCallbacks, callback);
     }
 
-    uint32_t RegisterRebootBeginCallback(PowerManager_RebootBeginCb callback, void* userdata)
+    uint32_t RegisterRebootBeginCallback(PowerController_RebootBeginCb callback, void* userdata)
     {
         return RegisterCallback(_rebootBeginCallbacks, callback, userdata);
     }
 
-    uint32_t UnRegisterRebootBeginCallback(PowerManager_RebootBeginCb callback)
+    uint32_t UnRegisterRebootBeginCallback(PowerController_RebootBeginCb callback)
     {
         return UnRegisterCallback(_rebootBeginCallbacks, callback);
     }
 
 private:
-    static PowerManagerClient* _singleton;
-    Core::CriticalSection _lock;
+    static int _nClients; // Init() count
+    static PowerController* _instance;
+    static Core::CriticalSection _lock;
+
     Exchange::IPowerManager* _powerManagerInterface; // remote PowerManager plugin interface
     Core::Sink<Notification> _powerManagerNotification;
 
     // containers for notification registertion
+    OperationalStateChangeCallbacks _operationalStateChangeCallbacks;
     PowerModeChangedCallbacks _powerModeChangedCallbacks;
     PowerModePreChangeCallbacks _powerModePreChangeCallbacks;
     DeepSleepTimeoutCallbacks _deepSleepTimeoutCallbacks;
     NetworkStandbyModeChangedCallbacks _networkStandbyModeChangedCallbacks;
     ThermalModeChangedCallbacks _thermalModeChangedCallbacks;
     RebootBeginCallbacks _rebootBeginCallbacks;
+
+    bool _shutdown;
 };
 } // nameless namespace
 
-PowerManagerClient* PowerManagerClient::_singleton = nullptr;
+PowerController* PowerController::_instance = nullptr;
+int PowerController::_nClients = 0;
+Core::CriticalSection PowerController::_lock;
 
 extern "C" {
 
-uint32_t PowerManager_GetPowerState(PowerManager_PowerState_t* currentState, PowerManager_PowerState_t* previousState)
+void PowerController_Init()
+{
+    PowerController::Init();
+}
+
+void PowerController_Term()
+{
+    PowerController::Term();
+}
+
+bool PowerController_IsOperational()
+{
+    return PowerController::Instance().IsOperational();
+}
+
+uint32_t PowerController_GetPowerState(PowerController_PowerState_t* currentState, PowerController_PowerState_t* previousState)
 {
     ASSERT(currentState != nullptr);
     ASSERT(previousState != nullptr);
-    return PowerManagerClient::Instance().GetPowerState(currentState, previousState);
+    return PowerController::Instance().GetPowerState(currentState, previousState);
 }
 
-uint32_t PowerManager_SetPowerState(const int keyCode, const PowerManager_PowerState_t powerstate, const char* reason)
+uint32_t PowerController_SetPowerState(const int keyCode, const PowerController_PowerState_t powerstate, const char* reason)
 {
-    return PowerManagerClient::Instance().SetPowerState(keyCode, powerstate, reason);
+    return PowerController::Instance().SetPowerState(keyCode, powerstate, reason);
 }
 
-uint32_t PowerManager_GetThermalState(float* currentTemperature)
+uint32_t PowerController_GetThermalState(float* currentTemperature)
 {
     ASSERT(currentTemperature != nullptr);
-    return PowerManagerClient::Instance().GetThermalState(currentTemperature);
+    return PowerController::Instance().GetThermalState(currentTemperature);
 }
 
-uint32_t PowerManager_SetTemperatureThresholds(float high, float critical)
+uint32_t PowerController_SetTemperatureThresholds(float high, float critical)
 {
-    return PowerManagerClient::Instance().SetTemperatureThresholds(high, critical);
+    return PowerController::Instance().SetTemperatureThresholds(high, critical);
 }
 
-uint32_t PowerManager_GetTemperatureThresholds(float* high, float* critical)
+uint32_t PowerController_GetTemperatureThresholds(float* high, float* critical)
 {
     ASSERT(high != nullptr);
     ASSERT(critical != nullptr);
-    return PowerManagerClient::Instance().GetTemperatureThresholds(high, critical);
+    return PowerController::Instance().GetTemperatureThresholds(high, critical);
 }
 
-uint32_t PowerManager_SetOvertempGraceInterval(const int graceInterval)
+uint32_t PowerController_SetOvertempGraceInterval(const int graceInterval)
 {
-    return PowerManagerClient::Instance().SetOvertempGraceInterval(graceInterval);
+    return PowerController::Instance().SetOvertempGraceInterval(graceInterval);
 }
 
-uint32_t PowerManager_GetOvertempGraceInterval(int* graceInterval /* @out */)
+uint32_t PowerController_GetOvertempGraceInterval(int* graceInterval /* @out */)
 {
     ASSERT(graceInterval != nullptr);
-    return PowerManagerClient::Instance().GetOvertempGraceInterval(graceInterval);
+    return PowerController::Instance().GetOvertempGraceInterval(graceInterval);
 }
 
-uint32_t PowerManager_SetDeepSleepTimer(const int timeOut)
+uint32_t PowerController_SetDeepSleepTimer(const int timeOut)
 {
-    return PowerManagerClient::Instance().SetDeepSleepTimer(timeOut);
+    return PowerController::Instance().SetDeepSleepTimer(timeOut);
 }
 
-uint32_t PowerManager_GetLastWakeupReason(PowerManager_WakeupReason_t* wakeupReason)
+uint32_t PowerController_GetLastWakeupReason(PowerController_WakeupReason_t* wakeupReason)
 {
     ASSERT(wakeupReason != nullptr);
-    return PowerManagerClient::Instance().GetLastWakeupReason(wakeupReason);
+    return PowerController::Instance().GetLastWakeupReason(wakeupReason);
 }
 
-uint32_t PowerManager_GetLastWakeupKeyCode(int* keycode)
+uint32_t PowerController_GetLastWakeupKeyCode(int* keycode)
 {
     ASSERT(keycode != nullptr);
-    return PowerManagerClient::Instance().GetLastWakeupKeyCode(keycode);
+    return PowerController::Instance().GetLastWakeupKeyCode(keycode);
 }
 
-uint32_t PowerManager_Reboot(const char* rebootRequestor, const char* rebootReasonCustom, const char* rebootReasonOther)
+uint32_t PowerController_Reboot(const char* rebootRequestor, const char* rebootReasonCustom, const char* rebootReasonOther)
 {
     ASSERT(rebootRequestor != nullptr);
     ASSERT(rebootReasonCustom != nullptr);
     ASSERT(rebootReasonOther != nullptr);
-    return PowerManagerClient::Instance().Reboot(rebootRequestor, rebootReasonCustom, rebootReasonOther);
+    return PowerController::Instance().Reboot(rebootRequestor, rebootReasonCustom, rebootReasonOther);
 }
 
-uint32_t PowerManager_SetNetworkStandbyMode(const bool standbyMode)
+uint32_t PowerController_SetNetworkStandbyMode(const bool standbyMode)
 {
-    return PowerManagerClient::Instance().SetNetworkStandbyMode(standbyMode);
+    return PowerController::Instance().SetNetworkStandbyMode(standbyMode);
 }
 
-uint32_t PowerManager_GetNetworkStandbyMode(bool* standbyMode)
+uint32_t PowerController_GetNetworkStandbyMode(bool* standbyMode)
 {
     ASSERT(standbyMode != nullptr);
-    return PowerManagerClient::Instance().GetNetworkStandbyMode(standbyMode);
+    return PowerController::Instance().GetNetworkStandbyMode(standbyMode);
 }
 
-uint32_t PowerManager_SetWakeupSrcConfig(const int powerMode, const int wakeSrcType, int config)
+uint32_t PowerController_SetWakeupSrcConfig(const int powerMode, const int wakeSrcType, int config)
 {
-    return PowerManagerClient::Instance().SetWakeupSrcConfig(powerMode, wakeSrcType, config);
+    return PowerController::Instance().SetWakeupSrcConfig(powerMode, wakeSrcType, config);
 }
 
-uint32_t PowerManager_GetWakeupSrcConfig(int* powerMode, int* srcType, int* config)
+uint32_t PowerController_GetWakeupSrcConfig(int* powerMode, int* srcType, int* config)
 {
     ASSERT(powerMode != nullptr);
     ASSERT(srcType != nullptr);
     ASSERT(config != nullptr);
-    return PowerManagerClient::Instance().GetWakeupSrcConfig(*powerMode, *srcType, *config);
+    return PowerController::Instance().GetWakeupSrcConfig(*powerMode, *srcType, *config);
 }
 
-uint32_t PowerManager_SetSystemMode(const PowerManager_SystemMode_t currentMode, const PowerManager_SystemMode_t newMode)
+uint32_t PowerController_SetSystemMode(const PowerController_SystemMode_t currentMode, const PowerController_SystemMode_t newMode)
 {
-    return PowerManagerClient::Instance().SetSystemMode(currentMode, newMode);
+    return PowerController::Instance().SetSystemMode(currentMode, newMode);
 }
 
-uint32_t PowerManager_GetPowerStateBeforeReboot(PowerManager_PowerState_t* powerStateBeforeReboot)
+uint32_t PowerController_GetPowerStateBeforeReboot(PowerController_PowerState_t* powerStateBeforeReboot)
 {
     ASSERT(powerStateBeforeReboot != nullptr);
-    return PowerManagerClient::Instance().GetPowerStateBeforeReboot(powerStateBeforeReboot);
+    return PowerController::Instance().GetPowerStateBeforeReboot(powerStateBeforeReboot);
 }
 
-uint32_t PowerManager_RegisterPowerModeChangedCallback(PowerManager_PowerModeChangedCb callback, void* userdata)
+uint32_t PowerController_RegisterOperationalStateChangeCallback(PowerController_OperationalStateChangeCb callback, void* userdata)
 {
-    return PowerManagerClient::Instance().RegisterPowerModeChangedCallback(callback, userdata);
+    return PowerController::Instance().RegisterOperationalStateChangedCallback(callback, userdata);
 }
 
-uint32_t PowerManager_UnRegisterPowerModeChangedCallback(PowerManager_PowerModeChangedCb callback)
+uint32_t PowerController_UnRegisterOperationalStateChangeCallback(PowerController_OperationalStateChangeCb callback)
 {
-    return PowerManagerClient::Instance().UnRegisterPowerModeChangedCallback(callback);
+    return PowerController::Instance().UnRegisterOperationalStateChangedCallback(callback);
 }
 
-uint32_t PowerManager_RegisterPowerModePreChangeCallback(PowerManager_PowerModePreChangeCb callback, void* userdata)
+uint32_t PowerController_RegisterPowerModeChangedCallback(PowerController_PowerModeChangedCb callback, void* userdata)
 {
-    return PowerManagerClient::Instance().RegisterPowerModePreChangeCallback(callback, userdata);
+    return PowerController::Instance().RegisterPowerModeChangedCallback(callback, userdata);
 }
 
-uint32_t PowerManager_UnRegisterPowerModePreChangeCallback(PowerManager_PowerModePreChangeCb callback)
+uint32_t PowerController_UnRegisterPowerModeChangedCallback(PowerController_PowerModeChangedCb callback)
 {
-    return PowerManagerClient::Instance().UnRegisterPowerModePreChangeCallback(callback);
+    return PowerController::Instance().UnRegisterPowerModeChangedCallback(callback);
 }
 
-uint32_t PowerManager_RegisterDeepSleepTimeoutCallback(PowerManager_DeepSleepTimeoutCb callback, void* userdata)
+uint32_t PowerController_RegisterPowerModePreChangeCallback(PowerController_PowerModePreChangeCb callback, void* userdata)
 {
-    return PowerManagerClient::Instance().RegisterDeepSleepTimeoutCallback(callback, userdata);
+    return PowerController::Instance().RegisterPowerModePreChangeCallback(callback, userdata);
 }
 
-uint32_t PowerManager_UnRegisterDeepSleepTimeoutCallback(PowerManager_DeepSleepTimeoutCb callback)
+uint32_t PowerController_UnRegisterPowerModePreChangeCallback(PowerController_PowerModePreChangeCb callback)
 {
-    return PowerManagerClient::Instance().UnRegisterDeepSleepTimeoutCallback(callback);
+    return PowerController::Instance().UnRegisterPowerModePreChangeCallback(callback);
 }
 
-uint32_t PowerManager_RegisterNetworkStandbyModeChangedCallback(PowerManager_NetworkStandbyModeChangedCb callback, void* userdata)
+uint32_t PowerController_RegisterDeepSleepTimeoutCallback(PowerController_DeepSleepTimeoutCb callback, void* userdata)
 {
-    return PowerManagerClient::Instance().RegisterNetworkStandbyModeChangedCallback(callback, userdata);
+    return PowerController::Instance().RegisterDeepSleepTimeoutCallback(callback, userdata);
 }
 
-uint32_t PowerManager_UnRegisterNetworkStandbyModeChangedCallback(PowerManager_NetworkStandbyModeChangedCb callback)
+uint32_t PowerController_UnRegisterDeepSleepTimeoutCallback(PowerController_DeepSleepTimeoutCb callback)
 {
-    return PowerManagerClient::Instance().UnRegisterNetworkStandbyModeChangedCallback(callback);
+    return PowerController::Instance().UnRegisterDeepSleepTimeoutCallback(callback);
 }
 
-uint32_t PowerManager_RegisterThermalModeChangedCallback(PowerManager_ThermalModeChangedCb callback, void* userdata)
+uint32_t PowerController_RegisterNetworkStandbyModeChangedCallback(PowerController_NetworkStandbyModeChangedCb callback, void* userdata)
 {
-    return PowerManagerClient::Instance().RegisterThermalModeChangedCallback(callback, userdata);
+    return PowerController::Instance().RegisterNetworkStandbyModeChangedCallback(callback, userdata);
 }
 
-uint32_t PowerManager_UnRegisterThermalModeChangedCallback(PowerManager_ThermalModeChangedCb callback)
+uint32_t PowerController_UnRegisterNetworkStandbyModeChangedCallback(PowerController_NetworkStandbyModeChangedCb callback)
 {
-    return PowerManagerClient::Instance().UnRegisterThermalModeChangedCallback(callback);
+    return PowerController::Instance().UnRegisterNetworkStandbyModeChangedCallback(callback);
 }
 
-uint32_t PowerManager_RegisterRebootBeginCallback(PowerManager_RebootBeginCb callback, void* userdata)
+uint32_t PowerController_RegisterThermalModeChangedCallback(PowerController_ThermalModeChangedCb callback, void* userdata)
 {
-    return PowerManagerClient::Instance().RegisterRebootBeginCallback(callback, userdata);
+    return PowerController::Instance().RegisterThermalModeChangedCallback(callback, userdata);
 }
 
-uint32_t PowerManager_UnRegisterRebootBeginCallback(PowerManager_RebootBeginCb callback)
+uint32_t PowerController_UnRegisterThermalModeChangedCallback(PowerController_ThermalModeChangedCb callback)
 {
-    return PowerManagerClient::Instance().UnRegisterRebootBeginCallback(callback);
+    return PowerController::Instance().UnRegisterThermalModeChangedCallback(callback);
 }
-void PowerManager_Dispose()
+
+uint32_t PowerController_RegisterRebootBeginCallback(PowerController_RebootBeginCb callback, void* userdata)
 {
-    PowerManagerClient::Dispose();
+    return PowerController::Instance().RegisterRebootBeginCallback(callback, userdata);
 }
+
+uint32_t PowerController_UnRegisterRebootBeginCallback(PowerController_RebootBeginCb callback)
+{
+    return PowerController::Instance().UnRegisterRebootBeginCallback(callback);
+}
+
 } // extern "C"

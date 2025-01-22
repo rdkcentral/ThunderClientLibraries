@@ -26,23 +26,23 @@
 extern "C" {
 #endif
 
-typedef enum PowerManager_PowerState {
+typedef enum PowerController_PowerState {
     POWER_STATE_UNKNOWN = 0 /* UNKNOWN */,
     POWER_STATE_OFF = 1 /* OFF */,
     POWER_STATE_STANDBY = 2 /* STANDBY */,
     POWER_STATE_ON = 3 /* ON */,
     POWER_STATE_STANDBY_LIGHT_SLEEP = 4 /* LIGHT_SLEEP */,
     POWER_STATE_STANDBY_DEEP_SLEEP = 5 /* DEEP_SLEEP */
-} PowerManager_PowerState_t;
+} PowerController_PowerState_t;
 
-typedef enum PowerManager_ThermalTemperature {
+typedef enum PowerController_ThermalTemperature {
     THERMAL_TEMPERATURE_UNKNOWN = 0 /* UNKNOWN Thermal Temperature */,
     THERMAL_TEMPERATURE_NORMAL = 1 /* Normal Thermal Temperature */,
     THERMAL_TEMPERATURE_HIGH = 2 /* High Thermal Temperature */,
     THERMAL_TEMPERATURE_CRITICAL = 4 /* Critial Thermal Temperature */
-} PowerManager_ThermalTemperature_t;
+} PowerController_ThermalTemperature_t;
 
-typedef enum PowerManager_WakeupSrcType {
+typedef enum PowerController_WakeupSrcType {
     WAKEUP_SRC_UNKNOWN = 0 /* UNKNOWN */,
     WAKEUP_SRC_VOICE = 1 /* VOICE */,
     WAKEUP_SRC_PRESENCEDETECTED = 2 /* PRESENCEDETECTED */,
@@ -54,9 +54,9 @@ typedef enum PowerManager_WakeupSrcType {
     WAKEUP_SRC_CEC = 8 /* CEC */,
     WAKEUP_SRC_LAN = 9 /* LAN */,
     WAKEUP_SRC_RF4CE = 10 /* RF4CE */
-} PowerManager_WakeupSrcType_t;
+} PowerController_WakeupSrcType_t;
 
-typedef enum PowerManager_WakeupReason {
+typedef enum PowerController_WakeupReason {
     WAKEUP_REASON_UNKNOWN = 0 /* UNKNOWN */,
     WAKEUP_REASON_IR = 1 /* IR */,
     WAKEUP_REASON_BLUETOOTH = 2 /* BLUETOOTH */,
@@ -75,47 +75,45 @@ typedef enum PowerManager_WakeupReason {
     WAKEUP_REASON_CEC = 15 /* CEC */,
     WAKEUP_REASON_PRESENCE = 16 /* PRESENCE */,
     WAKEUP_REASON_VOICE = 17 /* VOICE */
-} PowerManager_WakeupReason_t;
+} PowerController_WakeupReason_t;
 
-typedef enum PowerManager_SystemMode {
+typedef enum PowerController_SystemMode {
     SYSTEM_MODE_UNKNOWN = 0 /* UNKNOWN */,
     SYSTEM_MODE_NORMAL = 1 /* NORMAL */,
     SYSTEM_MODE_EAS = 2 /* EAS */,
     SYSTEM_MODE_WAREHOUSE = 3 /* WAREHOUSE */
-} PowerManager_SystemMode_t;
+} PowerController_SystemMode_t;
 
 #define POWER_MANAGER_ERROR_NONE 0
 #define POWER_MANAGER_ERROR_GENERAL 1
 #define POWER_MANAGER_ERROR_UNAVAILABLE 2
 
 /**
- * @brief Initializes the Power Manager client.
+ * @brief Initializes the Power Controller.
  *
- * This function creates an instance of the Power Manager client and increments the client reference count.
- * It ensures that the Power Manager client is ready for use.
+ * This function creates an instance of the PowerManager plugin client interface and increments the client instance count.
  *
  * @details
- * - If the client instance does not already exist, it will be created.
- * - The client reference count is incremented each time this function is called.
+ * - If the Power Controller instance does not already exist, it will be created.
+ * - The instance count is incremented each time this function is called.
  *
- * @see PowerManager_ClientTerm
+ * @see PowerController_Term
  */
-void PowerManager_ClientInit();
+void PowerController_Init();
 
 /**
- * @brief Terminates the Power Manager client.
+ * @brief Terminates the Power Controller.
  *
- * This function decrements the client reference count and, if the count reaches zero, destroys the Power Manager client instance.
- * This includes performing any necessary RPC calls to clean up the plugin resources.
+ * This function decrements client instance count attempts to delete Power Controller instance
  *
  * @details
- * - If the client reference count is greater than one, this function only decrements the count.
- * - When the reference count reaches zero, the client instance is destroyed, and all associated resources are released.
- * - Ensure that this function is called once for every call to `PowerManager_ClientInit`.
+ * - If the controller reference count is greater than one, this function only decrements the count.
+ * - When the reference count reaches zero, the controller instance is destroyed, and all associated resources are released (PowerManager plugin client instance).
+ * - Ensure that this function is called once for every call to `PowerController_Init`.
  *
- * @see PowerManager_ClientInit
+ * @see PowerController_Init
  */
-void PowerManager_ClientTerm();
+void PowerController_Term();
 
 /**
  * @brief Checks if the Power Manager plugin is active & operational
@@ -128,98 +126,98 @@ void PowerManager_ClientTerm();
  * @details
  * - Use this function to confirm the operational status of the Power Manager plugin.
  * - Calling this function is NOT MANDATORY but optional
- * - Clients can register for notifications about state changes using `PowerManager_RegisterOperationalStateChangeCallback`.
+ * - Clients can register for notifications about state changes using `PowerController_RegisterOperationalStateChangeCallback`.
  * - If the Power Manager interface is not active, subsequent Power Manager operations will fail with the error `POWER_MANAGER_ERROR_UNAVAILABLE`.
  *
- * @see PowerManager_RegisterOperationalStateChangeCallback
+ * @see PowerController_RegisterOperationalStateChangeCallback
  */
-bool PowerManager_IsOperational();
+bool PowerController_IsOperational();
 
 /** Gets the Power State.*/
 // @text getPowerState
 // @brief Get Power State
 // @param powerState: Get current power state
-uint32_t PowerManager_GetPowerState(PowerManager_PowerState_t* currentState, PowerManager_PowerState_t* previousState);
+uint32_t PowerController_GetPowerState(PowerController_PowerState_t* currentState, PowerController_PowerState_t* previousState);
 
 /** Sets Power State . */
 // @text setPowerState
 // @brief Set Power State
 // @param powerState: Set power to this state
 // @param reason: Reason for moving to the power state
-uint32_t PowerManager_SetPowerState(const int keyCode, const PowerManager_PowerState_t powerstate, const char* reason);
+uint32_t PowerController_SetPowerState(const int keyCode, const PowerController_PowerState_t powerstate, const char* reason);
 
 /** Gets the current Thermal state.*/
 // @text getThermalState
 // @brief Get Current Thermal State (temperature)
 // @param currentTemperature: current temperature
-uint32_t PowerManager_GetThermalState(float* currentTemperature /* @out */);
+uint32_t PowerController_GetThermalState(float* currentTemperature /* @out */);
 
 /** Sets the Temperature Thresholds.*/
 // @text setTemperatureThresholds
 // @brief Set Temperature Thresholds
 // @param high: high threshold
 // @param critical : critical threshold
-uint32_t PowerManager_SetTemperatureThresholds(float high /* @in */, float critical /* @in */);
+uint32_t PowerController_SetTemperatureThresholds(float high /* @in */, float critical /* @in */);
 
 /** Gets the current Temperature Thresholds.*/
 // @text getTemperatureThresholds
 // @brief Get Temperature Thresholds
 // @param high: high threshold
 // @param critical : critical threshold
-uint32_t PowerManager_GetTemperatureThresholds(float* high /* @out */, float* critical /* @out */);
+uint32_t PowerController_GetTemperatureThresholds(float* high /* @out */, float* critical /* @out */);
 
 /** Sets the current Temperature Grace interval.*/
 // @property
-// @text PowerManager_SetOvertempGraceInterval
+// @text PowerController_SetOvertempGraceInterval
 // @brief Set Temperature Thresholds
 // @param graceInterval: interval in secs?
-uint32_t PowerManager_SetOvertempGraceInterval(const int graceInterval /* @in */);
+uint32_t PowerController_SetOvertempGraceInterval(const int graceInterval /* @in */);
 
 /** Gets the current Temperature Thresholds.*/
 // @property
-// @text PowerManager_GetOvertempGraceInterval
+// @text PowerController_GetOvertempGraceInterval
 // @brief Get Temperature Grace interval
 // @param graceInterval: interval in secs?
-uint32_t PowerManager_GetOvertempGraceInterval(int* graceInterval /* @out */);
+uint32_t PowerController_GetOvertempGraceInterval(int* graceInterval /* @out */);
 
 /** Set Deep Sleep Timer for later wakeup */
 // @property
 // @text setDeepSleepTimer
 // @brief Set Deep sleep timer for timeOut period
 // @param timeOut: deep sleep timeout
-uint32_t PowerManager_SetDeepSleepTimer(const int timeOut /* @in */);
+uint32_t PowerController_SetDeepSleepTimer(const int timeOut /* @in */);
 
 /** Get Last Wakeup reason */
 // @property
 // @text getLastWakeupReason
 // @brief Get Last Wake up reason
 // @param wakeupReason: wake up reason
-uint32_t PowerManager_GetLastWakeupReason(PowerManager_WakeupReason_t* wakeupReason /* @out */);
+uint32_t PowerController_GetLastWakeupReason(PowerController_WakeupReason_t* wakeupReason /* @out */);
 
 /** Get Last Wakeup key code */
 // @property
 // @text getLastWakeupKeyCode
 // @brief Get the key code that can be used for wakeup
 // @param keycode: Key code for wakeup
-uint32_t PowerManager_GetLastWakeupKeyCode(int* keycode /* @out */);
+uint32_t PowerController_GetLastWakeupKeyCode(int* keycode /* @out */);
 
 /** Perform Reboot */
 // @text reboot
 // @brief Reboot device
-uint32_t PowerManager_Reboot(const char* rebootRequestor /* @in */, const char* rebootReasonCustom /* @in */, const char* rebootReasonOther /* @in */);
+uint32_t PowerController_Reboot(const char* rebootRequestor /* @in */, const char* rebootReasonCustom /* @in */, const char* rebootReasonOther /* @in */);
 
 /** Set Network Standby Mode */
 // @property
 // @text setNetworkStandbyMode
 // @brief Set the standby mode for Network
 // @param standbyMode: Network standby mode
-uint32_t PowerManager_SetNetworkStandbyMode(const bool standbyMode /* @in */);
+uint32_t PowerController_SetNetworkStandbyMode(const bool standbyMode /* @in */);
 
 /** Get Network Standby Mode */
 // @text getNetworkStandbyMode
 // @brief Get the standby mode for Network
 // @param standbyMode: Network standby mode
-uint32_t PowerManager_GetNetworkStandbyMode(bool* standbyMode /* @out */);
+uint32_t PowerController_GetNetworkStandbyMode(bool* standbyMode /* @out */);
 
 /** Set Wakeup source configuration */
 // @text setWakeupSrcConfig
@@ -227,7 +225,7 @@ uint32_t PowerManager_GetNetworkStandbyMode(bool* standbyMode /* @out */);
 // @param powerMode: power mode
 // @param wakeSrcType: source type
 // @param config: config
-uint32_t PowerManager_SetWakeupSrcConfig(const int powerMode /* @in */, const int wakeSrcType /* @in */, int config /* @in */);
+uint32_t PowerController_SetWakeupSrcConfig(const int powerMode /* @in */, const int wakeSrcType /* @in */, int config /* @in */);
 
 /** Get Wakeup source configuration */
 // @text getWakeupSrcConfig
@@ -235,58 +233,58 @@ uint32_t PowerManager_SetWakeupSrcConfig(const int powerMode /* @in */, const in
 // @param powerMode: power mode
 // @param srcType: source type
 // @param config: config
-uint32_t PowerManager_GetWakeupSrcConfig(int* powerMode /* @out */, int* srcType /* @out */, int* config /* @out */);
+uint32_t PowerController_GetWakeupSrcConfig(int* powerMode /* @out */, int* srcType /* @out */, int* config /* @out */);
 
 /** Initiate System mode change */
-// @text PowerManager_SetSystemMode
+// @text PowerController_SetSystemMode
 // @brief System mode change
 // @param oldMode: old mode
 // @param newMode: new mode
-uint32_t PowerManager_SetSystemMode(const PowerManager_SystemMode_t currentMode /* @in */, const PowerManager_SystemMode_t newMode /* @in */);
+uint32_t PowerController_SetSystemMode(const PowerController_SystemMode_t currentMode /* @in */, const PowerController_SystemMode_t newMode /* @in */);
 
 /** Get Power State before reboot */
-// @text PowerManager_GetPowerStateBeforeReboot
+// @text PowerController_GetPowerStateBeforeReboot
 // @brief Get Power state before reboot
 // @param powerStateBeforeReboot: power state
-uint32_t PowerManager_GetPowerStateBeforeReboot(PowerManager_PowerState_t* powerStateBeforeReboot /* @out */);
+uint32_t PowerController_GetPowerStateBeforeReboot(PowerController_PowerState_t* powerStateBeforeReboot /* @out */);
 
 /* Callback data types for event notifications from power manager plugin */
-typedef void (*PowerManager_OperationalStateChangeCb)(bool isOperational, void* userdata);
-typedef void (*PowerManager_PowerModeChangedCb)(const PowerManager_PowerState_t currentState, const PowerManager_PowerState_t newState, void* userdata);
-typedef void (*PowerManager_PowerModePreChangeCb)(const PowerManager_PowerState_t currentState, const PowerManager_PowerState_t newState, void* userdata);
-typedef void (*PowerManager_DeepSleepTimeoutCb)(const int wakeupTimeout, void* userdata);
-typedef void (*PowerManager_NetworkStandbyModeChangedCb)(const bool enabled, void* userdata);
-typedef void (*PowerManager_ThermalModeChangedCb)(const PowerManager_ThermalTemperature_t currentThermalLevel, const PowerManager_ThermalTemperature_t newThermalLevel, const float currentTemperature, void* userdata);
-typedef void (*PowerManager_RebootBeginCb)(const char* rebootReasonCustom, const char* rebootReasonOther, const char* rebootRequestor, void* userdata);
+typedef void (*PowerController_OperationalStateChangeCb)(bool isOperational, void* userdata);
+typedef void (*PowerController_PowerModeChangedCb)(const PowerController_PowerState_t currentState, const PowerController_PowerState_t newState, void* userdata);
+typedef void (*PowerController_PowerModePreChangeCb)(const PowerController_PowerState_t currentState, const PowerController_PowerState_t newState, void* userdata);
+typedef void (*PowerController_DeepSleepTimeoutCb)(const int wakeupTimeout, void* userdata);
+typedef void (*PowerController_NetworkStandbyModeChangedCb)(const bool enabled, void* userdata);
+typedef void (*PowerController_ThermalModeChangedCb)(const PowerController_ThermalTemperature_t currentThermalLevel, const PowerController_ThermalTemperature_t newThermalLevel, const float currentTemperature, void* userdata);
+typedef void (*PowerController_RebootBeginCb)(const char* rebootReasonCustom, const char* rebootReasonOther, const char* rebootRequestor, void* userdata);
 
-/** Register for PowerMode changed callback */
-uint32_t PowerManager_RegisterPowerModeChangedCallback(PowerManager_PowerModeChangedCb callback, void* userdata);
-/** UnRegister (previously registered) PowerMode changed callback */
-uint32_t PowerManager_UnRegisterPowerModeChangedCallback(PowerManager_PowerModeChangedCb callback);
-/** Register for PowerMode pre-change callback */
-uint32_t PowerManager_RegisterPowerModePreChangeCallback(PowerManager_PowerModePreChangeCb callback, void* userdata);
-/** UnRegister (previously registered) PowerMode pre-change callback */
-uint32_t PowerManager_UnRegisterPowerModePreChangeCallback(PowerManager_PowerModePreChangeCb callback);
-/** Register for PowerMode pre-change callback */
-uint32_t PowerManager_RegisterDeepSleepTimeoutCallback(PowerManager_DeepSleepTimeoutCb callback, void* userdata);
-/** UnRegister (previously registered) DeepSleep Timeout callback */
-uint32_t PowerManager_UnRegisterDeepSleepTimeoutCallback(PowerManager_DeepSleepTimeoutCb callback);
-/** Register for Network Standby Mode changed event - only on XIone */
-uint32_t PowerManager_RegisterNetworkStandbyModeChangedCallback(PowerManager_NetworkStandbyModeChangedCb callback, void* userdata);
-/** UnRegister (previously registered) Network Standby Mode changed callback */
-uint32_t PowerManager_UnRegisterNetworkStandbyModeChangedCallback(PowerManager_NetworkStandbyModeChangedCb callback);
-/** Register for Thermal Mode changed event callback */
-uint32_t PowerManager_RegisterThermalModeChangedCallback(PowerManager_ThermalModeChangedCb callback, void* userdata);
-/** UnRegister (previously registered) Thermal Mode changed event callback */
-uint32_t PowerManager_UnRegisterThermalModeChangedCallback(PowerManager_ThermalModeChangedCb callback);
-/** Register for reboot start event callback */
-uint32_t PowerManager_RegisterRebootBeginCallback(PowerManager_RebootBeginCb callback, void* userdata);
-/** UnRegister (previously registered) reboot start event callback */
-uint32_t PowerManager_UnRegisterRebootBeginCallback(PowerManager_RebootBeginCb callback);
-/** Register for PowerManager plugin operational state change event callback, for initial state use `PowerManager_IsOperational` call */
-uint32_t PowerManager_RegisterOperationalStateChangeCallback(PowerManager_OperationalStateChangeCb callback, void* userdata);
+/** Register for PowerManager plugin operational state change event callback, for initial state use `PowerController_IsOperational` call */
+uint32_t PowerController_RegisterOperationalStateChangeCallback(PowerController_OperationalStateChangeCb callback, void* userdata);
 /** UnRegister (previously registered) PowerManager plugin operational state change event callback */
-uint32_t PowerManager_UnRegisterOperationalStateChangeCallback(PowerManager_OperationalStateChangeCb callback);
+uint32_t PowerController_UnRegisterOperationalStateChangeCallback(PowerController_OperationalStateChangeCb callback);
+/** Register for PowerMode changed callback */
+uint32_t PowerController_RegisterPowerModeChangedCallback(PowerController_PowerModeChangedCb callback, void* userdata);
+/** UnRegister (previously registered) PowerMode changed callback */
+uint32_t PowerController_UnRegisterPowerModeChangedCallback(PowerController_PowerModeChangedCb callback);
+/** Register for PowerMode pre-change callback */
+uint32_t PowerController_RegisterPowerModePreChangeCallback(PowerController_PowerModePreChangeCb callback, void* userdata);
+/** UnRegister (previously registered) PowerMode pre-change callback */
+uint32_t PowerController_UnRegisterPowerModePreChangeCallback(PowerController_PowerModePreChangeCb callback);
+/** Register for PowerMode pre-change callback */
+uint32_t PowerController_RegisterDeepSleepTimeoutCallback(PowerController_DeepSleepTimeoutCb callback, void* userdata);
+/** UnRegister (previously registered) DeepSleep Timeout callback */
+uint32_t PowerController_UnRegisterDeepSleepTimeoutCallback(PowerController_DeepSleepTimeoutCb callback);
+/** Register for Network Standby Mode changed event - only on XIone */
+uint32_t PowerController_RegisterNetworkStandbyModeChangedCallback(PowerController_NetworkStandbyModeChangedCb callback, void* userdata);
+/** UnRegister (previously registered) Network Standby Mode changed callback */
+uint32_t PowerController_UnRegisterNetworkStandbyModeChangedCallback(PowerController_NetworkStandbyModeChangedCb callback);
+/** Register for Thermal Mode changed event callback */
+uint32_t PowerController_RegisterThermalModeChangedCallback(PowerController_ThermalModeChangedCb callback, void* userdata);
+/** UnRegister (previously registered) Thermal Mode changed event callback */
+uint32_t PowerController_UnRegisterThermalModeChangedCallback(PowerController_ThermalModeChangedCb callback);
+/** Register for reboot start event callback */
+uint32_t PowerController_RegisterRebootBeginCallback(PowerController_RebootBeginCb callback, void* userdata);
+/** UnRegister (previously registered) reboot start event callback */
+uint32_t PowerController_UnRegisterRebootBeginCallback(PowerController_RebootBeginCb callback);
 
 #ifdef __cplusplus
 }; // extern "C"

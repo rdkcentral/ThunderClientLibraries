@@ -31,11 +31,11 @@ find_package(${NAMESPACE}Core REQUIRED)
 find_package(${NAMESPACE}COM REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 
-set(PUBLIC_HEADERS "powermanager_client.h")
+set(PUBLIC_HEADERS "power_controller.h")
 
 add_library(${TARGET}  SHARED
     Module.cpp
-    powermanager_client.cpp
+    power_controller.cpp
 )
 
 target_link_libraries(${TARGET}
@@ -75,5 +75,5 @@ InstallCMakeConfig(
 
 InstallPackageConfig(
         TARGETS ${TARGET}
-        DESCRIPTION "communications channel abstraction to get the device properties")
+        DESCRIPTION "communications channel abstraction for powermanager plugin")
 
