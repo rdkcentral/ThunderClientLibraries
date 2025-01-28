@@ -286,6 +286,8 @@ namespace Linux {
 
                         // Signal the other side we have a completed buffer, ready to show...
                         RequestRender();
+                    } else {
+                        TRACE(Trace::Error, (_T("Could not acquire the buffer planes in time")));
                     }
                     return (succeeded);
                 }
@@ -335,6 +337,8 @@ namespace Linux {
                 _display.AddRef();
 
                 _remoteClient = _display.CreateRemoteSurface(name, width, height);
+
+                ASSERT(_remoteClient != nullptr);
 
                 if (_remoteClient != nullptr) {
                     TRACE(Trace::Information, (_T("Created remote surface %s  %dx%d"), name.c_str(), width, height));
@@ -483,7 +487,27 @@ namespace Linux {
 
             uint32_t Process()
             {
-                return (_buffer.Render() == true) ? Core::ERROR_NONE : Core::ERROR_BAD_REQUEST;
+               /* TODO:
+                *
+                * There needs to be a valid EGL context set externally, only in this case we can request 
+                * EGL to write the contents of the context to a EGL image that is backed by a shared buffer.
+                * The shared buffer is a DMA buffer that is created in the compositor plugin process. 
+                * 
+                * For WPE Webkit, If non-composited WebGL is enabled for Lightning apps, the DOM compositor is 
+                * skipped and as a result there is no valid EGL context set. 
+                * 
+                * I need to dive into this deeper if the whole EGL magic in the compositorclient can be skipped. 
+                */
+
+                uint32_t result(Core::ERROR_ILLEGAL_STATE);
+
+                if (eglGetCurrentContext() != EGL_NO_CONTEXT) {
+                    result = (_buffer.Render() == true) ? Core::ERROR_NONE : Core::ERROR_BAD_REQUEST;
+                } else {
+                    TRACE(Trace::Error, (_T("Skipping render, there is no EGL context set")));
+                }
+
+                return result;
             }
 
         private:
