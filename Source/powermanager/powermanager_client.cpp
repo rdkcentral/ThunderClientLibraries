@@ -258,12 +258,7 @@ private:
         ASSERT(_singleton == nullptr);
         _singleton = this;
 
-        uint32_t result = BaseClass::Open(RPC::CommunicationTimeOut, BaseClass::Connector(), Callsign());
-
-        PluginHost::IShell* controllerInterface = BaseClass::ControllerInterface();
-
-        // avoid compiler warnings
-        (void)controllerInterface;
+        BaseClass::Open(RPC::CommunicationTimeOut, BaseClass::Connector(), Callsign());
     }
 
     ~PowerManagerClient()
@@ -596,7 +591,7 @@ public:
         PowerManager_PowerState_t _newState = convert(newState);
         _lock.Lock();
 
-        for (auto& index : _powerModeChanedCallbacks) {
+        for (auto& index : _powerModeChangedCallbacks) {
             index.first(_currentState, _newState, index.second);
         }
 
@@ -708,12 +703,12 @@ public:
 
     uint32_t RegisterPowerModeChangedCallback(PowerManager_PowerModeChangedCb callback, void* userdata)
     {
-        return RegisterCallback(_powerModeChanedCallbacks, callback, userdata);
+        return RegisterCallback(_powerModeChangedCallbacks, callback, userdata);
     }
 
     uint32_t UnRegisterPowerModeChangedCallback(PowerManager_PowerModeChangedCb callback)
     {
-        return UnRegisterCallback(_powerModeChanedCallbacks, callback);
+        return UnRegisterCallback(_powerModeChangedCallbacks, callback);
     }
 
     uint32_t RegisterPowerModePreChangeCallback(PowerManager_PowerModePreChangeCb callback, void* userdata)
@@ -773,7 +768,7 @@ private:
     Core::Sink<Notification> _powerManagerNotification;
 
     // containers for notification registertion
-    PowerModeChangedCallbacks _powerModeChanedCallbacks;
+    PowerModeChangedCallbacks _powerModeChangedCallbacks;
     PowerModePreChangeCallbacks _powerModePreChangeCallbacks;
     DeepSleepTimeoutCallbacks _deepSleepTimeoutCallbacks;
     NetworkStandbyModeChangedCallbacks _networkStandbyModeChangedCallbacks;
@@ -840,15 +835,15 @@ uint32_t PowerManager_GetLastWakeupReason(PowerManager_WakeupReason_t* wakeupRea
 
 uint32_t PowerManager_GetLastWakeupKeyCode(int* keycode)
 {
-    ASSERT(keycode != nullptr)
+    ASSERT(keycode != nullptr);
     return PowerManagerClient::Instance().GetLastWakeupKeyCode(keycode);
 }
 
 uint32_t PowerManager_Reboot(const char* rebootRequestor, const char* rebootReasonCustom, const char* rebootReasonOther)
 {
-    ASSERT(rebootRequestor != nullptr)
-    ASSERT(rebootReasonCustom != nullptr)
-    ASSERT(rebootReasonOther != nullptr)
+    ASSERT(rebootRequestor != nullptr);
+    ASSERT(rebootReasonCustom != nullptr);
+    ASSERT(rebootReasonOther != nullptr);
     return PowerManagerClient::Instance().Reboot(rebootRequestor, rebootReasonCustom, rebootReasonOther);
 }
 

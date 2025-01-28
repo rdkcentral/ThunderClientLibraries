@@ -84,17 +84,17 @@ typedef enum PowerManager_SystemMode {
     SYSTEM_MODE_WAREHOUSE = 3 /* WAREHOUSE */
 } PowerManager_SystemMode_t;
 
+/** Gets the Power State.*/
+// @text getPowerState
+// @brief Get Power State
+// @param powerState: Get current power state
+uint32_t PowerManager_GetPowerState(PowerManager_PowerState_t* currentState, PowerManager_PowerState_t* previousState);
+
 /** Sets Power State . */
 // @text setPowerState
 // @brief Set Power State
 // @param powerState: Set power to this state
 // @param reason: Reason for moving to the power state
-uint32_t PowerManager_GetPowerState(PowerManager_PowerState_t* currentState, PowerManager_PowerState_t* previousState);
-
-/** Gets the Power State.*/
-// @text getPowerState
-// @brief Get Power State
-// @param powerState: Get current power state
 uint32_t PowerManager_SetPowerState(const int keyCode, const PowerManager_PowerState_t powerstate, const char* reason);
 
 /** Gets the current Thermal state.*/
