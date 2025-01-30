@@ -884,62 +884,62 @@ uint32_t PowerManager_GetPowerStateBeforeReboot(PowerManager_PowerState_t* power
     return PowerManagerClient::Instance().GetPowerStateBeforeReboot(powerStateBeforeReboot);
 }
 
-uint32_t RegisterPowerModeChangedCallback(PowerManager_PowerModeChangedCb callback, void* userdata)
+uint32_t PowerManager_RegisterPowerModeChangedCallback(PowerManager_PowerModeChangedCb callback, void* userdata)
 {
     return PowerManagerClient::Instance().RegisterPowerModeChangedCallback(callback, userdata);
 }
 
-uint32_t UnRegisterPowerModeChangedCallback(PowerManager_PowerModeChangedCb callback)
+uint32_t PowerManager_UnRegisterPowerModeChangedCallback(PowerManager_PowerModeChangedCb callback)
 {
     return PowerManagerClient::Instance().UnRegisterPowerModeChangedCallback(callback);
 }
 
-uint32_t RegisterPowerModePreChangeCallback(PowerManager_PowerModePreChangeCb callback, void* userdata)
+uint32_t PowerManager_RegisterPowerModePreChangeCallback(PowerManager_PowerModePreChangeCb callback, void* userdata)
 {
     return PowerManagerClient::Instance().RegisterPowerModePreChangeCallback(callback, userdata);
 }
 
-uint32_t UnRegisterPowerModePreChangeCallback(PowerManager_PowerModePreChangeCb callback)
+uint32_t PowerManager_UnRegisterPowerModePreChangeCallback(PowerManager_PowerModePreChangeCb callback)
 {
     return PowerManagerClient::Instance().UnRegisterPowerModePreChangeCallback(callback);
 }
 
-uint32_t RegisterDeepSleepTimeoutCallback(PowerManager_DeepSleepTimeoutCb callback, void* userdata)
+uint32_t PowerManager_RegisterDeepSleepTimeoutCallback(PowerManager_DeepSleepTimeoutCb callback, void* userdata)
 {
     return PowerManagerClient::Instance().RegisterDeepSleepTimeoutCallback(callback, userdata);
 }
 
-uint32_t UnRegisterDeepSleepTimeoutCallback(PowerManager_DeepSleepTimeoutCb callback)
+uint32_t PowerManager_UnRegisterDeepSleepTimeoutCallback(PowerManager_DeepSleepTimeoutCb callback)
 {
     return PowerManagerClient::Instance().UnRegisterDeepSleepTimeoutCallback(callback);
 }
 
-uint32_t RegisterNetworkStandbyModeChangedCallback(PowerManager_NetworkStandbyModeChangedCb callback, void* userdata)
+uint32_t PowerManager_RegisterNetworkStandbyModeChangedCallback(PowerManager_NetworkStandbyModeChangedCb callback, void* userdata)
 {
     return PowerManagerClient::Instance().RegisterNetworkStandbyModeChangedCallback(callback, userdata);
 }
 
-uint32_t UnRegisterNetworkStandbyModeChangedCallback(PowerManager_NetworkStandbyModeChangedCb callback)
+uint32_t PowerManager_UnRegisterNetworkStandbyModeChangedCallback(PowerManager_NetworkStandbyModeChangedCb callback)
 {
     return PowerManagerClient::Instance().UnRegisterNetworkStandbyModeChangedCallback(callback);
 }
 
-uint32_t RegisterThermalModeChangedCallback(PowerManager_ThermalModeChangedCb callback, void* userdata)
+uint32_t PowerManager_RegisterThermalModeChangedCallback(PowerManager_ThermalModeChangedCb callback, void* userdata)
 {
     return PowerManagerClient::Instance().RegisterThermalModeChangedCallback(callback, userdata);
 }
 
-uint32_t UnRegisterThermalModeChangedCallback(PowerManager_ThermalModeChangedCb callback)
+uint32_t PowerManager_UnRegisterThermalModeChangedCallback(PowerManager_ThermalModeChangedCb callback)
 {
     return PowerManagerClient::Instance().UnRegisterThermalModeChangedCallback(callback);
 }
 
-uint32_t RegisterRebootBeginCallback(PowerManager_RebootBeginCb callback, void* userdata)
+uint32_t PowerManager_RegisterRebootBeginCallback(PowerManager_RebootBeginCb callback, void* userdata)
 {
     return PowerManagerClient::Instance().RegisterRebootBeginCallback(callback, userdata);
 }
 
-uint32_t UnRegisterRebootBeginCallback(PowerManager_RebootBeginCb callback)
+uint32_t PowerManager_UnRegisterRebootBeginCallback(PowerManager_RebootBeginCb callback)
 {
     return PowerManagerClient::Instance().UnRegisterRebootBeginCallback(callback);
 }

@@ -84,6 +84,9 @@ typedef enum PowerManager_SystemMode {
     SYSTEM_MODE_WAREHOUSE = 3 /* WAREHOUSE */
 } PowerManager_SystemMode_t;
 
+#define POWER_MANAGER_ERROR_NONE 0
+#define POWER_MANAGER_ERROR_GENERAL 1
+
 /** Gets the Power State.*/
 // @text getPowerState
 // @brief Get Power State
@@ -212,29 +215,29 @@ typedef void (*PowerManager_ThermalModeChangedCb)(const PowerManager_ThermalTemp
 typedef void (*PowerManager_RebootBeginCb)(const char* rebootReasonCustom, const char* rebootReasonOther, const char* rebootRequestor, void* userdata);
 
 /** Register for PowerMode changed callback */
-uint32_t RegisterPowerModeChangedCallback(PowerManager_PowerModeChangedCb callback, void* userdata);
+uint32_t PowerManager_RegisterPowerModeChangedCallback(PowerManager_PowerModeChangedCb callback, void* userdata);
 /** UnRegister (previously registered) PowerMode changed callback */
-uint32_t UnRegisterPowerModeChangedCallback(PowerManager_PowerModeChangedCb callback);
+uint32_t PowerManager_UnRegisterPowerModeChangedCallback(PowerManager_PowerModeChangedCb callback);
 /** Register for PowerMode pre-change callback */
-uint32_t RegisterPowerModePreChangeCallback(PowerManager_PowerModePreChangeCb callback, void* userdata);
+uint32_t PowerManager_RegisterPowerModePreChangeCallback(PowerManager_PowerModePreChangeCb callback, void* userdata);
 /** UnRegister (previously registered) PowerMode pre-change callback */
-uint32_t UnRegisterPowerModePreChangeCallback(PowerManager_PowerModePreChangeCb callback);
+uint32_t PowerManager_UnRegisterPowerModePreChangeCallback(PowerManager_PowerModePreChangeCb callback);
 /** Register for PowerMode pre-change callback */
-uint32_t RegisterDeepSleepTimeoutCallback(PowerManager_DeepSleepTimeoutCb callback, void* userdata);
+uint32_t PowerManager_RegisterDeepSleepTimeoutCallback(PowerManager_DeepSleepTimeoutCb callback, void* userdata);
 /** UnRegister (previously registered) DeepSleep Timeout callback */
-uint32_t UnRegisterDeepSleepTimeoutCallback(PowerManager_DeepSleepTimeoutCb callback);
+uint32_t PowerManager_UnRegisterDeepSleepTimeoutCallback(PowerManager_DeepSleepTimeoutCb callback);
 /** Register for Network Standby Mode changed event - only on XIone */
-uint32_t RegisterNetworkStandbyModeChangedCallback(PowerManager_NetworkStandbyModeChangedCb callback, void* userdata);
+uint32_t PowerManager_RegisterNetworkStandbyModeChangedCallback(PowerManager_NetworkStandbyModeChangedCb callback, void* userdata);
 /** UnRegister (previously registered) Network Standby Mode changed callback */
-uint32_t UnRegisterNetworkStandbyModeChangedCallback(PowerManager_NetworkStandbyModeChangedCb callback);
+uint32_t PowerManager_UnRegisterNetworkStandbyModeChangedCallback(PowerManager_NetworkStandbyModeChangedCb callback);
 /** Register for Thermal Mode changed event callback */
-uint32_t RegisterThermalModeChangedCallback(PowerManager_ThermalModeChangedCb callback, void* userdata);
+uint32_t PowerManager_RegisterThermalModeChangedCallback(PowerManager_ThermalModeChangedCb callback, void* userdata);
 /** UnRegister (previously registered) Thermal Mode changed event callback */
-uint32_t UnRegisterThermalModeChangedCallback(PowerManager_ThermalModeChangedCb callback);
+uint32_t PowerManager_UnRegisterThermalModeChangedCallback(PowerManager_ThermalModeChangedCb callback);
 /** Register for reboot start event callback */
-uint32_t RegisterRebootBeginCallback(PowerManager_RebootBeginCb callback, void* userdata);
+uint32_t PowerManager_RegisterRebootBeginCallback(PowerManager_RebootBeginCb callback, void* userdata);
 /** UnRegister (previously registered) reboot start event callback */
-uint32_t UnRegisterRebootBeginCallback(PowerManager_RebootBeginCb callback);
+uint32_t PowerManager_UnRegisterRebootBeginCallback(PowerManager_RebootBeginCb callback);
 
 #ifdef __cplusplus
 }; // extern "C"
