@@ -17,6 +17,7 @@
  * limitations under the License.
  */
 
+#include "core/Trace.h"
 #include <unordered_map>
 
 #include <core/Portability.h>
@@ -258,7 +259,8 @@ private:
         ASSERT(_singleton == nullptr);
         _singleton = this;
 
-        BaseClass::Open(RPC::CommunicationTimeOut, BaseClass::Connector(), Callsign());
+        uint32_t res = BaseClass::Open(RPC::CommunicationTimeOut, BaseClass::Connector(), Callsign());
+        ASSERT(Core::ERROR_NONE == res);
     }
 
     ~PowerManagerClient()
