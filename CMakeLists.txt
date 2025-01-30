@@ -43,9 +43,8 @@ option(CDMI
         "Include OpenCDM interface." OFF)
 option(CRYPTOGRAPHY
         "Include the cryptography library." OFF)
-# TODO: enable conditionally from recipe file
 option(POWERMANAGER
-        "Include the powermanager COMRPC abstraction library." ON)
+        "Include the powermanager COMRPC abstraction library." OFF)
 
 option(INSTALL_TESTS "Install the test applications" OFF)
 
