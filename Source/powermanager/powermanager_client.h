@@ -86,6 +86,54 @@ typedef enum PowerManager_SystemMode {
 
 #define POWER_MANAGER_ERROR_NONE 0
 #define POWER_MANAGER_ERROR_GENERAL 1
+#define POWER_MANAGER_ERROR_UNAVAILABLE 2
+
+/**
+ * @brief Initializes the Power Manager client.
+ *
+ * This function creates an instance of the Power Manager client and increments the client reference count.
+ * It ensures that the Power Manager client is ready for use.
+ *
+ * @details
+ * - If the client instance does not already exist, it will be created.
+ * - The client reference count is incremented each time this function is called.
+ *
+ * @see PowerManager_ClientTerm
+ */
+void PowerManager_ClientInit();
+
+/**
+ * @brief Terminates the Power Manager client.
+ *
+ * This function decrements the client reference count and, if the count reaches zero, destroys the Power Manager client instance.
+ * This includes performing any necessary RPC calls to clean up the plugin resources.
+ *
+ * @details
+ * - If the client reference count is greater than one, this function only decrements the count.
+ * - When the reference count reaches zero, the client instance is destroyed, and all associated resources are released.
+ * - Ensure that this function is called once for every call to `PowerManager_ClientInit`.
+ *
+ * @see PowerManager_ClientInit
+ */
+void PowerManager_ClientTerm();
+
+/**
+ * @brief Checks if the Power Manager plugin is active & operational
+ *
+ * This function determines whether the Power Manager interface is operational and ready to handle requests.
+ * It can be used to verify the availability of the Power Manager client before initiating operations that depend on it.
+ *
+ * @return `true` if the Power Manager interface is active and operational, otherwise `false`.
+ *
+ * @details
+ * - Use this function to confirm the operational status of the Power Manager plugin.
+ * - Calling this function is NOT MANDATORY but optional
+ * - Clients can register for notifications about state changes using `PowerManager_RegisterOperationalStateChangeCallback`.
+ * - If the Power Manager interface is not active, subsequent Power Manager operations will fail with the error `POWER_MANAGER_ERROR_UNAVAILABLE`.
+ *
+ * @see PowerManager_RegisterOperationalStateChangeCallback
+ */
+bool PowerManager_IsOperational();
 
 /** Gets the Power State.*/
 // @text getPowerState
@@ -202,11 +250,8 @@ uint32_t PowerManager_SetSystemMode(const PowerManager_SystemMode_t currentMode 
 // @param powerStateBeforeReboot: power state
 uint32_t PowerManager_GetPowerStateBeforeReboot(PowerManager_PowerState_t* powerStateBeforeReboot /* @out */);
 
-/** Delete / Release Power Manager Plugin Client instance including RPC instance */
-// @text PowerManager_Dispose
-void PowerManager_Dispose();
-
 /* Callback data types for event notifications from power manager plugin */
+typedef void (*PowerManager_OperationalStateChangeCb)(bool isOperational, void* userdata);
 typedef void (*PowerManager_PowerModeChangedCb)(const PowerManager_PowerState_t currentState, const PowerManager_PowerState_t newState, void* userdata);
 typedef void (*PowerManager_PowerModePreChangeCb)(const PowerManager_PowerState_t currentState, const PowerManager_PowerState_t newState, void* userdata);
 typedef void (*PowerManager_DeepSleepTimeoutCb)(const int wakeupTimeout, void* userdata);
@@ -238,6 +283,10 @@ uint32_t PowerManager_UnRegisterThermalModeChangedCallback(PowerManager_ThermalM
 uint32_t PowerManager_RegisterRebootBeginCallback(PowerManager_RebootBeginCb callback, void* userdata);
 /** UnRegister (previously registered) reboot start event callback */
 uint32_t PowerManager_UnRegisterRebootBeginCallback(PowerManager_RebootBeginCb callback);
+/** Register for PowerManager plugin operational state change event callback, for initial state use `PowerManager_IsOperational` call */
+uint32_t PowerManager_RegisterOperationalStateChangeCallback(PowerManager_OperationalStateChangeCb callback, void* userdata);
+/** UnRegister (previously registered) PowerManager plugin operational state change event callback */
+uint32_t PowerManager_UnRegisterOperationalStateChangeCallback(PowerManager_OperationalStateChangeCb callback);
 
 #ifdef __cplusplus
 }; // extern "C"
