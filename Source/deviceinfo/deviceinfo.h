@@ -445,7 +445,7 @@ EXTERNAL uint32_t deviceinfo_hdcp(const deviceinfo_video_output_t videoOutput, d
  * @brief Close the cached open connection if it exists.
  *
  */
-EXTERNAL void deviceinfo_dispose();
+EXTERNAL void deviceinfo_dispose(void);
 
 #ifdef __cplusplus
 } // extern "C"

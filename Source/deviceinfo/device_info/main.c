@@ -49,13 +49,22 @@ static void toHexString(
     }
 }
 
+#if defined(__APPLE__)
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#endif
+
 #define Trace(fmt, ...)                                 \
     do {                                                \
         fprintf(stdout, "<< " fmt "\n", ##__VA_ARGS__); \
         fflush(stdout);                                 \
     } while (0)
 
-void ShowMenu()
+#if defined(__APPLE__)
+    #pragma clang diagnostic pop
+#endif
+
+void ShowMenu(void)
 {
     printf("Enter\n"
            "\tI : Get ID as a string.\n"
@@ -80,7 +89,7 @@ void ShowMenu()
            );
 }
 
-int main()
+int main(void)
 {
     int16_t result = 0;
 
