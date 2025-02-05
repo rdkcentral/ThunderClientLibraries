@@ -478,36 +478,41 @@ namespace Linux {
 
             void Rendered()
             {
-                _display.Rendered(this);
+                if (_callback != nullptr) {
+                    _callback->Rendered(this);
+                }
             }
             void Published()
             {
-                _display.Published(this);
+                if (_callback != nullptr) {
+                    _callback->Published(this);
+                }
             }
 
             uint32_t Process()
             {
-               /* TODO:
-                *
-                * There needs to be a valid EGL context set externally, only in this case we can request 
-                * EGL to write the contents of the context to a EGL image that is backed by a shared buffer.
-                * The shared buffer is a DMA buffer that is created in the compositor plugin process. 
-                * 
-                * For WPE Webkit, If non-composited WebGL is enabled for Lightning apps, the DOM compositor is 
-                * skipped and as a result there is no valid EGL context set. 
-                * 
-                * I need to dive into this deeper if the whole EGL magic in the compositorclient can be skipped. 
-                */
+                return Core::ERROR_NONE;
+            }
 
-                uint32_t result(Core::ERROR_ILLEGAL_STATE);
+            void RequestRender() override
+            {
+                /* TODO:
+                 *
+                 * There needs to be a valid EGL context set externally, only in this case we can request
+                 * EGL to write the contents of the context to a EGL image that is backed by a shared buffer.
+                 * The shared buffer is a DMA buffer that is created in the compositor plugin process.
+                 *
+                 * For WPE Webkit, If non-composited WebGL is enabled for Lightning apps, the DOM compositor is
+                 * skipped and as a result there is no valid EGL context set.
+                 *
+                 * I need to dive into this deeper if the whole EGL magic in the compositorclient can be skipped.
+                 */
 
                 if (eglGetCurrentContext() != EGL_NO_CONTEXT) {
-                    result = (_buffer.Render() == true) ? Core::ERROR_NONE : Core::ERROR_BAD_REQUEST;
+                    _buffer.Render();
                 } else {
                     TRACE(Trace::Error, (_T("Skipping render, there is no EGL context set")));
                 }
-
-                return result;
             }
 
         private:
@@ -596,18 +601,8 @@ namespace Linux {
 
         int Process(const uint32_t data VARIABLE_IS_NOT_USED) override
         {
-            std::unique_lock<std::mutex> lock(_rendering);
-
-            for (auto begin = _surfaces.begin(), it = begin, end = _surfaces.end(); it != end; it++) {
-                SurfaceImplementation* surface = *it;
-
-                if (surface->Process() == Core::ERROR_NONE) {
-                    _pendingSurfaces |= (1 << surface->Id());
-                }
-            }
-
-            while (_pendingSurfaces != 0) {
-                _published.wait(lock);
+            for (SurfaceImplementation* surface : _surfaces) {
+                surface->Process();
             }
 
             return Core::ERROR_NONE;
@@ -646,16 +641,6 @@ namespace Linux {
         Exchange::IComposition::IDisplay* RemoteDisplay()
         {
             return _remoteDisplay;
-        }
-
-        void Rendered(SurfaceImplementation* /*surface*/)
-        {
-        }
-
-        void Published(SurfaceImplementation* surface)
-        {
-            _pendingSurfaces &= ~(1 << surface->Id());
-            _published.notify_all();
         }
 
     private:
@@ -790,8 +775,6 @@ namespace Linux {
         int _gpuId;
         gbm_device* _gbmDevice;
         uint32_t _pendingSurfaces;
-        std::mutex _rendering;
-        std::condition_variable _published;
     }; // class Display
 
     uint32_t Display::SurfaceImplementation::_surfaceIndex = 0;
@@ -810,8 +793,6 @@ namespace Linux {
         , _gpuId(-1)
         , _gbmDevice(nullptr)
         , _pendingSurfaces(0)
-        , _rendering()
-        , _published()
     {
         Core::PrivilegedRequest::Container descriptors;
         Core::PrivilegedRequest request;
