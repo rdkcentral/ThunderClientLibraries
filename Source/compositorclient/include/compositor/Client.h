@@ -143,6 +143,7 @@ namespace Compositor {
             virtual void Opacity(const uint32_t) { }
             virtual void Visibility(const bool) { }
             virtual void Resize(const int, const int, const int, const int) { }
+            virtual void RequestRender() { }
         };
 
         static IDisplay* Instance(const std::string&);
