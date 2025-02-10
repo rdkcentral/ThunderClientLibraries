@@ -164,13 +164,40 @@ public:
 };
 
 class Dispatcher : public Core::PrivilegedRequest {
+private:
+    class Callback : public Core::PrivilegedRequest::ICallback {
+    public:
+        Callback() = delete;
+        Callback(Callback&&) = delete;
+        Callback(const Callback&) = delete;
+        Callback& operator=(Callback&&) = delete;
+        Callback& operator=(const Callback&) = delete;
+
+        Callback(Dispatcher& parent) : _parent(parent) {}
+        ~Callback() override = default;
+
+    public:
+        void Request(const uint32_t id, Container& descriptors) override {
+           _parent.Request(id, descriptors);
+        }
+        void Offer(const uint32_t id, Container&& descriptors) override {
+           _parent.Offer(id, std::move(descriptors));
+        }
+
+    private:
+        Dispatcher& _parent;
+    };
+
 public:
     Dispatcher(Dispatcher&&) = delete;
     Dispatcher(const Dispatcher&) = delete;
     Dispatcher& operator=(Dispatcher&&) = delete;
     Dispatcher& operator=(const Dispatcher&) = delete;
 
-    Dispatcher() = default;
+    Dispatcher() 
+        : Core::PrivilegedRequest(&_callback) 
+        , _callback(*this) {
+    }
     ~Dispatcher() override = default;
 
     void Add(const uint32_t id, Compositor::CompositorBuffer& buffer)
@@ -185,26 +212,33 @@ public:
             _buffer = nullptr;
         }
     }
-    uint8_t Service(const uint32_t id, const uint8_t maxSize, int container[]) override
-    {
+    uint32_t Request(const uint32_t waitTime, const string& identifier, const uint32_t requestId, Container& fds) {
+        return (Core::PrivilegedRequest::Request(waitTime, identifier, requestId, fds));
+    }
+
+private:
+    void Request(const uint32_t id, Container& descriptors) {
         if ((id == _id) && (_buffer != nullptr)) {
-            uint8_t result = _buffer->Descriptors(maxSize, container);
+            int container[Core::PrivilegedRequest::MaxDescriptorsPerRequest];
+            uint8_t result = _buffer->Descriptors(sizeof(container), container);
 
             if (result > 0) {
                 printf("Handing out: %d descriptors: [", result);
                 for (uint8_t index = 0; index < (result - 1); index++) {
+                    descriptors.emplace_back(container[index]);
                     printf("%d,", container[index]);
                 }
                 printf("%d]\n", container[result - 1]);
             }
-            return (result);
         }
-        return 0;
+    }
+    void Offer(const uint32_t id, Container&& descriptors) {
     }
 
 private:
     uint32_t _id;
     Compositor::CompositorBuffer* _buffer;
+    Callback _callback;
 };
 
 } // namespace Test
