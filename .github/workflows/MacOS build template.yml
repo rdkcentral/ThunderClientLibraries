@@ -1,4 +1,4 @@
-name: Linux build template
+name: MacOS build template
 
 on:
   workflow_call:
@@ -6,29 +6,20 @@ on:
 jobs:
   ThunderClientLibraries:
 
-    runs-on: ubuntu-24.04
+    runs-on: macos-14
 
     strategy:
       matrix:
         build_type: [Debug, Release, MinSizeRel]
-        architecture: [32, 64]
 
-    name: Build type - ${{matrix.build_type}}${{matrix.architecture == '32' && ' x86' || ''}}
+    name: Build type - ${{matrix.build_type}}
     steps:
 # --------- Packages & artifacts ---------
     - name: Install necessary packages
-      uses: nick-fields/retry@v3
-      with:
-        timeout_minutes: 10
-        max_attempts: 10
-        command: |
-          sudo gem install apt-spy2
-          sudo apt-spy2 fix --commit --launchpad --country=US
-          echo "deb http://archive.ubuntu.com/ubuntu/ jammy main universe restricted multiverse" | sudo tee -a /etc/apt/sources.list
-          echo "deb http://archive.ubuntu.com/ubuntu/ jammy-updates main universe restricted multiverse" | sudo tee -a /etc/apt/sources.list
-          ${{matrix.architecture == '32' && 'sudo dpkg --add-architecture i386' || ':'}}
-          sudo apt-get update
-          sudo apt install python3-pip build-essential cmake ninja-build libusb-1.0-0-dev ${{matrix.architecture == '32' && 'zlib1g-dev:i386 libssl-dev:i386 gcc-13-multilib g++-13-multilib' || 'zlib1g-dev libssl-dev'}}
+      run: |
+          brew update
+          brew upgrade
+          brew install ninja zlib
           python3 -m venv venv
           source venv/bin/activate
           pip install jsonref
@@ -36,13 +27,13 @@ jobs:
     - name: Download artifacts
       uses: actions/download-artifact@v4
       with:
-        name: ThunderInterfaces-${{matrix.build_type}}${{matrix.architecture == '32' && '_x86' || ''}}-artifact
+        name: ThunderInterfaces-${{matrix.build_type}}-artifact
         path: ${{matrix.build_type}}
 
     - name: Unpack files
       run: |
-        tar -xvzf ${{matrix.build_type}}/${{matrix.build_type}}${{matrix.architecture == '32' && '_x86' || ''}}.tar.gz
-        rm ${{matrix.build_type}}/${{matrix.build_type}}${{matrix.architecture == '32' && '_x86' || ''}}.tar.gz
+        tar -xvzf ${{matrix.build_type}}/${{matrix.build_type}}.tar.gz
+        rm ${{matrix.build_type}}/${{matrix.build_type}}.tar.gz
 
 # ----- Regex & checkout -----
     - name: Checkout ThunderClientLibraries
@@ -64,12 +55,12 @@ jobs:
     - name: Build ThunderClientLibraries
       run: |
         source venv/bin/activate
-        ${{matrix.architecture == '32' && 'export PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig:$PKG_CONFIG_PATH' || ':'}}
         cmake -G Ninja -S ThunderClientLibraries -B ${{matrix.build_type}}/build/ThunderClientLibraries \
-        -DCMAKE_CXX_FLAGS="-Wall -Wextra -Wpedantic -Werror -m${{matrix.architecture}}" \
-        -DCMAKE_C_FLAGS="-Wall -Wextra -Wpedantic -Werror -m${{matrix.architecture}}" \
+        -DCMAKE_CXX_FLAGS="-Wall -Wextra -Wpedantic -Werror" \
+        -DCMAKE_C_FLAGS="-Wall -Wextra -Wpedantic -Werror" \
         -DCMAKE_INSTALL_PREFIX="${{matrix.build_type}}/install/usr" \
         -DCMAKE_MODULE_PATH="${PWD}/${{matrix.build_type}}/install/usr/include/WPEFramework/Modules" \
+        -DCMAKE_CXX_STANDARD=11 \
         -DBLUETOOTHAUDIOSINK=ON \
         -DBLUETOOTHAUDIOSOURCE=ON \
         -DCDMI=ON \
@@ -86,10 +77,10 @@ jobs:
         cmake --build ${{matrix.build_type}}/build/ThunderClientLibraries --target install
 
     - name: Tar files
-      run: tar -czvf ${{matrix.build_type}}${{matrix.architecture == '32' && '_x86' || ''}}.tar.gz ${{matrix.build_type}}
+      run: tar -czvf ${{matrix.build_type}}.tar.gz ${{matrix.build_type}}
 
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
-        name: ThunderClientLibraries-${{matrix.build_type}}${{matrix.architecture == '32' && '_x86' || ''}}-artifact
-        path: ${{matrix.build_type}}${{matrix.architecture == '32' && '_x86' || ''}}.tar.gz
+        name: ThunderClientLibraries-${{matrix.build_type}}-artifact
+        path: ${{matrix.build_type}}.tar.gz

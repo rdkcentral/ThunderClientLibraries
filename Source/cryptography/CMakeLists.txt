@@ -31,7 +31,10 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # remove the -as-needed flag because it can lead to losing dependencies when we're mixing static and shared libs
 string(REPLACE "-Wl,--as-needed" "" CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-as-needed")
+
+if(NOT APPLE)
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-as-needed")
+endif()
 
 option(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY "Include explicitly a software based cryptography library" OFF)
 
@@ -52,8 +55,19 @@ target_link_libraries(${TARGET}
         ${NAMESPACE}Core::${NAMESPACE}Core
         ${NAMESPACE}COM::${NAMESPACE}COM
         CompileSettingsDebug::CompileSettingsDebug
-        -Wl,--whole-archive implementation -Wl,--no-whole-archive
 )
+
+if(NOT APPLE)
+    target_link_libraries(${TARGET}
+        PRIVATE
+            -Wl,--whole-archive implementation -Wl,--no-whole-archive
+    )
+else()
+    target_link_libraries(${TARGET}
+        PRIVATE
+            implementation
+    )
+endif()
 
 target_include_directories(${TARGET}
     PUBLIC

@@ -225,7 +225,7 @@ EXTERNAL int8_t playerinfo_video_codecs(playerinfo_videocodec_t array[], const u
  * @return true if atmos is supported, 
  *         false otherwise
  */
-EXTERNAL bool playerinfo_is_dolby_atmos_supported();
+EXTERNAL bool playerinfo_is_dolby_atmos_supported(void);
 
 /**
  * @brief Get Sound Mode - Mono/Stereo/Surround etc.
@@ -269,7 +269,7 @@ EXTERNAL uint32_t playerinfo_get_dolby_mode(playerinfo_dolby_mode_t* mode);
  * @brief Close the cached open connection if it exists.
  *
  */
-EXTERNAL void playerinfo_dispose();
+EXTERNAL void playerinfo_dispose(void);
 
 #ifdef __cplusplus
 } // extern "C"

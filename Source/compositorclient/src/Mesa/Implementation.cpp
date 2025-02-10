@@ -46,6 +46,9 @@ extern "C" {
 #include <compositor/Client.h>
 #include "RenderAPI.h"
 
+#include <condition_variable>
+#include <mutex>
+
 namespace Thunder {
 namespace Linux {
     namespace {
@@ -78,14 +81,16 @@ namespace Linux {
     }
 
     class Display : public Compositor::IDisplay {
-        static constexpr uint32_t DisplayId = 0;
-
     public:
         Display() = delete;
+        Display(Display&&) = delete;
         Display(const Display&) = delete;
+        Display& operator=(Display&&) = delete;
         Display& operator=(const Display&) = delete;
 
     private:
+        static constexpr uint32_t DisplayId = 0;
+
         Display(const std::string& displayName);
 
         class SurfaceImplementation;
@@ -98,220 +103,236 @@ namespace Linux {
         static void VirtualMouseCallback(mouseactiontype, const unsigned short, const signed short, const signed short);
         static void VirtualTouchScreenCallback(touchactiontype, const unsigned short, const unsigned short, const unsigned short);
 
-        class RemoteBuffer : public Thunder::Compositor::CompositorBufferType<4> {
-        private:
-            using BaseClass = Thunder::Compositor::CompositorBufferType<4>;
-
-        public:
-            RemoteBuffer() = delete;
-            RemoteBuffer(RemoteBuffer&&) = delete;
-            RemoteBuffer(const RemoteBuffer&) = delete;
-            RemoteBuffer& operator=(const RemoteBuffer&) = delete;
-
-            RemoteBuffer(const uint32_t id, Core::PrivilegedRequest::Container& descriptors)
-                : BaseClass(id, descriptors)
-            {
-                TRACE(Trace::Information, (_T("RemoteBuffer[%p] ready %dx%d format=0x%04X"), this, Width(), Height(), Format()));
-            }
-
-            virtual ~RemoteBuffer()
-            {
-                TRACE(Trace::Information, (_T("RemoteBuffer[%p] Destructed"), this));
-            }
-
-            void Render() override
-            {
-                ASSERT(false); // This should never be called, we are a remote buffer
-            }
-
-            uint32_t AddRef() const override
-            {
-                return Core::ERROR_COMPOSIT_OBJECT;
-            }
-
-            uint32_t Release() const override
-            {
-                return Core::ERROR_COMPOSIT_OBJECT;
-            }
-        };
-
         class SurfaceImplementation : public Compositor::IDisplay::ISurface {
         private:
-            static constexpr GLuint target = GL_TEXTURE_2D;
-            static constexpr GLuint filter = GL_LINEAR;
-            static constexpr GLuint wrap = GL_CLAMP_TO_EDGE;
+            class EGLBuffer : public Compositor::ClientBuffer {
+            public:
+                EGLBuffer(EGLBuffer&&) = delete;
+                EGLBuffer(const EGLBuffer&) = delete;
+                EGLBuffer& operator=(EGLBuffer&&) = delete;
+                EGLBuffer& operator=(const EGLBuffer&) = delete;
 
-            void Fence(const EGLDisplay dpy)
-            {
-                ASSERT(dpy != EGL_NO_DISPLAY);
-                EGLSync fence = _egl.eglCreateSync(dpy, EGL_SYNC_FENCE, NULL);
-
-                glFlush(); // Mandatory
-
-                _egl.eglClientWaitSync(dpy, fence, EGL_SYNC_FLUSH_COMMANDS_BIT_KHR, EGL_FOREVER_KHR);
-                _egl.eglDestroySync(dpy, fence);
-            }
-
-            bool CreateImage(EGLDisplay dpy)
-            {
-                ASSERT(_remoteClient != nullptr);
-                ASSERT((_remoteBuffer.get() != nullptr) && (_remoteBuffer->IsValid() == true));
-
-                Exchange::ICompositionBuffer::IIterator* planes = _remoteBuffer->Planes(10);
-                ASSERT(planes != nullptr);
-
-                planes->Next();
-                ASSERT(planes->IsValid() == true);
-
-                Exchange::ICompositionBuffer::IPlane* plane = planes->Plane();
-                ASSERT(plane != nullptr); // we should atleast have 1 plane....
-
-                Compositor::API::Attributes<EGLAttrib> imageAttributes;
-
-                imageAttributes.Append(EGL_WIDTH, _remoteBuffer->Width());
-                imageAttributes.Append(EGL_HEIGHT, _remoteBuffer->Height());
-                imageAttributes.Append(EGL_LINUX_DRM_FOURCC_EXT, _remoteBuffer->Format());
-
-                imageAttributes.Append(EGL_DMA_BUF_PLANE0_FD_EXT, plane->Accessor());
-                imageAttributes.Append(EGL_DMA_BUF_PLANE0_OFFSET_EXT, plane->Offset());
-                imageAttributes.Append(EGL_DMA_BUF_PLANE0_PITCH_EXT, plane->Stride());
-                imageAttributes.Append(EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT, (_remoteBuffer->Modifier() & 0xFFFFFFFF));
-                imageAttributes.Append(EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT, (_remoteBuffer->Modifier() >> 32));
-
-                TRACE(Trace::Information, (_T("Add Plane 0 fd=%d, offset=%d, stride=%d, modifier=%" PRIu64), plane->Accessor(), plane->Offset(), plane->Stride(), _remoteBuffer->Modifier()));
-
-                if (planes->Next() == true) {
-                    plane = planes->Plane();
-
-                    ASSERT(plane != nullptr);
-
-                    imageAttributes.Append(EGL_DMA_BUF_PLANE1_FD_EXT, plane->Accessor());
-                    imageAttributes.Append(EGL_DMA_BUF_PLANE1_OFFSET_EXT, plane->Offset());
-                    imageAttributes.Append(EGL_DMA_BUF_PLANE1_PITCH_EXT, plane->Stride());
-                    imageAttributes.Append(EGL_DMA_BUF_PLANE1_MODIFIER_LO_EXT, (_remoteBuffer->Modifier() & 0xFFFFFFFF));
-                    imageAttributes.Append(EGL_DMA_BUF_PLANE1_MODIFIER_HI_EXT, (_remoteBuffer->Modifier() >> 32));
-
-                    TRACE(Trace::Information, (_T("Add Plane 1 fd=%d, offset=%d, stride=%d, modifier=%" PRIu64), plane->Accessor(), plane->Offset(), plane->Stride(), _remoteBuffer->Modifier()));
+                EGLBuffer(SurfaceImplementation& parent)
+                    : Compositor::ClientBuffer()
+                    , _parent(parent)
+                    , _display(EGL_NO_DISPLAY)
+                    , _textureId(0)
+                    , _frameBuffer(0)
+                    , _eglImage(EGL_NO_IMAGE)
+                    , _eglSync()
+                {
+                }
+                ~EGLBuffer()
+                {
+                    if (_frameBuffer != 0) {
+                        glDeleteFramebuffers(1, &_frameBuffer);
+                    }
+                    if (_textureId != 0) {
+                        glDeleteTextures(1, &_textureId);
+                    }
+                    if (_eglSync != nullptr) {
+                        _egl.eglDestroySync(_display, _eglSync);
+                    }
+                    if (_eglImage != EGL_NO_IMAGE) {
+                        _egl.eglDestroyImage(_display, _eglImage);
+                    }
                 }
 
-                if (planes->Next() == true) {
-                    plane = planes->Plane();
+            public:
+                /*
+                 * @brief   Creates a EGL image using the current EGL context.
+                 *
+                 * @note    This should be called AFTER an EGL is initialised in the
+                 *          parent process.
+                 */
+                EGLImage CreateImage()
+                {
+                    ICompositionBuffer::IIterator* planes = Acquire(Core::infinite);
 
-                    ASSERT(plane != nullptr);
+                    EGLImage eglImage = EGL_NO_IMAGE;
 
-                    imageAttributes.Append(EGL_DMA_BUF_PLANE2_FD_EXT, plane->Accessor());
-                    imageAttributes.Append(EGL_DMA_BUF_PLANE2_OFFSET_EXT, plane->Offset());
-                    imageAttributes.Append(EGL_DMA_BUF_PLANE2_PITCH_EXT, plane->Stride());
-                    imageAttributes.Append(EGL_DMA_BUF_PLANE2_MODIFIER_LO_EXT, (_remoteBuffer->Modifier() & 0xFFFFFFFF));
-                    imageAttributes.Append(EGL_DMA_BUF_PLANE2_MODIFIER_HI_EXT, (_remoteBuffer->Modifier() >> 32));
+                    if (planes != nullptr) {
+                        uint32_t width = Compositor::ClientBuffer::Width();
+                        uint32_t height = Compositor::ClientBuffer::Height();
+                        uint32_t format = Compositor::ClientBuffer::Format();
+                        uint64_t modifier = Compositor::ClientBuffer::Modifier();
 
-                    TRACE(Trace::Information, (_T("Add Plane 2 fd=%d, offset=%d, stride=%d, modifier=%" PRIu64), plane->Accessor(), plane->Offset(), plane->Stride(), _remoteBuffer->Modifier()));
+                        _display = eglGetCurrentDisplay();
+
+                        ASSERT(_display != EGL_NO_DISPLAY);
+
+                        _eglSync = _egl.eglCreateSync(_display, EGL_SYNC_FENCE, NULL);
+
+                        planes->Next();
+                        ASSERT(planes->IsValid() == true);
+
+                        Compositor::API::Attributes<EGLAttrib> imageAttributes;
+
+                        imageAttributes.Append(EGL_WIDTH, width);
+                        imageAttributes.Append(EGL_HEIGHT, height);
+                        imageAttributes.Append(EGL_LINUX_DRM_FOURCC_EXT, format);
+
+                        imageAttributes.Append(EGL_DMA_BUF_PLANE0_FD_EXT, planes->Descriptor());
+                        imageAttributes.Append(EGL_DMA_BUF_PLANE0_OFFSET_EXT, planes->Offset());
+                        imageAttributes.Append(EGL_DMA_BUF_PLANE0_PITCH_EXT, planes->Stride());
+                        imageAttributes.Append(EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT, modifier & 0xFFFFFFFF);
+                        imageAttributes.Append(EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT, modifier >> 32);
+
+                        TRACE(Trace::Information, (_T("Add Plane 0 fd=%d, offset=%d, stride=%d, modifier=%" PRIu64), planes->Descriptor(), planes->Offset(), planes->Stride(), modifier));
+
+                        if (planes->Next() == true) {
+                            imageAttributes.Append(EGL_DMA_BUF_PLANE1_FD_EXT, planes->Descriptor());
+                            imageAttributes.Append(EGL_DMA_BUF_PLANE1_OFFSET_EXT, planes->Offset());
+                            imageAttributes.Append(EGL_DMA_BUF_PLANE1_PITCH_EXT, planes->Stride());
+                            imageAttributes.Append(EGL_DMA_BUF_PLANE1_MODIFIER_LO_EXT, modifier & 0xFFFFFFFF);
+                            imageAttributes.Append(EGL_DMA_BUF_PLANE1_MODIFIER_HI_EXT, modifier >> 32);
+
+                            TRACE(Trace::Information, (_T("Add Plane 1 fd=%d, offset=%d, stride=%d, modifier=%" PRIu64), planes->Descriptor(), planes->Offset(), planes->Stride(), modifier));
+                        }
+
+                        if (planes->Next() == true) {
+                            imageAttributes.Append(EGL_DMA_BUF_PLANE2_FD_EXT, planes->Descriptor());
+                            imageAttributes.Append(EGL_DMA_BUF_PLANE2_OFFSET_EXT, planes->Offset());
+                            imageAttributes.Append(EGL_DMA_BUF_PLANE2_PITCH_EXT, planes->Stride());
+                            imageAttributes.Append(EGL_DMA_BUF_PLANE2_MODIFIER_LO_EXT, modifier & 0xFFFFFFFF);
+                            imageAttributes.Append(EGL_DMA_BUF_PLANE2_MODIFIER_HI_EXT, modifier >> 32);
+
+                            TRACE(Trace::Information, (_T("Add Plane 2 fd=%d, offset=%d, stride=%d, modifier=%" PRIu64), planes->Descriptor(), planes->Offset(), planes->Stride(), modifier));
+                        }
+
+                        if (planes->Next() == true) {
+                            imageAttributes.Append(EGL_DMA_BUF_PLANE3_FD_EXT, planes->Descriptor());
+                            imageAttributes.Append(EGL_DMA_BUF_PLANE3_OFFSET_EXT, planes->Offset());
+                            imageAttributes.Append(EGL_DMA_BUF_PLANE3_PITCH_EXT, planes->Stride());
+                            imageAttributes.Append(EGL_DMA_BUF_PLANE3_MODIFIER_LO_EXT, (modifier & 0xFFFFFFFF));
+                            imageAttributes.Append(EGL_DMA_BUF_PLANE3_MODIFIER_HI_EXT, (modifier >> 32));
+
+                            TRACE(Trace::Information, (_T("Add Plane 3 fd=%d, offset=%d, stride=%d, modifier=%" PRIu64), planes->Descriptor(), planes->Offset(), planes->Stride(), modifier));
+                        }
+
+                        Relinquish();
+
+                        imageAttributes.Append(EGL_IMAGE_PRESERVED_KHR, EGL_TRUE);
+
+                        eglImage = _egl.eglCreateImage(_display, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, imageAttributes);
+
+                        glFlush(); // Mandatory
+
+                        TRACE(Trace::Information, (_T("Created image %dx%d(hxb) for buffer, _eglImage=%p, format=0x%04X"), height, width, eglImage, format));
+                    } else {
+                        TRACE(Trace::Error, (_T("Could not acquire the buffer planes in time")));
+                    }
+
+                    return eglImage;
+                }
+                bool Render()
+                {
+                    bool succeeded = false;
+
+                    // Make sure this done at the right time, after eglInitialize and only needed once.
+                    if (_eglImage == EGL_NO_IMAGE) {
+                        _eglImage = CreateImage();
+                    }
+
+                    ASSERT(_eglImage != EGL_NO_IMAGE);
+
+                    // Lock the buffer
+                    if (Acquire(100) != nullptr) {
+                        constexpr const GLuint target = GL_TEXTURE_2D;
+                        constexpr const GLuint filter = GL_LINEAR;
+                        constexpr const GLuint wrap = GL_CLAMP_TO_EDGE;
+
+                        // Just an arbitrary selected unit
+                        glActiveTexture(GL_TEXTURE0);
+
+                        if (_textureId != 0) {
+                            glDeleteTextures(1, &_textureId);
+                        }
+
+                        // GLES (extension: GL_OES_EGL_image_external): Create GL texture from EGL image
+                        glGenTextures(1, &_textureId);
+                        glBindTexture(target, _textureId);
+                        glTexParameteri(target, GL_TEXTURE_MIN_FILTER, filter);
+                        glTexParameteri(target, GL_TEXTURE_MAG_FILTER, filter);
+                        glTexParameteri(target, GL_TEXTURE_WRAP_S, wrap);
+                        glTexParameteri(target, GL_TEXTURE_WRAP_T, wrap);
+
+                        _gl.glEGLImageTargetTexture2DOES(target, _eglImage);
+
+                        if (_frameBuffer != 0) {
+                            glDeleteFramebuffers(1, &_frameBuffer);
+                        }
+
+                        glGenFramebuffers(1, &_frameBuffer);
+                        glBindFramebuffer(GL_FRAMEBUFFER, _frameBuffer);
+
+                        // Bind the created texture as one of the buffers of the frame buffer object
+                        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target, _textureId, 0 /* level */);
+
+                        succeeded = glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+
+                        if (succeeded != true) {
+                            glDeleteFramebuffers(1, &_frameBuffer);
+                            glDeleteTextures(1, &_textureId);
+
+                            _frameBuffer = 0;
+                            _textureId = 0;
+                        }
+
+                        // Wait for all EGL actions to be completed
+                        _egl.eglClientWaitSync(_display, _eglSync, EGL_SYNC_FLUSH_COMMANDS_BIT_KHR, EGL_FOREVER_KHR);
+
+                        Relinquish();
+
+                        // Signal the other side we have a completed buffer, ready to show...
+                        RequestRender();
+                    }
+                    return (succeeded);
+                }
+                void Rendered() override
+                {
+                    _parent.Rendered();
+                }
+                void Published() override
+                {
+                    _parent.Published();
                 }
 
-                if (planes->Next() == true) {
-                    plane = planes->Plane();
-
-                    ASSERT(plane != nullptr);
-
-                    imageAttributes.Append(EGL_DMA_BUF_PLANE3_FD_EXT, plane->Accessor());
-                    imageAttributes.Append(EGL_DMA_BUF_PLANE3_OFFSET_EXT, plane->Offset());
-                    imageAttributes.Append(EGL_DMA_BUF_PLANE3_PITCH_EXT, plane->Stride());
-                    imageAttributes.Append(EGL_DMA_BUF_PLANE3_MODIFIER_LO_EXT, (_remoteBuffer->Modifier() & 0xFFFFFFFF));
-                    imageAttributes.Append(EGL_DMA_BUF_PLANE3_MODIFIER_HI_EXT, (_remoteBuffer->Modifier() >> 32));
-
-                    TRACE(Trace::Information, (_T("Add Plane 3 fd=%d, offset=%d, stride=%d, modifier=%" PRIu64), plane->Accessor(), plane->Offset(), plane->Stride(), _remoteBuffer->Modifier()));
-                }
-
-                imageAttributes.Append(EGL_IMAGE_PRESERVED_KHR, EGL_TRUE);
-
-                _eglImage = _egl.eglCreateImage(dpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, imageAttributes);
-                ASSERT(_eglImage != EGL_NO_IMAGE);
-
-                glFlush(); // Mandatory
-
-                TRACE(Trace::Information, (_T("Created image %dx%d(hxb) on buffer id=%d, _eglImage=%p, format=0x%04X"), _remoteBuffer->Height(), _remoteBuffer->Width(), _remoteBuffer->Identifier(), _eglImage, _remoteBuffer->Format()));
-
-                return (_eglImage != EGL_NO_IMAGE);
-            }
-
-            bool RenderImage()
-            {
-                constexpr const GLuint target = GL_TEXTURE_2D;
-                constexpr const GLuint filter = GL_LINEAR;
-                constexpr const GLuint wrap = GL_CLAMP_TO_EDGE;
-
-                bool ret(false);
-
-                // Just an arbitrary selected unit
-                glActiveTexture(GL_TEXTURE0);
-
-                if (_textureId != 0) {
-                    glDeleteTextures(1, &_textureId);
-                    _textureId = 0;
-                }
-
-                // GLES (extension: GL_OES_EGL_image_external): Create GL texture from EGL image
-                glGenTextures(1, &_textureId);
-                glBindTexture(target, _textureId);
-                glTexParameteri(target, GL_TEXTURE_MIN_FILTER, filter);
-                glTexParameteri(target, GL_TEXTURE_MAG_FILTER, filter);
-                glTexParameteri(target, GL_TEXTURE_WRAP_S, wrap);
-                glTexParameteri(target, GL_TEXTURE_WRAP_T, wrap);
-
-                _gl.glEGLImageTargetTexture2DOES(target, _eglImage);
-
-                if (_textureId != 0) {
-                    glDeleteFramebuffers(1, &_frameBuffer);
-                    _frameBuffer = 0;
-                }
-
-                glGenFramebuffers(1, &_frameBuffer);
-                glBindFramebuffer(GL_FRAMEBUFFER, _frameBuffer);
-
-                // Bind the created texture as one of the buffers of the frame buffer object
-                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target, _textureId, 0 /* level */);
-
-                ret = glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
-
-                if (ret != true) {
-                    glDeleteFramebuffers(1, &_frameBuffer);
-                    glDeleteTextures(1, &_textureId);
-
-                    _frameBuffer = 0;
-                    _textureId = 0;
-                }
-
-                return ret;
-            }
+            private:
+                SurfaceImplementation& _parent;
+                EGLDisplay _display;
+                GLuint _textureId;
+                GLuint _frameBuffer;
+                EGLImage _eglImage;
+                EGLSync _eglSync;
+                Compositor::API::EGL _egl;
+                Compositor::API::GL _gl;
+            };
 
         public:
             SurfaceImplementation() = delete;
+            SurfaceImplementation(SurfaceImplementation&&) = delete;
             SurfaceImplementation(const SurfaceImplementation&) = delete;
+            SurfaceImplementation& operator=(SurfaceImplementation&&) = delete;
             SurfaceImplementation& operator=(const SurfaceImplementation&) = delete;
 
             SurfaceImplementation(Display& display, const std::string& name, const uint32_t width, const uint32_t height)
                 : _adminLock()
+                , _id(Core::InterlockedIncrement(_surfaceIndex))
+                , _name()
                 , _display(display)
                 , _remoteClient(nullptr)
-                , _remoteBuffer()
                 , _keyboard(nullptr)
                 , _wheel(nullptr)
                 , _pointer(nullptr)
                 , _touchpanel(nullptr)
                 , _surface(nullptr)
-                , _eglImage(EGL_NO_IMAGE)
-                , _textureId(0)
-                , _frameBuffer(0)
-                , _egl()
-                , _gl()
-                , _eglSync(nullptr)
+                , _buffer(*this)
             {
-
-                TRACE(Trace::Information, (_T("Construct surface %s  %dx%d (hxb)"), name.c_str(), height, width));
+                TRACE(Trace::Information, (_T("Construct surface[%d] %s  %dx%d (hxb)"), _id, name.c_str(), height, width));
 
                 _display.AddRef();
 
-                // maybe we should use the SmartInterfaceType for _remoteClient
                 _remoteClient = _display.CreateRemoteSurface(name, width, height);
 
                 if (_remoteClient != nullptr) {
@@ -320,30 +341,31 @@ namespace Linux {
                     Core::PrivilegedRequest::Container descriptors;
                     Core::PrivilegedRequest request;
 
+                    _name = _remoteClient->Name();
+
                     if (request.Request(1000, BufferConnector(), _remoteClient->Native(), descriptors) == Core::ERROR_NONE) {
-                        _remoteBuffer.reset(new RemoteBuffer(_remoteClient->Native(), descriptors));
+                        _buffer.Load(descriptors);
 
-                        if (_remoteBuffer.get() != nullptr) {
-                            TRACE(Trace::Information, (_T("Remote buffer %p ready %dx%d format=0x%04X"), _remoteBuffer.get(), _remoteBuffer->Width(), _remoteBuffer->Height(), _remoteBuffer->Format()));
-
-                            _surface = gbm_surface_create(
-                                static_cast<gbm_device*>(_display.Native()),
-                                _remoteBuffer->Width(), _remoteBuffer->Height(), _remoteBuffer->Format(),
-                                GBM_BO_USE_RENDERING /* used for rendering */);
-                        }
+                        _surface = gbm_surface_create(
+                            static_cast<gbm_device*>(_display.Native()),
+                            _buffer.Width(), _buffer.Height(), _buffer.Format(),
+                            GBM_BO_USE_RENDERING /* used for rendering */);
 
                         ASSERT(_surface != nullptr);
+
+                        Core::ResourceMonitor::Instance().Register(_buffer);
+
+                        TRACE(Trace::Information, (_T("Surface %p ready %dx%d format=0x%04X"), _surface, _buffer.Width(), _buffer.Height(), _buffer.Format()));
                     }
-                } else {
-                    TRACE(Trace::Error, (_T("Could not create remote surface for surface %s." ), name.c_str()));
                 }
 
                 _display.Register(this);
             }
-
-            virtual ~SurfaceImplementation() /*override*/
+            ~SurfaceImplementation() override
             {
                 _display.Unregister(this);
+
+                Core::ResourceMonitor::Instance().Unregister(_buffer);
 
                 if (_keyboard != nullptr) {
                     _keyboard->Release();
@@ -361,48 +383,31 @@ namespace Linux {
                     _touchpanel->Release();
                 }
 
-                if (_frameBuffer != 0) {
-                    glDeleteFramebuffers(1, &_frameBuffer);
-                }
-
-                if (_textureId != 0) {
-                    glDeleteTextures(1, &_textureId);
-                }
-
-                EGLDisplay dpy = eglGetCurrentDisplay();
-
-                if (_eglSync != nullptr) {
-                    _egl.eglDestroySync(dpy, _eglSync);
-                }
-
-                if (_eglImage != EGL_NO_IMAGE) {
-                    _egl.eglDestroyImage(dpy, _eglImage);
-                }
-
-                if (_surface != nullptr) {
-                    gbm_surface_destroy(_surface);
-                }
-
-                _remoteBuffer.reset(nullptr);
-
+                // Cleanup the remote client buffers
                 if (_remoteClient != nullptr) {
                     _remoteClient->Release();
                 }
 
                 _display.Release();
+
+                if (_surface != nullptr) {
+                    gbm_surface_destroy(_surface);
+                }
             }
 
+        public:
             EGLNativeWindowType Native() const override
             {
-                return static_cast<EGLNativeWindowType>(_surface);
+                return (static_cast<EGLNativeWindowType>(_surface));
             }
-
             std::string Name() const override
             {
-                ASSERT(_remoteClient != nullptr);
-                return _remoteClient->Name();
+                return (_name);
             }
-
+            uint32_t Id() const override
+            {
+                return _id;
+            }
             void Keyboard(Compositor::IDisplay::IKeyboard* keyboard) override
             {
                 assert((_keyboard == nullptr) ^ (keyboard == nullptr));
@@ -427,18 +432,14 @@ namespace Linux {
                 _touchpanel = touchpanel;
                 _touchpanel->AddRef();
             }
-
             int32_t Width() const override
             {
-                ASSERT(_remoteClient != nullptr);
-                return _remoteClient->Geometry().width;
+                return (static_cast<int32_t>(_buffer.Width()));
             }
             int32_t Height() const override
             {
-                ASSERT(_remoteClient != nullptr);
-                return _remoteClient->Geometry().height;
+                return (static_cast<int32_t>(_buffer.Height()));
             }
-
             inline void SendKey(const uint32_t key, const IKeyboard::state action, const uint32_t timestamp VARIABLE_IS_NOT_USED)
             {
                 if (_keyboard != nullptr) {
@@ -470,58 +471,39 @@ namespace Linux {
                 }
             }
 
+            void Rendered()
+            {
+                _display.Rendered(this);
+            }
+            void Published()
+            {
+                _display.Published(this);
+            }
+
             uint32_t Process()
             {
-                EGLDisplay dpy = eglGetCurrentDisplay();
-
-                // A remote ClientSurface has been created and the IRender interface is supported so the compositor is able to support scan out for this client
-                if ((_remoteBuffer.get() != nullptr) && (_remoteBuffer->IsValid() == true) && (_remoteClient != nullptr) && (dpy != EGL_NO_DISPLAY)) {
-
-                    if (_eglSync == nullptr) {
-                        _eglSync = _egl.eglCreateSync(dpy, EGL_SYNC_FENCE, NULL);
-                    }
-
-                    if (_eglImage == EGL_NO_IMAGE) {
-                        CreateImage(dpy);
-                    }
-
-                    // Lock the buffer
-                    _remoteBuffer->Planes(10);
-
-                    RenderImage();
-
-                    // Wait for all EGL actions to be completed
-                    _egl.eglClientWaitSync(dpy, _eglSync, EGL_SYNC_FLUSH_COMMANDS_BIT_KHR, EGL_FOREVER_KHR);
-
-                    // Signal the other side to render the buffer
-                    _remoteBuffer->Completed(true);
-                } else {
-                    TRACE(Trace::Error, ("Failed to process, _remoteBuffer: %s, _remoteClient: %s, EGLDisplay: %s", ((_remoteBuffer->IsValid() == true) ? "OK" : "NOK"), ((_remoteClient != nullptr) ? "OK" : "NOK"), ((dpy != EGL_NO_DISPLAY) ? "OK" : "NOK")));
-                }
-
-                return Core::ERROR_NONE;
+                return (_buffer.Render() == true) ? Core::ERROR_NONE : Core::ERROR_BAD_REQUEST;
             }
 
         private:
             mutable Core::CriticalSection _adminLock;
+            const uint8_t _id;
+            string _name;
             Display& _display;
             Exchange::IComposition::IClient* _remoteClient;
-            std::unique_ptr<RemoteBuffer> _remoteBuffer;
             IKeyboard* _keyboard;
             IWheel* _wheel;
             IPointer* _pointer;
             ITouchPanel* _touchpanel;
             struct gbm_surface* _surface;
-            EGLImage _eglImage;
-            GLuint _textureId;
-            GLuint _frameBuffer;
-            Compositor::API::EGL _egl;
-            Compositor::API::GL _gl;
-            EGLSync _eglSync;
+            Core::SinkType<EGLBuffer> _buffer;
+
+            static uint32_t _surfaceIndex;
         };
 
     public:
-        typedef std::map<const string, Display*> DisplayMap;
+        using Surfaces = std::vector<SurfaceImplementation*>;
+        using Displays = std::unordered_map<string, Display*>;
 
         virtual ~Display();
 
@@ -531,7 +513,7 @@ namespace Linux {
 
             _displaysMapLock.Lock();
 
-            DisplayMap::iterator index(_displays.find(displayName));
+            Displays::iterator index(_displays.find(displayName));
 
             if (index == _displays.end()) {
                 result = new Display(displayName);
@@ -559,7 +541,7 @@ namespace Linux {
             if (Core::InterlockedDecrement(_refCount) == 0) {
                 _displaysMapLock.Lock();
 
-                DisplayMap::iterator display = _displays.find(_displayName);
+                Displays::iterator display = _displays.find(_displayName);
 
                 if (display != _displays.end()) {
                     _displays.erase(display);
@@ -588,9 +570,20 @@ namespace Linux {
 
         int Process(const uint32_t data VARIABLE_IS_NOT_USED) override
         {
+            std::unique_lock<std::mutex> lock(_rendering);
+
             for (auto begin = _surfaces.begin(), it = begin, end = _surfaces.end(); it != end; it++) {
-                (*it)->Process(); // render
+                SurfaceImplementation* surface = *it;
+
+                if (surface->Process() == Core::ERROR_NONE) {
+                    _pendingSurfaces |= (1 << surface->Id());
+                }
             }
+
+            while (_pendingSurfaces != 0) {
+                _published.wait(lock);
+            }
+            
             return Core::ERROR_NONE;
         }
 
@@ -605,7 +598,7 @@ namespace Linux {
 
             _adminLock.Lock();
 
-            std::list<SurfaceImplementation*>::iterator index(_surfaces.begin());
+            Surfaces::iterator index(_surfaces.begin());
             while ((index != _surfaces.end()) && ((*index)->Name() != name)) {
                 index++;
             }
@@ -627,6 +620,16 @@ namespace Linux {
         Exchange::IComposition::IDisplay* RemoteDisplay()
         {
             return _remoteDisplay;
+        }
+
+        void Rendered(SurfaceImplementation* /*surface*/)
+        {
+        }
+
+        void Published(SurfaceImplementation* surface)
+        {
+            _pendingSurfaces &= ~(1 << surface->Id());
+            _published.notify_all();
         }
 
     private:
@@ -683,7 +686,7 @@ namespace Linux {
                 _virtualinput = nullptr;
             }
 
-            std::list<SurfaceImplementation*>::iterator index(_surfaces.begin());
+            Surfaces::iterator index(_surfaces.begin());
             while (index != _surfaces.end()) {
                 string name = (*index)->Name();
 
@@ -713,7 +716,7 @@ namespace Linux {
 
             _adminLock.Lock();
 
-            std::list<SurfaceImplementation*>::iterator index(std::find(_surfaces.begin(), _surfaces.end(), surface));
+            Surfaces::iterator index(std::find(_surfaces.begin(), _surfaces.end(), surface));
 
             ASSERT(index == _surfaces.end());
 
@@ -747,7 +750,7 @@ namespace Linux {
         }
 
     private:
-        static DisplayMap _displays;
+        static Displays _displays;
         static Core::CriticalSection _displaysMapLock;
 
     private:
@@ -755,14 +758,19 @@ namespace Linux {
         mutable Core::CriticalSection _adminLock;
         mutable uint32_t _refCount;
         void* _virtualinput;
-        std::list<SurfaceImplementation*> _surfaces;
+        Surfaces _surfaces;
         Core::ProxyType<RPC::CommunicatorClient> _compositorServerRPCConnection;
         Exchange::IComposition::IDisplay* _remoteDisplay;
         int _gpuId;
         gbm_device* _gbmDevice;
+        uint32_t _pendingSurfaces;
+        std::mutex _rendering;
+        std::condition_variable _published;
     }; // class Display
 
-    Display::DisplayMap Display::_displays;
+    uint32_t Display::SurfaceImplementation::_surfaceIndex = 0;
+
+    Display::Displays Display::_displays;
     Core::CriticalSection Display::_displaysMapLock;
 
     Display::Display(const string& name)
@@ -775,6 +783,9 @@ namespace Linux {
         , _remoteDisplay(nullptr)
         , _gpuId(-1)
         , _gbmDevice(nullptr)
+        , _pendingSurfaces(0)
+        , _rendering()
+        , _published()
     {
         Core::PrivilegedRequest::Container descriptors;
         Core::PrivilegedRequest request;
@@ -915,7 +926,6 @@ namespace Linux {
             Publish(action);
         }
     }
-
 } // namespace Linux
 
 Compositor::IDisplay* Compositor::IDisplay::Instance(const string& displayName)

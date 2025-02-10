@@ -297,12 +297,13 @@ namespace Implementation {
     public:
         // Return size of a vault data blob
         // (-1 if the blob exists in the vault but is not extractable and 0 if the ID does not exist)
+PUSH_WARNING(DISABLE_WARNING_OVERLOADED_VIRTUALS)
         uint16_t Size(const uint32_t id) const override
         {
             Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
             return (_accessor != nullptr ? _accessor->Size(id) : 0);
         }
-
+POP_WARNING()
         // Import unencrypted data blob into the vault (returns blob ID)
         // Note: User IDs are always greater than 0x80000000, values below 0x80000000 are reserved for implementation-specific internal data blobs.
         uint32_t Import(const uint16_t length, const uint8_t blob[] /* @length:length */) override
@@ -636,11 +637,6 @@ namespace Implementation {
         ~VaultImpl() override = default;
 
     public:
-        uint16_t Size(const uint32_t id) const override
-        {
-            return (vault_size(_implementation, id));
-        }
-
         uint32_t Import(const uint16_t length, const uint8_t blob[] ) override
         {
             return (vault_import(_implementation, length, blob));
@@ -681,10 +677,17 @@ namespace Implementation {
             return(persistent_key_load(_implementation,locator.c_str(),&id));
         }
 
+PUSH_WARNING(DISABLE_WARNING_OVERLOADED_VIRTUALS)
+        uint16_t Size(const uint32_t id) const override
+        {
+            return (vault_size(_implementation, id));
+        }
+
         uint32_t Create(const string& locator, const keytype keyType,uint32_t&  id ) override
         {
             return(persistent_key_create(_implementation,locator.c_str(), static_cast<key_type>(keyType),&id));
         }
+POP_WARNING()
 
         uint32_t Flush() override
         {
