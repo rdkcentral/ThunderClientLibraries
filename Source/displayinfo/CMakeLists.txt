@@ -30,6 +30,7 @@ message("Setup ${TARGET} v${PROJECT_VERSION}")
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
 find_package(${NAMESPACE}COM REQUIRED)
+find_package(${NAMESPACE}Messaging REQUIRED)
 
 set(PUBLIC_HEADERS 
         "include/displayinfo.h"
@@ -44,6 +45,7 @@ target_link_libraries(${TARGET}
         PRIVATE
           ${NAMESPACE}Core::${NAMESPACE}Core
           ${NAMESPACE}COM::${NAMESPACE}COM
+          ${NAMESPACE}Messaging::${NAMESPACE}Messaging
           CompileSettingsDebug::CompileSettingsDebug
         )
 
