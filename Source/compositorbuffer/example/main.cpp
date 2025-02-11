@@ -232,7 +232,8 @@ private:
             }
         }
     }
-    void Offer(const uint32_t id, Container&& descriptors) {
+    void Offer(const uint32_t id VARIABLE_IS_NOT_USED, Container&& descriptors VARIABLE_IS_NOT_USED)
+    {
     }
 
 private:
