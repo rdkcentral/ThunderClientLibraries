@@ -65,6 +65,8 @@ private:
     //CONSTRUCTORS
     PlayerInfo(const string& callsign)
         : BaseClass()
+        , _lock()
+        , _playerInterface(nullptr)
         , _dolbyInterface(nullptr)
         , _callsign(callsign)
         , _dolbyNotification(this)
