@@ -128,23 +128,8 @@ typedef void (*playerinfo_operational_state_change_cb)(bool is_operational, void
 typedef void (*playerinfo_dolby_audio_updated_cb)(void* userdata);
 
 /**
- * @brief Get a @ref playerinfo_type instance that matches the PlayerInfo implementation
- * 
- * @return EXTERNAL struct* @ref instance, NULL if error.
- */
-EXTERNAL struct playerinfo_type* playerinfo_instance(void);
-
-/**
- * @brief Release the @ref instance
- * 
- * @param instance  Instance of @ref playerinfo_type
- */
-EXTERNAL void playerinfo_release(void);
-
-/**
  * @brief Register for the operational state change notification of the instance
  * 
- * @param instance Instance of playerinfo_type
  * @param callback Function to be called on update
  * @param userdata Data passed to callback function
  * @return PLAYERINFO_OK on succes, 
@@ -156,7 +141,6 @@ EXTERNAL uint32_t playerinfo_register_operational_state_change_callback(playerin
 /**
  * @brief Unregister from the operational state change notification of the instance
  * 
- * @param instance Instance of playerinfo_type
  * @param callback Function to be unregistered from callbacks
  * @return PLAYERINFO_OK on succes, 
  *         PLAYERINFO_ERROR_ALREADY_UNREGISTERED if callback not registered
@@ -166,7 +150,6 @@ EXTERNAL uint32_t playerinfo_unregister_operational_state_change_callback(player
 /**
  * @brief Register for the updates of the Dolby Audio Mode changes
  * 
- * @param instance Instance of @ref playerinfo_type.
  * @param callback Function to be called on update
  * @param userdata Data passed to callback funcion
  * @return  PLAYERINFO_OK on succes, 
@@ -178,7 +161,6 @@ EXTERNAL uint32_t playerinfo_register_dolby_sound_mode_updated_callback(playerin
 /**
  * @brief Unregister from the updates of the Dolby Audio Mode changes
  * 
- * @param instance Instance of @ref playerinfo_type.
  * @param callback Callback function unregister
  * @return PLAYERINFO_OK on succes, 
  *         PLAYERINFO_ERROR_ALREADY_UNREGISTERED if callback not registered
@@ -188,7 +170,6 @@ EXTERNAL uint32_t playerinfo_unregister_dolby_sound_mode_updated_callback(player
 /**
  * @brief Get the instance name (callsign)
  * 
- * @param instance Instance of @ref playerinfo_type
  * @param buffer Buffer that will contain instance name.
  * @param length Size of @ref buffer.
  */
@@ -196,7 +177,6 @@ EXTERNAL void playerinfo_name(char buffer[], const uint8_t length);
 
 /**
  * @brief Get current video playback resolution
- * @param instance instance Instance of @ref playerinfo_type.
  * @param resolution The current resolution, PLAYER_INFO_RESOLUTION_UNKNOWN MIGHT occur if ThunderInterfaces contains new resolution 
  *        not defined in this library,
  * @return PLAYERINFO_OK on succes, 
@@ -207,7 +187,6 @@ EXTERNAL uint32_t playerinfo_playback_resolution(playerinfo_playback_resolution_
 
 /**
  * @brief Checks Loudness Equivalence in platform
- * @param instance Instance of @ref playerinfo_type.
  * @param loudness true if enabled, false if disabled
  * @return PLAYERINFO_OK on succes,
  *         PLAYERINFO_ERROR_UNAVAILABLE if instance or is_enabled param is NULL or invalid connection
@@ -217,7 +196,6 @@ EXTERNAL uint32_t playerinfo_is_audio_equivalence_enabled(bool* is_enabled);
 /**
  * @brief Gets Player audio codecs
  * 
- * @param instance Instance of @ref playerinfo_type.
  * @param array array which will contain audio codecs used by the player,
  *              if element == PLAYERINFO_AUDIO_UNDEFINED - MIGHT be a case when
  *              ThunderInterfaces contains new codec not defined in this library. 
@@ -231,7 +209,6 @@ EXTERNAL int8_t playerinfo_audio_codecs(playerinfo_audiocodec_t array[], const u
 /**
  * @brief Gets Player video codecs
  * 
- * @param instance Instance of @ref playerinfo_type.
  * @param array array which will contain video codecs used by the player,
  *              if element == PLAYERINFO_VIDEO_UNDEFINED - MIGHT be a case when
  *              ThunderInterfaces contains new codec not defined in this library. 
@@ -245,7 +222,6 @@ EXTERNAL int8_t playerinfo_video_codecs(playerinfo_videocodec_t array[], const u
 /**
  * @brief Atmos capabilities of Sink
  * 
- * @param instance Instance of @ref playerinfo_type.
  * @return true if atmos is supported, 
  *         false otherwise
  */
@@ -254,7 +230,6 @@ EXTERNAL bool playerinfo_is_dolby_atmos_supported(void);
 /**
  * @brief Get Sound Mode - Mono/Stereo/Surround etc.
  * 
- * @param instance Instance of @ref playerinfo_type
  * @param sound_mode Current sound mode, PLAYERINFO_DOLBY_SOUND_UNKNOWN MIGHT occur if ThunderInterfaces contains new resolution not defined in this library
  * @return PLAYERINFO_OK on succes, 
  *         PLAYERINFO_ERROR_UNAVAILABLE if instance or sound_mode param is NULL or invalid connection
@@ -264,7 +239,6 @@ EXTERNAL uint32_t playerinfo_set_dolby_sound_mode(playerinfo_dolby_sound_mode_t*
 /**
  * @brief Enable Atmos Audio Output
  * 
- * @param instance Instance of @ref playerinfo_type
  * @param is_enabled Enable or disable Atmos Audio Output
  * @return PLAYERINFO_OK on succes
  *         PLAYERINFO_ERROR_UNAVAILABLE if instance == NULL or invalid connection
@@ -274,7 +248,6 @@ EXTERNAL uint32_t playerinfo_enable_atmos_output(const bool is_enabled);
 /**
  * @brief Set the dolby mode 
  * 
- * @param instance Instance of @ref playerinfo_type
  * @param mode dolby mode to be set
  * @return PLAYERINFO_OK on succes,
  *         PLAYERINFO_ERROR_UNAVAILABLE on instance == NULL or invalid connection
@@ -285,7 +258,6 @@ EXTERNAL uint32_t playerinfo_set_dolby_mode(const playerinfo_dolby_mode_t mode);
 /**
  * @brief Get the dolby mode object
  * 
- * @param instance Instance of @ref playerinfo_type
  * @param mode Current dolby mode, PLAYERINFO_DOLBY_MODE_AUTO MIGHT occur if ThunderInterfaces contains new resolution not defined in this library
  * @return PLAYERINFO_OK on succes,
  *         PLAYERINFO_ERROR_UNAVAILABLE on instance == NULL or invalid connection
