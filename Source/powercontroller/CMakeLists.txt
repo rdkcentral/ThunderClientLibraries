@@ -19,7 +19,7 @@ cmake_minimum_required(VERSION 3.3)
 
 find_package(WPEFramework)
 
-project(PowerManagerClient)
+project(PowerController)
 
 project_version(4.4.1)
 
@@ -66,8 +66,8 @@ install(
         LIBRARY DESTINATION lib COMPONENT libs      # shared lib
         RUNTIME DESTINATION bin COMPONENT libs      # binaries
         FRAMEWORK DESTINATION bin COMPONENT libs    # for mac
-        PUBLIC_HEADER DESTINATION include/${NAMESPACE}/powermanager COMPONENT devel   # headers for mac (note the different component -> different package)
-        INCLUDES DESTINATION include/${NAMESPACE}/powermanager # headers
+        PUBLIC_HEADER DESTINATION include/${NAMESPACE}/powercontroller COMPONENT devel   # headers for mac (note the different component -> different package)
+        INCLUDES DESTINATION include/${NAMESPACE}/powercontroller # headers
 )
 
 InstallCMakeConfig(

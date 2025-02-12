@@ -43,7 +43,7 @@ option(CDMI
         "Include OpenCDM interface." OFF)
 option(CRYPTOGRAPHY
         "Include the cryptography library." OFF)
-option(POWERMANAGER
+option(POWERCONTROLLER
         "Include the powermanager COMRPC abstraction library." OFF)
 
 option(INSTALL_TESTS "Install the test applications" OFF)

@@ -17,11 +17,11 @@
  * limitations under the License.
  */
 
+// std includes
+#include <iostream>
 #include <unordered_map>
 
-#include <core/Portability.h>
-#include <core/Services.h>
-
+// Thunder includes
 #include <interfaces/IPowerManager.h>
 #include <plugins/Types.h>
 
@@ -186,11 +186,7 @@ PowerController_ThermalTemperature_t convert(const ThermalTemperature from)
     return (it != map.end()) ? it->second : THERMAL_TEMPERATURE_UNKNOWN;
 }
 
-static string Callsign()
-{
-    static constexpr const TCHAR Default[] = _T("org.rdk.PowerManager");
-    return (Default);
-}
+static constexpr const TCHAR callSign[] = _T("org.rdk.PowerManager");
 
 class PowerController : public RPC::SmartInterfaceType<Exchange::IPowerManager> {
 private:
@@ -212,6 +208,12 @@ private:
             : _parent(parent)
         {
         }
+
+        Notification(const Notification&) = delete; // Delete copy constructor
+        Notification& operator=(const Notification&) = delete; // Delete copy assignment operator
+
+        Notification(Notification&&) = delete; // Delete move constructor
+        Notification& operator=(Notification&&) = delete; // Delete move assignment operator
 
         virtual void OnPowerModeChanged(const PowerState& currentState, const PowerState& newState) override
         {
@@ -254,13 +256,17 @@ private:
         , _powerManagerNotification(*this)
         , _shutdown(false)
     {
-        uint32_t res = BaseClass::Open(RPC::CommunicationTimeOut, BaseClass::Connector(), Callsign());
+        uint32_t res = BaseClass::Open(RPC::CommunicationTimeOut, BaseClass::Connector(), callSign);
         ASSERT(Core::ERROR_NONE == res);
+        if (Core::ERROR_NONE != res) {
+            std::cerr << "Unexpected, /tmp/communicator comm channel is always expected\n";
+        }
     }
 
     ~PowerController()
     {
         _shutdown = true;
+        /* Close destroys _powerManagerInterface too */
         BaseClass::Close(Core::infinite);
     }
 
@@ -274,6 +280,9 @@ private:
                 _powerManagerInterface = BaseClass::Interface();
                 if (_powerManagerInterface != nullptr) {
                     _powerManagerInterface->Register(&_powerManagerNotification);
+                } else {
+                    // Internal error powerManager is running, but QueryInterface failed for it ?
+                    std::cerr << "Unexpected, powerManager is activated, but interface null ?\n";
                 }
             }
         } else {
@@ -282,6 +291,8 @@ private:
                 _powerManagerInterface->Unregister(&_powerManagerNotification);
                 _powerManagerInterface->Release();
                 _powerManagerInterface = nullptr;
+            } else {
+                std::cerr << "Unexpected, powerManager just deactivated, but interface already null ?\n";
             }
         }
 
@@ -330,20 +341,20 @@ public:
     {
         uint32_t result = Core::ERROR_UNAVAILABLE;
 
-        PowerState _currentState = PowerState::POWER_STATE_UNKNOWN;
-        PowerState _previousState = PowerState::POWER_STATE_UNKNOWN;
+        PowerState currentState_ = PowerState::POWER_STATE_UNKNOWN;
+        PowerState previousState_ = PowerState::POWER_STATE_UNKNOWN;
 
         _lock.Lock();
 
         if (_powerManagerInterface) {
-            result = _powerManagerInterface->GetPowerState(_currentState, _previousState);
+            result = _powerManagerInterface->GetPowerState(currentState_, previousState_);
         }
 
         _lock.Unlock();
 
         if (Core::ERROR_NONE == result) {
-            *currentState = convert(_currentState);
-            *previousState = convert(_previousState);
+            *currentState = convert(currentState_);
+            *previousState = convert(previousState_);
         }
 
         return result;
@@ -353,12 +364,12 @@ public:
     {
         uint32_t result = Core::ERROR_UNAVAILABLE;
 
-        PowerState _powerState = convert(powerState);
+        PowerState powerState_ = convert(powerState);
 
         _lock.Lock();
 
         if (_powerManagerInterface) {
-            result = _powerManagerInterface->SetPowerState(keyCode, _powerState, reason);
+            result = _powerManagerInterface->SetPowerState(keyCode, powerState_, reason);
         }
 
         _lock.Unlock();
@@ -459,18 +470,18 @@ public:
     uint32_t GetLastWakeupReason(PowerController_WakeupReason_t* wakeupReason)
     {
         uint32_t result = Core::ERROR_UNAVAILABLE;
-        WakeupReason _wakeupReason = WakeupReason::WAKEUP_REASON_UNKNOWN;
+        WakeupReason wakeupReason_ = WakeupReason::WAKEUP_REASON_UNKNOWN;
 
         _lock.Lock();
 
         if (_powerManagerInterface) {
-            result = _powerManagerInterface->GetLastWakeupReason(_wakeupReason);
+            result = _powerManagerInterface->GetLastWakeupReason(wakeupReason_);
         }
 
         _lock.Unlock();
 
         if (Core::ERROR_NONE == result) {
-            *wakeupReason = convert(_wakeupReason);
+            *wakeupReason = convert(wakeupReason_);
         }
 
         return result;
@@ -568,13 +579,13 @@ public:
     uint32_t SetSystemMode(const PowerController_SystemMode_t currentMode, const PowerController_SystemMode_t newMode)
     {
         uint32_t result = Core::ERROR_UNAVAILABLE;
-        SystemMode _currentMode = convert(currentMode);
-        SystemMode _newMode = convert(newMode);
+        SystemMode currentMode_ = convert(currentMode);
+        SystemMode newMode_ = convert(newMode);
 
         _lock.Lock();
 
         if (_powerManagerInterface) {
-            result = _powerManagerInterface->SetSystemMode(_currentMode, _newMode);
+            result = _powerManagerInterface->SetSystemMode(currentMode_, newMode_);
         }
 
         _lock.Unlock();
@@ -585,18 +596,18 @@ public:
     uint32_t GetPowerStateBeforeReboot(PowerController_PowerState_t* powerStateBeforeReboot)
     {
         uint32_t result = Core::ERROR_UNAVAILABLE;
-        PowerState _powerStateBeforeReboot = PowerState::POWER_STATE_UNKNOWN;
+        PowerState powerStateBeforeReboot_ = PowerState::POWER_STATE_UNKNOWN;
 
         _lock.Lock();
 
         if (_powerManagerInterface) {
-            result = _powerManagerInterface->GetPowerStateBeforeReboot(_powerStateBeforeReboot);
+            result = _powerManagerInterface->GetPowerStateBeforeReboot(powerStateBeforeReboot_);
         }
 
         _lock.Unlock();
 
         if (Core::ERROR_NONE == result) {
-            *powerStateBeforeReboot = convert(_powerStateBeforeReboot);
+            *powerStateBeforeReboot = convert(powerStateBeforeReboot_);
         }
 
         return result;
@@ -604,12 +615,12 @@ public:
 
     void NotifyPowerModeChanged(const PowerState& currentState, const PowerState& newState)
     {
-        PowerController_PowerState_t _currentState = convert(currentState);
-        PowerController_PowerState_t _newState = convert(newState);
+        PowerController_PowerState_t currentState_ = convert(currentState);
+        PowerController_PowerState_t newState_ = convert(newState);
         _lock.Lock();
 
         for (auto& index : _powerModeChangedCallbacks) {
-            index.first(_currentState, _newState, index.second);
+            index.first(currentState_, newState_, index.second);
         }
 
         _lock.Unlock();
@@ -617,12 +628,12 @@ public:
 
     void NotifyPowerModePreChange(const PowerState& currentState, const PowerState& newState)
     {
-        PowerController_PowerState_t _currentState = convert(currentState);
-        PowerController_PowerState_t _newState = convert(newState);
+        PowerController_PowerState_t currentState_ = convert(currentState);
+        PowerController_PowerState_t newState_ = convert(newState);
         _lock.Lock();
 
         for (auto& index : _powerModePreChangeCallbacks) {
-            index.first(_currentState, _newState, index.second);
+            index.first(currentState_, newState_, index.second);
         }
 
         _lock.Unlock();
@@ -652,13 +663,13 @@ public:
 
     void NotifyThermalModeChanged(const ThermalTemperature& currentThermalLevel, const ThermalTemperature& newThermalLevel, const float& currentTemperature)
     {
-        PowerController_ThermalTemperature_t _currentThermalLevel = convert(currentThermalLevel);
-        PowerController_ThermalTemperature_t _newThermalLevel = convert(newThermalLevel);
+        PowerController_ThermalTemperature_t currentThermalLevel_ = convert(currentThermalLevel);
+        PowerController_ThermalTemperature_t newThermalLevel_ = convert(newThermalLevel);
 
         _lock.Lock();
 
         for (auto& index : _thermalModeChangedCallbacks) {
-            index.first(_currentThermalLevel, _newThermalLevel, currentTemperature, index.second);
+            index.first(currentThermalLevel_, newThermalLevel_, currentTemperature, index.second);
         }
 
         _lock.Unlock();

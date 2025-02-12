@@ -25,7 +25,6 @@
 
 #include <com/com.h>
 #include <core/core.h>
-#include <plugins/plugins.h>
 #include <messaging/messaging.h>
 
 #if defined(__WINDOWS__) && defined(POWERMANAGER_EXPORTS)

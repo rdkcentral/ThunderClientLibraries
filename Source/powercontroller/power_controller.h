@@ -84,9 +84,9 @@ typedef enum PowerController_SystemMode {
     SYSTEM_MODE_WAREHOUSE = 3 /* WAREHOUSE */
 } PowerController_SystemMode_t;
 
-#define POWER_MANAGER_ERROR_NONE 0
-#define POWER_MANAGER_ERROR_GENERAL 1
-#define POWER_MANAGER_ERROR_UNAVAILABLE 2
+#define POWER_CONTROLLER_ERROR_NONE 0
+#define POWER_CONTROLLER_ERROR_GENERAL 1
+#define POWER_CONTROLLER_ERROR_UNAVAILABLE 2
 
 /**
  * @brief Initializes the Power Controller.
@@ -127,7 +127,7 @@ void PowerController_Term();
  * - Use this function to confirm the operational status of the Power Manager plugin.
  * - Calling this function is NOT MANDATORY but optional
  * - Clients can register for notifications about state changes using `PowerController_RegisterOperationalStateChangeCallback`.
- * - If the Power Manager interface is not active, subsequent Power Manager operations will fail with the error `POWER_MANAGER_ERROR_UNAVAILABLE`.
+ * - If the Power Manager interface is not active, subsequent Power Manager operations will fail with the error `POWER_CONTROLLER_ERROR_UNAVAILABLE`.
  *
  * @see PowerController_RegisterOperationalStateChangeCallback
  */
@@ -137,14 +137,15 @@ bool PowerController_IsOperational();
 // @text getPowerState
 // @brief Get Power State
 // @param powerState: Get current power state
-uint32_t PowerController_GetPowerState(PowerController_PowerState_t* currentState, PowerController_PowerState_t* previousState);
+uint32_t PowerController_GetPowerState(PowerController_PowerState_t* currentState /* @out */, PowerController_PowerState_t* previousState /* @out */);
 
 /** Sets Power State . */
 // @text setPowerState
 // @brief Set Power State
+// @param keyCode: NA for most platfroms, to be depricated
 // @param powerState: Set power to this state
-// @param reason: Reason for moving to the power state
-uint32_t PowerController_SetPowerState(const int keyCode, const PowerController_PowerState_t powerstate, const char* reason);
+// @param reason: null terminated string stating reason for for state change
+uint32_t PowerController_SetPowerState(const int keyCode /* @in */, const PowerController_PowerState_t powerstate /* @in */, const char* reason /* @in */);
 
 /** Gets the current Thermal state.*/
 // @text getThermalState
@@ -173,7 +174,7 @@ uint32_t PowerController_GetTemperatureThresholds(float* high /* @out */, float*
 // @param graceInterval: interval in secs?
 uint32_t PowerController_SetOvertempGraceInterval(const int graceInterval /* @in */);
 
-/** Gets the current Temperature Thresholds.*/
+/** Gets the grace interval for over-temperature.*/
 // @property
 // @text PowerController_GetOvertempGraceInterval
 // @brief Get Temperature Grace interval
@@ -201,9 +202,12 @@ uint32_t PowerController_GetLastWakeupReason(PowerController_WakeupReason_t* wak
 // @param keycode: Key code for wakeup
 uint32_t PowerController_GetLastWakeupKeyCode(int* keycode /* @out */);
 
-/** Perform Reboot */
+/** Request Reboot with PowerManager */
 // @text reboot
 // @brief Reboot device
+// @param rebootRequestor: null terminated string identifier for the entity requesting the reboot.
+// @param rebootReasonCustom: custom-defined reason for the reboot, provided as a null terminated string.
+// @param rebootReasonOther: null terminated string describing any other reasons for the reboot.
 uint32_t PowerController_Reboot(const char* rebootRequestor /* @in */, const char* rebootReasonCustom /* @in */, const char* rebootReasonOther /* @in */);
 
 /** Set Network Standby Mode */
@@ -238,13 +242,13 @@ uint32_t PowerController_GetWakeupSrcConfig(int* powerMode /* @out */, int* srcT
 /** Initiate System mode change */
 // @text PowerController_SetSystemMode
 // @brief System mode change
-// @param oldMode: old mode
+// @param oldMode: current mode
 // @param newMode: new mode
 uint32_t PowerController_SetSystemMode(const PowerController_SystemMode_t currentMode /* @in */, const PowerController_SystemMode_t newMode /* @in */);
 
-/** Get Power State before reboot */
+/** Get Power State before last reboot */
 // @text PowerController_GetPowerStateBeforeReboot
-// @brief Get Power state before reboot
+// @brief Get Power state before last reboot
 // @param powerStateBeforeReboot: power state
 uint32_t PowerController_GetPowerStateBeforeReboot(PowerController_PowerState_t* powerStateBeforeReboot /* @out */);
 
@@ -256,6 +260,9 @@ typedef void (*PowerController_DeepSleepTimeoutCb)(const int wakeupTimeout, void
 typedef void (*PowerController_NetworkStandbyModeChangedCb)(const bool enabled, void* userdata);
 typedef void (*PowerController_ThermalModeChangedCb)(const PowerController_ThermalTemperature_t currentThermalLevel, const PowerController_ThermalTemperature_t newThermalLevel, const float currentTemperature, void* userdata);
 typedef void (*PowerController_RebootBeginCb)(const char* rebootReasonCustom, const char* rebootReasonOther, const char* rebootRequestor, void* userdata);
+
+/* Type defines for callbacks / notifications */
+/* userdata in all callbacks are opque, clients can use to have context to callbacks */
 
 /** Register for PowerManager plugin operational state change event callback, for initial state use `PowerController_IsOperational` call */
 uint32_t PowerController_RegisterOperationalStateChangeCallback(PowerController_OperationalStateChangeCb callback, void* userdata);
