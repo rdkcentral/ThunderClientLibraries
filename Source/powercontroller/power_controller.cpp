@@ -259,7 +259,7 @@ private:
         uint32_t res = BaseClass::Open(RPC::CommunicationTimeOut, BaseClass::Connector(), callSign);
         ASSERT(Core::ERROR_NONE == res);
         if (Core::ERROR_NONE != res) {
-            std::cerr << "Unexpected, /tmp/communicator comm channel is always expected\n";
+            std::cerr << "Unexpected, /tmp/communicator com channel open failed. Is Thunder running?\n";
         }
     }
 
@@ -273,6 +273,8 @@ private:
     virtual void Operational(const bool upAndRunning) override
     {
         _lock.Lock();
+
+        std::cout << "PowerController::Operational (" << callSign << ") " << upAndRunning << std::endl;
 
         if (upAndRunning) {
             // Communicatior opened && PowerManager is Activated
