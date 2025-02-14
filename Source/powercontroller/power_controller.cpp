@@ -259,7 +259,7 @@ private:
         uint32_t res = BaseClass::Open(RPC::CommunicationTimeOut, BaseClass::Connector(), callSign);
         ASSERT(Core::ERROR_NONE == res);
         if (Core::ERROR_NONE != res) {
-            std::cerr << "FATAL, /tmp/communicato com channel open failed. Is Thunder running?\n";
+            std::cerr << "FATAL, /tmp/communicator com channel open failed. Is Thunder running?\n";
         }
     }
 
