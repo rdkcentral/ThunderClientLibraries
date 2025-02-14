@@ -259,7 +259,7 @@ private:
         uint32_t res = BaseClass::Open(RPC::CommunicationTimeOut, BaseClass::Connector(), callSign);
         ASSERT(Core::ERROR_NONE == res);
         if (Core::ERROR_NONE != res) {
-            std::cerr << "Unexpected, /tmp/communicator com channel open failed. Is Thunder running?\n";
+            std::cerr << "FATAL, /tmp/communicato com channel open failed. Is Thunder running?\n";
         }
     }
 
@@ -282,9 +282,10 @@ private:
                 _powerManagerInterface = BaseClass::Interface();
                 if (_powerManagerInterface != nullptr) {
                     _powerManagerInterface->Register(&_powerManagerNotification);
+                    std::cout << "PowerController successfully established COM-RPC connection with PowerManager plugin\n";
                 } else {
                     // Internal error powerManager is running, but QueryInterface failed for it ?
-                    std::cerr << "Unexpected, powerManager is activated, but interface null ?\n";
+                    std::cerr << "PowerController failed to establish COM-RPC connection with PowerManager plugin\n";
                 }
             }
         } else {
