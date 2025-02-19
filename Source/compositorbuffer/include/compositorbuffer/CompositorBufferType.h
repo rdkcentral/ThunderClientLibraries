@@ -226,7 +226,7 @@ namespace Compositor {
             // Do not initialize members for now, this constructor is called after a mmap in the
             // placement new operator above. Initializing them now will reset the original values
             // of the buffer metadata.
-            SharedStorage() {};
+            SharedStorage() { };
 
             void* operator new(size_t stAllocateBlock, int fd)
             {
@@ -707,6 +707,14 @@ namespace Compositor {
             ASSERT(index < (sizeof(_descriptors) / sizeof(int)));
             _descriptors[index] = ::dup(fd);
             _storage->Add(stride, offset);
+        }
+        void Planes(Core::PrivilegedRequest::Descriptor descriptors[], const uint8_t size)
+        {
+            ASSERT(size == _storage->Planes());
+
+            for (uint8_t index = 0; index < _storage->Planes(); index++) {
+                _descriptors[index] = descriptors[index].Move();
+            }
         }
         int Producer() const
         {
