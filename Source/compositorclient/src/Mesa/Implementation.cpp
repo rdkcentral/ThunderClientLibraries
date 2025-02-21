@@ -143,13 +143,15 @@ namespace Linux {
 
                 ~GBMSurface()
                 {
-                    if (_frameBuffer != nullptr) {
-                        // Core::ResourceMonitor::Instance().Unregister(*this);
-                        gbm_bo_destroy(_frameBuffer);
-                    }
+                    // fixme: This leads to a SEGFAULT.... 
+                    // if (_frameBuffer != nullptr) {
+                    //     gbm_bo_destroy(_frameBuffer);
+                    //     _frameBuffer = nullptr;
+                    // }
 
                     if (_surface != nullptr) {
                         gbm_surface_destroy(_surface);
+                        _surface = nullptr;
                     }
                 }
 
@@ -203,7 +205,7 @@ namespace Linux {
 
                 EGLNativeWindowType Native() const
                 {
-                    return (reinterpret_cast<EGLNativeWindowType>(_surface));
+                    return (static_cast<EGLNativeWindowType>(_surface));
                 }
 
             private:
@@ -223,16 +225,17 @@ namespace Linux {
             SurfaceImplementation(Display& display, const std::string& name, const uint32_t width, const uint32_t height, ICallback* callback)
                 : _adminLock()
                 , _id(Core::InterlockedIncrement(_surfaceIndex))
-                , _name()
                 , _display(display)
                 , _remoteClient(display.CreateRemoteSurface(name, width, height))
                 , _surface(*this, static_cast<gbm_device*>(_display.Native()), _remoteClient->Native())
+                , _name(_remoteClient->Name())
                 , _keyboard(nullptr)
                 , _wheel(nullptr)
                 , _pointer(nullptr)
                 , _touchpanel(nullptr)
                 , _callback(callback)
             {
+                _display.AddRef();
 
                 ASSERT(_remoteClient != nullptr);
                 TRACE(Trace::Information, (_T("Construct surface[%d] %s  %dx%d (hxb)"), _id, name.c_str(), height, width));
@@ -373,10 +376,10 @@ namespace Linux {
         private:
             mutable Core::CriticalSection _adminLock;
             const uint8_t _id;
-            string _name;
             Display& _display;
             Exchange::IComposition::IClient* _remoteClient;
             GBMSurface _surface;
+            const string _name;
             IKeyboard* _keyboard;
             IWheel* _wheel;
             IPointer* _pointer;
@@ -435,6 +438,8 @@ namespace Linux {
                 _displaysMapLock.Unlock();
 
                 const_cast<Display*>(this)->Deinitialize();
+
+                delete this;
 
                 return (Core::ERROR_DESTRUCTION_SUCCEEDED);
             }
@@ -628,7 +633,6 @@ namespace Linux {
         Exchange::IComposition::IDisplay* _remoteDisplay;
         int _gpuId;
         gbm_device* _gbmDevice;
-        uint32_t _pendingSurfaces;
     }; // class Display
 
     uint32_t Display::SurfaceImplementation::_surfaceIndex = 0;
@@ -646,7 +650,6 @@ namespace Linux {
         , _remoteDisplay(nullptr)
         , _gpuId(-1)
         , _gbmDevice(nullptr)
-        , _pendingSurfaces(0)
     {
         Core::PrivilegedRequest::Container descriptors;
         Core::PrivilegedRequest request;
