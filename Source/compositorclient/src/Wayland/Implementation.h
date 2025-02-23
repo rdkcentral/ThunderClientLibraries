@@ -546,7 +546,7 @@ namespace Wayland {
         }
         int FileDescriptor() const override;
         int Process(const uint32_t data) override;
-        ISurface* Create(const std::string& name, const uint32_t width, const uint32_t height) override;
+        ISurface* Create(const std::string& name, const uint32_t width, const uint32_t height, ISurface::ICallback* callback) override;
         ISurface* SurfaceByName(const std::string& name) override
         {
             //iterate through waylandsurface map return wl_surface with matching name

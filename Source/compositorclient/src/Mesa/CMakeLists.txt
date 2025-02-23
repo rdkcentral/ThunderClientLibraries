@@ -23,7 +23,6 @@ find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(gbm REQUIRED)
 find_package(libdrm REQUIRED)
 find_package(EGL REQUIRED)
-find_package(GLESv2 REQUIRED)
 
 add_library(${PLUGIN_COMPOSITOR_IMPLEMENTATION} OBJECT Implementation.cpp)
 
@@ -39,7 +38,6 @@ target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
         libdrm::libdrm
         gbm::gbm
         EGL::EGL
-        GLESv2::GLESv2
 )
 
 set_target_properties(${PLUGIN_COMPOSITOR_IMPLEMENTATION} PROPERTIES
