@@ -28,7 +28,6 @@ extern "C" {
 #include <xf86drmMode.h>
 
 #include <EGL/egl.h>
-
 }
 
 #include <com/com.h>
@@ -143,7 +142,7 @@ namespace Linux {
 
                 ~GBMSurface()
                 {
-                    // fixme: This leads to a SEGFAULT.... 
+                    // fixme: This leads to a SEGFAULT....
                     // if (_frameBuffer != nullptr) {
                     //     gbm_bo_destroy(_frameBuffer);
                     //     _frameBuffer = nullptr;
@@ -289,27 +288,59 @@ namespace Linux {
             }
             void Keyboard(Compositor::IDisplay::IKeyboard* keyboard) override
             {
-                assert((_keyboard == nullptr) ^ (keyboard == nullptr));
+                ASSERT((_keyboard == nullptr) ^ (keyboard == nullptr));
+
+                if (keyboard == nullptr) {
+                    if (_keyboard != nullptr) {
+                        _keyboard->Release();
+                    }
+                } else {
+                    keyboard->AddRef();
+                }
+
                 _keyboard = keyboard;
-                _keyboard->AddRef();
             }
             void Pointer(Compositor::IDisplay::IPointer* pointer) override
             {
-                assert((_pointer == nullptr) ^ (pointer == nullptr));
+                ASSERT((_pointer == nullptr) ^ (pointer == nullptr));
+
+                if (pointer == nullptr) {
+                    if (_pointer != nullptr) {
+                        _pointer->Release();
+                    }
+                } else {
+                    pointer->AddRef();
+                }
+
                 _pointer = pointer;
-                _pointer->AddRef();
             }
             void Wheel(Compositor::IDisplay::IWheel* wheel) override
             {
-                assert((_wheel == nullptr) ^ (wheel == nullptr));
+                ASSERT((_wheel == nullptr) ^ (wheel == nullptr));
+
+                if (wheel == nullptr) {
+                    if (_wheel != nullptr) {
+                        _wheel->Release();
+                    }
+                } else {
+                    wheel->AddRef();
+                }
+
                 _wheel = wheel;
-                _wheel->AddRef();
             }
             void TouchPanel(Compositor::IDisplay::ITouchPanel* touchpanel) override
             {
-                assert((_touchpanel == nullptr) ^ (touchpanel == nullptr));
+                ASSERT((_touchpanel == nullptr) ^ (touchpanel == nullptr));
+
+                if (touchpanel == nullptr) {
+                    if (_touchpanel != nullptr) {
+                        _touchpanel->Release();
+                    }
+                } else {
+                    touchpanel->AddRef();
+                }
+
                 _touchpanel = touchpanel;
-                _touchpanel->AddRef();
             }
             int32_t Width() const override
             {
