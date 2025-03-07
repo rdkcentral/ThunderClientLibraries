@@ -87,6 +87,7 @@ typedef enum PowerController_SystemMode {
 #define POWER_CONTROLLER_ERROR_NONE 0
 #define POWER_CONTROLLER_ERROR_GENERAL 1
 #define POWER_CONTROLLER_ERROR_UNAVAILABLE 2
+#define POWER_CONTROLLER_ERROR_NOT_EXIST 43
 
 /**
  * @brief Initializes the Power Controller.
@@ -96,10 +97,27 @@ typedef enum PowerController_SystemMode {
  * @details
  * - If the Power Controller instance does not already exist, it will be created.
  * - The instance count is incremented each time this function is called.
+ * - To check if the Power Controller is operational, use `PowerController_IsOperational`
+ * - If the Power Controller is not operational, clients can use `PowerController_Connect` to establish RPC connection with the Power Manager plugin.
  *
  * @see PowerController_Term
  */
 void PowerController_Init();
+
+/**
+ * @brief PowerController attempts to connect to the Power Manager plugin.
+ *
+ * This function connects to the Power Manager plugin.
+ *
+ * @details
+ * - This function is used to connect to the Power Manager plugin.
+ * - This is the fist function that should be called after `PowerController_Init`.
+ *
+ * @return `POWER_CONTROLLER_ERROR_NONE` on success.
+ * @return `POWER_CONTROLLER_ERROR_UNAVAILABLE` if Thunder RPC server is not running / error establishing RPC communication channel.
+ * @return `POWER_CONTROLLER_ERROR_NOT_EXIST` if the PowerManager plugin is not actavated yet.
+ */
+uint32_t PowerController_Connect();
 
 /**
  * @brief Terminates the Power Controller.
@@ -252,17 +270,93 @@ uint32_t PowerController_SetSystemMode(const PowerController_SystemMode_t curren
 // @param powerStateBeforeReboot: power state
 uint32_t PowerController_GetPowerStateBeforeReboot(PowerController_PowerState_t* powerStateBeforeReboot /* @out */);
 
+/** Engage a client in power mode change operation. */
+// @text PowerController_RemovePowerModePreChangeClient
+// @brief - Register a client to engage in power mode state changes.
+//        - Added client should call either
+//          - `PowerModePreChangeComplete` API to inform power manager that this client has completed its pre-change operation.
+//          - Or `DelayPowerModeChangeBy` API to delay the power mode change.
+//        - If the client does not call `PowerModePreChangeComplete` API, the power mode change will complete
+//        after the maximum delay `stateChangeAfter` seconds (as received in `OnPowerModePreChange` event).
+//        - Clients are required to re-register if the PowerManager plugin restarts. Therefore, it is essential for clients to register
+//        for operational state changes using `PowerController_RegisterOperationalStateChangeCallback`.
+//
+//        IMPORTANT: ** IT'S A BUG IF CLIENT `Unregister` FROM `IModePreChangeNotification` BEFORE DISENGAGING ITSELF **
+//                   always make sure to call `RemovePowerModePreChangeClient` before calling `Unregister` from `IModePreChangeNotification`.
+//
+// @param clientName: Name of the client as null terminated string
+// @param clientId: Unique identifier for the client to be used while acknowledging the pre-change operation (`PowerModePreChangeComplete`) 
+//                  or to delay the power mode change (`DelayPowerModeChangeBy`)
+uint32_t PowerController_AddPowerModePreChangeClient(const char *clientName /* @in */, uint32_t* clientId /* @out */);
+
+/** Disengage a client from the power mode change operation. */
+// @text PowerController_RemovePowerModePreChangeClient
+// @brief Removes a registered client from participating in power mode pre-change operations.
+//        NOTE client will still continue to receive pre-change notifications.
+// @param clientId: Unique identifier for the client. See `AddPowerModePreChangeClient`
+uint32_t PowerController_RemovePowerModePreChangeClient(const uint32_t clientId /* @in */);
+
+/** Power prechange activity completed */
+// @text PowerController_PowerModePreChangeComplete
+// @brief Pre power mode handling complete for given client and transation id
+// @param clientId: Unique identifier for the client, as received in AddPowerModePreChangeClient
+// @param transactionId: transaction id as received in OnPowerModePreChange
+uint32_t PowerController_PowerModePreChangeComplete(const uint32_t clientId /* @in */, const int transactionId /* @in */);
+
+/** Delay Powermode change by given time */
+// @text PowerController_DelayPowerModeChangeBy
+// @brief Delay Powermode change by given time. If different clients provide different values of delay, then the maximum of these values is used.
+// @param clientId: Unique identifier for the client, as received in AddPowerModePreChangeClient
+// @param transactionId: transaction id as received in OnPowerModePreChange
+// @param delayPeriod: delay in seconds
+uint32_t PowerController_DelayPowerModeChangeBy(const uint32_t clientId /* @in */, const int transactionId /* @in */, const int delayPeriod /* @in */);
+
 /* Callback data types for event notifications from power manager plugin */
+// @brief Operational state changed event
+// @param isOperational: true if PowerManager plugin is activated, false otherwise
+// @param userdata: opaque data, client can use it to have context to callbacks
 typedef void (*PowerController_OperationalStateChangeCb)(bool isOperational, void* userdata);
+
+// @brief Power mode changed
+// @param currentState: Current Power State
+// @param newState: New Power State
+// @param userdata: opaque data, client can use it to have context to callbacks
 typedef void (*PowerController_PowerModeChangedCb)(const PowerController_PowerState_t currentState, const PowerController_PowerState_t newState, void* userdata);
-typedef void (*PowerController_PowerModePreChangeCb)(const PowerController_PowerState_t currentState, const PowerController_PowerState_t newState, void* userdata);
+
+// @brief Power mode Pre-change event
+// @param currentState: Current Power State
+// @param newState: Changing power state to this New Power State
+// @param transactionId: transactionId to be used when invoking prePowerChangeComplete() / delayPowerModeChangeBy API
+// @param stateChangeAfter: seconds after which the actual power mode will be applied.
+// @param userdata: opaque data, client can use it to have context to callbacks
+typedef void (*PowerController_PowerModePreChangeCb)(const PowerController_PowerState_t currentState, const PowerController_PowerState_t newState, const int transactionId, const int stateChangeAfter, void* userdata);
+
+// @brief Deep sleep timeout event
+// @param wakeupTimeout: Deep sleep wakeup timeout in seconds
+// @param userdata: opaque data, client can use it to have context to callbacks
 typedef void (*PowerController_DeepSleepTimeoutCb)(const int wakeupTimeout, void* userdata);
+
+// @brief Network Standby Mode changed event - only on XIone
+// @param enabled: network standby enabled or disabled
+// @param userdata: opaque data, client can use it to have context to callbacks
 typedef void (*PowerController_NetworkStandbyModeChangedCb)(const bool enabled, void* userdata);
+
+// @brief Thermal Mode changed event
+// @param currentThermalLevel: current thermal level
+// @param newThermalLevel: new thermal level
+// @param currentTemperature: current temperature
+// @param userdata: opaque data, client can use it to have context to callbacks
 typedef void (*PowerController_ThermalModeChangedCb)(const PowerController_ThermalTemperature_t currentThermalLevel, const PowerController_ThermalTemperature_t newThermalLevel, const float currentTemperature, void* userdata);
+
+// @brief Reboot begin event
+// @param rebootReasonCustom: Reboot reason custom
+// @param rebootReasonOther: Reboot reason other
+// @param rebootRequestor: Reboot requested by
+// @param userdata: opaque data, client can use it to have context to callbacks
 typedef void (*PowerController_RebootBeginCb)(const char* rebootReasonCustom, const char* rebootReasonOther, const char* rebootRequestor, void* userdata);
 
 /* Type defines for callbacks / notifications */
-/* userdata in all callbacks are opque, clients can use to have context to callbacks */
+/* userdata in all callbacks are opque, clients can use it to have context to callbacks */
 
 /** Register for PowerManager plugin operational state change event callback, for initial state use `PowerController_IsOperational` call */
 uint32_t PowerController_RegisterOperationalStateChangeCallback(PowerController_OperationalStateChangeCb callback, void* userdata);
