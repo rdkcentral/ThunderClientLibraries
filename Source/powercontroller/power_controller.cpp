@@ -256,8 +256,17 @@ public:
     inline void UnregisterNotificationLocked(const bool forced)
     {
         if (_registered && _parent.IsActivatedLocked() && (forced || this->empty())) {
-            bool registered = !_parent.template UnregisterNotificationLocked<CallbackType>();
-            _registered = forced || registered;
+            bool unregistered = _parent.template UnregisterNotificationLocked<CallbackType>();
+
+            // ---------------------------------------
+            // | forced | unregistered | _registered |
+            // |--------|--------------|-------------|
+            // |   0    |       0      |      1      |
+            // |   0    |       1      |      0      |
+            // |   1    |       0      |      0      |
+            // |   1    |       1      |      0      |
+            // ---------------------------------------
+            _registered = !forced && !unregistered;
         }
     }
 };
