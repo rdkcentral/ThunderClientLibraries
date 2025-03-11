@@ -39,3 +39,5 @@ Source/playerinfo/player_info/player_info
 */*/*/*/*tests
 */*/generated
 */*/*/*/lib*.a
+.cache
+compile_commands.json
