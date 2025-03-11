@@ -108,8 +108,10 @@ typedef enum PowerController_SystemMode {
  * @details
  * - If the Power Controller instance does not already exist, it will be created.
  * - The instance count is incremented each time this function is called.
- * - To check if the Power Controller is operational, use `PowerController_IsOperational`
- * - If the Power Controller is not operational, clients can use `PowerController_Connect` to establish RPC connection with the Power Manager plugin.
+ * - After Init, & before making any PowerController request client needs to ensure
+ *   - Power Manager plugin is activated and operational via `PowerController_IsOperational`.
+ *   - If not operational, clients can use this Connect API to establish COM-RPC connection with the Power Manager plugin.
+ *   - If there us any failure in Connect all PowerController requests will fail with `POWER_CONTROLLER_ERROR_UNAVAILABLE` (Except for callback register / unregister APIs).
  *
  * @see PowerController_Term
  */
@@ -122,11 +124,15 @@ EXTERNAL void PowerController_Init();
  *
  * @details
  * - This function is used to connect to the Power Manager plugin.
- * - This is the fist function that should be called after `PowerController_Init`.
+ * - Before making any PowerController request client needs to ensure
+ *   - Power Manager plugin is activated and operational via `PowerController_IsOperational`.
+ *   - If not operational, clients can use this Connect API to establish COM-RPC connection with the Power Manager plugin.
+ *   - If there us any failure in Connect all PowerController requests will fail with `POWER_CONTROLLER_ERROR_UNAVAILABLE` (Except for callback register / unregister APIs).
+ * - In case of failure this API should be called again with brief delay.
  *
  * @return `POWER_CONTROLLER_ERROR_NONE` on success.
  * @return `POWER_CONTROLLER_ERROR_UNAVAILABLE` if Thunder RPC server is not running / error establishing RPC communication channel.
- * @return `POWER_CONTROLLER_ERROR_NOT_EXIST` if the PowerManager plugin is not actavated yet.
+ * @return `POWER_CONTROLLER_ERROR_NOT_EXIST` if the PowerManager plugin is not activated yet.
  */
 EXTERNAL uint32_t PowerController_Connect();
 
@@ -150,6 +156,8 @@ EXTERNAL void PowerController_Term();
  * This function determines whether the Power Manager interface is operational and ready to handle requests.
  * It can be used to verify the availability of the Power Manager client before initiating operations that depend on it.
  *
+ * IMPORTANT - This is the first function that should be called after `PowerController_Init`.
+ *
  * @return `true` if the Power Manager interface is active and operational, otherwise `false`.
  *
  * @details
@@ -157,6 +165,7 @@ EXTERNAL void PowerController_Term();
  * - Calling this function is NOT MANDATORY but optional
  * - Clients can register for notifications about state changes using `PowerController_RegisterOperationalStateChangeCallback`.
  * - If the Power Manager interface is not active, subsequent Power Manager operations will fail with the error `POWER_CONTROLLER_ERROR_UNAVAILABLE`.
+ * - Therefore in failure cases, clients can use `PowerController_Connect` to establish COM-RPC connection with the Power Manager plugin.
  *
  * @see PowerController_RegisterOperationalStateChangeCallback
  */
@@ -282,9 +291,9 @@ EXTERNAL uint32_t PowerController_SetSystemMode(const PowerController_SystemMode
 EXTERNAL uint32_t PowerController_GetPowerStateBeforeReboot(PowerController_PowerState_t* powerStateBeforeReboot /* @out */);
 
 /** Engage a client in power mode change operation. */
-// @text PowerController_RemovePowerModePreChangeClient
+// @text PowerController_AddPowerModePreChangeClient
 // @brief - Register a client to engage in power mode state changes.
-//        - Added client should call either
+//        - When `PowerModePreChange` event is received, then added client should call either
 //          - `PowerModePreChangeComplete` API to inform power manager that this client has completed its pre-change operation.
 //          - Or `DelayPowerModeChangeBy` API to delay the power mode change.
 //        - If the client does not call `PowerModePreChangeComplete` API, the power mode change will complete
@@ -367,7 +376,7 @@ typedef void (*PowerController_ThermalModeChangedCb)(const PowerController_Therm
 typedef void (*PowerController_RebootBeginCb)(const char* rebootReasonCustom, const char* rebootReasonOther, const char* rebootRequestor, void* userdata);
 
 /* Type defines for callbacks / notifications */
-/* userdata in all callbacks are opque, clients can use it to have context to callbacks */
+/* userdata in all callbacks are opaque, clients can use it to have context to callbacks */
 
 /** Register for PowerManager plugin operational state change event callback, for initial state use `PowerController_IsOperational` call */
 EXTERNAL uint32_t PowerController_RegisterOperationalStateChangeCallback(PowerController_OperationalStateChangeCb callback, void* userdata);

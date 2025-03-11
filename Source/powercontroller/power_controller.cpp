@@ -190,7 +190,7 @@ PowerController_ThermalTemperature_t convert(const ThermalTemperature from)
 
 static constexpr const TCHAR callSign[] = _T("org.rdk.PowerManager");
 
-// Templated Clallback list avoid code duplication, for individual callback types
+// Templated Callback list avoid code duplication, for individual callback types
 // This class expects mechanism to register / unregister for individual & unique notifications with PowerManager
 // via RegisterNotificationLocked and UnregisterNotificationLocked methods. To be implemented in PowerController (i,e PARENT)
 template <typename CallbackType, typename PARENT>
@@ -447,7 +447,7 @@ private:
         , _rebootBeginCallbacks(*this)
         , _shutdown(false)
     {
-        Connect();
+        (void)Connect();
     }
 
     ~PowerController()
@@ -544,7 +544,7 @@ public:
             if (!IsConnected()) {
                 uint32_t res = BaseClass::Open(RPC::CommunicationTimeOut, BaseClass::Connector(), callSign);
                 if (Core::ERROR_NONE != res) {
-                    std::cerr << "/tmp/communicator com channel open failed. Is Thunder running?\n";
+                    std::cerr << "COM-RPC channel open failed. Is Thunder running?\n";
                     errMsg = "COM-RPC channel open failed";
                     status = Core::ERROR_UNAVAILABLE;
                     break;
