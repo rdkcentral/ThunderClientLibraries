@@ -101,20 +101,19 @@ namespace Linux {
 
         class SurfaceImplementation : public Compositor::IDisplay::ISurface {
         private:
-            class GBMSurface : public Compositor::ClientBuffer {
+            class GBMSurface : public Compositor::ClientBufferType<1> {
                 static void Destroyed(gbm_bo* bo VARIABLE_IS_NOT_USED, void* data VARIABLE_IS_NOT_USED)
                 {
                 }
 
             public:
                 GBMSurface(SurfaceImplementation& parent, gbm_device* gbmDevice, uint32_t remoteId)
-                    : Compositor::ClientBuffer()
+                    : Compositor::ClientBufferType<1>()
                     , _parent(parent)
                     , _remoteId(remoteId)
                     , _surface(nullptr)
                     , _frameBuffer(nullptr)
                 {
-
                     Core::PrivilegedRequest::Container descriptors;
                     Core::PrivilegedRequest request;
 
@@ -191,7 +190,6 @@ namespace Linux {
                     RequestRender();
                     return true;
                 }
-
                 void Rendered() override
                 {
                     gbm_surface_release_buffer(_surface, _frameBuffer);

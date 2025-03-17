@@ -30,19 +30,18 @@ const char* descriptors[] = {
 
 const char bridgeConnector[] = _T("/tmp/connector");
 
-class CompositorBuffer : public Compositor::CompositorBuffer {
+class CompositorBuffer : public Compositor::CompositorBufferType<4> {
 private:
-    using BaseClass = Compositor::CompositorBuffer;
+    using BaseClass = Compositor::CompositorBufferType<4>;
 
 protected:
     CompositorBuffer(
         const uint32_t width, const uint32_t height,
         const uint32_t format, const uint64_t modifier,
-        const Exchange::ICompositionBuffer::DataType type)
+        const Exchange::IGraphicsBuffer::DataType type)
         : BaseClass(width, height, format, modifier, type)
         , _dirty(false)
     {
-
         printf("Constructing server buffer.\n");
 
         for (uint8_t index = 0; index < (sizeof(descriptors) / sizeof(const char*)); index++) {
@@ -63,7 +62,7 @@ public:
     CompositorBuffer& operator=(CompositorBuffer&&) = delete;
     CompositorBuffer& operator=(const CompositorBuffer&) = delete;
 
-    static Core::ProxyType<CompositorBuffer> Create(const string& callsign, const uint32_t width, const uint32_t height, const Exchange::ICompositionBuffer::DataType type)
+    static Core::ProxyType<CompositorBuffer> Create(const string& callsign, const uint32_t width, const uint32_t height, const Exchange::IGraphicsBuffer::DataType type)
     {
         return (_map.Instance<CompositorBuffer>(callsign, width, height, 0xAA, 0x55, type));
     }
@@ -119,9 +118,9 @@ private:
 
 /* static */ Core::ProxyMapType<string, CompositorBuffer> CompositorBuffer::_map;
 
-class ClientBuffer : public Compositor::ClientBuffer {
+class ClientBuffer : public Compositor::ClientBufferType<4> {
 private:
-    using BaseClass = Compositor::ClientBuffer;
+    using BaseClass = Compositor::ClientBufferType<4>;
 
 protected:
     ClientBuffer(Core::PrivilegedRequest::Container& descriptors)
@@ -145,9 +144,9 @@ public:
     ClientBuffer(const ClientBuffer&) = delete;
     ClientBuffer& operator=(const ClientBuffer&) = delete;
 
-    static Core::ProxyType<Exchange::ICompositionBuffer> Create(Core::PrivilegedRequest::Container& descriptors)
+    static Core::ProxyType<Exchange::IGraphicsBuffer> Create(Core::PrivilegedRequest::Container& descriptors)
     {
-        return (Core::ProxyType<Exchange::ICompositionBuffer>(Core::ProxyType<ClientBuffer>::Create(descriptors)));
+        return (Core::ProxyType<Exchange::IGraphicsBuffer>(Core::ProxyType<ClientBuffer>::Create(descriptors)));
     }
 
 public:
@@ -200,7 +199,7 @@ public:
     }
     ~Dispatcher() override = default;
 
-    void Add(const uint32_t id, Compositor::CompositorBuffer& buffer)
+    void Add(const uint32_t id, Compositor::CompositorBufferType<4>& buffer)
     {
         _id = id;
         _buffer = &buffer;
@@ -238,7 +237,7 @@ private:
 
 private:
     uint32_t _id;
-    Compositor::CompositorBuffer* _buffer;
+    Compositor::CompositorBufferType<4>* _buffer;
     Callback _callback;
 };
 
@@ -287,11 +286,11 @@ int main(int argc, const char* argv[])
         printf("Running as: [%s]\n", server ? _T("server") : _T("client"));
         Test::Dispatcher bridge;
         Core::ProxyType<Test::CompositorBuffer> serverBuffer;
-        Core::ProxyType<Exchange::ICompositionBuffer> buffer;
+        Core::ProxyType<Exchange::IGraphicsBuffer> buffer;
 
         if (server == true) {
-            serverBuffer = Test::CompositorBuffer::Create(_T("TestThing"), 1024, 1080, Exchange::ICompositionBuffer::TYPE_RAW);
-            buffer = Core::ProxyType<Exchange::ICompositionBuffer>(serverBuffer);
+            serverBuffer = Test::CompositorBuffer::Create(_T("TestThing"), 1024, 1080, Exchange::IGraphicsBuffer::TYPE_RAW);
+            buffer = Core::ProxyType<Exchange::IGraphicsBuffer>(serverBuffer);
             bridge.Open(string(Test::bridgeConnector));
             printf("Server has created a buffer, known as: [%d]\n", bufferId);
             bridge.Add(bufferId, *serverBuffer);
@@ -339,7 +338,7 @@ int main(int argc, const char* argv[])
                 if (buffer == nullptr) {
                     printf("There are no buffers\n");
                 } else {
-                    Exchange::ICompositionBuffer::IIterator* planes = buffer->Acquire(10);
+                    Exchange::IGraphicsBuffer::IIterator* planes = buffer->Acquire(10);
 
                     if (planes != nullptr) {
                         printf("Iterating ove the planes to write:\n");
@@ -354,13 +353,13 @@ int main(int argc, const char* argv[])
                     buffer->Relinquish();
 
                     if (server == false) {
-                        Core::ProxyType<Compositor::ClientBuffer> info = Core::ProxyType<Compositor::ClientBuffer>(buffer);
+                        Core::ProxyType<Compositor::ClientBufferType<4> > info = Core::ProxyType<Compositor::ClientBufferType<4> >(buffer);
                         if (info != nullptr) {
                             printf("Request to render.\n");
                             info->RequestRender();
                         }
                     } else {
-                        Core::ProxyType<Compositor::CompositorBuffer> info = Core::ProxyType<Compositor::CompositorBuffer>(buffer);
+                        Core::ProxyType<Compositor::CompositorBufferType<4> > info = Core::ProxyType<Compositor::CompositorBufferType<4> >(buffer);
                         if (info != nullptr) {
                             printf("Render request handled.\n");
                             info->Rendered();
