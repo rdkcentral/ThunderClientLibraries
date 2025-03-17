@@ -22,7 +22,7 @@ find_package(${NAMESPACE}Core REQUIRED)
 find_package(${NAMESPACE}PrivilegedRequest REQUIRED)
 find_package(CompileSettingsDebug REQUIRED)
 
-add_executable(cb-test main.cpp)
+add_executable(graphicsbuffertest main.cpp)
 
 target_link_libraries(graphicsbuffertest PRIVATE
     CompileSettingsDebug::CompileSettingsDebug

@@ -16,6 +16,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  **/
+
+#define MODULE_NAME GraphicsBufferTestApp 
+
 #include <graphicsbuffer/GraphicsBufferType.h>
 
 using namespace Thunder;
