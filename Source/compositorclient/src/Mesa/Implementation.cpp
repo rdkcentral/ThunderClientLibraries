@@ -36,7 +36,7 @@ extern "C" {
 #include <privilegedrequest/PrivilegedRequest.h>
 #include <virtualinput/virtualinput.h>
 
-#include <compositorbuffer/CompositorBufferType.h>
+#include <graphicsbuffer/GraphicsBufferType.h>
 #include <interfaces/ICompositionBuffer.h>
 
 #include "RenderAPI.h"
@@ -108,7 +108,9 @@ namespace Linux {
                 PENDING = 0x04,
             };
 
-            class GBMSurface : public Compositor::ClientBuffer {
+            class GBMSurface : public Graphics::ClientBufferType<1> {
+            private:
+                using BaseClass = Graphics::ClientBufferType<1>;
             private:
                 static void Destroyed(gbm_bo* bo VARIABLE_IS_NOT_USED, void* data VARIABLE_IS_NOT_USED)
                 {
@@ -116,7 +118,7 @@ namespace Linux {
 
             public:
                 GBMSurface(SurfaceImplementation& parent, gbm_device* gbmDevice, uint32_t remoteId)
-                    : Compositor::ClientBuffer()
+                    : BaseClass()
                     , _parent(parent)
                     , _remoteId(remoteId)
                     , _surface(nullptr)
