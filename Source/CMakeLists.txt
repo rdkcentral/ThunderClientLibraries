@@ -27,6 +27,10 @@ if(COMPOSITORBUFFER)
     add_subdirectory(compositorbuffer)
 endif()
 
+if(GRAPHICSBUFFER)
+    add_subdirectory(graphicsbuffer)
+endif()
+
 if(COMPOSITORCLIENT)
     add_subdirectory(compositorclient)
 endif()
