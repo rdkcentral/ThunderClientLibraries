@@ -69,6 +69,25 @@ namespace Linux {
         }
     }
 
+    static const uint8_t RED_SIZE = 8;
+    static const uint8_t GREEN_SIZE = 8;
+    static const uint8_t BLUE_SIZE = 8;
+    static const uint8_t ALPHA_SIZE = 8;
+    static const uint8_t DEPTH_SIZE = 0;
+
+    static const EGLint DefaultConfigSelectionCriteria[] =
+    {
+        EGL_NONE
+    };
+
+    //    EGL_RED_SIZE, RED_SIZE,
+    //    EGL_GREEN_SIZE, GREEN_SIZE,
+    //    EGL_BLUE_SIZE, BLUE_SIZE,
+    //    EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+    //    EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+    //    EGL_DEPTH_SIZE, DEPTH_SIZE,
+    //    EGL_STENCIL_SIZE, 0,
+
     class Display : public Compositor::IDisplay {
     public:
         Display() = delete;
@@ -113,7 +132,7 @@ namespace Linux {
                     Core::PrivilegedRequest::Container descriptors;
                     Core::PrivilegedRequest request;
 
-                    if (request.Request(100, ConnectorPath() + _T("descriptor"), _remoteId, descriptors) == Core::ERROR_NONE) {
+                    if (request.Request(100, (ConnectorPath() + _T("descriptor")), _remoteId, descriptors) == Core::ERROR_NONE) {
                         Load(descriptors);
                     } else {
                         TRACE(Trace::Error, (_T ( "Failed to get display file descriptor from compositor server")));
@@ -134,59 +153,64 @@ namespace Linux {
 
                     ASSERT(_surface != nullptr);
                 }
-
                 ~GBMSurface()
                 {
-                    // fixme: This leads to a SEGFAULT....
-                    // if (_frameBuffer != nullptr) {
-                    //     gbm_bo_destroy(_frameBuffer);
-                    //     _frameBuffer = nullptr;
-                    // }
-
-                    if (_surface != nullptr) {
-                        gbm_surface_destroy(_surface);
-                        _surface = nullptr;
+                    if (_frameBuffer != nullptr) {
+                         gbm_bo_destroy(_frameBuffer);
+                         _frameBuffer = nullptr;
                     }
                 }
 
+                void Initialize() {
+                    // Create a single BO (calling gbm_surface_lock_front_buffer() again before gbm_surface_release_buffer() would create another BO)
+                    _frameBuffer = gbm_surface_lock_front_buffer(_surface);
+                    // uint16_t planes = gbm_bo_get_plane_count(_frameBuffer);
+
+                    Core::PrivilegedRequest::Container descriptors;
+                    Core::PrivilegedRequest request;
+
+                    int descriptor = gbm_bo_get_fd_for_plane(_frameBuffer, 0);
+                    descriptors.emplace_back(descriptor);
+                    Add(descriptor, gbm_bo_get_stride_for_plane(_frameBuffer, 0), gbm_bo_get_offset(_frameBuffer, 0));
+
+                    if (request.Offer(100, (ConnectorPath() + _T("descriptor")), _remoteId, descriptors) == Core::ERROR_NONE) {
+                        TRACE(Trace::Information, (_T("Offered buffer to compositor server")));
+                    } else {
+                        TRACE(Trace::Error, (_T("Failed to offer buffer to compositor server")));
+                    }
+
+                    gbm_bo_set_user_data(_frameBuffer, this, &Destroyed);
+
+                    gbm_surface_release_buffer(_surface, _frameBuffer);
+                    //stride = gbm_bo_get_stride(gbmBO);
+                    //offset = gbm_bo_get_offset(gbmBO, 0);
+                }
                 bool Render()
                 {
-                    gbm_bo* bo = gbm_surface_lock_front_buffer(_surface);
+                    if (_frameBuffer == nullptr) {
+                        _frameBuffer = gbm_surface_lock_front_buffer(_surface);
 
-                    ASSERT(bo != nullptr);
-
-                    if (gbm_bo_get_user_data(bo) == nullptr) {
-                        ASSERT(_frameBuffer == nullptr);
-
-                        uint16_t planes = gbm_bo_get_plane_count(bo);
+                        ASSERT(gbm_bo_get_plane_count(_frameBuffer) == 1);
 
                         Core::PrivilegedRequest::Container descriptors;
                         Core::PrivilegedRequest request;
 
-                        for (uint16_t index = 0; index < planes; index++) {
-                            int descriptor = gbm_bo_get_fd_for_plane(bo, index);
-                            descriptors.emplace_back(descriptor);
-                            Add(descriptor, gbm_bo_get_stride_for_plane(bo, index), gbm_bo_get_offset(bo, index));
-                        }
+                        int descriptor = gbm_bo_get_fd_for_plane(_frameBuffer, 0);
+                        descriptors.emplace_back(descriptor);
+                        Add(descriptor, gbm_bo_get_stride_for_plane(_frameBuffer, 0), gbm_bo_get_offset(_frameBuffer, 0));
 
-                        if (request.Offer(100, ConnectorPath() + _T("descriptor"), _remoteId, descriptors) == Core::ERROR_NONE) {
-                            TRACE(Trace::Information, (_T("Offered buffer to compositor server")));
-                        } else {
+                        if (request.Offer(100, (ConnectorPath() + _T("descriptor")), _remoteId, descriptors) != Core::ERROR_NONE) {
                             TRACE(Trace::Error, (_T("Failed to offer buffer to compositor server")));
                         }
 
-                        gbm_bo_set_user_data(bo, this, &Destroyed);
-
-                        _frameBuffer = bo;
+                        gbm_bo_set_user_data(_frameBuffer, this, &Destroyed);
                     }
-
-                    ASSERT(_frameBuffer != nullptr);
-                    ASSERT(gbm_bo_get_handle(bo).u32 == gbm_bo_get_handle(_frameBuffer).u32);
-
+                    else {
+                        _frameBuffer = gbm_surface_lock_front_buffer(_surface);
+                    }
                     RequestRender();
                     return true;
                 }
-
                 void Rendered() override
                 {
                     gbm_surface_release_buffer(_surface, _frameBuffer);
@@ -196,7 +220,6 @@ namespace Linux {
                 {
                     _parent.Published();
                 }
-
                 EGLNativeWindowType Native() const
                 {
                     return (static_cast<EGLNativeWindowType>(_surface));
@@ -220,6 +243,8 @@ namespace Linux {
                 : _adminLock()
                 , _id(Core::InterlockedIncrement(_surfaceIndex))
                 , _display(display)
+                , _eglContext(EGL_NO_CONTEXT)
+                , _eglSurface(EGL_NO_SURFACE)
                 , _remoteClient(display.CreateRemoteSurface(name, width, height))
                 , _surface(*this, static_cast<gbm_device*>(_display.Native()), _remoteClient->Native())
                 , _name(_remoteClient->Name())
@@ -233,6 +258,17 @@ namespace Linux {
 
                 ASSERT(_remoteClient != nullptr);
                 TRACE(Trace::Information, (_T("Construct surface[%d] %s  %dx%d (hxb)"), _id, name.c_str(), height, width));
+
+                _eglContext = eglCreateContext(display.DisplayEGL(), display.ConfigEGL(), EGL_NO_CONTEXT, nullptr);
+                ASSERT (_eglContext != EGL_NO_CONTEXT)
+
+                // _eglSurface = eglCreateWindowSurface(display.DisplayEGL(), display.ConfigEGL(), _surface.Native(), nullptr);
+                // ASSERT (_eglSurface != EGL_NO_SURFACE)
+
+                // eglMakeCurrent(display.DisplayEGL(), _eglSurface, _eglSurface, _eglContext);
+                // eglSwapBuffers(display.DisplayEGL(), _eglSurface);
+
+                // _surface.Initialize();
 
                 Core::ResourceMonitor::Instance().Register(_surface);
 
@@ -403,6 +439,8 @@ namespace Linux {
             mutable Core::CriticalSection _adminLock;
             const uint8_t _id;
             Display& _display;
+            EGLContext _eglContext;
+            EGLSurface _eglSurface;
             Exchange::IComposition::IClient* _remoteClient;
             GBMSurface _surface;
             const string _name;
@@ -527,11 +565,62 @@ namespace Linux {
         {
             return _remoteDisplay;
         }
+        const EGLDisplay& DisplayEGL() const {
+            return(_eglDisplay);
+        }
+        const EGLConfig& ConfigEGL() const {
+            return(_eglConfig);
+        }
 
     private:
+        bool Configs() {
+            bool loaded = false;
+            EGLint configCount;
+
+            if (eglGetConfigs(_eglDisplay, nullptr, 0, &configCount)) {
+
+                EGLConfig* eglConfigs = reinterpret_cast<EGLConfig*>(ALLOCA(configCount*sizeof(EGLConfig)));
+
+                /*
+                 * Get a list of configurations that meet or exceed our requirements
+                 */
+                EGLint index = 0;
+
+                // if (eglChooseConfig(_eglDisplay, DefaultConfigSelectionCriteria, eglConfigs, configCount, &index)) {
+                if (eglGetConfigs(_eglDisplay, eglConfigs, configCount, &index)) {
+
+                    /*
+                     * Choose a suitable configuration [EGL_WINDOW_BIT = 0x04, EGL_OPENGL_ES2_BIT = 0x04]
+ 
+                     */
+                    while (index > 0) {
+                        index--;
+
+                        EGLint redSize, greenSize, blueSize, alphaSize, depthSize, surfaceType, renderableType, stencilSize;
+
+                        eglGetConfigAttrib(_eglDisplay, eglConfigs[index], EGL_RED_SIZE, &redSize);
+                        eglGetConfigAttrib(_eglDisplay, eglConfigs[index], EGL_GREEN_SIZE, &greenSize);
+                        eglGetConfigAttrib(_eglDisplay, eglConfigs[index], EGL_BLUE_SIZE, &blueSize);
+                        eglGetConfigAttrib(_eglDisplay, eglConfigs[index], EGL_ALPHA_SIZE, &alphaSize);
+                        eglGetConfigAttrib(_eglDisplay, eglConfigs[index], EGL_DEPTH_SIZE, &depthSize);
+                        eglGetConfigAttrib(_eglDisplay, eglConfigs[index], EGL_SURFACE_TYPE, &surfaceType);
+                        eglGetConfigAttrib(_eglDisplay, eglConfigs[index], EGL_RENDERABLE_TYPE, &renderableType);
+                        eglGetConfigAttrib(_eglDisplay, eglConfigs[index], EGL_STENCIL_SIZE, &stencilSize);
+                        if ((redSize == RED_SIZE) && (greenSize == GREEN_SIZE) && (blueSize == BLUE_SIZE) && (alphaSize == ALPHA_SIZE) && (depthSize >= DEPTH_SIZE)) {
+                            // fprintf(stdout, "R:[%d], G:[%d], B:[%d], A:[%d], D:[%d], S:[%d], SurfaceType:[0x%02X], RendarableType:[0x%02X]\n", redSize, greenSize, blueSize, alphaSize, depthSize, stencilSize, surfaceType, renderableType);
+                            _eglConfig = eglConfigs[index];
+                            loaded = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return (loaded);
+        }
         void Initialize()
         {
-            string comrpcPath(ConnectorPath() + _T("comrpc"));
+            const string comrpcPath(ConnectorPath() + _T("comrpc"));
             TRACE(Trace::Information, (_T("PID: %d: Compositor connector: %s"), getpid(), ConnectorPath().c_str()));
             TRACE(Trace::Information, (_T("PID: %d: Input connector: %s"), getpid(), InputConnector().c_str()));
 
@@ -555,9 +644,18 @@ namespace Linux {
 
             if (result == Core::ERROR_NONE) {
                 _remoteDisplay = _compositorServerRPCConnection->Acquire<Exchange::IComposition::IDisplay>(2000, _displayName, ~0);
-
                 if (_remoteDisplay == nullptr) {
                     TRACE(Trace::Error, (_T ( "Could not create remote display for Display %s!" ), Name().c_str()));
+                }
+                else {
+                    _eglDisplay = eglGetDisplay(reinterpret_cast<gbm_device*>(_remoteDisplay->Native()));
+                    if ( (eglInitialize(_eglDisplay, nullptr, nullptr) != EGL_TRUE) || (Configs() == false) ) {
+                        TRACE(Trace::Error, (_T ( "Could not initialize EGL for Display %s!" ), Name().c_str()));
+                        _remoteDisplay->Release();
+                        _remoteDisplay = nullptr;
+                    }
+                    else {
+                    }
                 }
             } else {
                 TRACE(Trace::Error, (_T("Could not open connection to Compositor with node %s. Error: %s"), _compositorServerRPCConnection->Source().RemoteId().c_str(), Core::NumberType<uint32_t>(result).Text().c_str()));
@@ -576,6 +674,7 @@ namespace Linux {
         void Deinitialize()
         {
             _adminLock.Lock();
+
 
             if (_virtualinput != nullptr) {
                 virtualinput_close(_virtualinput);
@@ -659,6 +758,8 @@ namespace Linux {
         Exchange::IComposition::IDisplay* _remoteDisplay;
         int _gpuId;
         gbm_device* _gbmDevice;
+        EGLDisplay _eglDisplay;
+        EGLConfig _eglConfig;
     }; // class Display
 
     uint32_t Display::SurfaceImplementation::_surfaceIndex = 0;
@@ -676,6 +777,8 @@ namespace Linux {
         , _remoteDisplay(nullptr)
         , _gpuId(-1)
         , _gbmDevice(nullptr)
+        , _eglDisplay(EGL_NO_DISPLAY)
+        , _eglConfig()
     {
         Core::PrivilegedRequest::Container descriptors;
         Core::PrivilegedRequest request;
