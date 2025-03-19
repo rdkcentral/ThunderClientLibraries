@@ -503,6 +503,15 @@ namespace Graphics {
                 }
             }
         }
+        SharedBufferType(const uint32_t waitTime, const Core::ProxyType<Exchange::IGraphicsBuffer>& buffer)
+            : SharedBufferType(buffer->Width(), buffer->Height(), buffer->Format(), buffer->Modifier(), buffer->Type()) 
+        {
+            IIterator* planes (buffer->Acquire(waitTime));
+            while (planes->Next()) {
+                Add(planes->Descriptor(), planes->Stride(), planes->Offset());
+            }
+            buffer->Relinquish();
+        }
         SharedBufferType(Core::PrivilegedRequest::Container& descriptors)
             : _iterator(*this)
             , _virtualFd(-1)
@@ -648,7 +657,7 @@ namespace Graphics {
                 }
             }
         }
-        void Add(int fd, const uint32_t stride, const uint32_t offset)
+        void Add(const int fd, const uint32_t stride, const uint32_t offset)
         {
             uint8_t index = _storage->Planes();
             ASSERT(fd > 0);
@@ -844,8 +853,8 @@ namespace Graphics {
             : SharedBufferType<PLANES>(width, height, format, modifier, type)
         {
         }
-        ServerBufferType(const Core::ProxyType<Exchange::IGraphicsBuffer>& buffer)
-            : SharedBufferType<PLANES>(buffer)
+        ServerBufferType(const uint32_t waitTime, const Core::ProxyType<Exchange::IGraphicsBuffer>& buffer) 
+            : SharedBufferType<PLANES>(waitTime, buffer)
         {
         }
         ~ServerBufferType() override
@@ -856,9 +865,9 @@ namespace Graphics {
         }
 
     public:
-        void Load(const Core::ProxyType<Exchange::IGraphicsBuffer>& buffer)
+        void Add(const int fd, const uint32_t stride, const uint32_t offset)
         {
-            SharedBufferType<PLANES>::Load(buffer);
+            SharedBufferType<PLANES>::Add(fd, stride, offset);
         }
         bool Rendered()
         {
