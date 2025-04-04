@@ -102,9 +102,16 @@ namespace Linux {
         class SurfaceImplementation : public Compositor::IDisplay::ISurface {
         private:
             class GBMSurface : public Compositor::ClientBuffer {
+            private:
                 static void Destroyed(gbm_bo* bo VARIABLE_IS_NOT_USED, void* data VARIABLE_IS_NOT_USED)
                 {
                 }
+
+                enum State : uint8_t {
+                    IDLE = 0,
+                    RENDERING = 1,
+                    PRESENTING = 2,
+                };
 
             public:
                 GBMSurface(SurfaceImplementation& parent, gbm_device* gbmDevice, uint32_t remoteId)
@@ -114,6 +121,8 @@ namespace Linux {
                     , _surface(nullptr)
                     , _frameBuffer(nullptr)
                     , _frameBufferLock()
+                    , _state(State::IDLE)
+                    , _lock()
                 {
 
                     Core::PrivilegedRequest::Container descriptors;
@@ -157,6 +166,11 @@ namespace Linux {
 
                 bool Render()
                 {
+                    std::lock_guard<std::mutex> lock(_lock); // Protect shared resources
+
+                    State expected = IDLE;
+                    
+                    if (_state.compare_exchange_strong(expected, RENDERING, std::memory_order_acq_rel)) {
                         _frameBufferLock.lock();
                     gbm_bo* bo = gbm_surface_lock_front_buffer(_surface);
 
@@ -192,17 +206,36 @@ namespace Linux {
 
                     RequestRender();
                     return true;
+                    } else {
+                        return false;
+                    }
                 }
 
                 void Rendered() override
                 {
+                    std::lock_guard<std::mutex> lock(_lock); // Protect shared resources
+
+                    State expected = RENDERING;
+                    
+                    if (_state.compare_exchange_strong(expected, PRESENTING, std::memory_order_acq_rel)) {
                     gbm_surface_release_buffer(_surface, _frameBuffer);
                         _frameBufferLock.unlock();
                     _parent.Rendered();
                 }
+                }
+
                 void Published() override
                 {
+                    std::lock_guard<std::mutex> lock(_lock); // Protect shared resources
+
+                    State expected = PRESENTING;
+                    
+                    if (_state.compare_exchange_strong(expected, IDLE, std::memory_order_acq_rel)) {
                     _parent.Published();
+                    } else if (_state.load() == RENDERING) {
+                        TRACE(Trace::Error, (_T("Surface %s[%d] is in RENDERING state, but received a Published event"), _parent.Name().c_str() ,_remoteId));
+                        RequestRender(); // Request render again we missed the deadline.
+                    }
                 }
 
                 EGLNativeWindowType Native() const
@@ -216,6 +249,8 @@ namespace Linux {
                 gbm_surface* _surface;
                 gbm_bo* _frameBuffer;
                 std::mutex _frameBufferLock;
+                std::atomic<State> _state;
+                std::mutex _lock;
             };
 
         public:
@@ -422,7 +457,7 @@ namespace Linux {
             ISurface::ICallback* _callback;
 
             static uint32_t _surfaceIndex;
-        };
+        }; // class SurfaceImplementation
 
     public:
         using Surfaces = std::vector<SurfaceImplementation*>;
