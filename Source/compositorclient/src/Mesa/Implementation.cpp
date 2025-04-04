@@ -169,43 +169,43 @@ namespace Linux {
                     std::lock_guard<std::mutex> lock(_lock); // Protect shared resources
 
                     State expected = IDLE;
-                    
+
                     if (_state.compare_exchange_strong(expected, RENDERING, std::memory_order_acq_rel)) {
                         _frameBufferLock.lock();
-                    gbm_bo* bo = gbm_surface_lock_front_buffer(_surface);
+                        gbm_bo* bo = gbm_surface_lock_front_buffer(_surface);
 
-                    ASSERT(bo != nullptr);
+                        ASSERT(bo != nullptr);
 
-                    if (gbm_bo_get_user_data(bo) == nullptr) {
-                        ASSERT(_frameBuffer == nullptr);
+                        if (gbm_bo_get_user_data(bo) == nullptr) {
+                            ASSERT(_frameBuffer == nullptr);
 
-                        uint16_t planes = gbm_bo_get_plane_count(bo);
+                            uint16_t planes = gbm_bo_get_plane_count(bo);
 
-                        Core::PrivilegedRequest::Container descriptors;
-                        Core::PrivilegedRequest request;
+                            Core::PrivilegedRequest::Container descriptors;
+                            Core::PrivilegedRequest request;
 
-                        for (uint16_t index = 0; index < planes; index++) {
-                            int descriptor = gbm_bo_get_fd_for_plane(bo, index);
-                            descriptors.emplace_back(descriptor);
-                            Add(descriptor, gbm_bo_get_stride_for_plane(bo, index), gbm_bo_get_offset(bo, index));
+                            for (uint16_t index = 0; index < planes; index++) {
+                                int descriptor = gbm_bo_get_fd_for_plane(bo, index);
+                                descriptors.emplace_back(descriptor);
+                                Add(descriptor, gbm_bo_get_stride_for_plane(bo, index), gbm_bo_get_offset(bo, index));
+                            }
+
+                            if (request.Offer(100, BufferConnector(), _remoteId, descriptors) == Core::ERROR_NONE) {
+                                TRACE(Trace::Information, (_T("Offered buffer to compositor server")));
+                            } else {
+                                TRACE(Trace::Error, (_T("Failed to offer buffer to compositor server")));
+                            }
+
+                            gbm_bo_set_user_data(bo, this, &Destroyed);
+
+                            _frameBuffer = bo;
                         }
 
-                        if (request.Offer(100, BufferConnector(), _remoteId, descriptors) == Core::ERROR_NONE) {
-                            TRACE(Trace::Information, (_T("Offered buffer to compositor server")));
-                        } else {
-                            TRACE(Trace::Error, (_T("Failed to offer buffer to compositor server")));
-                        }
+                        ASSERT(_frameBuffer != nullptr);
+                        ASSERT(gbm_bo_get_handle(bo).u32 == gbm_bo_get_handle(_frameBuffer).u32);
 
-                        gbm_bo_set_user_data(bo, this, &Destroyed);
-
-                        _frameBuffer = bo;
-                    }
-
-                    ASSERT(_frameBuffer != nullptr);
-                    ASSERT(gbm_bo_get_handle(bo).u32 == gbm_bo_get_handle(_frameBuffer).u32);
-
-                    RequestRender();
-                    return true;
+                        RequestRender();
+                        return true;
                     } else {
                         return false;
                     }
@@ -216,12 +216,12 @@ namespace Linux {
                     std::lock_guard<std::mutex> lock(_lock); // Protect shared resources
 
                     State expected = RENDERING;
-                    
+
                     if (_state.compare_exchange_strong(expected, PRESENTING, std::memory_order_acq_rel)) {
-                    gbm_surface_release_buffer(_surface, _frameBuffer);
+                        gbm_surface_release_buffer(_surface, _frameBuffer);
                         _frameBufferLock.unlock();
-                    _parent.Rendered();
-                }
+                        _parent.Rendered();
+                    }
                 }
 
                 void Published() override
@@ -229,11 +229,11 @@ namespace Linux {
                     std::lock_guard<std::mutex> lock(_lock); // Protect shared resources
 
                     State expected = PRESENTING;
-                    
+
                     if (_state.compare_exchange_strong(expected, IDLE, std::memory_order_acq_rel)) {
-                    _parent.Published();
+                        _parent.Published();
                     } else if (_state.load() == RENDERING) {
-                        TRACE(Trace::Error, (_T("Surface %s[%d] is in RENDERING state, but received a Published event"), _parent.Name().c_str() ,_remoteId));
+                        TRACE(Trace::Error, (_T("Surface %s[%d] is in RENDERING state, but received a Published event"), _parent.Name().c_str(), _remoteId));
                         RequestRender(); // Request render again we missed the deadline.
                     }
                 }
