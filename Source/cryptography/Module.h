@@ -24,8 +24,9 @@
 #endif
 
 #include <core/core.h>
-#include <messaging/messaging.h>
 #include <com/com.h>
+#include <messaging/messaging.h>
+#include <cryptalgo/cryptalgo.h>
 
 #if defined(__WINDOWS__) 
 #if defined(CRYPTOGRAPHY_EXPORTS)
