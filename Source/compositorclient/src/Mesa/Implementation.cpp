@@ -113,6 +113,7 @@ namespace Linux {
                     , _remoteId(remoteId)
                     , _surface(nullptr)
                     , _frameBuffer(nullptr)
+                    , _frameBufferLock()
                 {
 
                     Core::PrivilegedRequest::Container descriptors;
@@ -156,6 +157,7 @@ namespace Linux {
 
                 bool Render()
                 {
+                        _frameBufferLock.lock();
                     gbm_bo* bo = gbm_surface_lock_front_buffer(_surface);
 
                     ASSERT(bo != nullptr);
@@ -195,6 +197,7 @@ namespace Linux {
                 void Rendered() override
                 {
                     gbm_surface_release_buffer(_surface, _frameBuffer);
+                        _frameBufferLock.unlock();
                     _parent.Rendered();
                 }
                 void Published() override
@@ -212,6 +215,7 @@ namespace Linux {
                 uint32_t _remoteId;
                 gbm_surface* _surface;
                 gbm_bo* _frameBuffer;
+                std::mutex _frameBufferLock;
             };
 
         public:
