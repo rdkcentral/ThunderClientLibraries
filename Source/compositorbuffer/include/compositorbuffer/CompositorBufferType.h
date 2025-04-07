@@ -25,7 +25,7 @@
 #include <core/core.h>
 #include <privilegedrequest/PrivilegedRequest.h>
 
-#include <interfaces/ICompositionBuffer.h>
+#include <interfaces/IGraphicsBuffer.h>
 
 #include <sys/eventfd.h>
 #include <sys/mman.h>
@@ -34,12 +34,10 @@ namespace Thunder {
 
 namespace Compositor {
 
-    class EXTERNAL LocalBuffer : public Exchange::ICompositionBuffer {
-    public:
-        static constexpr uint8_t MaxPlanes = 4;
-
+    template<const uint8_t PLANES>
+    class LocalBufferType: public Exchange::IGraphicsBuffer {
     private:
-        class EXTERNAL Iterator : public Exchange::ICompositionBuffer::IIterator {
+        class Iterator : public Exchange::IGraphicsBuffer::IIterator {
         public:
             Iterator() = delete;
             Iterator(Iterator&&) = delete;
@@ -47,8 +45,8 @@ namespace Compositor {
             Iterator& operator=(Iterator&&) = delete;
             Iterator& operator=(const Iterator&) = delete;
 
-            Iterator(LocalBuffer& parent)
-                : _parent(parent)
+            Iterator(LocalBufferType<PLANES>& parent)
+                : _parent(parent) 
             {
                 Reset();
             }
@@ -87,17 +85,17 @@ namespace Compositor {
             }
 
         private:
-            LocalBuffer& _parent;
+            LocalBufferType<PLANES>& _parent;
             uint8_t _position;
         };
 
     public:
-        LocalBuffer(LocalBuffer&&) = delete;
-        LocalBuffer(const LocalBuffer&) = delete;
-        LocalBuffer& operator=(LocalBuffer&&) = delete;
-        LocalBuffer& operator=(const LocalBuffer&) = delete;
+        LocalBufferType(LocalBufferType<PLANES>&&) = delete;
+        LocalBufferType(const LocalBufferType<PLANES>&) = delete;
+        LocalBufferType<PLANES>& operator=(LocalBufferType<PLANES>&&) = delete;
+        LocalBufferType<PLANES>& operator=(const LocalBufferType<PLANES>&) = delete;
 
-        LocalBuffer(const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::ICompositionBuffer::DataType type)
+        LocalBufferType(const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::IGraphicsBuffer::DataType type)
             : _lock(false)
             , _width(width)
             , _height(height)
@@ -108,7 +106,7 @@ namespace Compositor {
             , _iterator(*this)
         {
         }
-        ~LocalBuffer() override
+        ~LocalBufferType() override
         {
             for (uint8_t index = 0; index < _count; index++) {
                 ::close(_planes[index]._fd);
@@ -117,7 +115,7 @@ namespace Compositor {
 
     public:
         //
-        // Implementation of Exchange::ILocalBuffer
+        // Implementation of Exchange::ILocalBufferType
         // -----------------------------------------------------------------
         // Wait time in milliseconds.
         IIterator* Acquire(const uint32_t waitTimeInMs) override
@@ -150,7 +148,7 @@ namespace Compositor {
         {
             return (_modifier);
         }
-        Exchange::ICompositionBuffer::DataType Type() const override
+        Exchange::IGraphicsBuffer::DataType Type() const override
         {
             return (_type);
         }
@@ -196,19 +194,18 @@ namespace Compositor {
         uint32_t _height;
         uint32_t _format;
         uint64_t _modifier;
-        Exchange::ICompositionBuffer::DataType _type;
+        Exchange::IGraphicsBuffer::DataType _type;
         uint8_t _count;
         Iterator _iterator;
-        PlaneStorage _planes[MaxPlanes];
+        PlaneStorage _planes[PLANES];
     };
 
-    class EXTERNAL SharedBuffer : public Exchange::ICompositionBuffer, public Core::IResource {
-    public:
-        static constexpr uint8_t MaxPlanes = 4;
-
+    template<const uint8_t PLANES>
+    class SharedBufferType : public Exchange::IGraphicsBuffer, public Core::IResource {
     private:
         // We need some shared space for data to exchange, and to create a lock..
-        class EXTERNAL SharedStorage {
+        template<const uint8_t LAYERS>
+        class SharedStorageType {
         private:
             struct PlaneStorage {
                 uint32_t _stride;
@@ -226,7 +223,7 @@ namespace Compositor {
             // Do not initialize members for now, this constructor is called after a mmap in the
             // placement new operator above. Initializing them now will reset the original values
             // of the buffer metadata.
-            SharedStorage() { };
+            SharedStorageType() { };
 
             void* operator new(size_t stAllocateBlock, int fd)
             {
@@ -236,16 +233,16 @@ namespace Compositor {
             // Somehow Purify gets lost if we do not delete it, override the delete operator
             void operator delete(void* stAllocateBlock)
             {
-                ::munmap(stAllocateBlock, sizeof(struct SharedStorage));
+                ::munmap(stAllocateBlock, sizeof(SharedStorageType<LAYERS>));
             }
 
         public:
-            SharedStorage(SharedStorage&&) = delete;
-            SharedStorage(const SharedStorage&) = delete;
-            SharedStorage& operator=(SharedStorage&&) = delete;
-            SharedStorage& operator=(const SharedStorage&) = delete;
+            SharedStorageType(SharedStorageType<LAYERS>&&) = delete;
+            SharedStorageType(const SharedStorageType<LAYERS>&) = delete;
+            SharedStorageType<LAYERS>& operator=(SharedStorageType<LAYERS>&&) = delete;
+            SharedStorageType<LAYERS>& operator=(const SharedStorageType<LAYERS>&) = delete;
 
-            SharedStorage(const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::ICompositionBuffer::DataType type)
+            SharedStorageType(const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::IGraphicsBuffer::DataType type)
                 : _width(width)
                 , _height(height)
                 , _format(format)
@@ -259,7 +256,7 @@ namespace Compositor {
                     ASSERT(false);
                 }
             }
-            ~SharedStorage()
+            ~SharedStorageType()
             {
 #ifdef __WINDOWS__
                 ::CloseHandle(&(_mutex));
@@ -365,7 +362,7 @@ namespace Compositor {
                 mode set = mode::PUBLISHED;
                 return (_command.compare_exchange_strong(set, mode::IDLE));
             }
-            Exchange::ICompositionBuffer::DataType Type() const
+            Exchange::IGraphicsBuffer::DataType Type() const
             {
                 return _type;
             }
@@ -399,7 +396,7 @@ namespace Compositor {
             uint32_t _height;
             uint32_t _format;
             uint64_t _modifier;
-            Exchange::ICompositionBuffer::DataType _type;
+            Exchange::IGraphicsBuffer::DataType _type;
             mutable std::atomic<mode> _command;
 #ifdef __WINDOWS__
             CRITICAL_SECTION _mutex;
@@ -410,10 +407,10 @@ namespace Compositor {
             // although the shared storage space might be shared so
             // always keep this at the end of the data set..
             uint8_t _count;
-            PlaneStorage _planes[MaxPlanes];
+            PlaneStorage _planes[LAYERS];
         };
 
-        class EXTERNAL Iterator : public Exchange::ICompositionBuffer::IIterator {
+        class Iterator : public Exchange::IGraphicsBuffer::IIterator {
         public:
             Iterator() = delete;
             Iterator(Iterator&&) = delete;
@@ -421,7 +418,7 @@ namespace Compositor {
             Iterator& operator=(Iterator&&) = delete;
             Iterator& operator=(const Iterator&) = delete;
 
-            Iterator(SharedBuffer& parent)
+            Iterator(SharedBufferType<PLANES>& parent)
                 : _parent(parent)
             {
                 Reset();
@@ -461,12 +458,12 @@ namespace Compositor {
             }
 
         private:
-            SharedBuffer& _parent;
+            SharedBufferType<PLANES>& _parent;
             uint8_t _position;
         };
 
     protected:
-        SharedBuffer()
+        SharedBufferType()
             : _iterator(*this)
             , _virtualFd(-1)
             , _producedFd(-1)
@@ -481,27 +478,26 @@ namespace Compositor {
          */
         using EventFrame = uint64_t;
 
-        SharedBuffer(SharedBuffer&&) = delete;
-        SharedBuffer(const SharedBuffer&) = delete;
-        SharedBuffer& operator=(SharedBuffer&&) = delete;
-        SharedBuffer& operator=(const SharedBuffer&) = delete;
+        SharedBufferType(SharedBufferType<PLANES>&&) = delete;
+        SharedBufferType(const SharedBufferType<PLANES>&) = delete;
+        SharedBufferType<PLANES>& operator=(SharedBufferType<PLANES>&&) = delete;
+        SharedBufferType<PLANES>& operator=(const SharedBufferType<PLANES>&) = delete;
 
-        SharedBuffer(const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::ICompositionBuffer::DataType type)
+        SharedBufferType(const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::IGraphicsBuffer::DataType type)
             : _iterator(*this)
             , _virtualFd(-1)
             , _producedFd(-1)
             , _consumedFd(-1)
             , _storage(nullptr)
-            , _buffer()
         {
-            _virtualFd = ::memfd_create(_T("CompositorBuffer"), MFD_ALLOW_SEALING | MFD_CLOEXEC);
+            _virtualFd = ::memfd_create(_T("CompositorBufferType"), MFD_ALLOW_SEALING | MFD_CLOEXEC);
             if (_virtualFd != -1) {
-                int length = sizeof(struct SharedStorage);
+                int length = sizeof(struct SharedStorageType<PLANES>);
 
                 /* Size the file as specified by our struct. */
                 if (::ftruncate(_virtualFd, length) != -1) {
                     /* map that file to a memory area we can directly access as a memory mapped file */
-                    _storage = new (_virtualFd) SharedStorage(width, height, format, modifier, type);
+                    _storage = new (_virtualFd) SharedStorageType<PLANES>(width, height, format, modifier, type);
                     if (_storage == nullptr) {
                         ::close(_virtualFd);
                         _virtualFd = -1;
@@ -512,27 +508,16 @@ namespace Compositor {
                 }
             }
         }
-        SharedBuffer(Core::PrivilegedRequest::Container& descriptors)
+        SharedBufferType(Core::PrivilegedRequest::Container& descriptors)
             : _iterator(*this)
             , _virtualFd(-1)
             , _producedFd(-1)
             , _consumedFd(-1)
             , _storage(nullptr)
-            , _buffer()
         {
             Load(descriptors);
         }
-        SharedBuffer(const Core::ProxyType<Exchange::ICompositionBuffer>& buffer)
-            : _iterator(*this)
-            , _virtualFd(-1)
-            , _producedFd(-1)
-            , _consumedFd(-1)
-            , _storage(nullptr)
-            , _buffer()
-        {
-            Load(buffer);
-        }
-        ~SharedBuffer() override
+        ~SharedBufferType() override
         {
             if (_producedFd != -1) {
                 ::close(_producedFd);
@@ -585,7 +570,7 @@ namespace Compositor {
         }
 
         //
-        // Implementation of Exchange::ICompositionBuffer
+        // Implementation of Exchange::IGraphicsBuffer
         // -----------------------------------------------------------------
         // Wait time in milliseconds.
         IIterator* Acquire(const uint32_t waitTimeInMs) override
@@ -622,7 +607,7 @@ namespace Compositor {
             ASSERT(_storage != nullptr);
             return (_storage->Modifier());
         }
-        Exchange::ICompositionBuffer::DataType Type() const override
+        Exchange::IGraphicsBuffer::DataType Type() const override
         {
             ASSERT(_storage != nullptr);
             return (_storage->Type());
@@ -633,39 +618,6 @@ namespace Compositor {
         }
 
     protected:
-        void Load(const Core::ProxyType<Exchange::ICompositionBuffer>& buffer)
-        {
-            ASSERT(buffer.IsValid());
-
-            _buffer = buffer;
-            _virtualFd = ::memfd_create(_T("CompositorBuffer"), MFD_ALLOW_SEALING | MFD_CLOEXEC);
-            if (_virtualFd != -1) {
-                int length = sizeof(struct SharedStorage);
-
-                /* Size the file as specified by our struct. */
-                if (::ftruncate(_virtualFd, length) != -1) {
-                    /* map that file to a memory area we can directly access as a memory mapped file */
-                    _storage = new (_virtualFd) SharedStorage(buffer->Width(), buffer->Height(), buffer->Format(), buffer->Modifier(), buffer->Type());
-                    if (_storage == nullptr) {
-                        ::close(_virtualFd);
-                        _virtualFd = -1;
-                    } else {
-
-                        _producedFd = ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK | EFD_SEMAPHORE);
-                        _consumedFd = ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK | EFD_SEMAPHORE);
-
-                        // Iterate over the planes and create them
-                        Exchange::ICompositionBuffer::IIterator* index(buffer->Acquire(Core::infinite));
-
-                        while (index->Next()) {
-                            Add(index->Descriptor(), index->Stride(), index->Offset());
-                        }
-
-                        buffer->Relinquish();
-                    }
-                }
-            }
-        }
         void Load(Core::PrivilegedRequest::Container& descriptors)
         {
             ASSERT(descriptors.size() >= 3);
@@ -678,7 +630,7 @@ namespace Compositor {
 
                 ASSERT(_virtualFd != -1);
 
-                _storage = new (_virtualFd) SharedStorage();
+                _storage = new (_virtualFd) SharedStorageType<PLANES>();
                 if (_storage == nullptr) {
                     ::close(_virtualFd);
                 } else {
@@ -693,6 +645,7 @@ namespace Compositor {
                     uint8_t position = 0;
 
                     while ((index != descriptors.end()) && (position < _storage->Planes())) {
+                        ASSERT(position < (sizeof(_descriptors) / sizeof(int)));
                         _descriptors[position] = index->Move();
                         index++;
                         position++;
@@ -708,7 +661,7 @@ namespace Compositor {
             _descriptors[index] = ::dup(fd);
             _storage->Add(stride, offset);
         }
-        void Planes(Core::PrivilegedRequest::Descriptor descriptors[], const uint8_t size)
+        void Planes(Core::PrivilegedRequest::Descriptor descriptors[], const uint8_t size VARIABLE_IS_NOT_USED)
         {
             ASSERT(size == _storage->Planes());
 
@@ -785,45 +738,42 @@ namespace Compositor {
         int _consumedFd;
 
         // From the virtual memory we can map the shared data to a memory area in "our" process.
-        SharedStorage* _storage;
+        SharedStorageType<PLANES>* _storage;
 
-        // If we are instantiated from a buffer created elsewhere, make sure the buffer will
-        // have the same lifetime as we have..
-        Core::ProxyType<Exchange::ICompositionBuffer> _buffer;
-
-        int _descriptors[MaxPlanes];
+        int _descriptors[PLANES];
     };
 
-    class EXTERNAL ClientBuffer : public SharedBuffer {
+    template<const uint8_t PLANES>
+    class ClientBufferType : public SharedBufferType<PLANES> {
     public:
-        ClientBuffer(ClientBuffer&&) = delete;
-        ClientBuffer(const ClientBuffer&) = delete;
-        ClientBuffer& operator=(ClientBuffer&&) = delete;
-        ClientBuffer& operator=(const ClientBuffer&) = delete;
+        ClientBufferType(ClientBufferType<PLANES>&&) = delete;
+        ClientBufferType(const ClientBufferType<PLANES>&) = delete;
+        ClientBufferType<PLANES>& operator=(ClientBufferType<PLANES>&&) = delete;
+        ClientBufferType<PLANES>& operator=(const ClientBufferType<PLANES>&) = delete;
 
-        ClientBuffer()
-            : SharedBuffer()
+        ClientBufferType()
+            : SharedBufferType<PLANES>()
         {
         }
-        ~ClientBuffer() override = default;
+        ~ClientBufferType() override = default;
 
     public:
         void Load(Core::PrivilegedRequest::Container& descriptors)
         {
-            SharedBuffer::Load(descriptors);
+            SharedBufferType<PLANES>::Load(descriptors);
         }
         bool RequestRender()
         {
             bool requested = true;
 
-            if (SharedBuffer::Request() == false) {
+            if (SharedBufferType<PLANES>::Request() == false) {
                 // Might be that we just got a RENDERED event from the other side
-                if (SharedBuffer::IsRendered() == true) {
+                if (SharedBufferType<PLANES>::IsRendered() == true) {
                     // If so handle it..
                     Rendered();
                 }
                 // If it was not the Rendered event it must  have been the Published event
-                else if (SharedBuffer::IsPublished() == true) {
+                else if (SharedBufferType<PLANES>::IsPublished() == true) {
                     Published();
                 }
 
@@ -832,24 +782,24 @@ namespace Compositor {
                 // state, than if the IsPublished() state was not yet handled
                 // it might ocurr now before we do a second attempt to set the
                 // request.. So potentially it might still fail once!
-                if (SharedBuffer::Request() == false) {
+                if (SharedBufferType<PLANES>::Request() == false) {
 
                     // This ocurres if the IsRendered() was picked up by the Handle
                     // method in this class, the Publication occurred after we checked
                     // the IsPublished before we reached the second attempt to Request()
-                    if (SharedBuffer::IsPublished() == true) {
+                    if (SharedBufferType<PLANES>::IsPublished() == true) {
                         Published();
                     }
 
                     // Now the request *MUST* succeed!
-                    requested = SharedBuffer::Request();
+                    requested = SharedBufferType<PLANES>::Request();
 
-                    ASSERT((requested == true) || (SharedBuffer::IsDestroyed() == true));
+                    ASSERT((requested == true) || (SharedBufferType<PLANES>::IsDestroyed() == true));
                 }
             }
             if (requested == true) {
-                typename SharedBuffer::EventFrame value = 1;
-                requested = (::write(SharedBuffer::Producer(), &value, sizeof(value)) == sizeof(value));
+                typename SharedBufferType<PLANES>::EventFrame value = 1;
+                requested = (::write(SharedBufferType<PLANES>::Producer(), &value, sizeof(value)) == sizeof(value));
             }
 
             return (requested);
@@ -860,7 +810,7 @@ namespace Compositor {
         // -----------------------------------------------------------------
         Core::IResource::handle Descriptor() const override
         {
-            return (SharedBuffer::Consumer());
+            return (SharedBufferType<PLANES>::Consumer());
         }
         uint16_t Events() override
         {
@@ -868,12 +818,12 @@ namespace Compositor {
         }
         void Handle(const uint16_t events) override
         {
-            typename SharedBuffer::EventFrame value;
+            typename SharedBufferType<PLANES>::EventFrame value;
 
-            if (((events & POLLIN) != 0) && (::read(SharedBuffer::Consumer(), &value, sizeof(value)) == sizeof(value))) {
-                if (SharedBuffer::IsRendered() == true) {
+            if (((events & POLLIN) != 0) && (::read(SharedBufferType<PLANES>::Consumer(), &value, sizeof(value)) == sizeof(value))) {
+                if (SharedBufferType<PLANES>::IsRendered() == true) {
                     Rendered();
-                } else if (SharedBuffer::IsPublished() == true) {
+                } else if (SharedBufferType<PLANES>::IsPublished() == true) {
                     Published();
                 }
             }
@@ -886,55 +836,56 @@ namespace Compositor {
         virtual void Published() = 0;
     };
 
-    class EXTERNAL CompositorBuffer : public SharedBuffer {
+    template<const uint8_t PLANES>
+    class CompositorBufferType : public SharedBufferType<PLANES> {
     public:
-        CompositorBuffer() = delete;
-        CompositorBuffer(CompositorBuffer&&) = delete;
-        CompositorBuffer(const CompositorBuffer&) = delete;
-        CompositorBuffer& operator=(CompositorBuffer&&) = delete;
-        CompositorBuffer& operator=(const CompositorBuffer&) = delete;
+        CompositorBufferType() = delete;
+        CompositorBufferType(CompositorBufferType<PLANES>&&) = delete;
+        CompositorBufferType(const CompositorBufferType<PLANES>&) = delete;
+        CompositorBufferType<PLANES>& operator=(CompositorBufferType<PLANES>&&) = delete;
+        CompositorBufferType<PLANES>& operator=(const CompositorBufferType<PLANES>&) = delete;
 
-        CompositorBuffer(const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::ICompositionBuffer::DataType type)
-            : SharedBuffer(width, height, format, modifier, type)
+        CompositorBufferType(const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::IGraphicsBuffer::DataType type)
+            : SharedBufferType<PLANES>(width, height, format, modifier, type)
         {
         }
-        CompositorBuffer(const Core::ProxyType<Exchange::ICompositionBuffer>& buffer)
-            : SharedBuffer(buffer)
+        CompositorBufferType(const Core::ProxyType<Exchange::IGraphicsBuffer>& buffer)
+            : SharedBufferType<PLANES>(buffer)
         {
         }
-        ~CompositorBuffer() override
+        ~CompositorBufferType() override
         {
             // If we go out of scope, no use for the client
             // to continue rendering. Let him know....
-            SharedBuffer::Destroyed();
+            SharedBufferType<PLANES>::Destroyed();
         }
 
     public:
-        void Load(const Core::ProxyType<Exchange::ICompositionBuffer>& buffer)
+        void Load(const Core::ProxyType<Exchange::IGraphicsBuffer>& buffer)
         {
-            SharedBuffer::Load(buffer);
+            SharedBufferType<PLANES>::Load(buffer);
         }
         bool Rendered()
         {
             bool requested = true;
 
-            if (SharedBuffer::Rendered() == false) {
+            if (SharedBufferType<PLANES>::Rendered() == false) {
 
                 // Might be that we just got a REQUEST event from the other side
-                if (SharedBuffer::IsRequested() == true) {
+                if (SharedBufferType<PLANES>::IsRequested() == true) {
                     // If so handle it..
                     Request();
                 }
 
                 // Now the request *MUST* succeed!
-                requested = SharedBuffer::Rendered();
+                requested = SharedBufferType<PLANES>::Rendered();
 
                 ASSERT(requested == true);
             }
 
             if (requested == true) {
-                typename SharedBuffer::EventFrame value = 1;
-                requested = (::write(SharedBuffer::Consumer(), &value, sizeof(value)) == sizeof(value));
+                typename SharedBufferType<PLANES>::EventFrame value = 1;
+                requested = (::write(SharedBufferType<PLANES>::Consumer(), &value, sizeof(value)) == sizeof(value));
             }
 
             return (requested);
@@ -943,22 +894,22 @@ namespace Compositor {
         {
             bool requested = true;
 
-            if (SharedBuffer::Published() == false) {
+            if (SharedBufferType<PLANES>::Published() == false) {
                 // Might be that we just got a REQUEST event from the other side
-                if (SharedBuffer::IsRequested() == true) {
+                if (SharedBufferType<PLANES>::IsRequested() == true) {
                     // If so handle it..
                     Request();
                 }
 
                 // Now the request *MUST* succeed!
-                requested = SharedBuffer::Published();
+                requested = SharedBufferType<PLANES>::Published();
 
                 ASSERT(requested == true);
             }
 
             if (requested == true) {
-                typename SharedBuffer::EventFrame value = 1;
-                requested = (::write(SharedBuffer::Consumer(), &value, sizeof(value)) == sizeof(value));
+                typename SharedBufferType<PLANES>::EventFrame value = 1;
+                requested = (::write(SharedBufferType<PLANES>::Consumer(), &value, sizeof(value)) == sizeof(value));
             }
 
             return (requested);
@@ -969,7 +920,7 @@ namespace Compositor {
         // -----------------------------------------------------------------
         Core::IResource::handle Descriptor() const override
         {
-            return (SharedBuffer::Producer());
+            return (SharedBufferType<PLANES>::Producer());
         }
         uint16_t Events() override
         {
@@ -977,20 +928,19 @@ namespace Compositor {
         }
         void Handle(const uint16_t events) override
         {
-            typename SharedBuffer::EventFrame value;
+            typename SharedBufferType<PLANES>::EventFrame value;
 
-            if (((events & POLLIN) != 0) && (::read(SharedBuffer::Producer(), &value, sizeof(value)) == sizeof(value))) {
-                if (SharedBuffer::IsRequested() == true) {
+            if (((events & POLLIN) != 0) && (::read(SharedBufferType<PLANES>::Producer(), &value, sizeof(value)) == sizeof(value))) {
+                if (SharedBufferType<PLANES>::IsRequested() == true) {
                     Request();
                 }
             }
         }
 
         //
-        // Method to retrieve the status of the buffer on Client side
+        // Method called by the client to "Request" a buffer commit
         // ----------------------------------------------------------------
         virtual void Request() = 0;
     };
-
 }
 }
