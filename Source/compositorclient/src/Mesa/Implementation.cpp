@@ -120,8 +120,9 @@ namespace Linux {
                     , _remoteId(remoteId)
                     , _surface(nullptr)
                     , _frameBuffer(nullptr)
-                    , _frameBufferLock()
-                    , _state(State::IDLE)
+                    , _rendering()
+                    , _publishing()
+                    , _pending(false)
                     , _lock()
                 {
 
@@ -152,12 +153,6 @@ namespace Linux {
 
                 ~GBMSurface()
                 {
-                    // fixme: This leads to a SEGFAULT....
-                    // if (_frameBuffer != nullptr) {
-                    //     gbm_bo_destroy(_frameBuffer);
-                    //     _frameBuffer = nullptr;
-                    // }
-
                     if (_surface != nullptr) {
                         gbm_surface_destroy(_surface);
                         _surface = nullptr;
@@ -166,74 +161,62 @@ namespace Linux {
 
                 bool Render()
                 {
-                    std::lock_guard<std::mutex> lock(_lock); // Protect shared resources
+                    _rendering.lock();
+                    _frameBuffer = gbm_surface_lock_front_buffer(_surface);
 
-                    State expected = IDLE;
+                    ASSERT(_frameBuffer != nullptr);
 
-                    if (_state.compare_exchange_strong(expected, RENDERING, std::memory_order_acq_rel)) {
-                        _frameBufferLock.lock();
-                        gbm_bo* bo = gbm_surface_lock_front_buffer(_surface);
+                    if (gbm_bo_get_user_data(_frameBuffer) == nullptr) {
+                        uint16_t planes = gbm_bo_get_plane_count(_frameBuffer);
 
-                        ASSERT(bo != nullptr);
+                        Core::PrivilegedRequest::Container descriptors;
+                        Core::PrivilegedRequest request;
 
-                        if (gbm_bo_get_user_data(bo) == nullptr) {
-                            ASSERT(_frameBuffer == nullptr);
-
-                            uint16_t planes = gbm_bo_get_plane_count(bo);
-
-                            Core::PrivilegedRequest::Container descriptors;
-                            Core::PrivilegedRequest request;
-
-                            for (uint16_t index = 0; index < planes; index++) {
-                                int descriptor = gbm_bo_get_fd_for_plane(bo, index);
-                                descriptors.emplace_back(descriptor);
-                                Add(descriptor, gbm_bo_get_stride_for_plane(bo, index), gbm_bo_get_offset(bo, index));
-                            }
-
-                            if (request.Offer(100, BufferConnector(), _remoteId, descriptors) == Core::ERROR_NONE) {
-                                TRACE(Trace::Information, (_T("Offered buffer to compositor server")));
-                            } else {
-                                TRACE(Trace::Error, (_T("Failed to offer buffer to compositor server")));
-                            }
-
-                            gbm_bo_set_user_data(bo, this, &Destroyed);
-
-                            _frameBuffer = bo;
+                        for (uint16_t index = 0; index < planes; index++) {
+                            int descriptor = gbm_bo_get_fd_for_plane(_frameBuffer, index);
+                            descriptors.emplace_back(descriptor);
+                            Add(descriptor, gbm_bo_get_stride_for_plane(_frameBuffer, index), gbm_bo_get_offset(_frameBuffer, index));
                         }
 
-                        ASSERT(_frameBuffer != nullptr);
-                        ASSERT(gbm_bo_get_handle(bo).u32 == gbm_bo_get_handle(_frameBuffer).u32);
+                        if (request.Offer(100, BufferConnector(), _remoteId, descriptors) == Core::ERROR_NONE) {
+                            TRACE(Trace::Information, (_T("Offered buffer to compositor server")));
+                        } else {
+                            TRACE(Trace::Error, (_T("Failed to offer buffer to compositor server")));
+                        }
 
-                        RequestRender();
-                        return true;
-                    } else {
-                        return false;
+                        gbm_bo_set_user_data(_frameBuffer, this, &Destroyed);
                     }
+
+                    _publishing.lock();
+                    RequestRender();
+
+                    return true;
                 }
 
                 void Rendered() override
                 {
-                    std::lock_guard<std::mutex> lock(_lock); // Protect shared resources
+                    std::lock_guard<std::mutex> lock(_lock);
 
-                    State expected = RENDERING;
+                    bool expected = false;
 
-                    if (_state.compare_exchange_strong(expected, PRESENTING, std::memory_order_acq_rel)) {
+                    if (_pending.compare_exchange_strong(expected, true) == true) {
                         gbm_surface_release_buffer(_surface, _frameBuffer);
-                        _frameBufferLock.unlock();
+                        _rendering.unlock();
                         _parent.Rendered();
                     }
                 }
 
                 void Published() override
                 {
-                    std::lock_guard<std::mutex> lock(_lock); // Protect shared resources
+                    std::lock_guard<std::mutex> lock(_lock);
 
-                    State expected = PRESENTING;
+                    bool expected = true;
 
-                    if (_state.compare_exchange_strong(expected, IDLE, std::memory_order_acq_rel)) {
+                    if (_pending.compare_exchange_strong(expected, false) == true) {
                         _parent.Published();
-                    } else if (_state.load() == RENDERING) {
-                        TRACE(Trace::Error, (_T("Surface %s[%d] is in RENDERING state, but received a Published event"), _parent.Name().c_str(), _remoteId));
+                        _publishing.unlock();
+                    } else {
+                        TRACE(Trace::Warning, (_T("Surface %s[id: %d] is not pending, but received a Published event"), _parent.Name().c_str(), _remoteId));
                         RequestRender(); // Request render again we missed the deadline.
                     }
                 }
@@ -248,8 +231,9 @@ namespace Linux {
                 uint32_t _remoteId;
                 gbm_surface* _surface;
                 gbm_bo* _frameBuffer;
-                std::mutex _frameBufferLock;
-                std::atomic<State> _state;
+                std::mutex _rendering;
+                std::mutex _publishing;
+                std::atomic<bool> _pending;
                 std::mutex _lock;
             };
 
