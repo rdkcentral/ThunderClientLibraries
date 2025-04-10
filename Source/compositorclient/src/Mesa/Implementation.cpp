@@ -101,17 +101,18 @@ namespace Linux {
 
         class SurfaceImplementation : public Compositor::IDisplay::ISurface {
         private:
+            enum State : uint8_t {
+                IDLE = 0x00,
+                RENDERING = 0x01,
+                PRESENTING = 0x02,
+                PENDING = 0x04,
+            };
+
             class GBMSurface : public Compositor::ClientBuffer {
             private:
                 static void Destroyed(gbm_bo* bo VARIABLE_IS_NOT_USED, void* data VARIABLE_IS_NOT_USED)
                 {
                 }
-
-                enum State : uint8_t {
-                    IDLE = 0,
-                    RENDERING = 1,
-                    PRESENTING = 2,
-                };
 
             public:
                 GBMSurface(SurfaceImplementation& parent, gbm_device* gbmDevice, uint32_t remoteId)
@@ -120,12 +121,8 @@ namespace Linux {
                     , _remoteId(remoteId)
                     , _surface(nullptr)
                     , _frameBuffer(nullptr)
-                    , _rendering()
-                    , _publishing()
-                    , _pending(false)
-                    , _lock()
+                    , _rendering(false)
                 {
-
                     Core::PrivilegedRequest::Container descriptors;
                     Core::PrivilegedRequest request;
 
@@ -159,66 +156,58 @@ namespace Linux {
                     }
                 }
 
-                bool Render()
+                void Render()
                 {
-                    _rendering.lock();
-                    _frameBuffer = gbm_surface_lock_front_buffer(_surface);
+                    bool expected = false;
 
-                    ASSERT(_frameBuffer != nullptr);
+                    if (_rendering.compare_exchange_strong(expected, true) == true) {
 
-                    if (gbm_bo_get_user_data(_frameBuffer) == nullptr) {
-                        uint16_t planes = gbm_bo_get_plane_count(_frameBuffer);
+                        _frameBuffer = gbm_surface_lock_front_buffer(_surface);
 
-                        Core::PrivilegedRequest::Container descriptors;
-                        Core::PrivilegedRequest request;
+                        ASSERT(_frameBuffer != nullptr);
 
-                        for (uint16_t index = 0; index < planes; index++) {
-                            int descriptor = gbm_bo_get_fd_for_plane(_frameBuffer, index);
-                            descriptors.emplace_back(descriptor);
-                            Add(descriptor, gbm_bo_get_stride_for_plane(_frameBuffer, index), gbm_bo_get_offset(_frameBuffer, index));
+                        if (gbm_bo_get_user_data(_frameBuffer) == nullptr) {
+                            uint16_t planes = gbm_bo_get_plane_count(_frameBuffer);
+
+                            Core::PrivilegedRequest::Container descriptors;
+                            Core::PrivilegedRequest request;
+
+                            for (uint16_t index = 0; index < planes; index++) {
+                                int descriptor = gbm_bo_get_fd_for_plane(_frameBuffer, index);
+                                descriptors.emplace_back(descriptor);
+                                Add(descriptor, gbm_bo_get_stride_for_plane(_frameBuffer, index), gbm_bo_get_offset(_frameBuffer, index));
+                            }
+
+                            if (request.Offer(100, BufferConnector(), _remoteId, descriptors) == Core::ERROR_NONE) {
+                                TRACE(Trace::Information, (_T("Offered buffer to compositor server")));
+                            } else {
+                                TRACE(Trace::Error, (_T("Failed to offer buffer to compositor server")));
+                            }
+
+                            gbm_bo_set_user_data(_frameBuffer, this, &Destroyed);
                         }
-
-                        if (request.Offer(100, BufferConnector(), _remoteId, descriptors) == Core::ERROR_NONE) {
-                            TRACE(Trace::Information, (_T("Offered buffer to compositor server")));
-                        } else {
-                            TRACE(Trace::Error, (_T("Failed to offer buffer to compositor server")));
-                        }
-
-                        gbm_bo_set_user_data(_frameBuffer, this, &Destroyed);
+                    } else {
+                        TRACE(Trace::Error, (_T("Surface %s[%d] is still locked"), _parent.Name().c_str(), _parent.Id()));
+                        ASSERT(false);
                     }
 
-                    _publishing.lock();
                     RequestRender();
-
-                    return true;
                 }
 
                 void Rendered() override
                 {
-                    std::lock_guard<std::mutex> lock(_lock);
+                    bool expected = true;
 
-                    bool expected = false;
-
-                    if (_pending.compare_exchange_strong(expected, true) == true) {
+                    if (_rendering.compare_exchange_strong(expected, false) == true) {
                         gbm_surface_release_buffer(_surface, _frameBuffer);
-                        _rendering.unlock();
-                        _parent.Rendered();
                     }
+
+                    _parent.Rendered();
                 }
 
                 void Published() override
                 {
-                    std::lock_guard<std::mutex> lock(_lock);
-
-                    bool expected = true;
-
-                    if (_pending.compare_exchange_strong(expected, false) == true) {
-                        _parent.Published();
-                        _publishing.unlock();
-                    } else {
-                        TRACE(Trace::Warning, (_T("Surface %s[id: %d] is not pending, but received a Published event"), _parent.Name().c_str(), _remoteId));
-                        RequestRender(); // Request render again we missed the deadline.
-                    }
+                    _parent.Published();
                 }
 
                 EGLNativeWindowType Native() const
@@ -231,10 +220,7 @@ namespace Linux {
                 uint32_t _remoteId;
                 gbm_surface* _surface;
                 gbm_bo* _frameBuffer;
-                std::mutex _rendering;
-                std::mutex _publishing;
-                std::atomic<bool> _pending;
-                std::mutex _lock;
+                std::atomic<bool> _rendering;
             };
 
         public:
@@ -256,6 +242,7 @@ namespace Linux {
                 , _pointer(nullptr)
                 , _touchpanel(nullptr)
                 , _callback(callback)
+                , _state(State::IDLE)
             {
                 _display.AddRef();
 
@@ -406,12 +393,29 @@ namespace Linux {
 
             void Rendered()
             {
-                if (_callback != nullptr) {
-                    _callback->Rendered(this);
+                State expected = State::RENDERING;
+
+                if (_state.compare_exchange_strong(expected, State::PRESENTING) == true) {
+                    if (_callback != nullptr) {
+                        _callback->Rendered(this);
+                    }
+                } else {
+                    TRACE(Trace::Error, (_T("Surface %s[%d] is not presenting, but received a Rendered event while in %d"), _name.c_str(), _id, _state.load()));
                 }
             }
+
             void Published()
             {
+                State expected = State::PRESENTING;
+
+                if (_state.compare_exchange_strong(expected, State::IDLE) == false) {
+                    expected = State::PENDING;
+
+                    if ((_state.compare_exchange_strong(expected, State::RENDERING) == true)) {
+                        _surface.Render();
+                    }
+                }
+
                 if (_callback != nullptr) {
                     _callback->Published(this);
                 }
@@ -424,7 +428,15 @@ namespace Linux {
 
             void RequestRender() override
             {
-                _surface.Render();
+                State expected = State::PRESENTING;
+
+                if (_state.compare_exchange_strong(expected, State::PENDING) == false) {
+                    expected = State::IDLE;
+
+                    if (_state.compare_exchange_strong(expected, State::RENDERING) == true) {
+                        _surface.Render();
+                    }
+                }
             }
 
         private:
@@ -439,6 +451,7 @@ namespace Linux {
             IPointer* _pointer;
             ITouchPanel* _touchpanel;
             ISurface::ICallback* _callback;
+            std::atomic<State> _state;
 
             static uint32_t _surfaceIndex;
         }; // class SurfaceImplementation
