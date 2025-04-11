@@ -101,7 +101,15 @@ namespace Linux {
 
         class SurfaceImplementation : public Compositor::IDisplay::ISurface {
         private:
+            enum State : uint8_t {
+                IDLE = 0x00,
+                RENDERING = 0x01,
+                PRESENTING = 0x02,
+                PENDING = 0x04,
+            };
+
             class GBMSurface : public Compositor::ClientBuffer {
+            private:
                 static void Destroyed(gbm_bo* bo VARIABLE_IS_NOT_USED, void* data VARIABLE_IS_NOT_USED)
                 {
                 }
@@ -113,8 +121,8 @@ namespace Linux {
                     , _remoteId(remoteId)
                     , _surface(nullptr)
                     , _frameBuffer(nullptr)
+                    , _rendering(false)
                 {
-
                     Core::PrivilegedRequest::Container descriptors;
                     Core::PrivilegedRequest request;
 
@@ -142,61 +150,61 @@ namespace Linux {
 
                 ~GBMSurface()
                 {
-                    // fixme: This leads to a SEGFAULT....
-                    // if (_frameBuffer != nullptr) {
-                    //     gbm_bo_destroy(_frameBuffer);
-                    //     _frameBuffer = nullptr;
-                    // }
-
                     if (_surface != nullptr) {
                         gbm_surface_destroy(_surface);
                         _surface = nullptr;
                     }
                 }
 
-                bool Render()
+                void Render()
                 {
-                    gbm_bo* bo = gbm_surface_lock_front_buffer(_surface);
+                    bool expected = false;
 
-                    ASSERT(bo != nullptr);
+                    if (_rendering.compare_exchange_strong(expected, true) == true) {
 
-                    if (gbm_bo_get_user_data(bo) == nullptr) {
-                        ASSERT(_frameBuffer == nullptr);
+                        _frameBuffer = gbm_surface_lock_front_buffer(_surface);
 
-                        uint16_t planes = gbm_bo_get_plane_count(bo);
+                        ASSERT(_frameBuffer != nullptr);
 
-                        Core::PrivilegedRequest::Container descriptors;
-                        Core::PrivilegedRequest request;
+                        if (gbm_bo_get_user_data(_frameBuffer) == nullptr) {
+                            uint16_t planes = gbm_bo_get_plane_count(_frameBuffer);
 
-                        for (uint16_t index = 0; index < planes; index++) {
-                            int descriptor = gbm_bo_get_fd_for_plane(bo, index);
-                            descriptors.emplace_back(descriptor);
-                            Add(descriptor, gbm_bo_get_stride_for_plane(bo, index), gbm_bo_get_offset(bo, index));
+                            Core::PrivilegedRequest::Container descriptors;
+                            Core::PrivilegedRequest request;
+
+                            for (uint16_t index = 0; index < planes; index++) {
+                                int descriptor = gbm_bo_get_fd_for_plane(_frameBuffer, index);
+                                descriptors.emplace_back(descriptor);
+                                Add(descriptor, gbm_bo_get_stride_for_plane(_frameBuffer, index), gbm_bo_get_offset(_frameBuffer, index));
+                            }
+
+                            if (request.Offer(100, BufferConnector(), _remoteId, descriptors) == Core::ERROR_NONE) {
+                                TRACE(Trace::Information, (_T("Offered buffer to compositor server")));
+                            } else {
+                                TRACE(Trace::Error, (_T("Failed to offer buffer to compositor server")));
+                            }
+
+                            gbm_bo_set_user_data(_frameBuffer, this, &Destroyed);
                         }
-
-                        if (request.Offer(100, BufferConnector(), _remoteId, descriptors) == Core::ERROR_NONE) {
-                            TRACE(Trace::Information, (_T("Offered buffer to compositor server")));
-                        } else {
-                            TRACE(Trace::Error, (_T("Failed to offer buffer to compositor server")));
-                        }
-
-                        gbm_bo_set_user_data(bo, this, &Destroyed);
-
-                        _frameBuffer = bo;
+                    } else {
+                        TRACE(Trace::Error, (_T("Surface %s[%d] is still locked"), _parent.Name().c_str(), _parent.Id()));
+                        ASSERT(false);
                     }
 
-                    ASSERT(_frameBuffer != nullptr);
-                    ASSERT(gbm_bo_get_handle(bo).u32 == gbm_bo_get_handle(_frameBuffer).u32);
-
                     RequestRender();
-                    return true;
                 }
 
                 void Rendered() override
                 {
-                    gbm_surface_release_buffer(_surface, _frameBuffer);
+                    bool expected = true;
+
+                    if (_rendering.compare_exchange_strong(expected, false) == true) {
+                        gbm_surface_release_buffer(_surface, _frameBuffer);
+                    }
+
                     _parent.Rendered();
                 }
+
                 void Published() override
                 {
                     _parent.Published();
@@ -212,6 +220,7 @@ namespace Linux {
                 uint32_t _remoteId;
                 gbm_surface* _surface;
                 gbm_bo* _frameBuffer;
+                std::atomic<bool> _rendering;
             };
 
         public:
@@ -233,6 +242,7 @@ namespace Linux {
                 , _pointer(nullptr)
                 , _touchpanel(nullptr)
                 , _callback(callback)
+                , _state(State::IDLE)
             {
                 _display.AddRef();
 
@@ -383,12 +393,29 @@ namespace Linux {
 
             void Rendered()
             {
-                if (_callback != nullptr) {
-                    _callback->Rendered(this);
+                State expected = State::RENDERING;
+
+                if (_state.compare_exchange_strong(expected, State::PRESENTING) == true) {
+                    if (_callback != nullptr) {
+                        _callback->Rendered(this);
+                    }
+                } else {
+                    TRACE(Trace::Error, (_T("Surface %s[%d] is not presenting, but received a Rendered event while in %d"), _name.c_str(), _id, _state.load()));
                 }
             }
+
             void Published()
             {
+                State expected = State::PRESENTING;
+
+                if (_state.compare_exchange_strong(expected, State::IDLE) == false) {
+                    expected = State::PENDING;
+
+                    if ((_state.compare_exchange_strong(expected, State::RENDERING) == true)) {
+                        _surface.Render();
+                    }
+                }
+
                 if (_callback != nullptr) {
                     _callback->Published(this);
                 }
@@ -401,7 +428,15 @@ namespace Linux {
 
             void RequestRender() override
             {
-                _surface.Render();
+                State expected = State::PRESENTING;
+
+                if (_state.compare_exchange_strong(expected, State::PENDING) == false) {
+                    expected = State::IDLE;
+
+                    if (_state.compare_exchange_strong(expected, State::RENDERING) == true) {
+                        _surface.Render();
+                    }
+                }
             }
 
         private:
@@ -416,9 +451,10 @@ namespace Linux {
             IPointer* _pointer;
             ITouchPanel* _touchpanel;
             ISurface::ICallback* _callback;
+            std::atomic<State> _state;
 
             static uint32_t _surfaceIndex;
-        };
+        }; // class SurfaceImplementation
 
     public:
         using Surfaces = std::vector<SurfaceImplementation*>;
