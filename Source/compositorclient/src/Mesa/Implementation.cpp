@@ -37,7 +37,7 @@ extern "C" {
 #include <virtualinput/virtualinput.h>
 
 #include <graphicsbuffer/GraphicsBufferType.h>
-#include <interfaces/ICompositionBuffer.h>
+#include <interfaces/IGraphicsBuffer.h>
 
 #include "RenderAPI.h"
 #include <compositor/Client.h>
