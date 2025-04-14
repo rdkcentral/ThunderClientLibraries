@@ -33,6 +33,8 @@ option(DEVICEINFO
         "Include the deviceinfo COMRPC abstraction library." OFF)
 option(DISPLAYINFO
         "Include the displayinfo COMRPC abstraction library." OFF)
+option(GRAPHICSBUFFER
+        "Header only library for creating, using graphics buffers." OFF)
 option(SECURITYAGENT
         "Include the securityagent library." OFF)
 option(PLAYERINFO
