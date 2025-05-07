@@ -36,8 +36,8 @@ extern "C" {
 #include <privilegedrequest/PrivilegedRequest.h>
 #include <virtualinput/virtualinput.h>
 
-#include <compositorbuffer/CompositorBufferType.h>
-#include <interfaces/ICompositionBuffer.h>
+#include <graphicsbuffer/GraphicsBufferType.h>
+#include <interfaces/IGraphicsBuffer.h>
 
 #include "RenderAPI.h"
 #include <compositor/Client.h>
@@ -48,20 +48,13 @@ extern "C" {
 namespace Thunder {
 namespace Linux {
     namespace {
-        const string BufferConnector()
+        const string ConnectorPath()
         {
             string connector;
-            if ((Core::SystemInfo::GetEnvironment(_T("COMPOSITOR_BUFFER_CONNECTOR"), connector) == false) || (connector.empty() == true)) {
-                connector = _T("/tmp/bufferconnector");
-            }
-            return connector;
-        }
-
-        const string DisplayConnector()
-        {
-            string connector;
-            if ((Core::SystemInfo::GetEnvironment(_T("COMPOSITOR_DISPLAY_CONNECTOR"), connector) == false) || (connector.empty() == true)) {
-                connector = _T("/tmp/displayconnector");
+            if ((Core::SystemInfo::GetEnvironment(_T("XDG_RUNTIME_DIR"), connector) == false) || (connector.empty() == true)) {
+                connector = _T("/tmp/Compositor/");
+            } else {
+                connector = Core::Directory::Normalize(connector);
             }
             return connector;
         }
@@ -108,7 +101,10 @@ namespace Linux {
                 PENDING = 0x04,
             };
 
-            class GBMSurface : public Compositor::ClientBuffer {
+            class GBMSurface : public Graphics::ClientBufferType<1> {
+            private:
+                using BaseClass = Graphics::ClientBufferType<1>;
+
             private:
                 static void Destroyed(gbm_bo* bo VARIABLE_IS_NOT_USED, void* data VARIABLE_IS_NOT_USED)
                 {
@@ -116,7 +112,7 @@ namespace Linux {
 
             public:
                 GBMSurface(SurfaceImplementation& parent, gbm_device* gbmDevice, uint32_t remoteId)
-                    : Compositor::ClientBuffer()
+                    : BaseClass()
                     , _parent(parent)
                     , _remoteId(remoteId)
                     , _surface(nullptr)
@@ -126,7 +122,9 @@ namespace Linux {
                     Core::PrivilegedRequest::Container descriptors;
                     Core::PrivilegedRequest request;
 
-                    if (request.Request(100, BufferConnector(), _remoteId, descriptors) == Core::ERROR_NONE) {
+                    const string connector = ConnectorPath() + _T("descriptors");
+
+                    if (request.Request(100, connector, _remoteId, descriptors) == Core::ERROR_NONE) {
                         Load(descriptors);
                     } else {
                         TRACE(Trace::Error, (_T ( "Failed to get display file descriptor from compositor server")));
@@ -178,7 +176,9 @@ namespace Linux {
                                 Add(descriptor, gbm_bo_get_stride_for_plane(_frameBuffer, index), gbm_bo_get_offset(_frameBuffer, index));
                             }
 
-                            if (request.Offer(100, BufferConnector(), _remoteId, descriptors) == Core::ERROR_NONE) {
+                            const string connector = ConnectorPath() + _T("descriptors");
+
+                            if (request.Offer(100, connector, _remoteId, descriptors) == Core::ERROR_NONE) {
                                 TRACE(Trace::Information, (_T("Offered buffer to compositor server")));
                             } else {
                                 TRACE(Trace::Error, (_T("Failed to offer buffer to compositor server")));
@@ -572,10 +572,8 @@ namespace Linux {
     private:
         void Initialize()
         {
-            TRACE(Trace::Information, (_T("PID: %d: Compositor connector: %s"), getpid(), DisplayConnector().c_str()));
-            TRACE(Trace::Information, (_T("PID: %d: Client connector: %s"), getpid(), BufferConnector().c_str()));
-            TRACE(Trace::Information, (_T("PID: %d: Input connector: %s"), getpid(), InputConnector().c_str()));
-
+            const std::string comrpcPath(ConnectorPath() + _T("comrpc"));
+            
             _adminLock.Lock();
 
             if (Thunder::Core::WorkerPool::IsAvailable() == true) {
@@ -583,13 +581,13 @@ namespace Linux {
                 // hosting process) use, it!
                 Core::ProxyType<RPC::InvokeServer> engine = Core::ProxyType<RPC::InvokeServer>::Create(&Core::WorkerPool::Instance());
 
-                _compositorServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(DisplayConnector().c_str()), Core::ProxyType<Core::IIPCServer>(engine));
+                _compositorServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(comrpcPath.c_str()), Core::ProxyType<Core::IIPCServer>(engine));
             } else {
                 // Seems we are not in a process space initiated from the Main framework process or its hosting process.
                 // Nothing more to do than to create a workerpool for RPC our selves !
                 Core::ProxyType<RPC::InvokeServerType<2, 0, 8>> engine = Core::ProxyType<RPC::InvokeServerType<2, 0, 8>>::Create();
 
-                _compositorServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(DisplayConnector().c_str()), Core::ProxyType<Core::IIPCServer>(engine));
+                _compositorServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(comrpcPath.c_str()), Core::ProxyType<Core::IIPCServer>(engine));
             }
 
             uint32_t result = _compositorServerRPCConnection->Open(RPC::CommunicationTimeOut);
@@ -721,7 +719,9 @@ namespace Linux {
         Core::PrivilegedRequest::Container descriptors;
         Core::PrivilegedRequest request;
 
-        if (request.Request(1000, BufferConnector(), DisplayId, descriptors) == Core::ERROR_NONE) {
+        const string connector = ConnectorPath() + _T("descriptors");
+
+        if (request.Request(1000, connector, DisplayId, descriptors) == Core::ERROR_NONE) {
             ASSERT(descriptors.size() == 1);
             _gpuId = descriptors[0].Move();
             _gbmDevice = gbm_create_device(_gpuId);

@@ -33,7 +33,7 @@ target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
         ClientVirtualInput::ClientVirtualInput
         ${NAMESPACE}COM::${NAMESPACE}COM
         ${NAMESPACE}PrivilegedRequest::${NAMESPACE}PrivilegedRequest
-        ClientCompositorBufferType::ClientCompositorBufferType
+        ClientGraphicsBufferType::ClientGraphicsBufferType
         CompileSettingsDebug::CompileSettingsDebug
         libdrm::libdrm
         gbm::gbm
