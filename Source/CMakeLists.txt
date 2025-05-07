@@ -23,10 +23,6 @@ if(BLUETOOTHAUDIOSOURCE)
     add_subdirectory(bluetoothaudiosource)
 endif()
 
-if(COMPOSITORBUFFER)
-    add_subdirectory(compositorbuffer)
-endif()
-
 if(GRAPHICSBUFFER)
     add_subdirectory(graphicsbuffer)
 endif()

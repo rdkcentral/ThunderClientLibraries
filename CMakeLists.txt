@@ -25,8 +25,6 @@ option(BLUETOOTHAUDIOSINK
         "Include the bluetoothaudiosink library." OFF)
 option(BLUETOOTHAUDIOSOURCE
         "Include the bluetoothaudiosource library." OFF)
-option(COMPOSITORBUFFER
-        "Include the compositor buffer library." OFF)
 option(COMPOSITORCLIENT
         "Include a graphics backend abstraction for external applications." OFF)
 option(DEVICEINFO
