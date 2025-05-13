@@ -407,7 +407,7 @@ namespace Wayland {
         , _refcount(1)
         , _level(0)
         , _name(name)
-        , _id(0)
+        , _id(display.NewSurfaceId())
         , _x(0)
         , _y(0)
         , _width(width)
@@ -921,7 +921,7 @@ namespace Wayland {
             xdg_toplevel_set_title(surface->_xdg_toplevel, name.c_str());
 
             _waylandSurfaces.insert(std::pair<struct wl_surface*, SurfaceImplementation*>(surface->_surface, surface));
-            _surfaces.insert(std::pair<const void*, SurfaceImplementation*>(reinterpret_cast<Display*>(surface->_xdg_surface), surface));
+            _surfaces.insert(std::pair<const uint32_t, SurfaceImplementation*>(reinterpret_cast<Display*>(surface->Id()), surface));
             wl_surface_commit(surface->_surface);
             result = surface;
         }
@@ -948,15 +948,15 @@ namespace Wayland {
     {
     }
 
-    void Display::Constructed(const void*, wl_surface*)
+    void Display::Constructed(const uint32_t, wl_surface*)
     {
     }
 
-    void Display::Constructed(const void*, const char*)
+    void Display::Constructed(const uint32_t, const char*)
     {
     }
 
-    void Display::Destructed(const void* id)
+    void Display::Destructed(const uint32_t id)
     {
         Trace("Display::Destructed\n");
 
