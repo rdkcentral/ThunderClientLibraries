@@ -405,52 +405,6 @@ namespace Wayland {
     /*static*/ PFNEGLCREATEIMAGEKHRPROC Display::ImageImplementation::_eglCreateImagePtr = nullptr;
     /*static*/ PFNEGLDESTROYIMAGEKHRPROC Display::ImageImplementation::_eglDestroyImagePtr = nullptr;
 
-    /*
-    Copyright (C) 2007 The Android Open Source Project
-    Licensed under the Apache License, Version 2.0
-    */
-    static void printEGLConfiguration(EGLDisplay dpy, EGLConfig config)
-    {
-#define X(VAL)    \
-    {             \
-        VAL, #VAL \
-    }
-        struct {
-            EGLint attribute;
-            const char* name;
-        } names[] = {
-            X(EGL_BUFFER_SIZE),
-            X(EGL_RED_SIZE),
-            X(EGL_GREEN_SIZE),
-            X(EGL_BLUE_SIZE),
-            X(EGL_ALPHA_SIZE),
-            X(EGL_CONFIG_CAVEAT),
-            X(EGL_CONFIG_ID),
-            X(EGL_DEPTH_SIZE),
-            X(EGL_LEVEL),
-            X(EGL_MAX_PBUFFER_WIDTH),
-            X(EGL_MAX_PBUFFER_HEIGHT),
-            X(EGL_MAX_PBUFFER_PIXELS),
-            X(EGL_NATIVE_RENDERABLE),
-            X(EGL_NATIVE_VISUAL_ID),
-            X(EGL_NATIVE_VISUAL_TYPE),
-            X(EGL_SAMPLE_BUFFERS),
-            X(EGL_SAMPLES),
-            X(EGL_SURFACE_TYPE),
-            X(EGL_TRANSPARENT_TYPE),
-        };
-#undef X
-
-        Trace("Config details:\n");
-        for (unsigned int j = 0; j < sizeof(names) / sizeof(names[0]); j++) {
-            EGLint value = -1;
-            EGLBoolean res = eglGetConfigAttrib(dpy, config, names[j].attribute, &value);
-            if (res) {
-                Trace("  - %s: %d (0x%x)\n", names[j].name, value, value);
-            }
-        }
-    }
-
     Display::SurfaceImplementation::SurfaceImplementation(Display& display, const std::string& name, const uint32_t width, const uint32_t height)
         : _surface(nullptr)
         , _refcount(1)
@@ -852,61 +806,35 @@ namespace Wayland {
 
                     EGLConfig eglConfigs[configCount];
 
-                    EGLint attributes[] = {
-                        EGL_RED_SIZE, RED_SIZE,
-                        EGL_GREEN_SIZE, GREEN_SIZE,
-                        EGL_BLUE_SIZE, BLUE_SIZE,
-                        EGL_DEPTH_SIZE, DEPTH_SIZE,
-                        EGL_STENCIL_SIZE, 0,
-                        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-                        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-                        EGL_NONE
-                    };
+                EGLint displayAttributes[] = {
+                    EGL_RED_SIZE, RED_SIZE,
+                    EGL_GREEN_SIZE, GREEN_SIZE,
+                    EGL_BLUE_SIZE, BLUE_SIZE,
+                    EGL_DEPTH_SIZE, DEPTH_SIZE,
+                    EGL_STENCIL_SIZE, 0,
+                    EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+                    EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+                    EGL_NONE
+                };
 
-                    Trace("Configs: %d\n", configCount);
-                    /*
-                     * Get a list of configurations that meet or exceed our requirements
-                     */
-                    if (eglChooseConfig(_eglDisplay, attributes, eglConfigs, configCount, &configCount)) {
+                eglChooseConfig(_eglDisplay, displayAttributes, &_eglConfig, 1, &configCount);
 
-                        /*
-                         * Choose a suitable configuration
-                         */
-                        int index = 0;
+                EGLint contextAttributes[] = {
+                    EGL_CONTEXT_CLIENT_VERSION, 2 /* ES2 */,
+                    EGL_NONE
+                };
 
-                        while (index < configCount) {
-                            EGLint redSize, greenSize, blueSize, alphaSize, depthSize;
-
-                            eglGetConfigAttrib(_eglDisplay, eglConfigs[index], EGL_RED_SIZE, &redSize);
-                            eglGetConfigAttrib(_eglDisplay, eglConfigs[index], EGL_GREEN_SIZE, &greenSize);
-                            eglGetConfigAttrib(_eglDisplay, eglConfigs[index], EGL_BLUE_SIZE, &blueSize);
-                            eglGetConfigAttrib(_eglDisplay, eglConfigs[index], EGL_ALPHA_SIZE, &alphaSize);
-                            eglGetConfigAttrib(_eglDisplay, eglConfigs[index], EGL_DEPTH_SIZE, &depthSize);
-
-                            if ((redSize == RED_SIZE) && (greenSize == GREEN_SIZE) && (blueSize == BLUE_SIZE) && (alphaSize == ALPHA_SIZE) && (depthSize >= DEPTH_SIZE)) {
-                                break;
-                            }
-
-                            index++;
-                        }
-                        if (index < configCount) {
-                            _eglConfig = eglConfigs[index];
-
-                            EGLint attributes[] = { EGL_CONTEXT_CLIENT_VERSION, 2 /* ES2 */, EGL_NONE };
-
-                            Trace("Config choosen: %d\n", index);
-                            printEGLConfiguration(_eglDisplay, _eglConfig);
-
-                            /*
-                             * Create an EGL context
-                             */
-                            _eglContext = eglCreateContext(_eglDisplay, _eglConfig, EGL_NO_CONTEXT, attributes);
+                /*
+                 * Create an EGL context
+                 */
+                _eglContext = eglCreateContext(_eglDisplay, _eglConfig, EGL_NO_CONTEXT, contextAttributes);
 
                             Trace("Context created\n");
                         }
                     }
                 }
                 Trace("Extentions: %s\n", eglQueryString(_eglDisplay, EGL_EXTENSIONS));
+            }
             }
         }
     }
