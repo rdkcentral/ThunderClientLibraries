@@ -109,7 +109,15 @@ static const struct wl_output_listener outputListener = {
     },
     // outputScale
     [](void*, struct wl_output*, int32_t) {
-    }
+    },
+#if WAYLAND_VERSION_MAJOR == 1 && WAYLAND_VERSION_MINOR >= 20
+    // outputName
+    [](void*, struct wl_output*, const char*) {
+    },
+    // outputDescription
+    [](void*, struct wl_output*, const char*) {
+    },
+#endif
 };
 
 static const struct wl_keyboard_listener keyboardListener = {
@@ -238,7 +246,17 @@ static const struct wl_pointer_listener pointerListener = {
     },
     // pointerAxisDiscrete
     [](void*, struct wl_pointer*, uint32_t, int32_t) {
-    }
+    },
+#if WAYLAND_VERSION_MAJOR == 1 && WAYLAND_VERSION_MINOR >= 21
+    // pointerAxisValue120
+    [](void*, struct wl_pointer*, uint32_t, int32_t) {
+    },
+#endif
+#if WAYLAND_VERSION_MAJOR == 1 && WAYLAND_VERSION_MINOR >= 22
+    // pointerAxisRelativeDirection
+    [](void*, struct wl_pointer*, uint32_t, uint32_t) {
+    },
+#endif
 };
 
 static const struct wl_seat_listener seatListener = {
