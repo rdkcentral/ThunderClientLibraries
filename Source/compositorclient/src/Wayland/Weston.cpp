@@ -417,7 +417,7 @@ namespace Wayland {
         }
     }
 
-    Display::SurfaceImplementation::SurfaceImplementation(Display& display, const std::string& name, const uint32_t width, const uint32_t height)
+    Display::SurfaceImplementation::SurfaceImplementation(Display& display, const std::string& name, const uint32_t width, const uint32_t height, ISurface::ICallback* callback)
         : _surface(nullptr)
         , _refcount(1)
         , _level(0)
@@ -436,6 +436,7 @@ namespace Wayland {
         , _eglSurfaceWindow(EGL_NO_SURFACE)
         , _keyboard(nullptr)
         , _pointer(nullptr)
+        , _callback(callback)
     {
         ASSERT(display.IsOperational());
 
@@ -474,6 +475,7 @@ namespace Wayland {
         , _eglSurfaceWindow(EGL_NO_SURFACE)
         , _keyboard(nullptr)
         , _pointer(nullptr)
+        , _callback(nullptr)
     {
     }
 
@@ -494,6 +496,7 @@ namespace Wayland {
         , _eglSurfaceWindow(EGL_NO_SURFACE)
         , _keyboard(nullptr)
         , _pointer(nullptr)
+        , _callback(nullptr)
     {
     }
 
@@ -550,6 +553,10 @@ namespace Wayland {
 
         if (_native != nullptr) {
             eglSwapBuffers(_display->_eglDisplay, _eglSurfaceWindow);
+
+            if (_callback != nullptr) {
+                _callback->Presented();
+            }
         }
     }
 
@@ -917,14 +924,14 @@ namespace Wayland {
         TRACE_GLOBAL(Trace::Information, (_T("Display::LoadSurfaces")));
     }
 
-    Compositor::IDisplay::ISurface* Display::Create(const std::string& name, const uint32_t width, const uint32_t height, ISurface::ICallback*)
+    Compositor::IDisplay::ISurface* Display::Create(const std::string& name, const uint32_t width, const uint32_t height, ISurface::ICallback* callback)
     {
         IDisplay::ISurface* result = nullptr;
 
         TRACE_GLOBAL(Trace::Information, (_T("Display::Create: name = %s"), name.c_str()));
         _adminLock.Lock();
 
-        SurfaceImplementation* surface = new SurfaceImplementation(*this, name, width, height);
+        SurfaceImplementation* surface = new SurfaceImplementation(*this, name, width, height, callback);
 
         if (_wm_base != nullptr) {
             surface->_xdg_surface = xdg_wm_base_get_xdg_surface(_wm_base, surface->_surface);

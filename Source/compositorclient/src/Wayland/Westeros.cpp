@@ -408,7 +408,7 @@ namespace Wayland {
     /*static*/ PFNEGLCREATEIMAGEKHRPROC Display::ImageImplementation::_eglCreateImagePtr = nullptr;
     /*static*/ PFNEGLDESTROYIMAGEKHRPROC Display::ImageImplementation::_eglDestroyImagePtr = nullptr;
 
-    Display::SurfaceImplementation::SurfaceImplementation(Display& display, const std::string& name, const uint32_t width, const uint32_t height)
+    Display::SurfaceImplementation::SurfaceImplementation(Display& display, const std::string& name, const uint32_t width, const uint32_t height, ISurface::ICallback* callback)
         : _surface(nullptr)
         , _refcount(1)
         , _level(0)
@@ -426,6 +426,7 @@ namespace Wayland {
         , _eglSurfaceWindow(EGL_NO_SURFACE)
         , _keyboard(nullptr)
         , _pointer(nullptr)
+        , _callback(callback)
     {
         TRACE(Trace::Information, (_T("Creating a surface %s of size: %d x %d"), name.c_str(), width, height));
 
@@ -485,6 +486,7 @@ namespace Wayland {
         , _eglSurfaceWindow(EGL_NO_SURFACE)
         , _keyboard(nullptr)
         , _pointer(nullptr)
+        , _callback(nullptr)
     {
     }
 
@@ -505,6 +507,7 @@ namespace Wayland {
         , _eglSurfaceWindow(EGL_NO_SURFACE)
         , _keyboard(nullptr)
         , _pointer(nullptr)
+        , _callback(nullptr)
     {
     }
 
@@ -933,13 +936,13 @@ namespace Wayland {
         }
     }
 
-    Compositor::IDisplay::ISurface* Display::Create(const std::string& name, const uint32_t width, const uint32_t height, ISurface::ICallback*)
+    Compositor::IDisplay::ISurface* Display::Create(const std::string& name, const uint32_t width, const uint32_t height, ISurface::ICallback* callback)
     {
         IDisplay::ISurface* result = nullptr;
 
         _adminLock.Lock();
 
-        SurfaceImplementation* surface = new SurfaceImplementation(*this, name, width, height);
+        SurfaceImplementation* surface = new SurfaceImplementation(*this, name, width, height, callback);
 
         // Wait till we are fully registered.
         _waylandSurfaces.insert(std::pair<struct wl_surface*, SurfaceImplementation*>(surface->_surface, surface));

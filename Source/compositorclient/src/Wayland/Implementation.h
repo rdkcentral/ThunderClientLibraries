@@ -113,6 +113,7 @@ namespace Wayland {
             pthread_mutex_t _lock;
         };
 
+    public:
         class SurfaceImplementation : public Compositor::IDisplay::ISurface {
         private:
             SurfaceImplementation() = delete;
@@ -120,7 +121,7 @@ namespace Wayland {
             SurfaceImplementation& operator=(const SurfaceImplementation&) = delete;
 
         public:
-            SurfaceImplementation(Display& compositor, const std::string& name, const uint32_t width, const uint32_t height);
+            SurfaceImplementation(Display& compositor, const std::string& name, const uint32_t width, const uint32_t height, ISurface::ICallback* callback);
             SurfaceImplementation(Display& compositor, const uint32_t id, const char* name);
             SurfaceImplementation(Display& compositor, const uint32_t id, struct wl_surface* surface);
             virtual ~SurfaceImplementation();
@@ -242,6 +243,7 @@ namespace Wayland {
             ISurface::ICallback* _callback;
         };
 
+    private:
         class ImageImplementation {
         private:
             ImageImplementation();
