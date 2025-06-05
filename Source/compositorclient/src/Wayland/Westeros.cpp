@@ -586,7 +586,8 @@ namespace Wayland {
         _display->Trigger();
 
         // wait for wayland to flush events
-        sem_wait(&(_display->_redraw));
+        _display->WaitForRedraw();
+
         if (_native != nullptr) {
             eglSwapBuffers(_display->_eglDisplay, _eglSurfaceWindow);
         }
@@ -717,7 +718,7 @@ namespace Wayland {
     {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
 
-        while ((sem_wait(&context._trigger) == 0) && (context._display != nullptr)) {
+        while ((context.WaitForTrigger() == 0) && (context._display != nullptr)) {
             TRACE_GLOBAL(Trace::Information, (_T("Flush Events")));
             wl_display_flush(context._display);
 

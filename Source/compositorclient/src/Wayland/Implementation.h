@@ -622,14 +622,24 @@ namespace Wayland {
             return _eglDisplay;
         }
 
-        inline void Trigger()
+        inline int Trigger()
         {
-            sem_post(&_trigger);
+            return sem_post(&_trigger);
         }
 
-        inline void Redraw()
+        inline int WaitForTrigger()
         {
-            sem_post(&_redraw);
+            return sem_wait(&_trigger);
+        }
+
+        inline int Redraw()
+        {
+            return sem_post(&_redraw);
+        }
+
+        inline int WaitForRedraw()
+        {
+            return sem_wait(&_redraw);
         }
 
     private:
