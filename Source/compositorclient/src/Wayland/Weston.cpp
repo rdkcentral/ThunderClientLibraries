@@ -153,7 +153,7 @@ static const struct wl_keyboard_listener keyboardListener = {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
 
         // Have no idea if this is true, just lets see...
-        assert(keyboard == context._keyboard);
+        ASSERT(keyboard == context._keyboard);
 
         Wayland::Display::IKeyboard::state action;
         switch (state) {
@@ -437,7 +437,7 @@ namespace Wayland {
         , _keyboard(nullptr)
         , _pointer(nullptr)
     {
-        assert(display.IsOperational());
+        ASSERT(display.IsOperational());
 
         _level = 0;
 
@@ -445,11 +445,11 @@ namespace Wayland {
 
         if (_surface != nullptr) {
 
-            Trace("### Creating a surface of size: %d x %d _surface=%p\n", width, height, _surface);
+            TRACE_GLOBAL(Trace::Information, (_T("### Creating a surface of size: %d x %d _surface=%p"), width, height, _surface));
 
             _native = wl_egl_window_create(_surface, width, height);
 
-            assert(EGL_NO_SURFACE != _native);
+            ASSERT(EGL_NO_SURFACE != _native);
 
             if (_display->HasEGLContext() == true) {
                 Connect(EGLSurface(EGL_NO_SURFACE));
@@ -610,7 +610,7 @@ namespace Wayland {
                         nullptr);
                 }
 
-                assert(EGL_NO_SURFACE != _eglSurfaceWindow);
+                ASSERT(EGL_NO_SURFACE != _eglSurfaceWindow);
 
                 EGLint height(0);
                 EGLint width(0);
@@ -627,11 +627,11 @@ namespace Wayland {
              */
 
             int result = eglMakeCurrent(_display->_eglDisplay, _eglSurfaceWindow, _eglSurfaceWindow, _display->_eglContext);
-            assert(EGL_FALSE != result);
+            ASSERT(EGL_FALSE != result);
 
             if (EGL_FALSE != result) {
                 result = eglSwapInterval(_display->_eglDisplay, 1);
-                assert(EGL_FALSE != result);
+                ASSERT(EGL_FALSE != result);
             }
         }
 
@@ -719,13 +719,13 @@ namespace Wayland {
 
         _display = wl_display_connect(_displayId.empty() == false ? _displayId.c_str() : nullptr);
 
-        assert(_display != nullptr);
+        ASSERT(_display != nullptr);
 
         if (_display != nullptr) {
             sem_init(&_trigger, 0, 0);
             _registry = wl_display_get_registry(_display);
 
-            assert(_registry != nullptr);
+            ASSERT(_registry != nullptr);
 
             if (_registry != nullptr) {
 
@@ -928,11 +928,11 @@ namespace Wayland {
 
         if (_wm_base != nullptr) {
             surface->_xdg_surface = xdg_wm_base_get_xdg_surface(_wm_base, surface->_surface);
-            assert(surface->_xdg_surface != NULL);
+            ASSERT(surface->_xdg_surface != NULL);
             xdg_surface_add_listener(surface->_xdg_surface, &xdg_surface_listener, this);
 
             surface->_xdg_toplevel = xdg_surface_get_toplevel(surface->_xdg_surface);
-            assert(surface->_xdg_toplevel != NULL);
+            ASSERT(surface->_xdg_toplevel != NULL);
             xdg_toplevel_add_listener(surface->_xdg_toplevel, &xdg_toplevel_listener, this);
             xdg_toplevel_set_title(surface->_xdg_toplevel, name.c_str());
 
@@ -984,7 +984,7 @@ namespace Wayland {
             // See if it is in the surfaces map, we need to take it out here as well..
             WaylandSurfaceMap::iterator entry(_waylandSurfaces.find(index->second->_surface));
 
-            assert(entry != _waylandSurfaces.end());
+            ASSERT(entry != _waylandSurfaces.end());
 
             if (entry != _waylandSurfaces.end()) {
                 _waylandSurfaces.erase(entry);
@@ -1012,7 +1012,7 @@ namespace Wayland {
         // Please define a runtime directory, or using an environment variable (XDG_RUNTIME_DIR)
         // or by setting it before creating a Display, using Display::RuntimeDirectory(<DIR>),
         // or by passing it as an argument to this method (none empty dir)
-        assert(_runtimeDir.empty() == false);
+        ASSERT(_runtimeDir.empty() == false);
 
         Display* result(nullptr);
 
@@ -1029,7 +1029,7 @@ namespace Wayland {
         result->AddRef();
         _adminLock.Unlock();
 
-        assert(result != nullptr);
+        ASSERT(result != nullptr);
 
         return (*result);
     }

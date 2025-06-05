@@ -157,7 +157,7 @@ static const struct wl_keyboard_listener keyboardListener = {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
 
         // Have no idea if this is true, just lets see...
-        assert(keyboard == context._keyboard);
+        ASSERT(keyboard == context._keyboard);
 
         Wayland::Display::IKeyboard::state action;
         switch (state) {
@@ -295,7 +295,7 @@ static const struct wl_simple_shell_listener simpleShellListener = {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
 
         // Have no idea if this is true, just lets see...
-        assert(shell == context._simpleShell);
+        ASSERT(shell == context._simpleShell);
         context.Constructed(surfaceId, surface);
 
         Wayland::Display::Surface waylandSurface;
@@ -324,7 +324,7 @@ static const struct wl_simple_shell_listener simpleShellListener = {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
 
         // Have no idea if this is true, just lets see...
-        assert(shell == context._simpleShell);
+        ASSERT(shell == context._simpleShell);
 
         context.Destructed(surfaceId);
         TRACE_GLOBAL(Trace::Information, (_T("wl_simple_shell_listener.surface_destroyed surfaceId=%d"), surfaceId));
@@ -337,7 +337,7 @@ static const struct wl_simple_shell_listener simpleShellListener = {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
 
         // Have no idea if this is true, just lets see...
-        assert(shell == context._simpleShell);
+        ASSERT(shell == context._simpleShell);
 
         context.Dimensions(surfaceId, visible, x, y, width, height, opacity, zorder);
 
@@ -429,6 +429,7 @@ namespace Wayland {
     {
         TRACE(Trace::Information, (_T("Creating a surface %s of size: %d x %d"), name.c_str(), width, height));
 
+        ASSERT(display.IsOperational());
 
         _level = 0;
 
@@ -450,7 +451,7 @@ namespace Wayland {
 
             _native = wl_egl_window_create(_surface, width, height);
 
-            assert(EGL_NO_SURFACE != _native);
+            ASSERT(EGL_NO_SURFACE != _native);
 
             if (_native != EGL_NO_SURFACE) {
                 _shellSurface = wl_shell_get_shell_surface(display._shell, _surface);
@@ -463,6 +464,8 @@ namespace Wayland {
         } else {
             TRACE(Trace::Error, (_T("Unable to create a wayland compositor surface for %s"), name.c_str()));
         }
+
+        ASSERT(_surface != nullptr);
     }
 
     Display::SurfaceImplementation::SurfaceImplementation(Display& display, const uint32_t id, struct wl_surface* surface)
@@ -650,7 +653,7 @@ namespace Wayland {
                         nullptr);
                 }
 
-                assert(EGL_NO_SURFACE != _eglSurfaceWindow);
+                ASSERT(EGL_NO_SURFACE != _eglSurfaceWindow);
 
                 EGLint height(0);
                 EGLint width(0);
@@ -667,11 +670,11 @@ namespace Wayland {
              */
 
             int result = eglMakeCurrent(_display->_eglDisplay, _eglSurfaceWindow, _eglSurfaceWindow, _display->_eglContext);
-            assert(EGL_FALSE != result);
+            ASSERT(EGL_FALSE != result);
 
             if (EGL_FALSE != result) {
                 result = eglSwapInterval(_display->_eglDisplay, 1);
-                assert(EGL_FALSE != result);
+                ASSERT(EGL_FALSE != result);
             }
         }
 
@@ -758,12 +761,12 @@ namespace Wayland {
 
         _display = wl_display_connect(_displayId.empty() == false ? _displayId.c_str() : nullptr);
 
-        assert(_display != nullptr);
+        ASSERT(_display != nullptr);
 
         if (_display != nullptr) {
             _registry = wl_display_get_registry(_display);
 
-            assert(_registry != nullptr);
+            ASSERT(_registry != nullptr);
 
             if (_registry != nullptr) {
 
@@ -1045,7 +1048,7 @@ namespace Wayland {
                 // See if it is in the surfaces map, we need to take it out here as well..
                 WaylandSurfaceMap::iterator entry(_waylandSurfaces.find(index->second->_surface));
 
-                // assert(entry != _waylandSurfaces.end());
+                // ASSERT(entry != _waylandSurfaces.end());
 
                 if (entry != _waylandSurfaces.end()) {
                     entry->second->Release();
@@ -1079,7 +1082,7 @@ namespace Wayland {
         // Please define a runtime directory, or using an environment variable (XDG_RUNTIME_DIR)
         // or by setting it before creating a Display, using Display::RuntimeDirectory(<DIR>),
         // or by passing it as an argument to this method (none empty dir)
-        assert(_runtimeDir.empty() == false);
+        ASSERT(_runtimeDir.empty() == false);
 
         Display* result(nullptr);
 
@@ -1096,7 +1099,7 @@ namespace Wayland {
         result->AddRef();
         _adminLock.Unlock();
 
-        assert(result != nullptr);
+        ASSERT(result != nullptr);
 
         return (*result);
     }
