@@ -52,8 +52,6 @@
 
 using namespace Thunder;
 
-#define Trace(fmt, args...) fprintf(stderr, "[pid=%d][Client %s:%d] : " fmt, getpid(), __FILE__, __LINE__, ##args)
-
 #define RED_SIZE (8)
 #define GREEN_SIZE (8)
 #define BLUE_SIZE (8)
@@ -67,7 +65,7 @@ static const struct wl_shell_surface_listener g_ShellSurfaceListener = {
     },
     // handle_configure,
     [](void*, struct wl_shell_surface*, uint32_t, int32_t width, int32_t height) {
-        Trace("handle_configure: width=%d height=%d \n", width, height);
+        TRACE_GLOBAL(Trace::Information, (_T("handle_configure: width=%d height=%d "), width, height));
         //  Wayland::Display::Sur *wayland = static_cast<Wayland *>(data);
         // wl_egl_window_resize(wayland->eglWindow, width, height, 0, 0);
     },
@@ -79,7 +77,7 @@ static const struct wl_shell_surface_listener g_ShellSurfaceListener = {
 struct wl_shm_listener shmListener = {
     // shmFormat
     [](void*, struct wl_shm*, uint32_t format) {
-        Trace("shm format: %X\n", format);
+        TRACE_GLOBAL(Trace::Information, (_T("shm format: %X"), format));
     }
 };
 
@@ -87,8 +85,7 @@ static const struct wl_output_listener outputListener = {
     // outputGeometry
     [](void* data, struct wl_output*, int32_t x, int32_t y, int32_t physical_width, int32_t physical_height, int32_t subpixel, const char* make, const char* model, int32_t transform) {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
-        Trace("wl_output_listener.outputGeometry x=%d y=%d physical_width=%d physical_height=%d, make=%s: model=%s transform=%d subpixel%d\n",
-            x, y, physical_width, physical_height, make, model, transform, subpixel);
+        TRACE_GLOBAL(Trace::Information, (_T("wl_output_listener.outputGeometry x=%d y=%d physical_width=%d physical_height=%d, make=%s: model=%s transform=%d subpixel%d"), x, y, physical_width, physical_height, make, model, transform, subpixel));
         Wayland::Display::Rectangle& rect(const_cast<Wayland::Display::Rectangle&>(context.Physical()));
         rect.X = x;
         rect.Y = y;
@@ -105,7 +102,7 @@ static const struct wl_output_listener outputListener = {
             Wayland::Display::Rectangle& rect(const_cast<Wayland::Display::Rectangle&>(context.Physical()));
             rect.Width = width;
             rect.Height = height;
-            Trace("wl_output_listener.outputMode [0,0,%d,%d]\n", width, height);
+            TRACE_GLOBAL(Trace::Information, (_T("wl_output_listener.outputMode [0,0,%d,%d]"), width, height));
         }
     },
     // outputDone
@@ -141,17 +138,17 @@ static const struct wl_keyboard_listener keyboardListener = {
                 close(fd);
             }
         }
-        Trace("wl_keyboard_listener.keyboardKeymap [%d,%d]\n", format, size);
+        TRACE_GLOBAL(Trace::Information, (_T("wl_keyboard_listener.keyboardKeymap [%d,%d]"), format, size));
     },
     // keyboardEnter,
     [](void* data, struct wl_keyboard*, uint32_t serial, struct wl_surface* surface, struct wl_array*) {
-        Trace("wl_keyboard_listener.keyboardEnter serial=%d\n", serial);
+        TRACE_GLOBAL(Trace::Information, (_T("wl_keyboard_listener.keyboardEnter serial=%d"), serial));
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
         context.FocusKeyboard(surface, true);
     },
     // keyboardLeave,
     [](void* data, struct wl_keyboard*, uint32_t serial, struct wl_surface* surface) {
-        Trace("wl_keyboard_listener.keyboardLeave serial=%d\n", serial);
+        TRACE_GLOBAL(Trace::Information, (_T("wl_keyboard_listener.keyboardLeave serial=%d"), serial));
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
         context.FocusKeyboard(surface, false);
     },
@@ -175,17 +172,17 @@ static const struct wl_keyboard_listener keyboardListener = {
         }
         context.Key(key, action, time);
 
-        Trace("wl_keyboard_listener.keyboardKey [0x%02X, %s, 0x%02X ]\n", key, state == WL_KEYBOARD_KEY_STATE_PRESSED ? "Pressed" : "Released", context._keyModifiers);
+        TRACE_GLOBAL(Trace::Information, (_T("wl_keyboard_listener.keyboardKey [0x%02X, %s, 0x%02X ]"), key, state == WL_KEYBOARD_KEY_STATE_PRESSED ? "Pressed" : "Released", context._keyModifiers));
     },
     // keyboardModifiers
     [](void* data, struct wl_keyboard*, uint32_t, uint32_t mods_depressed, uint32_t mods_latched, uint32_t mods_locked, uint32_t group) {
-        Trace("wl_keyboard_listener.keyboardModifiers [%d,%d,%d]\n", mods_depressed, mods_latched, mods_locked);
+        TRACE_GLOBAL(Trace::Information, (_T("wl_keyboard_listener.keyboardModifiers [%d,%d,%d]"), mods_depressed, mods_latched, mods_locked));
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
         context.Modifiers(mods_depressed, mods_latched, mods_locked, group);
     },
     // keyboardRepeatInfo
     [](void* data, struct wl_keyboard*, int32_t rate, int32_t delay) {
-        Trace("wl_keyboard_listener.keyboardRepeatInfo [%d,%d]\n", rate, delay);
+        TRACE_GLOBAL(Trace::Information, (_T("wl_keyboard_listener.keyboardRepeatInfo [%d,%d]"), rate, delay));
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
         context.Repeat(rate, delay);
     }
@@ -200,13 +197,13 @@ static const struct wl_pointer_listener pointerListener = {
         x = wl_fixed_to_int(sx);
         y = wl_fixed_to_int(sy);
 
-        Trace("wl_pointer_listener.pointerEnter [%d,%d]\n", x, y);
+        TRACE_GLOBAL(Trace::Information, (_T("wl_pointer_listener.pointerEnter [%d,%d]"), x, y));
         context.FocusPointer(surface, true);
     },
     // pointerLeave
     [](void* data, struct wl_pointer*, uint32_t, struct wl_surface* surface) {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
-        Trace("wl_pointer_listener.pointerLeave [%p]\n", surface);
+        TRACE_GLOBAL(Trace::Information, (_T("wl_pointer_listener.pointerLeave [%p]"), surface));
         context.FocusPointer(surface, false);
     },
     // pointerMotion
@@ -217,13 +214,13 @@ static const struct wl_pointer_listener pointerListener = {
         x = wl_fixed_to_int(sx);
         y = wl_fixed_to_int(sy);
 
-        Trace("wl_pointer_listener.pointerMotion [%d,%d]\n", x, y);
+        TRACE_GLOBAL(Trace::Information, (_T("wl_pointer_listener.pointerMotion [%d,%d]"), x, y));
         context.SendPointerPosition(x, y);
     },
     // pointerButton
     [](void* data, struct wl_pointer*, uint32_t, uint32_t, uint32_t button, uint32_t state) {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
-        Trace("wl_pointer_listener.pointerButton [%u,%u]\n", button, state);
+        TRACE_GLOBAL(Trace::Information, (_T("wl_pointer_listener.pointerButton [%u,%u]"), button, state));
 
         // align with what WPEBackend-rdk thunder backend is expecting
         if (button >= BTN_MOUSE)
@@ -237,7 +234,7 @@ static const struct wl_pointer_listener pointerListener = {
     [](void*, struct wl_pointer*, uint32_t, uint32_t axis, wl_fixed_t value) {
         int v;
         v = wl_fixed_to_int(value);
-        Trace("wl_pointer_listener.pointerAxis [%u,%d]\n", axis, v);
+        TRACE_GLOBAL(Trace::Information, (_T("wl_pointer_listener.pointerAxis [%u,%d]"), axis, v));
     },
     // pointerFrame
     [](void*, struct wl_pointer*) {
@@ -268,33 +265,33 @@ static const struct wl_seat_listener seatListener = {
     [](void* data, struct wl_seat* seat, uint32_t capabilities) {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
 
-        Trace("wl_seat_listener.seatCapabilities [%p,%d]\n", seat, capabilities);
+        TRACE_GLOBAL(Trace::Information, (_T("wl_seat_listener.seatCapabilities [%p,%d]"), seat, capabilities));
 
         if (capabilities & WL_SEAT_CAPABILITY_KEYBOARD) {
             context._keyboard = wl_seat_get_keyboard(context._seat);
             wl_keyboard_add_listener(context._keyboard, &keyboardListener, data);
-            Trace("wl_seat_listener.keyboard [%p,%p]\n", seat, context._keyboard);
+            TRACE_GLOBAL(Trace::Information, (_T("wl_seat_listener.keyboard [%p,%p]"), seat, context._keyboard));
         }
         if (capabilities & WL_SEAT_CAPABILITY_POINTER) {
             context._pointer = wl_seat_get_pointer(context._seat);
             wl_pointer_add_listener(context._pointer, &pointerListener, data);
-            Trace("wl_seat_listener.pointer [%p,%p]\n", seat, context._pointer);
+            TRACE_GLOBAL(Trace::Information, (_T("wl_seat_listener.pointer [%p,%p]"), seat, context._pointer));
         }
         if (capabilities & WL_SEAT_CAPABILITY_TOUCH) {
             context._touch = wl_seat_get_touch(context._seat);
-            Trace("wl_seat_listener.touch [%p,%p]\n", seat, context._touch);
+            TRACE_GLOBAL(Trace::Information, (_T("wl_seat_listener.touch [%p,%p]"), seat, context._touch));
         }
     },
     // seatName
     [](void*, struct wl_seat* seat, const char* name) {
-        Trace("wl_seat_listener.seatName[%p,%s]\n", seat, name);
+        TRACE_GLOBAL(Trace::Information, (_T("wl_seat_listener.seatName[%p,%s]"), seat, name));
     }
 };
 
 static const struct wl_simple_shell_listener simpleShellListener = {
     // surfaceId
     [](void* data, struct wl_simple_shell* shell, struct wl_surface* surface, uint32_t surfaceId) {
-        Trace("wl_simple_shell_listener.surface_id shell=%p wl_surface=%p surfaceId=%d\n", shell, surface, surfaceId);
+        TRACE_GLOBAL(Trace::Information, (_T("wl_simple_shell_listener.surface_id shell=%p wl_surface=%p surfaceId=%d"), shell, surface, surfaceId));
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
 
         // Have no idea if this is true, just lets see...
@@ -305,32 +302,38 @@ static const struct wl_simple_shell_listener simpleShellListener = {
         context.Get(surfaceId, waylandSurface);
 
         if (waylandSurface.IsValid() == true) {
-            Trace("wl_simple_shell_listener.surface_id upscaling %s to (%dx%d)\n",
-                waylandSurface.Name().c_str(), context.Physical().Width, context.Physical().Height);
+            TRACE_GLOBAL(Trace::Information, (_T("wl_simple_shell_listener.surface_id upscaling %s to (%dx%d)"), waylandSurface.Name().c_str(), context.Physical().Width, context.Physical().Height));
 
             wl_simple_shell_set_geometry(shell, surfaceId, context.Physical().X, context.Physical().Y,
                 context.Physical().Width, context.Physical().Height);
         }
     },
     // surfaceCreated
-    [](void*, struct wl_simple_shell* shell, uint32_t surfaceId, const char* name) {
-        Trace("wl_simple_shell_listener.surface_created shell=%p name=%s surfaceId=%d\n", shell, name, surfaceId);
+    [](void* data, struct wl_simple_shell* shell, uint32_t surfaceId, const char* name) {
+        TRACE_GLOBAL(Trace::Information, (_T("wl_simple_shell_listener.surface_created shell=%p name=%s surfaceId=%d"), shell, name, surfaceId));
+
+        Wayland::Display& display = *(static_cast<Wayland::Display*>(data));
+
+        // Have no idea if this is true, just lets see...
+        ASSERT(shell == display._simpleShell);
+        display.Constructed(surfaceId, name);
     },
     // surfaceDestroyed
     [](void* data, struct wl_simple_shell* shell, uint32_t surfaceId, const char* name) {
-        Trace("wl_simple_shell_listener.surface_destroyed shell=%p name=%s surfaceId=%d\n", shell, name, surfaceId);
+        TRACE_GLOBAL(Trace::Information, (_T("wl_simple_shell_listener.surface_destroyed shell=%p name=%s surfaceId=%d"), shell, name, surfaceId));
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
 
         // Have no idea if this is true, just lets see...
         assert(shell == context._simpleShell);
 
         context.Destructed(surfaceId);
-        Trace("wl_simple_shell_listener.surface_destroyed surfaceId=%d\n", surfaceId);
+        TRACE_GLOBAL(Trace::Information, (_T("wl_simple_shell_listener.surface_destroyed surfaceId=%d"), surfaceId));
     },
     // surfaceStatus
     [](void* data, struct wl_simple_shell* shell, uint32_t surfaceId, const char* name, uint32_t visible,
         int32_t x, int32_t y, int32_t width, int32_t height, wl_fixed_t opacity, wl_fixed_t zorder) {
-        Trace("surface_status surfaceId=%d name=%s width=%d  height=%d x=%d, y=%d visible=%d opacity=%d zorder=%d\n", surfaceId, name, width, height, x, y, visible, opacity, zorder);
+        TRACE_GLOBAL(Trace::Information, (_T("surface_status surfaceId=%d name=%s width=%d  height=%d x=%d, y=%d visible=%d opacity=%d zorder=%d"), surfaceId, name, width, height, x, y, visible, opacity, zorder));
+
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
 
         // Have no idea if this is true, just lets see...
@@ -340,11 +343,11 @@ static const struct wl_simple_shell_listener simpleShellListener = {
 
         context.Constructed(surfaceId, name);
 
-        Trace("wl_simple_shell_listener.surface_status surfaceId=%d\n", surfaceId);
+        TRACE_GLOBAL(Trace::Information, (_T("wl_simple_shell_listener.surface_status surfaceId=%d"), surfaceId));
     },
     // getSurfacesDone
     [](void*, struct wl_simple_shell* shell) {
-        Trace("wl_simple_shell_listener.get_surfaces_done shell=%p\n", shell);
+        TRACE_GLOBAL(Trace::Information, (_T("wl_simple_shell_listener.get_surfaces_done shell=%p"), shell));
     }
 };
 
@@ -352,7 +355,7 @@ static const struct wl_registry_listener globalRegistryListener = {
 
     // global
     [](void* data, struct wl_registry* registry, uint32_t name, const char* interface, uint32_t version) {
-        Trace("wl_registry_listener.global interface=%s name=%d version=%d\n", interface, name, version);
+        TRACE_GLOBAL(Trace::Information, (_T("wl_registry_listener.global interface=%s name=%d version=%d"), interface, name, version));
 
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
 
@@ -390,7 +393,7 @@ static const struct wl_registry_listener globalRegistryListener = {
     },
     // global_remove
     [](void*, struct wl_registry*, uint32_t) {
-        Trace("wl_registry_listener.global_remove\n");
+        TRACE_GLOBAL(Trace::Information, (_T("wl_registry_listener.global_remove")));
     },
 };
 
@@ -424,7 +427,8 @@ namespace Wayland {
         , _keyboard(nullptr)
         , _pointer(nullptr)
     {
-        assert(display.IsOperational());
+        TRACE(Trace::Information, (_T("Creating a surface %s of size: %d x %d"), name.c_str(), width, height));
+
 
         _level = 0;
 
@@ -442,22 +446,22 @@ namespace Wayland {
 
             wl_region_destroy(region);
 
-            Trace("Creating a surface of size: %d x %d\n", width, height);
+            TRACE(Trace::Information, (_T("Creating a surface of size: %d x %d"), width, height));
 
             _native = wl_egl_window_create(_surface, width, height);
 
             assert(EGL_NO_SURFACE != _native);
 
             if (_native != EGL_NO_SURFACE) {
-
                 _shellSurface = wl_shell_get_shell_surface(display._shell, _surface);
-
                 wl_shell_surface_add_listener(_shellSurface, &g_ShellSurfaceListener, this);
             }
 
             if (_display->HasEGLContext() == true) {
                 Connect(EGLSurface(EGL_NO_SURFACE));
             }
+        } else {
+            TRACE(Trace::Error, (_T("Unable to create a wayland compositor surface for %s"), name.c_str()));
         }
     }
 
@@ -507,7 +511,7 @@ namespace Wayland {
 
     void Display::SurfaceImplementation::Resize(const int dx, const int dy, const int width, const int height)
     {
-        Trace("SimpleShell Geometry  %s to h%dpx x w%dpx at position x=%d y=%d\n", _name.c_str(), width, height, dy, dy);
+        TRACE(Trace::Information, (_T("SimpleShell Geometry  %s to h%dpx x w%dpx at position x=%d y=%d"), _name.c_str(), width, height, dy, dy));
         wl_simple_shell_set_geometry(_display->_simpleShell, _id, dx, dy, width, height);
 
         Redraw();
@@ -552,7 +556,7 @@ namespace Wayland {
         const uint32_t opacity,
         const uint32_t zorder)
     {
-        Trace("Updated surfaceId=%d width=%d  height=%d x=%d, y=%d visible=%d opacity=%d zorder=%d\n", _id, width, height, x, y, visible, opacity, zorder);
+        TRACE(Trace::Information, (_T("Updated surfaceId=%d width=%d  height=%d x=%d, y=%d visible=%d opacity=%d zorder=%d"), _id, width, height, x, y, visible, opacity, zorder));
 
         _visible = visible;
         _opacity = opacity;
@@ -561,12 +565,12 @@ namespace Wayland {
         // and set according to the request.
         if (_native != nullptr) {
             if ((_width != width) || (_height != height) || (_x != x) || (_y != y)) {
-                Trace("Resizing surface %d from [%d x %d] to [%d x %d]\n", _id, _width, _height, width, height);
+                TRACE(Trace::Information, (_T("Resizing surface %d from [%d x %d] to [%d x %d]"), _id, _width, _height, width, height));
                 wl_egl_window_resize(_native, _width, _height, x, y);
             }
         } else {
             // Update this surface
-            Trace("Update surface %d from [%d x %d] to [%d x %d]\n", _id, _width, _height, width, height);
+            TRACE(Trace::Information, (_T("Update surface %d from [%d x %d] to [%d x %d]"), _id, _width, _height, width, height));
             _x = x;
             _y = y;
             _width = width;
@@ -575,7 +579,7 @@ namespace Wayland {
 
         wl_display_flush(_display->_display);
 
-        Trace("Current surfaceId=%d width=%d  height=%d x=%d, y=%d, visible=%d opacity=%d zorder=%d\n", _id, _width, _height, _x, _y, _visible, _opacity, _ZOrder);
+        TRACE(Trace::Information, (_T("Current surfaceId=%d width=%d  height=%d x=%d, y=%d, visible=%d opacity=%d zorder=%d"), _id, _width, _height, _x, _y, _visible, _opacity, _ZOrder));
     }
     void Display::SurfaceImplementation::Redraw()
     {
@@ -652,7 +656,7 @@ namespace Wayland {
                 eglQuerySurface(_display->_eglDisplay, _eglSurfaceWindow, EGL_WIDTH, &width);
                 eglQuerySurface(_display->_eglDisplay, _eglSurfaceWindow, EGL_HEIGHT, &height);
 
-                Trace("EGL window surface is %dx%d\n", height, width);
+                TRACE_GLOBAL(Trace::Information, (_T("EGL window surface is %dx%d"), height, width));
             }
         }
 
@@ -714,7 +718,7 @@ namespace Wayland {
         Wayland::Display& context = *(static_cast<Wayland::Display*>(data));
 
         while ((sem_wait(&context._trigger) == 0) && (context._display != nullptr)) {
-            Trace("Flush Events\n");
+            TRACE_GLOBAL(Trace::Information, (_T("Flush Events")));
             wl_display_flush(context._display);
 
             context.Redraw();
@@ -746,10 +750,10 @@ namespace Wayland {
             }
         }
 
-        Trace("Initialize Wayland Display on %s\n", _runtimeDir.c_str());
-        Trace("Initialize Wayland Display Name %s\n", _displayName.c_str());
+        TRACE(Trace::Information, (_T("Initialize Wayland Display on %s"), _runtimeDir.c_str()));
+        TRACE(Trace::Information, (_T("Initialize Wayland Display Name %s"), _displayName.c_str()));
         if (_displayId.empty() == false)
-            Trace("Connecting to Wayland Display %s\n", _displayId.c_str());
+            TRACE(Trace::Information, (_T("Connecting to Wayland Display %s"), _displayId.c_str()));
 
         _display = wl_display_connect(_displayId.empty() == false ? _displayId.c_str() : nullptr);
 
@@ -768,9 +772,9 @@ namespace Wayland {
                 sem_init(&_trigger, 0, 0);
                 sem_init(&_redraw, 0, 0);
 
-                Trace("creating communication thread\n");
+                TRACE(Trace::Information, (_T("creating communication thread")));
                 if (pthread_create(&_tid, nullptr, Processor, this) != 0) {
-                    Trace("[Wayland] Error creating communication thread\n");
+                    TRACE(Trace::Information, (_T("[Wayland] Error creating communication thread")));
                 }
             }
         }
@@ -783,28 +787,24 @@ namespace Wayland {
          */
         _eglDisplay = eglGetDisplay(reinterpret_cast<NativeDisplayType>(_display));
 
-        Trace("Display: %p\n", _eglDisplay);
+        TRACE(Trace::Information, (_T("Display: %p"), _eglDisplay));
 
         if (_eglDisplay == EGL_NO_DISPLAY) {
-            Trace("Oops bad Display: %p\n", _eglDisplay);
+            TRACE(Trace::Information, (_T("Oops bad Display: %p"), _eglDisplay));
         } else {
             /*
              * Initialize display
              */
             EGLint major, minor;
             if (eglInitialize(_eglDisplay, &major, &minor) != EGL_TRUE) {
-                Trace("Unable to initialize EGL: %X\n", eglGetError());
+                TRACE(Trace::Information, (_T("Unable to initialize EGL: %X"), eglGetError()));
             } else {
                 /*
                  * Get number of available configurations
                  */
                 EGLint configCount;
-                Trace("Vendor: %s\n", eglQueryString(_eglDisplay, EGL_VENDOR));
-                Trace("Version: %d.%d\n", major, minor);
-
-                if (eglGetConfigs(_eglDisplay, nullptr, 0, &configCount)) {
-
-                    EGLConfig eglConfigs[configCount];
+                TRACE(Trace::Information, (_T("Vendor: %s"), eglQueryString(_eglDisplay, EGL_VENDOR)));
+                TRACE(Trace::Information, (_T("Version: %d.%d"), major, minor));
 
                 EGLint displayAttributes[] = {
                     EGL_RED_SIZE, RED_SIZE,
@@ -829,13 +829,9 @@ namespace Wayland {
                  */
                 _eglContext = eglCreateContext(_eglDisplay, _eglConfig, EGL_NO_CONTEXT, contextAttributes);
 
-                            Trace("Context created\n");
-                        }
-                    }
-                }
-                Trace("Extentions: %s\n", eglQueryString(_eglDisplay, EGL_EXTENSIONS));
+                TRACE(Trace::Information, (_T("Context created")));
             }
-            }
+            TRACE(Trace::Information, (_T("Extensions: %s"), eglQueryString(_eglDisplay, EGL_EXTENSIONS)));
         }
     }
 
@@ -959,6 +955,8 @@ namespace Wayland {
 
     void Display::Constructed(const uint32_t id, wl_surface* surface)
     {
+        TRACE(Trace::Information, (_T("Constructed %p surfaceId=%d "), surface, id));
+
         _adminLock.Lock();
 
         WaylandSurfaceMap::iterator index = _waylandSurfaces.find(surface);
@@ -986,6 +984,8 @@ namespace Wayland {
 
     void Display::Constructed(const uint32_t id, const char* name)
     {
+        TRACE(Trace::Information, (_T("Constructed %s surfaceId=%d "), name, id));
+
         _adminLock.Lock();
 
         SurfaceMap::iterator index = _surfaces.find(id);
@@ -1017,17 +1017,17 @@ namespace Wayland {
         const uint32_t opacity,
         const uint32_t zorder)
     {
-        Trace("Updated Dimensions surfaceId=%d width=%d  height=%d x=%d, y=%d visible=%d opacity=%d zorder=%d\n", id, width, height, x, y, visible, opacity, zorder);
+        TRACE(Trace::Information, (_T("Updated Dimensions surfaceId=%d width=%d  height=%d x=%d, y=%d visible=%d opacity=%d zorder=%d"), id, width, height, x, y, visible, opacity, zorder));
         _adminLock.Lock();
 
         SurfaceMap::iterator index = _surfaces.find(id);
 
         if (index != _surfaces.end()) {
-            Trace("Updated Dimensions surfaceId=%d name=%s width=%d  height=%d x=%d, y=%d visible=%d opacity=%d zorder=%d\n", id, index->second->Name().c_str(), width, height, x, y, visible, opacity, zorder);
+            TRACE(Trace::Information, (_T("Updated Dimensions surfaceId=%d name=%s width=%d  height=%d x=%d, y=%d visible=%d opacity=%d zorder=%d"), id, index->second->Name().c_str(), width, height, x, y, visible, opacity, zorder));
             index->second->Dimensions(visible, x, y, width, height, opacity, zorder);
         } else {
             // TODO: Seems this is a surface, we did not create. maybe we need to collect it in future.
-            // Trace("Unidentified surface: id=%d.\n");
+            // TRACE(Trace::Information, (_T("Unidentified surface: id=%d.")));
         }
 
         _adminLock.Unlock();
@@ -1116,7 +1116,7 @@ namespace Wayland {
 
         _thread = ::pthread_self();
 
-        Trace("Setup dispatch loop using thread %p signal: %d \n", &_thread, _signal);
+        TRACE(Trace::Information, (_T("Setup dispatch loop using thread %p signal: %d "), &_thread, _signal));
         if (_display != nullptr) {
             while ((wl_display_dispatch(_display) != -1) && (processloop->Dispatch() == true)) {
                 /* intentionally left empty */
