@@ -351,6 +351,18 @@ static const struct wl_simple_shell_listener simpleShellListener = {
     }
 };
 
+static const struct wl_callback_listener frameListener = {
+    // handle_frame_done
+    [](void* data, struct wl_callback* callback, uint32_t time) {
+        TRACE_GLOBAL(Trace::Information, (_T("handle_frame_done: %d"), time));
+        Thunder::Wayland::Display::SurfaceImplementation* surface = static_cast<Thunder::Wayland::Display::SurfaceImplementation*>(data);
+
+        if (surface != nullptr) {
+            surface->Rendered(callback, time);
+        }
+    },
+};
+
 static const struct wl_registry_listener globalRegistryListener = {
 
     // global
@@ -423,6 +435,8 @@ namespace Wayland {
         , _ZOrder(0)
         , _display(&display)
         , _native(nullptr)
+        , _shellSurface(nullptr)
+        , _frameRenderedCallback(nullptr)
         , _eglSurfaceWindow(EGL_NO_SURFACE)
         , _keyboard(nullptr)
         , _pointer(nullptr)
@@ -483,11 +497,13 @@ namespace Wayland {
         , _display(&display)
         , _native(nullptr)
         , _shellSurface(nullptr)
+        , _frameRenderedCallback(nullptr)
         , _eglSurfaceWindow(EGL_NO_SURFACE)
         , _keyboard(nullptr)
         , _pointer(nullptr)
         , _callback(nullptr)
     {
+        TRACE(Trace::Information, (_T("Creating a surface from wayland surface[%d] %p"), id, surface));
     }
 
     Display::SurfaceImplementation::SurfaceImplementation(Display& display, const uint32_t id, const char* name)
@@ -504,15 +520,20 @@ namespace Wayland {
         , _display(&display)
         , _native(nullptr)
         , _shellSurface(nullptr)
+        , _frameRenderedCallback(nullptr)
         , _eglSurfaceWindow(EGL_NO_SURFACE)
         , _keyboard(nullptr)
         , _pointer(nullptr)
         , _callback(nullptr)
     {
+        TRACE(Trace::Information, (_T("Creating a surface from name[%d] %s"), id, name));
     }
 
     Display::SurfaceImplementation::~SurfaceImplementation()
     {
+        if (_frameRenderedCallback != nullptr) {
+            wl_callback_destroy(_frameRenderedCallback);
+        }
     }
 
     void Display::SurfaceImplementation::Resize(const int dx, const int dy, const int width, const int height)
@@ -587,8 +608,17 @@ namespace Wayland {
 
         TRACE(Trace::Information, (_T("Current surfaceId=%d width=%d  height=%d x=%d, y=%d, visible=%d opacity=%d zorder=%d"), _id, _width, _height, _x, _y, _visible, _opacity, _ZOrder));
     }
+
     void Display::SurfaceImplementation::Redraw()
     {
+        if (_surface != nullptr) {
+            ASSERT(_frameRenderedCallback == nullptr);
+            _frameRenderedCallback = wl_surface_frame(_surface);
+            wl_callback_add_listener(_frameRenderedCallback, &frameListener, this);
+        } else {
+            TRACE(Trace::Error, (_T("Unable to create a frame callback for %s"), _name.c_str()));
+        }
+
         _display->Trigger();
 
         // wait for wayland to flush events
@@ -923,7 +953,9 @@ namespace Wayland {
 
         Trigger();
 
-        pthread_join(_tid, nullptr);
+        if (_tid) {
+            pthread_join(_tid, nullptr);
+        }
     }
 
     void Display::LoadSurfaces()

@@ -360,6 +360,23 @@ static const struct xdg_toplevel_listener xdg_toplevel_listener = {
     handle_toplevel_close
 };
 
+static const struct wl_callback_listener frame_listener = {
+    .done = handle_frame_done
+};
+
+// Callback function for the frame event
+static void handle_frame_done(void* data, struct wl_callback* callback, uint32_t time)
+{
+    // Handle the frame done event
+    // You can now write to the surface
+    wl_callback_destroy(callback);
+
+    // Request another frame callback if needed
+    struct wl_surface* surface = (struct wl_surface*)data;
+    struct wl_callback* new_callback = wl_surface_frame(surface);
+    wl_callback_add_listener(new_callback, &frame_listener, surface);
+}
+
 namespace Thunder {
 
 namespace Wayland {
@@ -449,6 +466,9 @@ namespace Wayland {
             TRACE_GLOBAL(Trace::Information, (_T("### Creating a surface of size: %d x %d _surface=%p"), width, height, _surface));
 
             _native = wl_egl_window_create(_surface, width, height);
+
+            _frameCallback = wl_surface_frame(_surface);
+            wl_callback_add_listener(_frameCallback, &frame_listener, surface);
 
             ASSERT(EGL_NO_SURFACE != _native);
 

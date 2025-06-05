@@ -213,6 +213,28 @@ namespace Wayland {
             void Unlink();
 
         public:
+            void Rendered(struct wl_callback* callback, uint32_t time VARIABLE_IS_NOT_USED)
+            {
+                ASSERT(callback == _frameRenderedCallback);
+
+                if (_frameRenderedCallback != nullptr) {
+                    wl_callback_destroy(_frameRenderedCallback);
+                    _frameRenderedCallback = nullptr;
+                }
+
+                if (_callback != nullptr) {
+                    _callback->Rendered(this);
+                }
+            }
+
+            void Published()
+            {
+                if (_callback != nullptr) {
+                    _callback->Published(this);
+                }
+            }
+
+        public:
             // Called by C interface methods. A bit to much overkill to actually make the private and all kind
             // of friend definitions.
             struct wl_surface* _surface;
@@ -237,6 +259,7 @@ namespace Wayland {
             Display* _display;
             struct wl_egl_window* _native;
             struct wl_shell_surface* _shellSurface;
+            struct wl_callback* _frameRenderedCallback;
             EGLSurface _eglSurfaceWindow;
             IKeyboard* _keyboard;
             IPointer* _pointer;
