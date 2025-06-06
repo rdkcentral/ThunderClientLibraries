@@ -353,12 +353,12 @@ static const struct wl_simple_shell_listener simpleShellListener = {
 
 static const struct wl_callback_listener frameListener = {
     // handle_frame_done
-    [](void* data, struct wl_callback* callback, uint32_t time) {
+    [](void* data, struct wl_callback*, uint32_t time) {
         TRACE_GLOBAL(Trace::Information, (_T("handle_frame_done: %d"), time));
         Thunder::Wayland::Display::SurfaceImplementation* surface = static_cast<Thunder::Wayland::Display::SurfaceImplementation*>(data);
 
         if (surface != nullptr) {
-            surface->Rendered(callback, time);
+            surface->Rendered(time);
         }
     },
 };

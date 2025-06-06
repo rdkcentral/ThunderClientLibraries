@@ -213,9 +213,9 @@ namespace Wayland {
             void Unlink();
 
         public:
-            void Rendered(struct wl_callback* callback, uint32_t time VARIABLE_IS_NOT_USED)
+            void Rendered(uint32_t time VARIABLE_IS_NOT_USED)
             {
-                ASSERT(callback == _frameRenderedCallback);
+                ASSERT(_frameRenderedCallback == nullptr);
 
                 if (_frameRenderedCallback != nullptr) {
                     wl_callback_destroy(_frameRenderedCallback);
