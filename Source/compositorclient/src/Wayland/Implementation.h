@@ -215,7 +215,7 @@ namespace Wayland {
         public:
             void Rendered(uint32_t time VARIABLE_IS_NOT_USED)
             {
-                ASSERT(_frameRenderedCallback == nullptr);
+                ASSERT(_frameRenderedCallback != nullptr);
 
                 if (_frameRenderedCallback != nullptr) {
                     wl_callback_destroy(_frameRenderedCallback);
