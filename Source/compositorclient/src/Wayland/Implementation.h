@@ -58,19 +58,25 @@ struct xdg_toplevel;
 
 namespace Thunder {
 namespace Wayland {
-
     class EXTERNAL Display : public Compositor::IDisplay {
     public:
         struct ICallback {
-            virtual ~ICallback() {}
+            virtual ~ICallback() { }
             virtual void Attached(const uint32_t id) = 0;
             virtual void Detached(const uint32_t id) = 0;
         };
 
-    private:
         Display();
         Display(const Display&) = delete;
         Display& operator=(const Display&) = delete;
+
+    private:
+
+        static uint32_t NewSurfaceId()
+        {
+            static uint32_t surfaceId = 0;
+            return (++surfaceId);
+        }
 
         class CriticalSection {
         private:
@@ -107,6 +113,7 @@ namespace Wayland {
             pthread_mutex_t _lock;
         };
 
+    public:
         class SurfaceImplementation : public Compositor::IDisplay::ISurface {
         private:
             SurfaceImplementation() = delete;
@@ -114,7 +121,7 @@ namespace Wayland {
             SurfaceImplementation& operator=(const SurfaceImplementation&) = delete;
 
         public:
-            SurfaceImplementation(Display& compositor, const std::string& name, const uint32_t width, const uint32_t height);
+            SurfaceImplementation(Display& compositor, const std::string& name, const uint32_t width, const uint32_t height, ISurface::ICallback* callback);
             SurfaceImplementation(Display& compositor, const uint32_t id, const char* name);
             SurfaceImplementation(Display& compositor, const uint32_t id, struct wl_surface* surface);
             virtual ~SurfaceImplementation();
@@ -206,12 +213,34 @@ namespace Wayland {
             void Unlink();
 
         public:
+            void Rendered(uint32_t time VARIABLE_IS_NOT_USED)
+            {
+                ASSERT(_frameRenderedCallback != nullptr);
+
+                if (_frameRenderedCallback != nullptr) {
+                    wl_callback_destroy(_frameRenderedCallback);
+                    _frameRenderedCallback = nullptr;
+                }
+
+                if (_callback != nullptr) {
+                    _callback->Rendered(this);
+                }
+            }
+
+            void Published()
+            {
+                if (_callback != nullptr) {
+                    _callback->Published(this);
+                }
+            }
+
+        public:
             // Called by C interface methods. A bit to much overkill to actually make the private and all kind
             // of friend definitions.
             struct wl_surface* _surface;
 
-            struct xdg_surface *_xdg_surface;
-            struct xdg_toplevel *_xdg_toplevel;
+            struct xdg_surface* _xdg_surface;
+            struct xdg_toplevel* _xdg_toplevel;
 
         private:
             friend Display;
@@ -230,11 +259,14 @@ namespace Wayland {
             Display* _display;
             struct wl_egl_window* _native;
             struct wl_shell_surface* _shellSurface;
+            struct wl_callback* _frameRenderedCallback;
             EGLSurface _eglSurfaceWindow;
             IKeyboard* _keyboard;
             IPointer* _pointer;
+            ISurface::ICallback* _callback;
         };
 
+    private:
         class ImageImplementation {
         private:
             ImageImplementation();
@@ -273,7 +305,7 @@ namespace Wayland {
             static PFNEGLDESTROYIMAGEKHRPROC _eglDestroyImagePtr;
         };
 
-        typedef std::map<const void*, SurfaceImplementation*> SurfaceMap;
+        typedef std::map<const uint32_t, SurfaceImplementation*> SurfaceMap;
         typedef std::map<struct wl_surface*, SurfaceImplementation*> WaylandSurfaceMap;
 
         Display(const std::string& displayName)
@@ -330,7 +362,7 @@ namespace Wayland {
         };
 
         struct IProcess {
-            virtual ~IProcess() {}
+            virtual ~IProcess() { }
 
             virtual bool Dispatch() = 0;
         };
@@ -549,7 +581,7 @@ namespace Wayland {
         ISurface* Create(const std::string& name, const uint32_t width, const uint32_t height, ISurface::ICallback* callback) override;
         ISurface* SurfaceByName(const std::string& name) override
         {
-            //iterate through waylandsurface map return wl_surface with matching name
+            // iterate through waylandsurface map return wl_surface with matching name
             _adminLock.Lock();
 
             WaylandSurfaceMap::iterator entry(_waylandSurfaces.begin());
@@ -557,7 +589,7 @@ namespace Wayland {
             while (entry != _waylandSurfaces.end()) {
                 if (entry->second->Name().compare(name) == 0) {
                     _adminLock.Unlock();
-                    //return iSurface to upper layers
+                    // return iSurface to upper layers
                     return entry->second;
                 }
                 entry++;
@@ -593,7 +625,7 @@ namespace Wayland {
         {
             return (_physical);
         }
-        void Get(const void* id, Surface& surface)
+        void Get(const uint32_t id, Surface& surface)
         {
             _adminLock.Lock();
 
@@ -615,14 +647,24 @@ namespace Wayland {
             return _eglDisplay;
         }
 
-        inline void Trigger()
+        inline int Trigger()
         {
-            sem_post(&_trigger);
+            return sem_post(&_trigger);
         }
 
-        inline void Redraw()
+        inline int WaitForTrigger()
         {
-            sem_post(&_redraw);
+            return sem_wait(&_trigger);
+        }
+
+        inline int Redraw()
+        {
+            return sem_post(&_redraw);
+        }
+
+        inline int WaitForRedraw()
+        {
+            return sem_wait(&_redraw);
         }
 
     private:
@@ -639,9 +681,9 @@ namespace Wayland {
         }
 
         void InitializeEGL();
-        void Constructed(const void* id, wl_surface* surface);
-        void Constructed(const void* id, const char* name = nullptr);
-        void Destructed(const void* id);
+        void Constructed(const uint32_t id, wl_surface* surface);
+        void Constructed(const uint32_t id, const char* name = nullptr);
+        void Destructed(const uint32_t id);
         void Dimensions(
             const uint32_t id, const uint32_t visible, const int32_t x, const int32_t y, const int32_t width,
             const int32_t height, const uint32_t opacity, const uint32_t zorder);
@@ -730,11 +772,10 @@ namespace Wayland {
             _adminLock.Lock();
 
             if ((_pointerReceiver != nullptr) && (_pointerReceiver->_pointer != nullptr)) {
-              _pointerReceiver->_pointer->Direct(x, y);
+                _pointerReceiver->_pointer->Direct(x, y);
             }
 
             _adminLock.Unlock();
-
         }
 
         void SendPointerButton(const uint8_t button, const IPointer::state action)
@@ -742,11 +783,10 @@ namespace Wayland {
             _adminLock.Lock();
 
             if ((_pointerReceiver != nullptr) && (_pointerReceiver->_pointer != nullptr)) {
-              _pointerReceiver->_pointer->Direct(button, action);
+                _pointerReceiver->_pointer->Direct(button, action);
             }
 
             _adminLock.Unlock();
-
         }
 
         // Wayland related info
