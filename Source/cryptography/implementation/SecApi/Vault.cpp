@@ -21,6 +21,7 @@
 #include <vault_implementation.h>
 #include <cryptalgo/cryptalgo.h>
 #include "Vault.h"
+#include <<cstdlib>
 
 namespace Implementation {
 
@@ -32,7 +33,16 @@ namespace Implementation {
         , _items()
         , _lastHandle(0)
     {
-        Sec_Result sec_res = SecProcessor_GetInstance_Directories(&_secProcHandle, globalDir, appDir);
+	 char* global_dir    = globalDir;
+	 char* app_dir       = appDir;
+	 // Get SECAPI_HOME environment variable
+	 const char* secapi_home = std::getenv("SECAPI_HOME");
+	 if (secapi_home) {
+	     TRACE_L1(_T("overriding SecAPI directories using SECAPI_HOME: %s\n"), secapi_home);
+	     global_dir = const_cast<char*>(secapi_home);
+	     app_dir = const_cast<char*>(secapi_home);
+	 }
+        Sec_Result sec_res = SecProcessor_GetInstance_Directories(&_secProcHandle, global_dir, app_dir);
         if (sec_res != SEC_RESULT_SUCCESS) {
             TRACE_L1(_T("SEC : proccesor instance failed retval= %d\n"),sec_res);
             _secProcHandle = NULL;
