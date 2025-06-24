@@ -19,4 +19,9 @@ if(CDMI)
     add_subdirectory(ocdmtest)
 endif()
 
+if(L2_TESTS)
+    add_subdirectory(L2Tests)
+endif()
+
+
 
