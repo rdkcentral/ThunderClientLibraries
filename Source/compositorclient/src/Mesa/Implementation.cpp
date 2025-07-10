@@ -94,12 +94,6 @@ namespace Linux {
 
         class SurfaceImplementation : public Compositor::IDisplay::ISurface {
         private:
-            enum State : uint8_t {
-                IDLE = 0x00,
-                RENDERING = 0x01,
-                PRESENTING = 0x02,
-                PENDING = 0x04,
-            };
 
             class GBMSurface : public Graphics::ClientBufferType<1> {
             private:
@@ -231,8 +225,7 @@ namespace Linux {
             SurfaceImplementation& operator=(const SurfaceImplementation&) = delete;
 
             SurfaceImplementation(Display& display, const std::string& name, const uint32_t width, const uint32_t height, ICallback* callback)
-                : _adminLock()
-                , _id(Core::InterlockedIncrement(_surfaceIndex))
+                : _id(Core::InterlockedIncrement(_surfaceIndex))
                 , _display(display)
                 , _remoteClient(display.CreateRemoteSurface(name, width, height))
                 , _surface(*this, static_cast<gbm_device*>(_display.Native()), _remoteClient->Native())
@@ -242,7 +235,6 @@ namespace Linux {
                 , _pointer(nullptr)
                 , _touchpanel(nullptr)
                 , _callback(callback)
-                , _state(State::IDLE)
             {
                 _display.AddRef();
 
@@ -393,32 +385,21 @@ namespace Linux {
 
             void Rendered()
             {
-                State expected = State::RENDERING;
-
-                if (_state.compare_exchange_strong(expected, State::PRESENTING) == true) {
-                    if (_callback != nullptr) {
-                        _callback->Rendered(this);
-                    }
-                } else {
-                    TRACE(Trace::Error, (_T("Surface %s[%d] is not presenting, but received a Rendered event while in %d"), _name.c_str(), _id, _state.load()));
+                if (_callback != nullptr) {
+                    _callback->Rendered(this);
                 }
             }
 
             void Published()
             {
-                State expected = State::PRESENTING;
-
-                if (_state.compare_exchange_strong(expected, State::IDLE) == false) {
-                    expected = State::PENDING;
-
-                    if ((_state.compare_exchange_strong(expected, State::RENDERING) == true)) {
-                        _surface.Render();
-                    }
-                }
-
                 if (_callback != nullptr) {
                     _callback->Published(this);
                 }
+            }
+
+            void RequestRender() override
+            {
+                _surface.Render();
             }
 
             uint32_t Process()
@@ -426,21 +407,7 @@ namespace Linux {
                 return Core::ERROR_NONE;
             }
 
-            void RequestRender() override
-            {
-                State expected = State::PRESENTING;
-
-                if (_state.compare_exchange_strong(expected, State::PENDING) == false) {
-                    expected = State::IDLE;
-
-                    if (_state.compare_exchange_strong(expected, State::RENDERING) == true) {
-                        _surface.Render();
-                    }
-                }
-            }
-
         private:
-            mutable Core::CriticalSection _adminLock;
             const uint8_t _id;
             Display& _display;
             Exchange::IComposition::IClient* _remoteClient;
@@ -451,7 +418,6 @@ namespace Linux {
             IPointer* _pointer;
             ITouchPanel* _touchpanel;
             ISurface::ICallback* _callback;
-            std::atomic<State> _state;
 
             static uint32_t _surfaceIndex;
         }; // class SurfaceImplementation
@@ -573,7 +539,7 @@ namespace Linux {
         void Initialize()
         {
             const std::string comrpcPath(ConnectorPath() + _T("comrpc"));
-            
+
             _adminLock.Lock();
 
             if (Thunder::Core::WorkerPool::IsAvailable() == true) {
