@@ -45,6 +45,13 @@ install(TARGETS ${MODULE_NAME} EXPORT ${MODULE_NAME}Targets)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/include/graphicsbuffer/GraphicsBufferType.h 
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}/graphicsbuffer COMPONENT ${NAMESPACE}_Development)
 
+InstallCMakeConfig(
+        TARGETS ${MODULE_NAME})
+
+InstallPackageConfig(
+        TARGETS ${MODULE_NAME}
+        DESCRIPTION "An abstraction layer for GraphicsBuffers.")
+
 include(HeaderOnlyInstall)
 
 HeaderOnlyInstallPackageConfig(TARGET ${MODULE_NAME}
