@@ -19,6 +19,7 @@ find_package(${NAMESPACE}Core CONFIG REQUIRED)
 find_package(${NAMESPACE}COM CONFIG REQUIRED)
 find_package(${NAMESPACE}PrivilegedRequest REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
+find_package(${NAMESPACE}Messaging CONFIG REQUIRED)
 
 find_package(gbm REQUIRED)
 find_package(libdrm REQUIRED)
@@ -33,6 +34,7 @@ target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
         ClientVirtualInput::ClientVirtualInput
         ${NAMESPACE}COM::${NAMESPACE}COM
         ${NAMESPACE}PrivilegedRequest::${NAMESPACE}PrivilegedRequest
+        ${NAMESPACE}Messaging::${NAMESPACE}Messaging
         ClientGraphicsBufferType::ClientGraphicsBufferType
         CompileSettingsDebug::CompileSettingsDebug
         libdrm::libdrm

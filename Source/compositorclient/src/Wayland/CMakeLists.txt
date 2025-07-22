@@ -27,6 +27,7 @@ endif ()
 find_package(WaylandClient REQUIRED)
 find_package(EGL REQUIRED)
 find_package(WaylandEGL REQUIRED)
+find_package(${NAMESPACE}Messaging REQUIRED)
 
 find_package(NXCLIENT)
 
@@ -40,6 +41,7 @@ target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
         WaylandEGL::WaylandEGL
         ${EGL_LIBRARIES}
         ${NAMESPACE}Core::${NAMESPACE}Core
+        ${NAMESPACE}Messaging::${NAMESPACE}Messaging
         WaylandClient::WaylandClient)
 
 set_target_properties(${PLUGIN_COMPOSITOR_IMPLEMENTATION} PROPERTIES

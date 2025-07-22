@@ -42,7 +42,6 @@ extern "C" {
 #include "RenderAPI.h"
 #include <compositor/Client.h>
 
-#include <condition_variable>
 #include <mutex>
 
 namespace Thunder {
@@ -94,12 +93,6 @@ namespace Linux {
 
         class SurfaceImplementation : public Compositor::IDisplay::ISurface {
         private:
-            enum State : uint8_t {
-                IDLE = 0x00,
-                RENDERING = 0x01,
-                PRESENTING = 0x02,
-                PENDING = 0x04,
-            };
 
             class GBMSurface : public Graphics::ClientBufferType<1> {
             private:
@@ -110,6 +103,38 @@ namespace Linux {
                 {
                 }
 
+                gbm_bo* Lock(const uint16_t ms)
+                {
+                    gbm_bo* frameBuffer = nullptr;
+
+                    if (_bufferLock.try_lock_for(std::chrono::milliseconds(ms))) {
+                        frameBuffer = gbm_surface_lock_front_buffer(_surface);
+
+                        if (frameBuffer == nullptr) {
+                            _bufferLock.unlock(); // Unlock the mutex to prevent deadlock
+                            TRACE(Trace::Error, (_T("Failed to lock front buffer, surface %p"), _surface));
+                        } else {
+                            TRACE(Trace::Information, (_T("Acquired framebuffer[%p]"), frameBuffer));
+                        }
+                    } else {
+                        TRACE(Trace::Error, (_T("Failed to lock front buffer within %d ms"), ms));
+                    }
+
+                    return frameBuffer;
+                }
+
+                void Unlock(gbm_bo* frameBuffer)
+                {
+                    ASSERT((_surface != nullptr) && "Failed to release framebuffer, surface is null");
+
+                    if (_surface != nullptr) {
+                        gbm_surface_release_buffer(_surface, frameBuffer);
+                        TRACE(Trace::Information, (_T("Released framebuffer[%p]"), frameBuffer));
+                    }
+
+                    _bufferLock.unlock();
+                }
+
             public:
                 GBMSurface(SurfaceImplementation& parent, gbm_device* gbmDevice, uint32_t remoteId)
                     : BaseClass()
@@ -117,8 +142,10 @@ namespace Linux {
                     , _remoteId(remoteId)
                     , _surface(nullptr)
                     , _frameBuffer(nullptr)
-                    , _rendering(false)
+                    , _bufferLock()
                 {
+                    ASSERT(gbmDevice != nullptr);
+
                     Core::PrivilegedRequest::Container descriptors;
                     Core::PrivilegedRequest request;
 
@@ -148,60 +175,86 @@ namespace Linux {
 
                 ~GBMSurface()
                 {
+                    if (_frameBuffer != nullptr) {
+                        gbm_surface_release_buffer(_surface, _frameBuffer);
+                        _frameBuffer = nullptr;
+                    }
+
                     if (_surface != nullptr) {
                         gbm_surface_destroy(_surface);
                         _surface = nullptr;
                     }
                 }
 
-                void Render()
+                void SetUserData(gbm_bo* frameBuffer)
                 {
-                    bool expected = false;
+                    static bool userdataSet(false);
 
-                    if (_rendering.compare_exchange_strong(expected, true) == true) {
-
-                        _frameBuffer = gbm_surface_lock_front_buffer(_surface);
-
-                        ASSERT(_frameBuffer != nullptr);
-
-                        if (gbm_bo_get_user_data(_frameBuffer) == nullptr) {
-                            uint16_t planes = gbm_bo_get_plane_count(_frameBuffer);
-
-                            Core::PrivilegedRequest::Container descriptors;
-                            Core::PrivilegedRequest request;
-
-                            for (uint16_t index = 0; index < planes; index++) {
-                                int descriptor = gbm_bo_get_fd_for_plane(_frameBuffer, index);
-                                descriptors.emplace_back(descriptor);
-                                Add(descriptor, gbm_bo_get_stride_for_plane(_frameBuffer, index), gbm_bo_get_offset(_frameBuffer, index));
-                            }
-
-                            const string connector = ConnectorPath() + _T("descriptors");
-
-                            if (request.Offer(100, connector, _remoteId, descriptors) == Core::ERROR_NONE) {
-                                TRACE(Trace::Information, (_T("Offered buffer to compositor server")));
-                            } else {
-                                TRACE(Trace::Error, (_T("Failed to offer buffer to compositor server")));
-                            }
-
-                            gbm_bo_set_user_data(_frameBuffer, this, &Destroyed);
-                        }
-                    } else {
-                        TRACE(Trace::Error, (_T("Surface %s[%d] is still locked"), _parent.Name().c_str(), _parent.Id()));
-                        ASSERT(false);
+                    if (userdataSet) {
+                        ASSERT(false && "User data already set for this frame buffer");
+                        return;
                     }
 
-                    RequestRender();
+                    ASSERT(frameBuffer != nullptr);
+
+                    uint16_t planes = gbm_bo_get_plane_count(frameBuffer);
+
+                    Core::PrivilegedRequest::Container descriptors;
+                    Core::PrivilegedRequest request;
+
+                    for (uint16_t index = 0; index < planes; index++) {
+                        int descriptor = gbm_bo_get_fd_for_plane(frameBuffer, index);
+                        descriptors.emplace_back(descriptor);
+                        Add(descriptor, gbm_bo_get_stride_for_plane(frameBuffer, index), gbm_bo_get_offset(frameBuffer, index));
+                    }
+
+                    const string connector = ConnectorPath() + _T("descriptors");
+
+                    if (request.Offer(100, connector, _remoteId, descriptors) == Core::ERROR_NONE) {
+                        TRACE(Trace::Information, (_T("Offered buffer to compositor server")));
+                    } else {
+                        TRACE(Trace::Error, (_T("Failed to offer buffer to compositor server")));
+                    }
+
+                    gbm_bo_set_user_data(frameBuffer, this, &Destroyed);
+                    userdataSet = true;
+                }
+
+                bool RenderError()
+                {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                    Rendered(); // we still need call Rendered to request a new frame buffer
+                    return false; // indicate that we failed to render
+                }
+
+                bool Render()
+                {
+                    bool result = true;
+                    gbm_bo* frameBuffer = Lock(1000);
+
+                    if (frameBuffer == nullptr) {
+                        result = RenderError(); // bail-out if we cannot lock the front buffer
+                    } else {
+                        if ((_frameBuffer != nullptr && _frameBuffer != frameBuffer)) {
+                            ASSERT(false && "New FrameBuffer DETECTED, this should not happen!");
+                            return RenderError(); // bail-out if we already have a frame buffer.
+                        }
+
+                        if (gbm_bo_get_user_data(frameBuffer) == nullptr) {
+                            SetUserData(frameBuffer);
+                        }
+
+                        _frameBuffer = frameBuffer;
+
+                        RequestRender();
+                    }
+
+                    return result;
                 }
 
                 void Rendered() override
                 {
-                    bool expected = true;
-
-                    if (_rendering.compare_exchange_strong(expected, false) == true) {
-                        gbm_surface_release_buffer(_surface, _frameBuffer);
-                    }
-
+                    Unlock(_frameBuffer);
                     _parent.Rendered();
                 }
 
@@ -212,7 +265,7 @@ namespace Linux {
 
                 EGLNativeWindowType Native() const
                 {
-                    return (static_cast<EGLNativeWindowType>(_surface));
+                    return static_cast<EGLNativeWindowType>(_surface);
                 }
 
             private:
@@ -220,7 +273,7 @@ namespace Linux {
                 uint32_t _remoteId;
                 gbm_surface* _surface;
                 gbm_bo* _frameBuffer;
-                std::atomic<bool> _rendering;
+                std::timed_mutex _bufferLock;
             };
 
         public:
@@ -231,8 +284,7 @@ namespace Linux {
             SurfaceImplementation& operator=(const SurfaceImplementation&) = delete;
 
             SurfaceImplementation(Display& display, const std::string& name, const uint32_t width, const uint32_t height, ICallback* callback)
-                : _adminLock()
-                , _id(Core::InterlockedIncrement(_surfaceIndex))
+                : _id(Core::InterlockedIncrement(_surfaceIndex))
                 , _display(display)
                 , _remoteClient(display.CreateRemoteSurface(name, width, height))
                 , _surface(*this, static_cast<gbm_device*>(_display.Native()), _remoteClient->Native())
@@ -242,7 +294,6 @@ namespace Linux {
                 , _pointer(nullptr)
                 , _touchpanel(nullptr)
                 , _callback(callback)
-                , _state(State::IDLE)
             {
                 _display.AddRef();
 
@@ -393,32 +444,21 @@ namespace Linux {
 
             void Rendered()
             {
-                State expected = State::RENDERING;
-
-                if (_state.compare_exchange_strong(expected, State::PRESENTING) == true) {
-                    if (_callback != nullptr) {
-                        _callback->Rendered(this);
-                    }
-                } else {
-                    TRACE(Trace::Error, (_T("Surface %s[%d] is not presenting, but received a Rendered event while in %d"), _name.c_str(), _id, _state.load()));
+                if (_callback != nullptr) {
+                    _callback->Rendered(this);
                 }
             }
 
             void Published()
             {
-                State expected = State::PRESENTING;
-
-                if (_state.compare_exchange_strong(expected, State::IDLE) == false) {
-                    expected = State::PENDING;
-
-                    if ((_state.compare_exchange_strong(expected, State::RENDERING) == true)) {
-                        _surface.Render();
-                    }
-                }
-
                 if (_callback != nullptr) {
                     _callback->Published(this);
                 }
+            }
+
+            void RequestRender() override
+            {
+                _surface.Render();
             }
 
             uint32_t Process()
@@ -426,21 +466,7 @@ namespace Linux {
                 return Core::ERROR_NONE;
             }
 
-            void RequestRender() override
-            {
-                State expected = State::PRESENTING;
-
-                if (_state.compare_exchange_strong(expected, State::PENDING) == false) {
-                    expected = State::IDLE;
-
-                    if (_state.compare_exchange_strong(expected, State::RENDERING) == true) {
-                        _surface.Render();
-                    }
-                }
-            }
-
         private:
-            mutable Core::CriticalSection _adminLock;
             const uint8_t _id;
             Display& _display;
             Exchange::IComposition::IClient* _remoteClient;
@@ -451,7 +477,6 @@ namespace Linux {
             IPointer* _pointer;
             ITouchPanel* _touchpanel;
             ISurface::ICallback* _callback;
-            std::atomic<State> _state;
 
             static uint32_t _surfaceIndex;
         }; // class SurfaceImplementation
@@ -573,7 +598,7 @@ namespace Linux {
         void Initialize()
         {
             const std::string comrpcPath(ConnectorPath() + _T("comrpc"));
-            
+
             _adminLock.Lock();
 
             if (Thunder::Core::WorkerPool::IsAvailable() == true) {

@@ -29,8 +29,8 @@ namespace Thunder {
 
 namespace Graphics {
 
-    template<const uint8_t PLANES>
-    class LocalBufferType: public Exchange::IGraphicsBuffer {
+    template <const uint8_t PLANES>
+    class LocalBufferType : public Exchange::IGraphicsBuffer {
     private:
         class Iterator : public Exchange::IGraphicsBuffer::IIterator {
         public:
@@ -41,7 +41,7 @@ namespace Graphics {
             Iterator& operator=(const Iterator&) = delete;
 
             Iterator(LocalBufferType<PLANES>& parent)
-                : _parent(parent) 
+                : _parent(parent)
             {
                 Reset();
             }
@@ -195,11 +195,11 @@ namespace Graphics {
         PlaneStorage _planes[PLANES];
     };
 
-    template<const uint8_t PLANES>
+    template <const uint8_t PLANES>
     class SharedBufferType : public Exchange::IGraphicsBuffer, public Core::IResource {
     private:
         // We need some shared space for data to exchange, and to create a lock..
-        template<const uint8_t LAYERS>
+        template <const uint8_t LAYERS>
         class SharedStorageType {
         private:
             struct PlaneStorage {
@@ -567,6 +567,8 @@ namespace Graphics {
         //
         // Implementation of Exchange::IGraphicsBuffer
         // -----------------------------------------------------------------
+
+        PUSH_WARNING(DISABLE_WARNING_OVERLOADED_VIRTUALS)
         // Wait time in milliseconds.
         IIterator* Acquire(const uint32_t waitTimeInMs) override
         {
@@ -582,6 +584,8 @@ namespace Graphics {
         {
             _storage->Unlock();
         }
+        POP_WARNING()
+
         uint32_t Width() const override
         { // Width of the allocated buffer in pixels
             ASSERT(_storage != nullptr);
@@ -738,7 +742,7 @@ namespace Graphics {
         int _descriptors[PLANES];
     };
 
-    template<const uint8_t PLANES>
+    template <const uint8_t PLANES>
     class ClientBufferType : public SharedBufferType<PLANES> {
     public:
         ClientBufferType(ClientBufferType<PLANES>&&) = delete;
@@ -831,7 +835,7 @@ namespace Graphics {
         virtual void Published() = 0;
     };
 
-    template<const uint8_t PLANES>
+    template <const uint8_t PLANES>
     class ServerBufferType : public SharedBufferType<PLANES> {
     public:
         ServerBufferType() = delete;

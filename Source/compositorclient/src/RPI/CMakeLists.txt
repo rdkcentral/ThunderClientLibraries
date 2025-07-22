@@ -23,6 +23,13 @@ find_package(${NAMESPACE}COM REQUIRED)
 
 add_library(${PLUGIN_COMPOSITOR_IMPLEMENTATION} OBJECT Implementation.cpp)
 
+option(VC6 "Enable VC6 support" OFF)
+option(COMPOSITOR_SERVER_PLUGIN "Enable support for compositor server" OFF)
+
+if(COMPOSITOR_SERVER_PLUGIN)
+    target_definitions(${PLUGIN_COMPOSITOR_IMPLEMENTATION} PRIVATE COMPOSITORSERVERPLUGIN)
+endif()
+
 if(VC6)
     find_package(gbm REQUIRED)
     find_package(libdrm REQUIRED)
