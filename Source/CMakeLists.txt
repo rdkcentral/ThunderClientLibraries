@@ -62,3 +62,7 @@ endif()
 if(CRYPTOGRAPHY)
     add_subdirectory(cryptography)
 endif()
+
+if(POWERCONTROLLER)
+    add_subdirectory(powercontroller)
+endif()
