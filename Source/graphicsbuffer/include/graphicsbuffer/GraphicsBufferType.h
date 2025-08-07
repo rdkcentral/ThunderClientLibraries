@@ -162,6 +162,11 @@ namespace Graphics {
             _planes[_count]._stride = stride;
             ++_count;
         }
+        
+        void Modifier(const uint64_t modifier)
+        {
+            _modifier = modifier;
+        }
 
     private:
         uint32_t Stride(const uint8_t index) const
@@ -218,7 +223,7 @@ namespace Graphics {
             // Do not initialize members for now, this constructor is called after a mmap in the
             // placement new operator above. Initializing them now will reset the original values
             // of the buffer metadata.
-            SharedStorageType() { };
+            SharedStorageType() {};
 
             void* operator new(size_t stAllocateBlock, int fd)
             {
@@ -384,6 +389,12 @@ namespace Graphics {
                 pthread_mutex_unlock(&_mutex);
 #endif
                 return (Core::ERROR_NONE);
+            }
+
+        protected:
+            void Modifier(const uint64_t modifier)
+            {
+                _modifier = modifier;
             }
 
         private:
