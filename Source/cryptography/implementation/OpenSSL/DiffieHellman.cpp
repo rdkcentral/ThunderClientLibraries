@@ -19,6 +19,9 @@
 
 #include "../../Module.h"
 
+#define OPENSSL_API_COMPAT 0x10100000L
+#define OPENSSL_NO_DEPRECATED
+
 #include <openssl/ossl_typ.h>
 #include <openssl/dh.h>
 #include <openssl/bn.h>
