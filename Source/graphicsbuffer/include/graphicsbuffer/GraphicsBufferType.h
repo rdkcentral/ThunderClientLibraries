@@ -282,7 +282,7 @@ namespace Graphics {
             {
                 return (_format);
             }
-            uint32_t Modifier() const
+            uint64_t Modifier() const
             {
                 return (_modifier);
             }
