@@ -1,0 +1,148 @@
+name: Unit tests
+
+on:
+  pull_request:
+    branches: ["master"]
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+
+    - name: Install dependencies
+      run: |
+         sudo apt -y install build-essential pkg-config cmake ninja-build libusb-1.0-0-dev zlib1g-dev libssl-dev
+         sudo apt -y install nodejs npm
+
+    - name: Install GStreamer
+        run: |
+           sudo apt update
+           sudo apt install -y libunwind-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+          python-version: '3.x'
+    - run: pip install jsonref
+    
+    - name: Checkout ThunderTools
+      uses: actions/checkout@v3
+      with:
+        repository: rdkcentral/ThunderTools
+        ref: R5_1
+        path: ThunderTools 
+
+    - name: Build ThunderTools
+      run: >
+        cmake -G Ninja -S ThunderTools -B build/ThunderTools -DCMAKE_INSTALL_PREFIX="install"
+        cmake --build build/ThunderTools --target install
+
+    - name: Checkout Thunder
+      uses: actions/checkout@v3
+      with:
+        repository: rdkcentral/Thunder
+        ref: R5_1
+        path: Thunder
+
+    - name: Build Thunder
+      run: >
+        cmake -G Ninja -S Thunder -B build/Thunder \
+        -DBINDING="127.0.0.1" \
+        -DCMAKE_BUILD_TYPE="Debug" \
+        -DCMAKE_INSTALL_PREFIX="install" \
+        -DPORT="55555" \
+        -DTOOLS_SYSROOT="${PWD}" \
+        -DINITV_SCRIPT=OFF
+        cmake --build build/Thunder --target install
+
+    - name: Checkout ThunderInterfaces
+      uses: actions/checkout@v3
+      with:
+        repository: rdkcentral/ThunderInterfaces
+        ref: R5_1
+        path: ThunderInterfaces
+
+    - name: Build ThunderInterfaces
+      run: >
+        cmake -G Ninja -S ThunderInterfaces -B build/ThunderInterfaces \
+        -DCMAKE_INSTALL_PREFIX="install"
+        cmake --build build/ThunderInterfaces --target install
+
+    - name: Checkout ThunderNanoServices
+      uses: actions/checkout@v3
+      with:
+        repository: rdkcentral/ThunderNanoServices
+        ref: R5_1
+        path: ThunderNanoServices
+
+    - name: Build ThunderNanoServices
+      run: >
+        cmake -G Ninja -S ThunderNanoServices -B build/ThunderNanoServices \
+        -DCMAKE_INSTALL_PREFIX="install" \
+        -DPLUGIN_COMMANDER=ON \
+        -DPLUGIN_DIALSERVER=ON \
+        -DPLUGIN_DICTIONARY=ON \
+        -DPLUGIN_FILETRANSFER=ON \
+        -DPLUGIN_INPUTSWITCH=ON \
+        -DPLUGIN_PROCESSMONITOR=ON \
+        -DPLUGIN_RESOURCEMONITOR=ON \
+        -DPLUGIN_SYSTEMCOMMANDS=ON \
+        -DPLUGIN_SWITCHBOARD=ON \
+        -DPLUGIN_WEBPROXY=ON \
+        -DPLUGIN_WEBSHELL=ON
+        cmake --build build/ThunderNanoServices --target install
+
+    - name: Checkout ThunderNanoServicesRDK
+      uses: actions/checkout@v3
+      with:
+        repository: rdkcentral/ThunderNanoServicesRDK
+        ref: R5_1
+        path: ThunderNanoServicesRDK
+
+    - name: Build ThunderNanoServicesRDK
+      run: >
+        cmake -G Ninja -S ThunderNanoServicesRDK -B build/ThunderNanoServicesRDK \
+        -DCMAKE_INSTALL_PREFIX="install" \
+        -DPLUGIN_DEVICEINFO=ON \
+        -DPLUGIN_MESSAGECONTROL=ON \
+        -DPLUGIN_MESSENGER=ON \
+        -DPLUGIN_MONITOR=ON \
+        -DPLUGIN_OPENCDMI=ON \
+        -DPLUGIN_PERFORMANCEMETRICS=ON
+        cmake --build build/ThunderNanoServicesRDK --target install
+
+    - name: Checkout ThunderClientLibraries
+      uses: actions/checkout@v3
+      with:
+        repository: rdkcentral/ThunderClientLibraries
+        ref: R5_1
+        path: ThunderClientLibraries
+
+    - name: Build ThunderClientLibraries
+      run: >
+        cmake -G Ninja -S ThunderClientLibraries -B build/ThunderClientLibraries \
+        -DCMAKE_INSTALL_PREFIX="install" \
+        -DBLUETOOTHAUDIOSINK=ON \
+        -DDEVICEINFO=ON \
+        -DDISPLAYINFO=ON \
+        -DSECURITYAGENT=ON \
+        -DPLAYERINFO=ON \
+        -DPROTOCOLS=ON \
+        -DVIRTUALINPUT=ON \
+        -DCDMI=ON \
+        -DL1_TESTS=ON \
+        -DL2_TESTS=ON
+        cmake --build build/ThunderClientLibraries --target install
+
+    - name: Export path
+      run: >
+        export LD_LIBRARY_PATH=${PWD}/install/lib:${LD_LIBRARY_PATH}
+        export PATH=${PWD}/install/bin:${PATH}
+
+    - name: Run unit tests
+      run: /bin/bash ThunderClientLibraries/run.sh -c
+
+    - name: Upload test results to automatic test result management system
+      run: >
+       gtest-json-result-push.py ${{github.workspace}}/ThunderClientLibraries/TestReport.json https://rdkeorchestrationservice.as-g8.cf.comcast.net/rdke_orchestration_api/push_unit_test_results `pwd`
+
