@@ -1,5 +1,8 @@
 name: Build ThunderClientLibraries on MacOS
 
+permissions:
+  contents: read
+
 on:
   workflow_dispatch:
   push:
