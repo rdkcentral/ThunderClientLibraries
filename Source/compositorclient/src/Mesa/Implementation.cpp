@@ -66,6 +66,34 @@ namespace Linux {
             }
             return connector;
         }
+
+        constexpr std::array<uint32_t, 5> FormatPriority = {
+            DRM_FORMAT_ARGB8888, // Best overall - universal support with full alpha
+            DRM_FORMAT_ABGR8888, // Alternative byte order, still 32-bit and full alpha
+            DRM_FORMAT_XRGB8888, // Best for opaque content
+            DRM_FORMAT_XBGR8888, // Alternative opaque format
+            DRM_FORMAT_RGB565 // Fallback - memory efficient, widely supported
+        };
+
+        const char* GetGbmBackendName(gbm_device* gbmDevice)
+        {
+            static gbm_device* cachedDevice = nullptr;
+            static const char* cachedName = nullptr;
+
+            if (gbmDevice != nullptr && gbmDevice != cachedDevice) {
+                cachedName = gbm_device_get_backend_name(gbmDevice);
+                cachedDevice = gbmDevice;
+                TRACE_GLOBAL(Trace::Information, (_T("GBM Backend: %s"), cachedName));
+            }
+            return cachedName;
+        }
+
+        bool IsGbmBackend(gbm_device* gbmDevice, const char* name)
+        {
+            const char* backendName = GetGbmBackendName(gbmDevice);
+            return (backendName != nullptr) && (strcmp(backendName, name) == 0);
+        }
+
     }
 
     class Display : public Compositor::IDisplay {
@@ -704,9 +732,39 @@ namespace Linux {
             _adminLock.Unlock();
         }
 
-        Thunder::Exchange::IComposition::IClient* CreateRemoteSurface(const std::string& name, const uint32_t width, const uint32_t height)
+        Exchange::IComposition::IClient* CreateRemoteSurface(const std::string& name, const uint32_t width, const uint32_t height)
         {
             return (_remoteDisplay != nullptr ? _remoteDisplay->CreateClient(name, width, height) : nullptr);
+        }
+        
+        gbm_surface* CreateGbmSurface(const uint32_t width, const uint32_t height) const
+        {
+            gbm_surface* surface(nullptr);
+
+            uint32_t usage(0);
+
+            if (IsGbmBackend(static_cast<gbm_device*>(_gbmDevice), "nvidia") == false) {
+                usage |= GBM_BO_USE_RENDERING; // the nvidia backend seems to have issues with usage flags....
+            }
+
+            for (uint32_t format : FormatPriority) {
+                char* formatName = drmGetFormatName(format);
+
+                ASSERT(formatName != nullptr); // Should always be valid for known DRM formats
+
+                surface = gbm_surface_create(_gbmDevice, width, height, format, usage);
+                if (surface != nullptr) {
+                    TRACE(Trace::Information, ("Successfully created surface with format: %s", formatName ? formatName : "Unknown"));
+                    break;
+                }
+                TRACE(Trace::Warning, ("Failed to create GBM surface with format: %s, trying next...", formatName ? formatName : "Unknown"));
+
+                if (formatName != nullptr) {
+                    free(formatName);
+                }
+            }
+
+            return surface;
         }
 
     private:
