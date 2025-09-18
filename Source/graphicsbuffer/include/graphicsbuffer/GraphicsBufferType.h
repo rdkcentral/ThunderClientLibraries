@@ -162,7 +162,7 @@ namespace Graphics {
             _planes[_count]._stride = stride;
             ++_count;
         }
-        
+
         void Modifier(const uint64_t modifier)
         {
             _modifier = modifier;
@@ -765,7 +765,16 @@ namespace Graphics {
             : SharedBufferType<PLANES>()
         {
         }
-        ~ClientBufferType() override = default;
+
+        ClientBufferType(const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::IGraphicsBuffer::DataType type)
+            : SharedBufferType<PLANES>(width, height, format, modifier, type)
+        {
+        }
+
+        ~ClientBufferType() override
+        {
+            SharedBufferType<PLANES>::Destroyed();
+        }
 
     public:
         void Load(Core::PrivilegedRequest::Container& descriptors)
@@ -849,7 +858,6 @@ namespace Graphics {
     template <const uint8_t PLANES>
     class ServerBufferType : public SharedBufferType<PLANES> {
     public:
-        ServerBufferType() = delete;
         ServerBufferType(ServerBufferType<PLANES>&&) = delete;
         ServerBufferType(const ServerBufferType<PLANES>&) = delete;
         ServerBufferType<PLANES>& operator=(ServerBufferType<PLANES>&&) = delete;
@@ -863,6 +871,12 @@ namespace Graphics {
             : SharedBufferType<PLANES>(buffer)
         {
         }
+
+        ServerBufferType()
+            : SharedBufferType<PLANES>()
+        {
+        }
+
         ~ServerBufferType() override
         {
             // If we go out of scope, no use for the client
@@ -875,6 +889,12 @@ namespace Graphics {
         {
             SharedBufferType<PLANES>::Load(buffer);
         }
+
+        void Load(Core::PrivilegedRequest::Container& descriptors)
+        {
+            SharedBufferType<PLANES>::Load(descriptors);
+        }
+
         bool Rendered()
         {
             bool requested = true;
