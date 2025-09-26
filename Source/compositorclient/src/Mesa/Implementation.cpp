@@ -139,16 +139,13 @@ namespace Linux {
                 {
                     ASSERT(_bo != nullptr);
 
-                    if (frameBuffer != nullptr) {
-                        uint16_t planes = gbm_bo_get_plane_count(frameBuffer);
+                    if (_bo != nullptr) {
+                        // for now only single plane buffers are supported
+                        ASSERT(gbm_bo_get_plane_count(_bo) == 1); 
 
-                        ASSERT(planes == 1); // for now only single plane buffers are supported
-
-                        const uint8_t index = 0; // only single plane supported
-
-                        Add(gbm_bo_get_fd_for_plane(frameBuffer, index),
-                            gbm_bo_get_stride_for_plane(frameBuffer, index),
-                            gbm_bo_get_offset(frameBuffer, index));
+                        Add(gbm_bo_get_fd_for_plane(_bo, 0),
+                            gbm_bo_get_stride_for_plane(_bo, 0),
+                            gbm_bo_get_offset(_bo, 0));
 
                         std::array<int, Core::PrivilegedRequest::MaxDescriptorsPerRequest> descriptors;
                         descriptors.fill(-1);
