@@ -53,7 +53,7 @@ extern "C" {
  */
 int GetToken(unsigned short maxLength, unsigned short inLength, unsigned char buffer[])
 {
-    auto engine = Core::ProxyType<RPC::InvokeServerType<1, 0, 4>>::Create();
+    auto engine = Core::ProxyType<RPC::InvokeServerType<1, 0, 4, 1, 1>>::Create();
     auto client = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(GetEndPoint().c_str()), Core::ProxyType<Core::IIPCServer>(engine));
 
     int result = -1;
