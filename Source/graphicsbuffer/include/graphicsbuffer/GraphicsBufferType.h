@@ -163,6 +163,11 @@ namespace Graphics {
             ++_count;
         }
 
+        void Modifier(const uint64_t modifier)
+        {
+            _modifier = modifier;
+        }
+
     private:
         uint32_t Stride(const uint8_t index) const
         {
@@ -218,7 +223,7 @@ namespace Graphics {
             // Do not initialize members for now, this constructor is called after a mmap in the
             // placement new operator above. Initializing them now will reset the original values
             // of the buffer metadata.
-            SharedStorageType() { };
+            SharedStorageType() {};
 
             void* operator new(size_t stAllocateBlock, int fd)
             {
@@ -277,7 +282,7 @@ namespace Graphics {
             {
                 return (_format);
             }
-            uint32_t Modifier() const
+            uint64_t Modifier() const
             {
                 return (_modifier);
             }
@@ -384,6 +389,12 @@ namespace Graphics {
                 pthread_mutex_unlock(&_mutex);
 #endif
                 return (Core::ERROR_NONE);
+            }
+
+        protected:
+            void Modifier(const uint64_t modifier)
+            {
+                _modifier = modifier;
             }
 
         private:
@@ -754,7 +765,16 @@ namespace Graphics {
             : SharedBufferType<PLANES>()
         {
         }
-        ~ClientBufferType() override = default;
+
+        ClientBufferType(const uint32_t width, const uint32_t height, const uint32_t format, const uint64_t modifier, const Exchange::IGraphicsBuffer::DataType type)
+            : SharedBufferType<PLANES>(width, height, format, modifier, type)
+        {
+        }
+
+        ~ClientBufferType() override
+        {
+            SharedBufferType<PLANES>::Destroyed();
+        }
 
     public:
         void Load(Core::PrivilegedRequest::Container& descriptors)
@@ -838,7 +858,6 @@ namespace Graphics {
     template <const uint8_t PLANES>
     class ServerBufferType : public SharedBufferType<PLANES> {
     public:
-        ServerBufferType() = delete;
         ServerBufferType(ServerBufferType<PLANES>&&) = delete;
         ServerBufferType(const ServerBufferType<PLANES>&) = delete;
         ServerBufferType<PLANES>& operator=(ServerBufferType<PLANES>&&) = delete;
@@ -852,6 +871,12 @@ namespace Graphics {
             : SharedBufferType<PLANES>(buffer)
         {
         }
+
+        ServerBufferType()
+            : SharedBufferType<PLANES>()
+        {
+        }
+
         ~ServerBufferType() override
         {
             // If we go out of scope, no use for the client
@@ -864,6 +889,12 @@ namespace Graphics {
         {
             SharedBufferType<PLANES>::Load(buffer);
         }
+
+        void Load(Core::PrivilegedRequest::Container& descriptors)
+        {
+            SharedBufferType<PLANES>::Load(descriptors);
+        }
+
         bool Rendered()
         {
             bool requested = true;
