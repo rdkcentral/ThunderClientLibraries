@@ -610,7 +610,7 @@ namespace Linux {
             } else {
                 // Seems we are not in a process space initiated from the Main framework process or its hosting process.
                 // Nothing more to do than to create a workerpool for RPC our selves !
-                Core::ProxyType<RPC::InvokeServerType<2, 0, 8>> engine = Core::ProxyType<RPC::InvokeServerType<2, 0, 8>>::Create();
+                Core::ProxyType<RPC::InvokeServerType<2, 0, 8, 1, 1>> engine = Core::ProxyType<RPC::InvokeServerType<2, 0, 8, 1, 1>>::Create();
 
                 _compositorServerRPCConnection = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(comrpcPath.c_str()), Core::ProxyType<Core::IIPCServer>(engine));
             }
