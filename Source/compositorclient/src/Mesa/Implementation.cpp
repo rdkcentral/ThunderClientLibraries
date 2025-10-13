@@ -66,6 +66,34 @@ namespace Linux {
             }
             return connector;
         }
+
+        constexpr std::array<uint32_t, 5> FormatPriority = {
+            DRM_FORMAT_ARGB8888, // Best overall - universal support with full alpha
+            DRM_FORMAT_ABGR8888, // Alternative byte order, still 32-bit and full alpha
+            DRM_FORMAT_XRGB8888, // Best for opaque content
+            DRM_FORMAT_XBGR8888, // Alternative opaque format
+            DRM_FORMAT_RGB565 // Fallback - memory efficient, widely supported
+        };
+
+        const char* GetGbmBackendName(gbm_device* gbmDevice)
+        {
+            static gbm_device* cachedDevice = nullptr;
+            static const char* cachedName = nullptr;
+
+            if (gbmDevice != nullptr && gbmDevice != cachedDevice) {
+                cachedName = gbm_device_get_backend_name(gbmDevice);
+                cachedDevice = gbmDevice;
+                TRACE_GLOBAL(Trace::Information, (_T("GBM Backend: %s"), cachedName));
+            }
+            return cachedName;
+        }
+
+        bool IsGbmBackend(gbm_device* gbmDevice, const char* name)
+        {
+            const char* backendName = GetGbmBackendName(gbmDevice);
+            return (backendName != nullptr) && (strcmp(backendName, name) == 0);
+        }
+
     }
 
     class Display : public Compositor::IDisplay {
@@ -93,168 +121,77 @@ namespace Linux {
 
         class SurfaceImplementation : public Compositor::IDisplay::ISurface {
         private:
-
-            class GBMSurface : public Graphics::ClientBufferType<1> {
-            private:
+            // for now only single plane buffers are supported, e.g. GBM_FORMAT_ARGB8888, GBM_FORMAT_XRGB8888, etc.
+            class ContentBuffer : public Graphics::ClientBufferType<1> {
                 using BaseClass = Graphics::ClientBufferType<1>;
 
-            private:
-                static void Destroyed(gbm_bo* bo VARIABLE_IS_NOT_USED, void* data VARIABLE_IS_NOT_USED)
-                {
-                }
-
-                gbm_bo* Lock(const uint16_t ms)
-                {
-                    gbm_bo* frameBuffer = nullptr;
-
-                    if (_bufferLock.try_lock_for(std::chrono::milliseconds(ms))) {
-                        frameBuffer = gbm_surface_lock_front_buffer(_surface);
-
-                        if (frameBuffer == nullptr) {
-                            _bufferLock.unlock(); // Unlock the mutex to prevent deadlock
-                            TRACE(Trace::Error, (_T("Failed to lock front buffer, surface %p"), _surface));
-                        } else {
-                            TRACE(Trace::Information, (_T("Acquired framebuffer[%p]"), frameBuffer));
-                        }
-                    } else {
-                        TRACE(Trace::Error, (_T("Failed to lock front buffer within %d ms"), ms));
-                    }
-
-                    return frameBuffer;
-                }
-
-                void Unlock(gbm_bo* frameBuffer)
-                {
-                    ASSERT((_surface != nullptr) && "Failed to release framebuffer, surface is null");
-
-                    if (_surface != nullptr) {
-                        gbm_surface_release_buffer(_surface, frameBuffer);
-                        TRACE(Trace::Information, (_T("Released framebuffer[%p]"), frameBuffer));
-                    }
-
-                    _bufferLock.unlock();
-                }
-
             public:
-                GBMSurface(SurfaceImplementation& parent, gbm_device* gbmDevice, uint32_t remoteId)
-                    : BaseClass()
+                ContentBuffer() = delete;
+                ContentBuffer(ContentBuffer&&) = delete;
+                ContentBuffer(const ContentBuffer&) = delete;
+                ContentBuffer& operator=(ContentBuffer&&) = delete;
+                ContentBuffer& operator=(const ContentBuffer&) = delete;
+
+                ContentBuffer(SurfaceImplementation& parent, gbm_bo* frameBuffer)
+                    : BaseClass(gbm_bo_get_width(frameBuffer), gbm_bo_get_height(frameBuffer), gbm_bo_get_format(frameBuffer), gbm_bo_get_modifier(frameBuffer), Exchange::IGraphicsBuffer::TYPE_DMA)
                     , _parent(parent)
-                    , _remoteId(remoteId)
-                    , _surface(nullptr)
-                    , _frameBuffer(nullptr)
-                    , _bufferLock()
+                    , _bo(frameBuffer)
                 {
-                    ASSERT(gbmDevice != nullptr);
+                    ASSERT(_bo != nullptr);
 
-                    Core::PrivilegedRequest::Container descriptors;
-                    Core::PrivilegedRequest request;
+                    if (_bo != nullptr) {
+                        // for now only single plane buffers are supported
+                        ASSERT(gbm_bo_get_plane_count(_bo) == 1); 
 
-                    const string connector = ConnectorPath() + _T("descriptors");
+                        Add(gbm_bo_get_fd_for_plane(_bo, 0),
+                            gbm_bo_get_stride_for_plane(_bo, 0),
+                            gbm_bo_get_offset(_bo, 0));
 
-                    if (request.Request(100, connector, _remoteId, descriptors) == Core::ERROR_NONE) {
-                        Load(descriptors);
-                    } else {
-                        TRACE(Trace::Error, (_T ( "Failed to get display file descriptor from compositor server")));
-                    }
+                        std::array<int, Core::PrivilegedRequest::MaxDescriptorsPerRequest> descriptors;
+                        descriptors.fill(-1);
 
-                    ASSERT(Format() != DRM_FORMAT_INVALID);
+                        const uint8_t nDescriptors = Descriptors(descriptors.size(), descriptors.data());
 
-                    uint32_t flags = GBM_BO_USE_RENDERING;
+                        if (nDescriptors > 0) {
+                            Core::PrivilegedRequest::Container container(descriptors.begin(), descriptors.begin() + nDescriptors);
+                            Core::PrivilegedRequest request;
+                            
+                            const string connector = ConnectorPath() + _T("descriptors");
 
-                    const uint64_t modifier(Modifier());
-
-                    if (modifier == DRM_FORMAT_MOD_INVALID) {
-                        flags |= GBM_BO_USE_LINEAR;
-                        _surface = gbm_surface_create(gbmDevice, Width(), Height(), Format(), flags);
-                    } else {
-                        _surface = gbm_surface_create_with_modifiers2(gbmDevice, Width(), Height(), Format(), &modifier, 1, flags);
-                    }
-
-                    ASSERT(_surface != nullptr);
-                }
-
-                ~GBMSurface()
-                {
-                    if (_frameBuffer != nullptr) {
-                        gbm_surface_release_buffer(_surface, _frameBuffer);
-                        _frameBuffer = nullptr;
-                    }
-
-                    if (_surface != nullptr) {
-                        gbm_surface_destroy(_surface);
-                        _surface = nullptr;
-                    }
-                }
-
-                void SetUserData(gbm_bo* frameBuffer)
-                {
-                    static bool userdataSet(false);
-
-                    if (userdataSet) {
-                        ASSERT(false && "User data already set for this frame buffer");
-                        return;
-                    }
-
-                    ASSERT(frameBuffer != nullptr);
-
-                    uint16_t planes = gbm_bo_get_plane_count(frameBuffer);
-
-                    Core::PrivilegedRequest::Container descriptors;
-                    Core::PrivilegedRequest request;
-
-                    for (uint16_t index = 0; index < planes; index++) {
-                        int descriptor = gbm_bo_get_fd_for_plane(frameBuffer, index);
-                        descriptors.emplace_back(descriptor);
-                        Add(descriptor, gbm_bo_get_stride_for_plane(frameBuffer, index), gbm_bo_get_offset(frameBuffer, index));
-                    }
-
-                    const string connector = ConnectorPath() + _T("descriptors");
-
-                    if (request.Offer(100, connector, _remoteId, descriptors) == Core::ERROR_NONE) {
-                        TRACE(Trace::Information, (_T("Offered buffer to compositor server")));
-                    } else {
-                        TRACE(Trace::Error, (_T("Failed to offer buffer to compositor server")));
-                    }
-
-                    gbm_bo_set_user_data(frameBuffer, this, &Destroyed);
-                    userdataSet = true;
-                }
-
-                bool RenderError()
-                {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(5));
-                    Rendered(); // we still need call Rendered to request a new frame buffer
-                    return false; // indicate that we failed to render
-                }
-
-                bool Render()
-                {
-                    bool result = true;
-                    gbm_bo* frameBuffer = Lock(1000);
-
-                    if (frameBuffer == nullptr) {
-                        result = RenderError(); // bail-out if we cannot lock the front buffer
-                    } else {
-                        if ((_frameBuffer != nullptr && _frameBuffer != frameBuffer)) {
-                            ASSERT(false && "New FrameBuffer DETECTED, this should not happen!");
-                            return RenderError(); // bail-out if we already have a frame buffer.
+                            if (request.Offer(100, connector, parent.Id(), container) == Core::ERROR_NONE) {
+                                TRACE(Trace::Information, (_T("Offered buffer to compositor server")));
+                            } else {
+                                TRACE(Trace::Error, (_T("Failed to offer buffer to compositor server")));
+                            }
                         }
-
-                        if (gbm_bo_get_user_data(frameBuffer) == nullptr) {
-                            SetUserData(frameBuffer);
-                        }
-
-                        _frameBuffer = frameBuffer;
-
-                        RequestRender();
                     }
 
-                    return result;
+                    Core::ResourceMonitor::Instance().Register(*this);
                 }
 
+                virtual ~ContentBuffer()
+                {
+                    Core::ResourceMonitor::Instance().Unregister(*this);
+                };
+
+                static void Destroyed(gbm_bo* bo, void* data)
+                {
+                    ASSERT(data != nullptr);
+                    ContentBuffer* buffer = static_cast<ContentBuffer*>(data);
+
+                    TRACE_GLOBAL(Trace::Information, (_T("ContentBuffer[%p] Destroyed signaled"), buffer));
+
+                    if ((buffer != nullptr) && (bo == buffer->_bo)) {
+                        delete buffer;
+                    } else {
+                        TRACE_GLOBAL(Trace::Error, (_T("ContentBuffer[%p] Destroyed signaled with mismatched gbm_bo[%p]"), buffer, bo));
+                    }
+                }
+
+            protected:
                 void Rendered() override
                 {
-                    Unlock(_frameBuffer);
+                    _parent.Unlock(_bo);
                     _parent.Rendered();
                 }
 
@@ -263,17 +200,9 @@ namespace Linux {
                     _parent.Published();
                 }
 
-                EGLNativeWindowType Native() const
-                {
-                    return static_cast<EGLNativeWindowType>(_surface);
-                }
-
             private:
                 SurfaceImplementation& _parent;
-                uint32_t _remoteId;
-                gbm_surface* _surface;
-                gbm_bo* _frameBuffer;
-                std::timed_mutex _bufferLock;
+                gbm_bo* _bo;
             };
 
         public:
@@ -284,11 +213,14 @@ namespace Linux {
             SurfaceImplementation& operator=(const SurfaceImplementation&) = delete;
 
             SurfaceImplementation(Display& display, const std::string& name, const uint32_t width, const uint32_t height, ICallback* callback)
-                : _id(Core::InterlockedIncrement(_surfaceIndex))
-                , _display(display)
+                : _display(display)
+                , _gbmSurface(display.CreateGbmSurface(width, height))
                 , _remoteClient(display.CreateRemoteSurface(name, width, height))
-                , _surface(*this, static_cast<gbm_device*>(_display.Native()), _remoteClient->Native())
-                , _name(_remoteClient->Name())
+                , _id(_remoteClient->Native())
+                , _width(width)
+                , _height(height)
+                , _gbmBufferLock()
+                , _name(name)
                 , _keyboard(nullptr)
                 , _wheel(nullptr)
                 , _pointer(nullptr)
@@ -298,17 +230,15 @@ namespace Linux {
                 _display.AddRef();
 
                 ASSERT(_remoteClient != nullptr);
-                TRACE(Trace::Information, (_T("Construct surface[%d] %s  %dx%d (hxb)"), _id, name.c_str(), height, width));
+                ASSERT(_gbmSurface != nullptr);
 
-                Core::ResourceMonitor::Instance().Register(_surface);
+                TRACE(Trace::Information, (_T("Construct surface[%d] %s  %dx%d (hxb)"), _id, name.c_str(), height, width));
 
                 _display.Register(this);
             }
             ~SurfaceImplementation() override
             {
                 _display.Unregister(this);
-
-                Core::ResourceMonitor::Instance().Unregister(_surface);
 
                 if (_keyboard != nullptr) {
                     _keyboard->Release();
@@ -331,13 +261,54 @@ namespace Linux {
                     _remoteClient->Release();
                 }
 
+                // lets hope DRM cleans up the gbm buffer objects for us, if so drm should call ContentBuffer::Destroyed()...
+                if (_gbmSurface != nullptr) {
+                    gbm_surface_destroy(_gbmSurface);
+                    _gbmSurface = nullptr;
+                }
+
                 _display.Release();
+            }
+
+        private:
+            gbm_bo* Lock(const uint16_t ms)
+            {
+                ASSERT((_gbmSurface != nullptr) && "Failed to lock a framebuffer, surface is null");
+
+                gbm_bo* frameBuffer = nullptr;
+
+                if (_gbmBufferLock.try_lock_for(std::chrono::milliseconds(ms))) {
+                    frameBuffer = gbm_surface_lock_front_buffer(_gbmSurface);
+
+                    if (frameBuffer == nullptr) {
+                        _gbmBufferLock.unlock(); // Unlock the mutex to prevent deadlock
+                        TRACE(Trace::Error, (_T("Failed to lock front buffer, surface %p"), _gbmSurface));
+                    } else {
+                        TRACE(Trace::Information, (_T("Acquired framebuffer[%p]"), frameBuffer));
+                    }
+                } else {
+                    TRACE(Trace::Error, (_T("Failed to lock front buffer within %d ms"), ms));
+                }
+
+                return frameBuffer;
+            }
+
+            void Unlock(gbm_bo* frameBuffer)
+            {
+                ASSERT((_gbmSurface != nullptr) && "Failed to release framebuffer, surface is null");
+
+                if ((_gbmSurface != nullptr) && (frameBuffer != nullptr)) {
+                    gbm_surface_release_buffer(_gbmSurface, frameBuffer);
+                    TRACE(Trace::Information, (_T("Released framebuffer[%p]"), frameBuffer));
+                }
+
+                _gbmBufferLock.unlock();
             }
 
         public:
             EGLNativeWindowType Native() const override
             {
-                return _surface.Native();
+                return static_cast<EGLNativeWindowType>(_gbmSurface);
             }
             std::string Name() const override
             {
@@ -405,11 +376,11 @@ namespace Linux {
             }
             int32_t Width() const override
             {
-                return _surface.Width();
+                return _width; // not sure if we need to return the real height or the scaled height
             }
             int32_t Height() const override
             {
-                return _surface.Height();
+                return _height; // not sure if we need to return the real height or the scaled height
             }
             inline void SendKey(const uint32_t key, const IKeyboard::state action, const uint32_t timestamp VARIABLE_IS_NOT_USED)
             {
@@ -458,7 +429,23 @@ namespace Linux {
 
             void RequestRender() override
             {
-                _surface.Render();
+                gbm_bo* frameBuffer = Lock(1000);
+
+                if (frameBuffer == nullptr) {
+                    // bail-out if we cannot lock the front buffer
+                    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                    Rendered(); // we still need call Rendered to request a new frame buffer
+                } else {
+                    ContentBuffer* buffer = static_cast<ContentBuffer*>(gbm_bo_get_user_data(frameBuffer));
+
+                    if (buffer == nullptr) {
+                        buffer = new ContentBuffer(*this, frameBuffer);
+                        gbm_bo_set_user_data(frameBuffer, buffer, &ContentBuffer::Destroyed);
+                    }
+
+                    ASSERT(buffer != nullptr);
+                    buffer->RequestRender();
+                }
             }
 
             uint32_t Process()
@@ -467,10 +454,13 @@ namespace Linux {
             }
 
         private:
-            const uint8_t _id;
             Display& _display;
+            gbm_surface* _gbmSurface;
             Exchange::IComposition::IClient* _remoteClient;
-            GBMSurface _surface;
+            const uint8_t _id;
+            const int32_t _width; // real pixels allocated in the gpu!
+            const int32_t _height; // real pixels allocated in the gpu
+            std::timed_mutex _gbmBufferLock;
             const string _name;
             IKeyboard* _keyboard;
             IWheel* _wheel;
@@ -704,9 +694,39 @@ namespace Linux {
             _adminLock.Unlock();
         }
 
-        Thunder::Exchange::IComposition::IClient* CreateRemoteSurface(const std::string& name, const uint32_t width, const uint32_t height)
+        Exchange::IComposition::IClient* CreateRemoteSurface(const std::string& name, const uint32_t width, const uint32_t height)
         {
             return (_remoteDisplay != nullptr ? _remoteDisplay->CreateClient(name, width, height) : nullptr);
+        }
+        
+        gbm_surface* CreateGbmSurface(const uint32_t width, const uint32_t height) const
+        {
+            gbm_surface* surface(nullptr);
+
+            uint32_t usage(0);
+
+            if (IsGbmBackend(static_cast<gbm_device*>(_gbmDevice), "nvidia") == false) {
+                usage |= GBM_BO_USE_RENDERING; // the nvidia backend seems to have issues with usage flags....
+            }
+
+            for (uint32_t format : FormatPriority) {
+                char* formatName = drmGetFormatName(format);
+
+                ASSERT(formatName != nullptr); // Should always be valid for known DRM formats
+
+                surface = gbm_surface_create(_gbmDevice, width, height, format, usage);
+                if (surface != nullptr) {
+                    TRACE(Trace::Information, ("Successfully created surface with format: %s", formatName ? formatName : "Unknown"));
+                    break;
+                }
+                TRACE(Trace::Warning, ("Failed to create GBM surface with format: %s, trying next...", formatName ? formatName : "Unknown"));
+
+                if (formatName != nullptr) {
+                    free(formatName);
+                }
+            }
+
+            return surface;
         }
 
     private:

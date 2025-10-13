@@ -53,3 +53,5 @@ target_compile_definitions(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
     PUBLIC
         EGL_NO_X11
     )
+
+add_subdirectory(test)
