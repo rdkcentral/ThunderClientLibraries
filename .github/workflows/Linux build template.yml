@@ -43,9 +43,9 @@ jobs:
         export DEBIAN_FRONTEND=noninteractive
         PKGS="python3-venv python3-pip build-essential cmake ninja-build libusb-1.0-0-dev"
         if [ "${{ matrix.architecture }}" = "32" ]; then
-          PKGS="$PKGS zlib1g-dev:i386 libssl-dev:i386 libsbc-dev:i386 gcc-13-multilib g++-13-multilib libgbm-dev:i386 libdrm-dev:i386"
+          PKGS="$PKGS zlib1g-dev:i386 libssl-dev:i386 libsbc-dev:i386 gcc-13-multilib g++-13-multilib libgbm-dev:i386 libdrm-dev:i386 libegl-dev:i386"
         else
-          PKGS="$PKGS zlib1g-dev libssl-dev libsbc-dev libgbm-dev libdrm-dev"
+          PKGS="$PKGS zlib1g-dev libssl-dev libsbc-dev libgbm-dev libdrm-dev libegl-dev"
         fi
         for attempt in {1..4}; do
           if sudo apt-get install -y --no-install-recommends $PKGS; then
