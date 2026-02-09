@@ -20,4 +20,4 @@ jobs:
 
   ThunderClientLibraries:
     needs: ThunderInterfaces
-    uses: rdkcentral/ThunderClientLibraries/.github/workflows/Linux build template.yml@{{github.sha}}
+    uses: rdkcentral/ThunderClientLibraries/.github/workflows/Linux build template.yml@${{github.head_ref||github.ref_name}
