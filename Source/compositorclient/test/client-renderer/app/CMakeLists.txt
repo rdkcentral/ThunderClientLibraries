@@ -36,7 +36,7 @@ target_link_libraries(client-compositor-render
 )
 
 set_target_properties(client-compositor-render PROPERTIES
-    CXX_STANDARD 11
+    CXX_STANDARD ${CXX_STD}
     CXX_STANDARD_REQUIRED YES
 )
 

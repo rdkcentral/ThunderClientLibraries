@@ -26,7 +26,7 @@ add_executable(gbm_buffer_test gbm_buffer_test.cpp)
 
 # Set target properties
 set_target_properties(gbm_buffer_test PROPERTIES
-    CXX_STANDARD 11
+    CXX_STANDARD ${CXX_STD}
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS OFF
     OUTPUT_NAME gbm_buffer_test

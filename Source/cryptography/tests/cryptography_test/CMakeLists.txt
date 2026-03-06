@@ -20,7 +20,7 @@ option(BUILD_NETFLIX_VAULT_GENERATOR "Build Netflix Vault generator" OFF)
 find_package(${NAMESPACE}Core REQUIRED)
 include_directories(${CMAKE_CURRENT_LIST_DIR}/../../../../Source)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD ${CXX_STD})
 
 add_executable(cgimptests
         Module.cpp
@@ -36,7 +36,7 @@ include_directories(${CMAKE_CURRENT_LIST_DIR}/../../../cryptography/implementati
 include_directories($<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}>)
 
 set_target_properties(cgimptests PROPERTIES
-        CXX_STANDARD 11
+        CXX_STANDARD ${CXX_STD}
         CXX_STANDARD_REQUIRED YES
     )
 
@@ -62,7 +62,7 @@ include_directories(${CMAKE_CURRENT_LIST_DIR}/../../../cryptography/implementati
 include_directories($<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}>)
 
 set_target_properties(cgfacetests PROPERTIES
-        CXX_STANDARD 11
+        CXX_STANDARD ${CXX_STD}
         CXX_STANDARD_REQUIRED YES
     )
 
@@ -85,7 +85,7 @@ include_directories(${CMAKE_CURRENT_LIST_DIR}/../../../cryptography/implementati
 include_directories($<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${NAMESPACE}>)
 
 set_target_properties(cgnfsecuritytests PROPERTIES
-        CXX_STANDARD 11
+        CXX_STANDARD ${CXX_STD}
         CXX_STANDARD_REQUIRED YES
     )
 
@@ -116,7 +116,7 @@ add_executable(cobalttests
     )
 
 set_target_properties(cobalttests PROPERTIES
-        CXX_STANDARD 11
+        CXX_STANDARD ${CXX_STD}
         CXX_STANDARD_REQUIRED YES
     )
 
