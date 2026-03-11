@@ -24,6 +24,10 @@ find_package(CompileSettingsDebug REQUIRED)
 
 add_executable(graphicsbuffertest main.cpp)
 
+set_target_properties(graphicsbuffertest PROPERTIES
+    CXX_STANDARD ${CXX_STD}
+    CXX_STANDARD_REQUIRED YES)
+
 target_link_libraries(graphicsbuffertest PRIVATE
     CompileSettingsDebug::CompileSettingsDebug
     ${NAMESPACE}Definitions::${NAMESPACE}Definitions
