@@ -42,6 +42,10 @@ add_library(${TARGET} STATIC
     Random.cpp
 )
 
+set_target_properties(${TARGET} PROPERTIES
+    CXX_STANDARD ${CXX_STD}
+    CXX_STANDARD_REQUIRED YES)
+
 target_link_libraries(${TARGET}
     PRIVATE
         ${NAMESPACE}Core::${NAMESPACE}Core
