@@ -56,7 +56,7 @@ target_link_libraries(${TARGET}
 set(PUBLIC_HEADERS "../include/compositor/Client.h")
 
 set_target_properties(${TARGET} PROPERTIES
-    CXX_STANDARD 11
+    CXX_STANDARD ${CXX_STD}
     CXX_STANDARD_REQUIRED YES
     FRAMEWORK FALSE
     PUBLIC_HEADER "${PUBLIC_HEADERS}"
