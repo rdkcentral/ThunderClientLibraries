@@ -23,6 +23,10 @@ find_package(${NAMESPACE}LocalTracer CONFIG REQUIRED)
 
 add_executable(compositorclient_test main.cpp)
 
+set_target_properties(compositorclient_test PROPERTIES
+    CXX_STANDARD ${CXX_STD}
+    CXX_STANDARD_REQUIRED YES)
+
 target_link_libraries(compositorclient_test
     PRIVATE
         ${NAMESPACE}Core::${NAMESPACE}Core

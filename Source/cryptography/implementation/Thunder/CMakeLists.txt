@@ -31,6 +31,10 @@ target_link_libraries(${TARGET}
         ${NAMESPACE}Cryptalgo::${NAMESPACE}Cryptalgo
 )
 
+set_target_properties(${TARGET} PROPERTIES
+    CXX_STANDARD ${CXX_STD}
+    CXX_STANDARD_REQUIRED YES)
+
 target_include_directories(${TARGET}
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../>
