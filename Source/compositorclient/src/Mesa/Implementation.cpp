@@ -21,12 +21,9 @@
 
 extern "C" {
 #include <drm_fourcc.h>
-
 #include <gbm.h>
-
 #include <xf86drm.h>
 #include <xf86drmMode.h>
-
 #include <EGL/egl.h>
 }
 
@@ -39,10 +36,11 @@ extern "C" {
 #include <graphicsbuffer/GraphicsBufferType.h>
 #include <interfaces/IGraphicsBuffer.h>
 
-#include "RenderAPI.h"
 #include <compositor/Client.h>
 
 #include <mutex>
+#include <cstring>
+#include <cinttypes>
 
 namespace Thunder {
 namespace Linux {
@@ -77,25 +75,26 @@ namespace Linux {
 
         const char* GetGbmBackendName(gbm_device* gbmDevice)
         {
-            static gbm_device* cachedDevice = nullptr;
-            static const char* cachedName = nullptr;
-
-            if (gbmDevice != nullptr && gbmDevice != cachedDevice) {
-                cachedName = gbm_device_get_backend_name(gbmDevice);
-                cachedDevice = gbmDevice;
-                TRACE_GLOBAL(Trace::Information, (_T("GBM Backend: %s"), cachedName));
+            if (gbmDevice == nullptr) {
+                return nullptr;
             }
-            return cachedName;
+            const char* name = gbm_device_get_backend_name(gbmDevice);
+            if (name != nullptr) {
+                TRACE_GLOBAL(Trace::Information, (_T("GBM Backend: %s"), name));
+            }
+            return name;
         }
 
         bool IsGbmBackend(gbm_device* gbmDevice, const char* name)
         {
             const char* backendName = GetGbmBackendName(gbmDevice);
-            return (backendName != nullptr) && (strcmp(backendName, name) == 0);
+            return (backendName != nullptr) && (std::strcmp(backendName, name) == 0);
         }
-
     }
-
+    
+    DEFINE_MESSAGING_CATEGORY(Core::Messaging::BaseCategoryType<Core::Messaging::Metadata::type::TRACING>, BufferInfo)
+    DEFINE_MESSAGING_CATEGORY(Core::Messaging::BaseCategoryType<Core::Messaging::Metadata::type::TRACING>, BufferError)
+    
     class Display : public Compositor::IDisplay {
     public:
         Display() = delete;
@@ -121,31 +120,59 @@ namespace Linux {
 
         class SurfaceImplementation : public Compositor::IDisplay::ISurface {
         private:
+            static constexpr size_t MaxContentBuffers = 4;
+
+            enum class BufferState : uint8_t {
+                FREE, // In GBM pool
+                STAGED, // Locked, render complete, ready to submit
+                PENDING, // Submitted, waiting for Rendered
+                ACTIVE, // On screen
+                RETIRED // Previous frame, waiting for Published
+            };
+
+            static const char* StateToString(BufferState state)
+            {
+                switch (state) {
+                case BufferState::FREE:
+                    return "FREE";
+                case BufferState::STAGED:
+                    return "STAGED";
+                case BufferState::PENDING:
+                    return "PENDING";
+                case BufferState::ACTIVE:
+                    return "ACTIVE";
+                case BufferState::RETIRED:
+                    return "RETIRED";
+                default:
+                    return "UNKNOWN";
+                }
+            }
+
             // for now only single plane buffers are supported, e.g. GBM_FORMAT_ARGB8888, GBM_FORMAT_XRGB8888, etc.
             class ContentBuffer : public Graphics::ClientBufferType<1> {
                 using BaseClass = Graphics::ClientBufferType<1>;
 
             public:
-                ContentBuffer() = delete;
-                ContentBuffer(ContentBuffer&&) = delete;
-                ContentBuffer(const ContentBuffer&) = delete;
-                ContentBuffer& operator=(ContentBuffer&&) = delete;
-                ContentBuffer& operator=(const ContentBuffer&) = delete;
-
                 ContentBuffer(SurfaceImplementation& parent, gbm_bo* frameBuffer)
                     : BaseClass(gbm_bo_get_width(frameBuffer), gbm_bo_get_height(frameBuffer), gbm_bo_get_format(frameBuffer), gbm_bo_get_modifier(frameBuffer), Exchange::IGraphicsBuffer::TYPE_DMA)
                     , _parent(parent)
                     , _bo(frameBuffer)
+                    , _state(BufferState::FREE)
                 {
                     ASSERT(_bo != nullptr);
 
                     if (_bo != nullptr) {
-                        // for now only single plane buffers are supported
-                        ASSERT(gbm_bo_get_plane_count(_bo) == 1); 
+                        const uint8_t nPlanes = gbm_bo_get_plane_count(_bo);
 
-                        Add(gbm_bo_get_fd_for_plane(_bo, 0),
-                            gbm_bo_get_stride_for_plane(_bo, 0),
-                            gbm_bo_get_offset(_bo, 0));
+                        for (uint8_t i = 0; i < nPlanes; ++i) {
+                            int fd = gbm_bo_get_fd_for_plane(_bo, i);
+
+                            Add(fd, gbm_bo_get_stride_for_plane(_bo, i), gbm_bo_get_offset(_bo, i));
+
+                            if (fd >= 0) {
+                                ::close(fd); // safe, since Add() dup()'d it
+                            }
+                        }
 
                         std::array<int, Core::PrivilegedRequest::MaxDescriptorsPerRequest> descriptors;
                         descriptors.fill(-1);
@@ -155,13 +182,13 @@ namespace Linux {
                         if (nDescriptors > 0) {
                             Core::PrivilegedRequest::Container container(descriptors.begin(), descriptors.begin() + nDescriptors);
                             Core::PrivilegedRequest request;
-                            
+
                             const string connector = ConnectorPath() + _T("descriptors");
 
-                            if (request.Offer(100, connector, parent.Id(), container) == Core::ERROR_NONE) {
-                                TRACE(Trace::Information, (_T("Offered buffer to compositor server")));
+                            if (request.Offer(100, connector, _parent.Id(), container) == Core::ERROR_NONE) {
+                                TRACE(Trace::Information, (_T("Offered buffer to compositor")));
                             } else {
-                                TRACE(Trace::Error, (_T("Failed to offer buffer to compositor server")));
+                                TRACE(Trace::Error, (_T("Failed to offer buffer to compositor")));
                             }
                         }
                     }
@@ -172,37 +199,110 @@ namespace Linux {
                 virtual ~ContentBuffer()
                 {
                     Core::ResourceMonitor::Instance().Unregister(*this);
-                };
+                }
 
                 static void Destroyed(gbm_bo* bo, void* data)
                 {
-                    ASSERT(data != nullptr);
                     ContentBuffer* buffer = static_cast<ContentBuffer*>(data);
-
-                    TRACE_GLOBAL(Trace::Information, (_T("ContentBuffer[%p] Destroyed signaled"), buffer));
-
                     if ((buffer != nullptr) && (bo == buffer->_bo)) {
+                        buffer->_parent.RemoveContentBuffer(buffer);
                         delete buffer;
-                    } else {
-                        TRACE_GLOBAL(Trace::Error, (_T("ContentBuffer[%p] Destroyed signaled with mismatched gbm_bo[%p]"), buffer, bo));
                     }
+                }
+
+                gbm_bo* Bo() const { return _bo; }
+
+                BufferState State() const
+                {
+                    return _state.load(std::memory_order_acquire);
+                }
+
+                // FREE → STAGED (after client locks front buffer)
+                bool Stage()
+                {
+                    BufferState expected = BufferState::FREE;
+                    if (_state.compare_exchange_strong(expected, BufferState::STAGED,
+                            std::memory_order_acq_rel)) {
+                        return true;
+                    }
+                    TRACE(Trace::Error,
+                        (_T("Buffer %p: Stage failed (expected FREE, got %s)"),
+                            _bo, StateToString(expected)));
+                    return false;
+                }
+
+                // STAGED → PENDING (submit to compositor)
+                bool Submit()
+                {
+                    BufferState expected = BufferState::STAGED;
+                    if (_state.compare_exchange_strong(expected, BufferState::PENDING,
+                            std::memory_order_acq_rel)) {
+                        BaseClass::RequestRender();
+                        return true;
+                    }
+                    TRACE(Trace::Error,
+                        (_T("Buffer %p: Submit failed (expected STAGED, got %s)"),
+                            _bo, StateToString(expected)));
+                    return false;
+                }
+
+                // PENDING → ACTIVE (compositor GPU done)
+                bool Activate()
+                {
+                    BufferState expected = BufferState::PENDING;
+                    if (_state.compare_exchange_strong(expected, BufferState::ACTIVE,
+                            std::memory_order_acq_rel)) {
+                        return true;
+                    }
+                    TRACE(Trace::Error,
+                        (_T("Buffer %p: Activate failed (expected PENDING, got %s)"),
+                            _bo, StateToString(expected)));
+                    return false;
+                }
+
+                // ACTIVE → RETIRED (new buffer became active)
+                bool Retire()
+                {
+                    BufferState expected = BufferState::ACTIVE;
+                    if (_state.compare_exchange_strong(expected, BufferState::RETIRED,
+                            std::memory_order_acq_rel)) {
+                        return true;
+                    }
+                    TRACE(Trace::Error,
+                        (_T("Buffer %p: Retire failed (expected ACTIVE, got %s)"),
+                            _bo, StateToString(expected)));
+                    return false;
+                }
+
+                // RETIRED → FREE (released back to GBM)
+                bool Release()
+                {
+                    BufferState expected = BufferState::RETIRED;
+                    if (_state.compare_exchange_strong(expected, BufferState::FREE,
+                            std::memory_order_acq_rel)) {
+                        return true;
+                    }
+                    TRACE(Trace::Error,
+                        (_T("Buffer %p: Release failed (expected RETIRED, got %s)"),
+                            _bo, StateToString(expected)));
+                    return false;
                 }
 
             protected:
                 void Rendered() override
                 {
-                    _parent.Unlock(_bo);
-                    _parent.Rendered();
+                    _parent.OnBufferRendered(this);
                 }
 
                 void Published() override
                 {
-                    _parent.Published();
+                    _parent.OnBufferPublished(this);
                 }
 
             private:
                 SurfaceImplementation& _parent;
                 gbm_bo* _bo;
+                std::atomic<BufferState> _state;
             };
 
         public:
@@ -212,27 +312,33 @@ namespace Linux {
             SurfaceImplementation& operator=(SurfaceImplementation&&) = delete;
             SurfaceImplementation& operator=(const SurfaceImplementation&) = delete;
 
-            SurfaceImplementation(Display& display, const std::string& name, const uint32_t width, const uint32_t height, ICallback* callback)
+            SurfaceImplementation(Display& display, const std::string& name,
+                const uint32_t width, const uint32_t height,
+                ICallback* callback)
                 : _display(display)
                 , _gbmSurface(display.CreateGbmSurface(width, height))
                 , _remoteClient(display.CreateRemoteSurface(name, width, height))
                 , _id(_remoteClient->Native())
                 , _width(width)
                 , _height(height)
-                , _gbmBufferLock()
                 , _name(name)
                 , _keyboard(nullptr)
                 , _wheel(nullptr)
                 , _pointer(nullptr)
                 , _touchpanel(nullptr)
                 , _callback(callback)
+                , _contentBuffers()
+                , _bufferLock()
+                , _activeBuffer(nullptr)
+                , _retiredBuffer(nullptr)
             {
+                _contentBuffers.fill(nullptr);
                 _display.AddRef();
 
                 ASSERT(_remoteClient != nullptr);
                 ASSERT(_gbmSurface != nullptr);
 
-                TRACE(Trace::Information, (_T("Construct surface[%d] %s  %dx%d (hxb)"), _id, name.c_str(), height, width));
+                TRACE(Trace::Information, (_T("Surface[%d] %s %dx%d constructed"), _id, name.c_str(), width, height));
 
                 _display.Register(this);
             }
@@ -256,53 +362,35 @@ namespace Linux {
                     _touchpanel->Release();
                 }
 
+                // Prevent new RequestRender() calls from allocating new buffers.
+                gbm_surface* surface = _gbmSurface;
+                _gbmSurface = nullptr;
+
+                {
+                    Core::SafeSyncType<Core::CriticalSection> lock(_bufferLock);
+
+                    for (size_t i = 0; i < MaxContentBuffers; i++) {
+                        if (_contentBuffers[i] != nullptr) {
+                            // Clear user data to prevent GBM from calling our Destroyed callback
+                            gbm_bo_set_user_data(_contentBuffers[i]->Bo(), nullptr, nullptr);
+
+                            // Explicitly delete the ContentBuffer
+                            delete _contentBuffers[i];
+                            _contentBuffers[i] = nullptr;
+                        }
+                    }
+                }
+
                 // Cleanup the remote client buffers
                 if (_remoteClient != nullptr) {
                     _remoteClient->Release();
                 }
 
-                // lets hope DRM cleans up the gbm buffer objects for us, if so drm should call ContentBuffer::Destroyed()...
-                if (_gbmSurface != nullptr) {
-                    gbm_surface_destroy(_gbmSurface);
-                    _gbmSurface = nullptr;
+                if (surface != nullptr) {
+                    gbm_surface_destroy(surface);
                 }
 
                 _display.Release();
-            }
-
-        private:
-            gbm_bo* Lock(const uint16_t ms)
-            {
-                ASSERT((_gbmSurface != nullptr) && "Failed to lock a framebuffer, surface is null");
-
-                gbm_bo* frameBuffer = nullptr;
-
-                if (_gbmBufferLock.try_lock_for(std::chrono::milliseconds(ms))) {
-                    frameBuffer = gbm_surface_lock_front_buffer(_gbmSurface);
-
-                    if (frameBuffer == nullptr) {
-                        _gbmBufferLock.unlock(); // Unlock the mutex to prevent deadlock
-                        TRACE(Trace::Error, (_T("Failed to lock front buffer, surface %p"), _gbmSurface));
-                    } else {
-                        TRACE(Trace::Information, (_T("Acquired framebuffer[%p]"), frameBuffer));
-                    }
-                } else {
-                    TRACE(Trace::Error, (_T("Failed to lock front buffer within %d ms"), ms));
-                }
-
-                return frameBuffer;
-            }
-
-            void Unlock(gbm_bo* frameBuffer)
-            {
-                ASSERT((_gbmSurface != nullptr) && "Failed to release framebuffer, surface is null");
-
-                if ((_gbmSurface != nullptr) && (frameBuffer != nullptr)) {
-                    gbm_surface_release_buffer(_gbmSurface, frameBuffer);
-                    TRACE(Trace::Information, (_T("Released framebuffer[%p]"), frameBuffer));
-                }
-
-                _gbmBufferLock.unlock();
             }
 
         public:
@@ -413,44 +501,175 @@ namespace Linux {
                 }
             }
 
-            void Rendered()
+            uint32_t Process()
+            {
+                return Core::ERROR_NONE;
+            }
+
+            // ─────────────────────────────────────────────────────────────────────────
+            // Called after eglSwapBuffers
+            // ─────────────────────────────────────────────────────────────────────────
+            void RequestRender()
+            {
+                if (_gbmSurface == nullptr) {
+                    NotifyRendered();
+                    return;
+                }
+
+                uint64_t before = Core::Time::Now().Ticks();
+                gbm_bo* frameBuffer = gbm_surface_lock_front_buffer(_gbmSurface);
+                uint64_t after = Core::Time::Now().Ticks();
+
+                TRACE(BufferInfo, (_T("Surface[%d]: lock_front_buffer took %" PRIu64 " µs, returned %p"), _id, (after - before), static_cast<void*>(frameBuffer)));
+
+                if (frameBuffer == nullptr) {
+                    TRACE(BufferError, (_T("Surface %s: lock_front_buffer failed"), _name.c_str()));
+                    NotifyRendered();
+                    return;
+                }
+
+                ContentBuffer* buffer = GetOrCreateContentBuffer(frameBuffer);
+
+                if (buffer == nullptr) {
+                    gbm_surface_release_buffer(_gbmSurface, frameBuffer);
+                    NotifyRendered();
+                    return;
+                }
+
+                // FREE → STAGED → PENDING
+                if (buffer->Stage() && buffer->Submit()) {
+                    // Success - wait for Rendered callback
+                    return;
+                }
+
+                // Failed - release buffer and notify
+                gbm_surface_release_buffer(_gbmSurface, frameBuffer);
+                NotifyRendered();
+            }
+
+            // ─────────────────────────────────────────────────────────────────────────
+            // Called when compositor signals Rendered (GPU done)
+            // ─────────────────────────────────────────────────────────────────────────
+            void OnBufferRendered(ContentBuffer* buffer)
+            {
+                // PENDING → ACTIVE
+                if (!buffer->Activate()) {
+                    return;
+                }
+
+                // Retire previous active buffer (ACTIVE → RETIRED)
+                ContentBuffer* oldActive = _activeBuffer.exchange(buffer, std::memory_order_acq_rel);
+
+                if (oldActive != nullptr && oldActive != buffer) {
+                    if (oldActive->Retire()) {
+                        // Store for release on Published
+                        ContentBuffer* oldRetired = _retiredBuffer.exchange(oldActive, std::memory_order_acq_rel);
+
+                        // Handle orphaned retired buffer (shouldn't happen normally)
+                        if (oldRetired != nullptr) {
+                            TRACE(BufferError, (_T("Surface %s: orphaned retired buffer %p"), _name.c_str(), oldRetired->Bo()));
+                            ReleaseToGbm(oldRetired);
+                        }
+                    }
+                }
+
+                NotifyRendered();
+            }
+
+            // ─────────────────────────────────────────────────────────────────────────
+            // Called when compositor signals Published (VSync done)
+            // ─────────────────────────────────────────────────────────────────────────
+            void OnBufferPublished(ContentBuffer* buffer VARIABLE_IS_NOT_USED)
+            {
+                // Release retired buffer (RETIRED → FREE)
+                ContentBuffer* retired = _retiredBuffer.exchange(nullptr, std::memory_order_acq_rel);
+
+                if (retired != nullptr) {
+                    ReleaseToGbm(retired);
+                }
+
+                NotifyPublished();
+            }
+
+            void RemoveContentBuffer(ContentBuffer* buffer)
+            {
+                Core::SafeSyncType<Core::CriticalSection> lock(_bufferLock);
+
+                for (size_t i = 0; i < MaxContentBuffers; i++) {
+                    if (_contentBuffers[i] == buffer) {
+                        _contentBuffers[i] = nullptr;
+                        break;
+                    }
+                }
+
+                // Clear atomic pointers if they reference this buffer
+                ContentBuffer* expected = buffer;
+                _activeBuffer.compare_exchange_strong(expected, nullptr, std::memory_order_acq_rel);
+                expected = buffer;
+                _retiredBuffer.compare_exchange_strong(expected, nullptr, std::memory_order_acq_rel);
+            }
+
+        private:
+            void ReleaseToGbm(ContentBuffer* buffer)
+            {
+                if (buffer != nullptr && buffer->Release() && _gbmSurface != nullptr) {
+                    gbm_surface_release_buffer(_gbmSurface, buffer->Bo());
+                    TRACE(BufferInfo, (_T("Surface %s: buffer %p released to GBM"), _name.c_str(), buffer->Bo()));
+                }
+            }
+
+            ContentBuffer* GetOrCreateContentBuffer(gbm_bo* frameBuffer)
+            {
+                ContentBuffer* buffer = static_cast<ContentBuffer*>(
+                    gbm_bo_get_user_data(frameBuffer));
+
+                if (buffer != nullptr) {
+                    return buffer;
+                }
+
+                Core::SafeSyncType<Core::CriticalSection> lock(_bufferLock);
+
+                // Double-check after lock
+                buffer = static_cast<ContentBuffer*>(gbm_bo_get_user_data(frameBuffer));
+                if (buffer != nullptr) {
+                    return buffer;
+                }
+
+                // Find empty slot
+                size_t slot = MaxContentBuffers;
+                for (size_t i = 0; i < MaxContentBuffers; i++) {
+                    if (_contentBuffers[i] == nullptr) {
+                        slot = i;
+                        break;
+                    }
+                }
+
+                if (slot == MaxContentBuffers) {
+                    TRACE(Trace::Error, (_T("Surface %s: buffer pool exhausted"), _name.c_str()));
+                    return nullptr;
+                }
+
+                buffer = new ContentBuffer(*this, frameBuffer);
+                _contentBuffers[slot] = buffer;
+                gbm_bo_set_user_data(frameBuffer, buffer, &ContentBuffer::Destroyed);
+
+                TRACE(Trace::Information, (_T("Surface %s: created ContentBuffer %p in slot %zu"), _name.c_str(), buffer, slot));
+
+                return buffer;
+            }
+
+            void NotifyRendered()
             {
                 if (_callback != nullptr) {
                     _callback->Rendered(this);
                 }
             }
 
-            void Published()
+            void NotifyPublished()
             {
                 if (_callback != nullptr) {
                     _callback->Published(this);
                 }
-            }
-
-            void RequestRender() override
-            {
-                gbm_bo* frameBuffer = Lock(1000);
-
-                if (frameBuffer == nullptr) {
-                    // bail-out if we cannot lock the front buffer
-                    std::this_thread::sleep_for(std::chrono::milliseconds(5));
-                    Rendered(); // we still need call Rendered to request a new frame buffer
-                } else {
-                    ContentBuffer* buffer = static_cast<ContentBuffer*>(gbm_bo_get_user_data(frameBuffer));
-
-                    if (buffer == nullptr) {
-                        buffer = new ContentBuffer(*this, frameBuffer);
-                        gbm_bo_set_user_data(frameBuffer, buffer, &ContentBuffer::Destroyed);
-                    }
-
-                    ASSERT(buffer != nullptr);
-                    buffer->RequestRender();
-                }
-            }
-
-            uint32_t Process()
-            {
-                return Core::ERROR_NONE;
             }
 
         private:
@@ -460,13 +679,18 @@ namespace Linux {
             const uint8_t _id;
             const int32_t _width; // real pixels allocated in the gpu!
             const int32_t _height; // real pixels allocated in the gpu
-            std::timed_mutex _gbmBufferLock;
             const string _name;
             IKeyboard* _keyboard;
             IWheel* _wheel;
             IPointer* _pointer;
             ITouchPanel* _touchpanel;
             ISurface::ICallback* _callback;
+            std::array<ContentBuffer*, MaxContentBuffers> _contentBuffers;
+            Core::CriticalSection _bufferLock;
+
+            // Buffer state tracking - lock-free
+            std::atomic<ContentBuffer*> _activeBuffer; // Currently on screen
+            std::atomic<ContentBuffer*> _retiredBuffer; // Waiting for release
 
             static uint32_t _surfaceIndex;
         }; // class SurfaceImplementation
@@ -575,13 +799,9 @@ namespace Linux {
             return result;
         }
 
-        const Exchange::IComposition::IDisplay* RemoteDisplay() const
+        bool IsValid() const
         {
-            return _remoteDisplay;
-        }
-        Exchange::IComposition::IDisplay* RemoteDisplay()
-        {
-            return _remoteDisplay;
+            return _remoteDisplay != nullptr;
         }
 
     private:
@@ -612,6 +832,45 @@ namespace Linux {
 
                 if (_remoteDisplay == nullptr) {
                     TRACE(Trace::Error, (_T ( "Could not create remote display for Display %s!" ), Name().c_str()));
+                } else {
+                    // Get render node path from remote display
+                    std::string renderNode;
+
+                    if (_remoteDisplay != nullptr) {
+                        renderNode = _remoteDisplay->Port();
+                    }
+
+                    if (renderNode.empty()) {
+                        TRACE(Trace::Error, (_T("Remote display did not provide a render node for Display %s"), Name().c_str()));
+                        return;
+                    }
+
+                    // Open the DRM render node
+                    _gpuId = ::open(renderNode.c_str(), O_RDWR | O_CLOEXEC);
+
+                    if (_gpuId < 0) {
+                        TRACE(Trace::Error, (_T("Failed to open render node %s, errno=%d"), renderNode.c_str(), errno));
+                        return;
+                    }
+
+                    // Create GBM device
+                    _gbmDevice = gbm_create_device(_gpuId);
+
+                    if (_gbmDevice == nullptr) {
+                        TRACE(Trace::Error, (_T("Failed to create GBM device for %s"), renderNode.c_str()));
+                        ::close(_gpuId);
+                        _gpuId = -1;
+                        return;
+                    }
+
+                    // Get the resolved device name (may be null)
+                    const char* resolvedName = drmGetRenderDeviceNameFromFd(_gpuId);
+                    
+                    if (resolvedName == nullptr) {
+                        resolvedName = renderNode.c_str(); // fallback
+                    }
+
+                    TRACE(Trace::Information, (_T("Opened GBM[%p] device on fd=%d, RenderNode=%s"), _gbmDevice, _gpuId, resolvedName));
                 }
             } else {
                 TRACE(Trace::Error, (_T("Could not open connection to Compositor with node %s. Error: %s"), _compositorServerRPCConnection->Source().RemoteId().c_str(), Core::NumberType<uint32_t>(result).Text().c_str()));
@@ -698,7 +957,7 @@ namespace Linux {
         {
             return (_remoteDisplay != nullptr ? _remoteDisplay->CreateClient(name, width, height) : nullptr);
         }
-        
+
         gbm_surface* CreateGbmSurface(const uint32_t width, const uint32_t height) const
         {
             gbm_surface* surface(nullptr);
@@ -711,19 +970,20 @@ namespace Linux {
 
             for (uint32_t format : FormatPriority) {
                 char* formatName = drmGetFormatName(format);
-
-                ASSERT(formatName != nullptr); // Should always be valid for known DRM formats
+                if (formatName == nullptr) {
+                    TRACE(Trace::Warning, ("Unknown DRM format %#x - skipping", format));
+                    continue;
+                }
 
                 surface = gbm_surface_create(_gbmDevice, width, height, format, usage);
                 if (surface != nullptr) {
-                    TRACE(Trace::Information, ("Successfully created surface with format: %s", formatName ? formatName : "Unknown"));
+                    TRACE(Trace::Information, ("Successfully created surface with format: %s", formatName));
+                    free(formatName);
                     break;
                 }
-                TRACE(Trace::Warning, ("Failed to create GBM surface with format: %s, trying next...", formatName ? formatName : "Unknown"));
 
-                if (formatName != nullptr) {
-                    free(formatName);
-                }
+                TRACE(Trace::Warning, ("Failed to create GBM surface with format: %s, trying next...", formatName));
+                free(formatName);
             }
 
             return surface;
@@ -761,20 +1021,6 @@ namespace Linux {
         , _gpuId(-1)
         , _gbmDevice(nullptr)
     {
-        Core::PrivilegedRequest::Container descriptors;
-        Core::PrivilegedRequest request;
-
-        const string connector = ConnectorPath() + _T("descriptors");
-
-        if (request.Request(1000, connector, DisplayId, descriptors) == Core::ERROR_NONE) {
-            ASSERT(descriptors.size() == 1);
-            _gpuId = descriptors[0].Move();
-            _gbmDevice = gbm_create_device(_gpuId);
-            TRACE(Trace::Information, (_T ( "Opened GBM[%p] device on fd: %d,  RenderDevice: %s"), _gbmDevice, _gpuId, drmGetRenderDeviceNameFromFd(_gpuId)));
-        } else {
-            TRACE(Trace::Error, (_T ( "Failed to get display file descriptor from compositor server")));
-        }
-
         TRACE(Trace::Information, (_T("Display[%p] Constructed build @ %s"), this, __TIMESTAMP__));
     }
 
@@ -787,7 +1033,7 @@ namespace Linux {
             _gbmDevice = nullptr;
         }
 
-        if (_gpuId > 0) {
+        if (_gpuId >= 0) {
             ::close(_gpuId);
             _gpuId = -1;
         }
@@ -906,6 +1152,16 @@ namespace Linux {
 
 Compositor::IDisplay* Compositor::IDisplay::Instance(const string& displayName)
 {
-    return (&(Linux::Display::Instance(displayName)));
+    Compositor::IDisplay* result(nullptr);
+
+    Linux::Display& display = Linux::Display::Instance(displayName);
+
+    if (display.IsValid() == false) {
+        display.Release();
+    } else {
+        result = &(display);
+    }
+
+    return result;
 }
 } // namespace Thunder

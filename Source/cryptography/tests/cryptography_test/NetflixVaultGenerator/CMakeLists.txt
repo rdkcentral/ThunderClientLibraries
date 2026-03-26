@@ -25,6 +25,10 @@ add_executable(NetflixVaultGenerator
    main.cpp
 )
 
+set_target_properties(NetflixVaultGenerator PROPERTIES
+    CXX_STANDARD ${CXX_STD}
+    CXX_STANDARD_REQUIRED YES)
+
 target_link_libraries(NetflixVaultGenerator
    PRIVATE
    OpenSSL::Crypto

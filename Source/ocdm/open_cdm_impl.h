@@ -778,7 +778,7 @@ public:
     {
         ASSERT(_session != nullptr);
 
-        return (_session->Remove() == 0);
+        return (_session->Remove());
     }
     inline int Load()
     {

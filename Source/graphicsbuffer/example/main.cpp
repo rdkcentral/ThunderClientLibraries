@@ -348,7 +348,9 @@ int main(int argc, const char* argv[])
                         while (planes->Next() == true) {
                             int fd = planes->Descriptor();
                             printf("Writing to [%d]:\n", fd);
+PUSH_WARNING(DISABLE_WARNING_UNUSED_RESULT)
                             ::write(fd, "Hello World !!!\n", 16);
+POP_WARNING()
                             ::fsync(fd);
                         }
                     }

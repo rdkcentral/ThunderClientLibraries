@@ -1,7 +1,8 @@
-# If not stated otherwise in this file or this component's LICENSE file the
+
+# If not stated otherwise in this file or this component's license file the
 # following copyright and licenses apply:
 #
-# Copyright 2023 Metrological
+# Copyright 2025 Metrological
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,24 +16,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+option(BUILD_CLIENT_COMPOSITOR_GBM_UTIL "Build the GBM basic test" ON)
+option(BUILD_CLIENT_COMPOSITOR_RENDER_TEST "Build the renderer compositor client test" ON)
+option(BUILD_COMPOSITORCLIENT_TEST "Build Compositor Client legacy test" OFF)
 
-find_package(CompileSettingsDebug CONFIG REQUIRED)
-find_package(${NAMESPACE}Core CONFIG REQUIRED)
-find_package(${NAMESPACE}Messaging CONFIG REQUIRED)
-find_package(${NAMESPACE}LocalTracer CONFIG REQUIRED)
 
-add_executable(compositorclient_test main.cpp)
+if(BUILD_CLIENT_COMPOSITOR_GBM_UTIL)
+add_subdirectory(gbm_buffer_test)
+endif()
 
-target_link_libraries(compositorclient_test
-    PRIVATE
-        ${NAMESPACE}Core::${NAMESPACE}Core
-        ${NAMESPACE}Messaging::${NAMESPACE}Messaging
-        ${NAMESPACE}LocalTracer::${NAMESPACE}LocalTracer
-        ClientVirtualInput::ClientVirtualInput
-        CompileSettingsDebug::CompileSettingsDebug
-        ClientCompositor::ClientCompositor
-)
+if(BUILD_CLIENT_COMPOSITOR_RENDER_TEST)
+add_subdirectory(client-renderer)
+endif()
 
-if(INSTALL_TESTS)
-    install(TARGETS compositorclient_test DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT ${NAMESPACE}_Test)
+if(BUILD_COMPOSITORCLIENT_TEST)
+add_subdirectory(legacy-test)
 endif()

@@ -76,12 +76,12 @@ int main(VARIABLE_IS_NOT_USED int argc, VARIABLE_IS_NOT_USED const char* argv[])
                 ASSERT(display != nullptr);
 
                 if (surface != nullptr) {
-                    surface = display->Create("TestClient", 1280, 720);
-                    TRACE_GLOBAL(Thunder::Trace::Information, ("Create %s surface", surface->Name().c_str()));
-                } else {
                     TRACE_GLOBAL(Thunder::Trace::Information, ("Release %s surface", surface->Name().c_str()));
                     surface->Release();
                     surface = nullptr;
+                } else {
+                    surface = display->Create("TestClient", 1280, 720);
+                    TRACE_GLOBAL(Thunder::Trace::Information, ("Create %s surface", surface->Name().c_str()));
                 }
 
                 break;

@@ -43,7 +43,7 @@ target_link_libraries(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
 )
 
 set_target_properties(${PLUGIN_COMPOSITOR_IMPLEMENTATION} PROPERTIES
-        CXX_STANDARD 11
+        CXX_STANDARD ${CXX_STD}
         CXX_STANDARD_REQUIRED YES
         VERSION ${PROJECT_VERSION}
         SOVERSION ${PROJECT_VERSION_MAJOR}
@@ -53,5 +53,3 @@ target_compile_definitions(${PLUGIN_COMPOSITOR_IMPLEMENTATION}
     PUBLIC
         EGL_NO_X11
     )
-
-add_subdirectory(test)

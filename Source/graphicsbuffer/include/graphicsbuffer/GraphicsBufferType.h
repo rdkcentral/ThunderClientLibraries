@@ -223,7 +223,7 @@ namespace Graphics {
             // Do not initialize members for now, this constructor is called after a mmap in the
             // placement new operator above. Initializing them now will reset the original values
             // of the buffer metadata.
-            SharedStorageType() {};
+            SharedStorageType() { };
 
             void* operator new(size_t stAllocateBlock, int fd)
             {
@@ -910,7 +910,7 @@ namespace Graphics {
                 // Now the request *MUST* succeed!
                 requested = SharedBufferType<PLANES>::Rendered();
 
-                ASSERT(requested == true);
+                ASSERT((requested == true) || (SharedBufferType<PLANES>::IsDestroyed() == true));
             }
 
             if (requested == true) {
@@ -934,7 +934,7 @@ namespace Graphics {
                 // Now the request *MUST* succeed!
                 requested = SharedBufferType<PLANES>::Published();
 
-                ASSERT(requested == true);
+                ASSERT((requested == true) || (SharedBufferType<PLANES>::IsDestroyed() == true));
             }
 
             if (requested == true) {

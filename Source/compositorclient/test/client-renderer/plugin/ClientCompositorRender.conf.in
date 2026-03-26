@@ -1,0 +1,20 @@
+startmode = "@PLUGIN_COMPOSITORCLIENT_PLUGIN_STARTMODE@"
+resumed = "@PLUGIN_COMPOSITORCLIENT_PLUGIN_RESUMED@"
+
+configuration = JSON()
+
+root = JSON()
+root.add("mode", "@PLUGIN_COMPOSITORCLIENT_PLUGIN_MODE@")
+if "@PLUGIN_COMPOSITORCLIENT_PLUGIN_USER@":
+    root.add("user", "@PLUGIN_COMPOSITORCLIENT_PLUGIN_USER@")
+if "@PLUGIN_COMPOSITORCLIENT_PLUGIN_GROUP@":
+    root.add("group", "@PLUGIN_COMPOSITORCLIENT_PLUGIN_GROUP@")
+configuration.add("root", root)
+
+if @PLUGIN_COMPOSITORCLIENT_PLUGIN_INSTANCES@ > 1:
+    _geometry = JSON()
+    _geometry.add("x", @PLUGIN_COMPOSITORCLIENT_PLUGIN_INSTANCE_X@)
+    _geometry.add("y", @PLUGIN_COMPOSITORCLIENT_PLUGIN_INSTANCE_Y@)
+    _geometry.add("width", @PLUGIN_COMPOSITORCLIENT_PLUGIN_INSTANCE_WIDTH@)
+    _geometry.add("height", @PLUGIN_COMPOSITORCLIENT_PLUGIN_INSTANCE_HEIGHT@)
+    configuration.add("relative-geometry", _geometry)
