@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 
+
 static void toHexString(
     const uint8_t data[], const uint32_t dataLength,
     char buf[], uint32_t* bufLength)
