@@ -125,7 +125,7 @@ static void toHexString(
         *bufLength = length;
 
     } else {
-        printf("ERROR: bufLength %d is too small for %d chars\n", *bufLength, totalLength);
+        printf("ERROR: bufLength %d is %s too small for %d chars\n", *bufLength, totalLength);
         *bufLength = 0;
     }
 }
