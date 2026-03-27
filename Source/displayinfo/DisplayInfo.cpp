@@ -561,7 +561,7 @@ uint32_t displayinfo_parse_edid(const uint8_t buffer[], uint16_t length, display
 
         if(edid.IsValid()) {
             ::memset(edid_info, 0, sizeof(*edid_info));
-            memcpy(edid_info->manufacturer_id, edid.Manufacturer().c_str(), sizeof(edid_info->manufacturer_id));
+            memcpy(edid_info->manufacturer_id, edid.Manufacturer().c_str(), 10*sizeof(edid_info->manufacturer_id));
             edid_info->product_code = edid.ProductCode();
             edid_info->serial_number = edid.Serial();
             edid_info->manufacture_week = edid.Week();
