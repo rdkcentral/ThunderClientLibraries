@@ -18,7 +18,7 @@
  */
 
 #include "Module.h"
-#include <plugins/IVirtualInput.h>
+#include <interfaces/IVirtualInput.h>
 #include "virtualinput.h"
 
 namespace Thunder {

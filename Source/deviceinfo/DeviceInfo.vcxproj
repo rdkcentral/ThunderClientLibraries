@@ -103,7 +103,7 @@
       <PreprocessorDefinitions>DEVICEINFO_EXPORTS;_CRT_SECURE_NO_WARNINGS;_WINDOWS;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>include;$(FrameworkPath);$(ContractsPath);$(WindowsPath);$(WindowsPath)zlib</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>include;$(ContractsPath);$(FrameworkPath);$(WindowsPath);$(WindowsPath)zlib</AdditionalIncludeDirectories>
       <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
@@ -125,7 +125,7 @@
       <PreprocessorDefinitions>DEVICEINFO_EXPORTS;_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>include;$(FrameworkPath);$(ContractsPath);$(WindowsPath);$(WindowsPath)zlib</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>include;$(ContractsPath);$(FrameworkPath);$(WindowsPath);$(WindowsPath)zlib</AdditionalIncludeDirectories>
       <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
@@ -149,7 +149,7 @@
       <PreprocessorDefinitions>DEVICEINFO_EXPORTS;_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>include;$(FrameworkPath);$(ContractsPath);$(WindowsPath);$(WindowsPath)zlib</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>include;$(ContractsPath);$(FrameworkPath);$(WindowsPath);$(WindowsPath)zlib</AdditionalIncludeDirectories>
       <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
@@ -175,7 +175,7 @@
       <PreprocessorDefinitions>DEVICEINFO_EXPORTS;_CRT_SECURE_NO_WARNINGS;_WINDOWS;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>include;$(FrameworkPath);$(ContractsPath);$(WindowsPath);$(WindowsPath)zlib</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>include;$(ContractsPath);$(FrameworkPath);$(WindowsPath);$(WindowsPath)zlib</AdditionalIncludeDirectories>
       <UseStandardPreprocessor>true</UseStandardPreprocessor>
     </ClCompile>
     <Link>
