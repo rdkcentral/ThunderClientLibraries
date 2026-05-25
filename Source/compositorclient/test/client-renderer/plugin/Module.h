@@ -7,6 +7,7 @@
 #include <core/core.h>
 #include <messaging/messaging.h>
 #include <plugins/plugins.h>
+#include <common/common.h>
 
 #if defined(__WINDOWS__)
 #if defined(COMPOSITORCLIENT_EXPORTS)

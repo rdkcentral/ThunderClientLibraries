@@ -19,6 +19,7 @@ find_package(Thunder REQUIRED)
 find_package(${NAMESPACE}Core CONFIG REQUIRED)
 find_package(${NAMESPACE}Messaging CONFIG REQUIRED)
 find_package(${NAMESPACE}Plugins CONFIG REQUIRED)
+find_package(${NAMESPACE}Common CONFIG REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 
 set(PLUGIN_COMPOSITORCLIENT_PLUGIN_STARTMODE "Activated" CACHE STRING "Automatically start ClientCompositorRender plugin")
@@ -42,6 +43,7 @@ target_link_libraries(ClientCompositorRender
         ${NAMESPACE}Core::${NAMESPACE}Core
         ${NAMESPACE}Messaging::${NAMESPACE}Messaging
         ${NAMESPACE}Plugins::${NAMESPACE}Plugins
+        ${NAMESPACE}Common::${NAMESPACE}Common
         CompileSettingsDebug::CompileSettingsDebug
         ClientCompositorRenderCommon
 )

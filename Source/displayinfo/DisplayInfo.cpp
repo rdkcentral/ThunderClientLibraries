@@ -19,7 +19,7 @@
 
 #include "Module.h"
 
-#include <plugins/Types.h>
+#include <common/Types.h>
 
 #include <displayinfo.h>
 #include <interfaces/IDisplayInfo.h>

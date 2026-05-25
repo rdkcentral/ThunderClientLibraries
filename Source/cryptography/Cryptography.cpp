@@ -30,7 +30,7 @@
 #include "implementation/random_implementation.h"
 
 #include <com/com.h>
-#include <plugins/Types.h>
+#include <common/Types.h>
 
 namespace Thunder {
 namespace Implementation {

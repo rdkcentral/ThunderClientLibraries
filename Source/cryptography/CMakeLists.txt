@@ -40,6 +40,7 @@ option(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY "Include explicitly a software base
 
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
+find_package(${NAMESPACE}Common REQUIRED)
 find_package(${NAMESPACE}COM REQUIRED)
 
 add_subdirectory(implementation)
@@ -53,6 +54,7 @@ add_library(${TARGET}
 target_link_libraries(${TARGET}
     PRIVATE
         ${NAMESPACE}Core::${NAMESPACE}Core
+        ${NAMESPACE}Common::${NAMESPACE}Common
         ${NAMESPACE}COM::${NAMESPACE}COM
         CompileSettingsDebug::CompileSettingsDebug
 )
@@ -126,6 +128,7 @@ if(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY)
     target_link_libraries(${TARGET}Software 
         PRIVATE
             ${NAMESPACE}Core::${NAMESPACE}Core
+            ${NAMESPACE}Common::${NAMESPACE}Common
             ${NAMESPACE}COM::${NAMESPACE}COM
             OpenSSL::SSL
             OpenSSL::Crypto
