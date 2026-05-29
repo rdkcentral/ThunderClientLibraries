@@ -20,8 +20,6 @@
 #include "Module.h"
 #include <vector>
 
-#include <plugins/Types.h>
-
 #include "deviceinfo.h"
 #include <interfaces/IDeviceInfo.h>
 
