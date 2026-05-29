@@ -20,7 +20,8 @@
 #include "Module.h"
 #include <vector>
 
-#include <common/Types.h>
+#include <plugins/Types.h>
+
 #include "deviceinfo.h"
 #include <interfaces/IDeviceInfo.h>
 
@@ -1601,4 +1602,3 @@ void deviceinfo_dispose() {
     DeviceInfoLink::Dispose();
 }
 } // extern "C"
-

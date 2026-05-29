@@ -23,7 +23,7 @@
 #include <interfaces/IDolby.h>
 #include <interfaces/IPlayerInfo.h>
 
-#include <common/Types.h>
+#include <plugins/Types.h>
 
 namespace Thunder {
 
