@@ -1600,4 +1600,3 @@ void deviceinfo_dispose() {
     DeviceInfoLink::Dispose();
 }
 } // extern "C"
-

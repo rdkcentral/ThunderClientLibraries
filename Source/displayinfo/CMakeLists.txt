@@ -31,6 +31,7 @@ find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
 find_package(${NAMESPACE}COM REQUIRED)
 find_package(${NAMESPACE}Messaging REQUIRED)
+find_package(${NAMESPACE}Common REQUIRED)
 
 set(PUBLIC_HEADERS 
         "include/displayinfo.h"
@@ -46,6 +47,7 @@ target_link_libraries(${TARGET}
           ${NAMESPACE}Core::${NAMESPACE}Core
           ${NAMESPACE}COM::${NAMESPACE}COM
           ${NAMESPACE}Messaging::${NAMESPACE}Messaging
+          ${NAMESPACE}Common::${NAMESPACE}Common
           CompileSettingsDebug::CompileSettingsDebug
         )
 
