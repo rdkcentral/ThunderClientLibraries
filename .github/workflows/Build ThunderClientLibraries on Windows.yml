@@ -12,7 +12,6 @@ on:
 
 env:
   cryptography: ThunderClientLibraries\Source\cryptography\Cryptography.vcxproj
-  devEnv: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\IDE\devenv.com
   deviceinfo: ThunderClientLibraries\Source\deviceinfo\DeviceInfo.vcxproj
   displayinfo: ThunderClientLibraries\Source\displayinfo\displayinfo.vcxproj
   ocdm: ThunderClientLibraries\Source\ocdm\ocdm.vcxproj
@@ -119,14 +118,20 @@ jobs:
 
     - name: Build ThunderClientLibraries
       shell: cmd
-      run: >
+      run: |
+        for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.CoreEditor -property productPath`) do set "VS_PATH=%%i"
+        if not defined VS_PATH (echo ERROR: Visual Studio not found && exit /b 1)
+        
+        set "devEnv=%VS_PATH:.exe=.com%"
         cd ThunderOnWindows
-        && "%devEnv%" /Build "${{matrix.type}}|x${{matrix.version}}" /Project "%cryptography%"  "%solution%"
-        && "%devEnv%" /Build "${{matrix.type}}|x${{matrix.version}}" /Project "%deviceinfo%"  "%solution%"
-        && "%devEnv%" /Build "${{matrix.type}}|x${{matrix.version}}" /Project "%displayinfo%"  "%solution%"
-        && "%devEnv%" /Build "${{matrix.type}}|x${{matrix.version}}" /Project "%ocdm%"  "%solution%"
-        && "%devEnv%" /Build "${{matrix.type}}|x${{matrix.version}}" /Project "%securityagent%"  "%solution%"
-        && "%devEnv%" /Build "${{matrix.type}}|x${{matrix.version}}" /Project "%virtualinput%"  "%solution%"
+        
+        for %%P in (
+          "%cryptography%" "%deviceinfo%" "%displayinfo%"
+          "%ocdm%" "%securityagent%" "%virtualinput%"
+        ) do (
+          "%devEnv%" /Build "${{matrix.type}}|x${{matrix.version}}" /Project %%P "%solution%"
+          if errorlevel 1 exit /b 1
+        )
 
     - name: Tar files
       run: tar -czvf ${{matrix.type}}${{matrix.version}}.tar.gz artifacts
