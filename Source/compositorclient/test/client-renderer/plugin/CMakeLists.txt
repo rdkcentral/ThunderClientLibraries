@@ -43,7 +43,6 @@ target_link_libraries(ClientCompositorRender
         ${NAMESPACE}Core::${NAMESPACE}Core
         ${NAMESPACE}Messaging::${NAMESPACE}Messaging
         ${NAMESPACE}Plugins::${NAMESPACE}Plugins
-        ${NAMESPACE}Common::${NAMESPACE}Common
         CompileSettingsDebug::CompileSettingsDebug
         ClientCompositorRenderCommon
 )
