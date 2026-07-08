@@ -76,7 +76,7 @@ jobs:
 
 # ----- Regex & checkout -----
     - name: Checkout ThunderClientLibraries
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         path: ThunderClientLibraries
         repository: ${{github.repository_owner}}/ThunderClientLibraries
