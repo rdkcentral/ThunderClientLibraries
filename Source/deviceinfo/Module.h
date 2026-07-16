@@ -25,8 +25,8 @@
 
 #include <com/com.h>
 #include <core/core.h>
-#include <plugins/plugins.h>
-#include <messaging/messaging.h>
+#include <plugins/Types.h>
+#include <plugins/ISubSystem.h>
 
 #if defined(__WINDOWS__) && defined(DEVICEINFO_EXPORTS)
 #undef EXTERNAL
