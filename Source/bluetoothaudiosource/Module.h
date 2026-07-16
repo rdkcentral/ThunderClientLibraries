@@ -25,5 +25,5 @@
 
 #include <com/com.h>
 #include <core/core.h>
-#include <plugins/plugins.h>
+#include <plugins/Types.h>
 #include <messaging/messaging.h>
