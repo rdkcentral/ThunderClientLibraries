@@ -4,7 +4,7 @@ ThunderClientLibraries is a collection of lightweight, process-boundary client l
 
 ThunderClientLibraries acts as the consumer-side glue between user-space processes and Thunder-hosted services. Rather than each consuming process implementing its own IPC logic, each library encapsulates the connection setup, interface acquisition, and lifecycle management required to reach a specific Thunder plugin. The libraries are kept independent of one another; a consuming process links only the libraries it needs.
 
-At the device level, these libraries serve processes that sit outside the Thunder plugin host but require access to capabilities that are managed centrally inside it. Examples include media pipeline processes that require DRM session creation through OpenCDM, web runtimes that need display or device capability metadata, and Bluetooth audio pipelines that need to stream audio frames to or from a paired device. All inter-process calls go over UNIX domain sockets using Thunder's COM-RPC transport, providing lightweight and low-latency IPC without requiring TCP/IP.
+At the device level, these libraries serve processes that sit outside the Thunder plugin host but require access to capabilities that are managed centrally inside it. Examples include media pipeline processes that require DRM session creation through OpenCDM, web runtimes that need display or device capability metadata, and Bluetooth audio pipelines that need to stream audio frames to or from a paired device. On Linux/RDK-V, inter-process calls use UNIX domain sockets via Thunder's COM-RPC transport; on Windows builds, some clients fall back to TCP loopback (e.g., `127.0.0.1:63000`).
 
 At the module level, each library follows a consistent pattern: it establishes a COM-RPC client connection to the target Thunder plugin, acquires the relevant Exchange interface, and exposes a C-compatible function set to the calling process. Libraries that require change notifications register a notification sink with the plugin and dispatch callbacks to registered callers when events arrive.
 
@@ -100,10 +100,12 @@ graph LR
     subgraph TCL["ThunderClientLibraries"]
 
         subgraph MSec["Media & Security"]
+        subgraph MSec["Media & Security"]
             OA["OpenCDM\n(IAccessorOCDM)"]
-            SAL["SecurityAgent\n(IAuthenticate)"]
+            SAL["SecurityAgent\n(PluginHost::IAuthenticate)"]
             CGL["Cryptography\n(ICryptography)"]
             PPL["ProvisionProxy\n(IProvisioning)"]
+        end
         end
 
         subgraph DDisp["Device & Display"]
@@ -162,7 +164,7 @@ graph LR
 - **Build Dependencies**: `entservices-apis` (provides Thunder Exchange interface headers), `wpeframework-tools-native` (code generation tools), `gstreamer1.0` (required when `CDMI=ON` and the GStreamer adapter is selected).
 - **Plugin Dependencies**: Each library requires the corresponding Thunder plugin to be active at runtime. SecurityAgent requires the SecurityAgent plugin; OpenCDM requires the OpenCDMImplementation plugin; DeviceInfo requires the DeviceInfo plugin; DisplayInfo requires the DisplayInfo plugin; PlayerInfo requires the PlayerInfo plugin; Cryptography requires the Svalbard plugin; ProvisionProxy requires the Provisioning plugin; BluetoothAudio libraries require the BluetoothAudio plugin.
 - **Systemd Services**: The corresponding Thunder plugins must be running when a client library attempts a connection. Each library establishes its connection on first use, and libraries using `RPC::SmartInterfaceType` reconnect automatically once the plugin becomes available.
-- **Configuration Files**: Socket endpoint paths are read from environment variables (`SECURITYAGENT_PATH`, `OPEN_CDM_SERVER`, `PROVISION_PATH`); built-in defaults are used if the variables are unset.
+- **Configuration**: Socket endpoint paths are read from environment variables (`SECURITYAGENT_PATH`, `OPEN_CDM_SERVER`, `PROVISION_PATH`); built-in defaults are used if the variables are unset.
 - **Startup Order**: Client libraries connect on first use. If the target plugin is not yet active at connection time, the calling function returns an error code. Libraries using `RPC::SmartInterfaceType` reconnect automatically once the plugin becomes available.
 
 ---
@@ -243,7 +245,7 @@ sequenceDiagram
     Lib->>RPC: Create CommunicatorClient + InvokeServerType
     RPC->>Thunder: Open connection to UNIX domain socket
     Thunder-->>RPC: Connection open
-    Lib->>Thunder: client->Open<IAuthenticate / IProvisioning>(callsign)
+    Lib->>Thunder: client->Open<PluginHost::IAuthenticate>("SecurityAgent") / client->Open<Exchange::IProvisioning>("Provisioning")
     Thunder-->>Lib: Interface pointer
     Lib->>Thunder: CreateToken() / DeviceId()
     Thunder-->>Lib: Token / DeviceId string
@@ -263,7 +265,7 @@ sequenceDiagram
     participant Thunder as WPEFramework / DisplayInfo Plugin
     participant HDR as IHDRProperties
 
-    App->>Lib: displayinfo_hdr_setting(instance, &hdr_out)
+    App->>Lib: displayinfo_hdr(&hdr_out)
     Note over Lib: Acquire _lock, check _hdrProperties != nullptr
     Lib->>HDR: HDRSetting(hdrType)
     HDR-->>Lib: HDR enum value
@@ -283,7 +285,7 @@ sequenceDiagram
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
 | `OpenCDMAccessor`        | Singleton that manages the COM-RPC connection to the OpenCDMImplementation plugin. Holds session key maps and provides the `IAccessorOCDM` interface proxy. Receives external data: DRM system metadata and key status updates from the plugin.                      | `open_cdm_impl.h`, `open_cdm_impl.cpp`               |
 | `OpenCDMSession`         | Represents a single DRM session. Holds the session ID, the remote `Exchange::ISession` interface, and decrypt context. Created via `OpenCDMAccessor`. Receives external data: license responses and key status changes from the plugin.                              | `open_cdm_impl.h`, `open_cdm_impl.cpp`               |
-| `SecurityAgent ipclink`  | Per-call COM-RPC client that connects to the SecurityAgent plugin, calls `IAuthenticate::CreateToken()`, and releases the connection.                                                                                                                                | `ipclink.cpp` (securityagent)                        |
+| `SecurityAgent ipclink`  | Per-call COM-RPC client that connects to the SecurityAgent plugin, calls `PluginHost::IAuthenticate::CreateToken()`, and releases the connection.                                                                                                                                | `ipclink.cpp` (securityagent)                        |
 | `DeviceInfo`             | Singleton wrapping `RPC::SmartInterfaceType<Exchange::IDeviceInfo>`. Queries video/audio capability interfaces and maps Exchange enums to the public C API enums.                                                                                                    | `DeviceInfo.cpp`, `deviceinfo.h`                     |
 | `DisplayInfo`            | Singleton wrapping `RPC::SmartInterfaceType<Exchange::IConnectionProperties>`. Also queries `IHDRProperties` and `IGraphicsProperties`. Registers `IConnectionProperties::INotification` to deliver display-change events.                                           | `DisplayInfo.cpp`, `displayinfo.h`                   |
 | `PlayerInfo`             | Singleton wrapping `RPC::SmartInterfaceType<Exchange::IPlayerProperties>`. Queries `Exchange::Dolby::IOutput` and registers `Dolby::IOutput::INotification` for Dolby mode-change events.                                                                            | `PlayerInfo.cpp`, `playerinfo.h`                     |
@@ -403,7 +405,7 @@ ThunderClientLibraries operates above the HAL boundary. Each library calls into 
 | `SECURITYAGENT_PATH`           | env string     | `/tmp/SecurityAgent/token` | UNIX domain socket path used to connect to the SecurityAgent plugin.                                                             |
 | `OPEN_CDM_SERVER`              | env string     | `/tmp/ocdm`                | UNIX domain socket path used to connect to the OpenCDMImplementation plugin.                                                     |
 | `PROVISION_PATH`               | env string     | `/tmp/provision`           | UNIX domain socket path used to connect to the Provisioning plugin.                                                              |
-| `BLUETOOTHAUDIOSINK` connector | compile string | `/tmp/bluetoothaudiosink`  | Shared buffer name for audio frame transfer to the BluetoothAudio sink (set in `BluetoothAudioSink.cpp` as `#define CONNECTOR`). |
+| `CONNECTOR` (BluetoothAudioSink) | compile-time string | `/tmp/bluetoothaudiosink`  | Shared buffer name for audio frame transfer to the BluetoothAudio sink (set in `BluetoothAudioSink.cpp` as `#define CONNECTOR`). |
 
 ### Configuration Persistence
 
