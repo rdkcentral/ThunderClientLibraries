@@ -279,19 +279,22 @@ namespace Implementation {
         Exchange::IHash* _accessor;
     };
 
-    class RPCVaultImpl : public Exchange::IVault {
+    class RPCVaultImpl : public Exchange::IVault, public Exchange::IPersistent {
     public:
         RPCVaultImpl(Exchange::IVault* vault)
             : _accessor(vault)
+	    , _persistent(nullptr)
         {
             if (_accessor != nullptr) {
                 _accessor->AddRef();
+		_persistent = _accessor->QueryInterface<IPersistent>();
             }
         }
         ~RPCVaultImpl() override = default;
 
         BEGIN_INTERFACE_MAP(RPCVaultImpl)
         INTERFACE_ENTRY(Exchange::IVault)
+	INTERFACE_ENTRY(Exchange::IPersistent)
         END_INTERFACE_MAP
 
     public:
@@ -346,6 +349,36 @@ POP_WARNING()
             Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
             return (_accessor != nullptr ? _accessor->Delete(id) : false);
         }
+
+	// IPersistent iface
+	// -----------------------------------------------------
+	// Check if a named key exists in peristent storage
+	uint32_t Exists(const string& locator, bool& result /* @out */) const override
+	{
+		Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+		return (_persistent != nullptr ? _persistent->Exists(locator, result) : Core::ERROR_UNAVAILABLE);
+	}
+
+	//Load persistent key details to vault
+	uint32_t Load(const string& locator, uint32_t&  id /* @out */) override
+	{
+		Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+		return (_persistent != nullptr ? _persistent->Load(locator, id) : Core::ERROR_UNAVAILABLE);
+	}
+
+	//Create a new key on persistent storage
+	uint32_t Create(const string& locator, const keytype keyType, uint32_t& id /* @out */)
+	{
+		Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+		return (_persistent != nullptr ? _persistent->Create(locator, keyType, id) : Core::ERROR_UNAVAILABLE);
+	}
+
+	//To explicitly flush resources at the backend
+	uint32_t Flush()
+	{
+		Core::SafeSyncType<Core::CriticalSection> lock(_adminLock);
+		return (_persistent != nullptr ? _persistent->Flush() : Core::ERROR_UNAVAILABLE);
+	}
 
         // Crypto operations using the vault for key storage
         // -----------------------------------------------------
@@ -432,11 +465,16 @@ POP_WARNING()
                 _accessor->Release();
                 _accessor = nullptr;
             }
+	    if (_persistent != nullptr) {
+		    _persistent->Release();
+		    _persistent = nullptr;
+	    }
         }
 
     private:
         mutable Core::CriticalSection _adminLock;
         Exchange::IVault* _accessor;
+	Exchange::IPersistent* _persistent;
     };
 
     class RPCCryptographyImpl : public Exchange::ICryptography {
