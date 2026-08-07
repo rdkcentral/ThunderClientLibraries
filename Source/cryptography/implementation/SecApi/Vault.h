@@ -122,8 +122,9 @@ namespace Implementation {
 	void ProcessorAcquire();
 
     private:
+        void EnsureProcessor() const;
         mutable Thunder::Core::CriticalSection _lock;
-        Sec_ProcessorHandle* _secProcHandle;
+        mutable Sec_ProcessorHandle* _secProcHandle;
         std::map<uint32_t, MapStore> _items;
         uint32_t _lastHandle;
     };
