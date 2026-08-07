@@ -534,6 +534,14 @@ uint16_t netflix_security_esn(const uint16_t max_length, uint8_t data[])
     }
 }
 
+void vault_processor_release(void)
+{
+    // OpenSSL vault holds no SecAPI SecProcessor handle across deep sleep;
+    // nothing to release. Provide the symbol so the shared
+    // CryptographyExtAccess plugin links on OpenSSL-vault platforms.
+    // See SecApi/Vault.cpp for the handle-releasing implementation.
+}
+
 uint32_t netflix_security_encryption_key(void)
 {
     return (Implementation::Vault::NetflixInstance().Size(Implementation::Netflix::KPE_ID) != 0 ? Implementation::Netflix::KPE_ID : 0);
