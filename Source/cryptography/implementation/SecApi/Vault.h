@@ -119,6 +119,7 @@ namespace Implementation {
         uint32_t CreateNamedKey(const char keyFile[],bool exportable ,const key_type keyType);
         bool CheckNamedKey(const char keyFile[]);
         void ProcessorRelease();
+	void ProcessorAcquire();
 
     private:
         mutable Thunder::Core::CriticalSection _lock;

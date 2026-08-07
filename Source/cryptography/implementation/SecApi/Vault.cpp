@@ -53,11 +53,27 @@ namespace Implementation {
     /*To release sec processor resource explicitly.Before this call make sure to call Release on hmac, cipher or dh objects if used*/
     void Vault::ProcessorRelease()
     {
+       _lock.Lock();
        if (_secProcHandle != NULL) {
             SecProcessor_Release(_secProcHandle);
             _secProcHandle = NULL;
         }
+       _lock.Unlock();
     }
+
+     void Vault::ProcessorAcquire()
+     {
+	     _lock.Lock();
+	     if (_secProcHandle == NULL) {
+		     Sec_Result sec_res = SecProcessor_GetInstance_Directories(&_secProcHandle, globalDir, appDir);
+		     if (sec_res != SEC_RESULT_SUCCESS) {
+			     TRACE_L1(_T("SEC : proccesor instance failed retval= %d\n"),sec_res);
+			     _secProcHandle = NULL;
+		     }
+		     _lastHandle = 0x80000000;
+	     }
+	     _lock.Unlock();
+     }
 
     /*********************************************************************
      * @function Size 
@@ -573,7 +589,10 @@ extern "C" {
                 vault = &(instance);
 
             if (vault != nullptr)
+            {
                 TRACE_L2(_T("SEC :VAULT DEFAULT CASE \n"));
+		vault->ProcessorAcquire();
+	    }
             Implementation::vaultId = CRYPTOGRAPHY_VAULT_DEFAULT; //DEFAULT
             break;
             }
