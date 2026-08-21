@@ -23,6 +23,8 @@
 #include <interfaces/INetflixSecurity.h>
 #include "implementation/netflix_security_implementation.h"
 
+#include <stdio.h>
+
 namespace WPEFramework {
 
 namespace Implementation {
@@ -44,6 +46,7 @@ namespace Implementation {
 
                 if (netflix_security_esn(length, buffer) != 0) {
                     esn = std::string(reinterpret_cast<char*>(buffer), length);
+                    fprintf(stderr, "RDKEMW-2864 ESN: %s\n", esn.c_str());
                     return (Core::ERROR_NONE);
                 }
             }
@@ -54,18 +57,21 @@ namespace Implementation {
         Core::hresult EncryptionKey(uint32_t& encryptionKeyId) const override
         {
             encryptionKeyId = netflix_security_encryption_key();
+            fprintf(stderr, "RDKEMW-2864 EncryptionKey: 0x%08x\n", encryptionKeyId);
             return (encryptionKeyId != 0 ? Core::ERROR_NONE : Core::ERROR_UNAVAILABLE);
         }
 
         Core::hresult HMACKey(uint32_t& hmacKeyId) const override
         {
             hmacKeyId = netflix_security_hmac_key();
+            fprintf(stderr, "RDKEMW-2864 HMACKey: 0x%08x\n", hmacKeyId);
             return (hmacKeyId != 0 ? Core::ERROR_NONE : Core::ERROR_UNAVAILABLE);
         }
 
         Core::hresult WrappingKey(uint32_t& wrappingKeyId) const override
         {
             wrappingKeyId = netflix_security_wrapping_key();
+            fprintf(stderr, "RDKEMW-2864 WrappingKey: 0x%08x\n", wrappingKeyId);
             return (wrappingKeyId != 0 ? Core::ERROR_NONE : Core::ERROR_UNAVAILABLE);
         }
 
