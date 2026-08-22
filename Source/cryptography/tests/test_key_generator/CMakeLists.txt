@@ -1,7 +1,7 @@
 # If not stated otherwise in this file or this component's LICENSE file the
 # following copyright and licenses apply:
 #
-# Copyright 2020 Metrological
+# Copyright 2023 Metrological
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,18 +15,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-option(BUILD_CRYPTOGRAPHY_TESTS "Build cryptography test" OFF)
-option(BUILD_CRYPTOGRAPHY_RPC_TESTS "Build cryptography rpc test" OFF)
-option(BUILD_CRYPTOGRAPHY_TEST_KEY_GEN "Build test key generator" OFF)
+find_package(${NAMESPACE}Core REQUIRED)
+find_package(${NAMESPACE}Cryptography REQUIRED)
+find_package(OpenSSL)
 
-if (BUILD_CRYPTOGRAPHY_TESTS)
-    add_subdirectory(cryptography_test)
-endif()
+add_executable(cgkeygen
+        Module.cpp
+        main.cpp)
 
-if (BUILD_CRYPTOGRAPHY_RPC_TESTS)
-    add_subdirectory(rpc_cryptography_test)
-endif()
+include_directories(${CMAKE_CURRENT_LIST_DIR}/../../../cryptography)
+include_directories($<INSTALL_INTERFACE:include/${NAMESPACE}>)
 
-if (BUILD_CRYPTOGRAPHY_TEST_KEY_GEN)
-    add_subdirectory(test_key_generator)
-endif()
+set_target_properties(cgkeygen PROPERTIES
+        CXX_STANDARD 11
+        CXX_STANDARD_REQUIRED YES)
+
+target_link_libraries(cgkeygen
+        PRIVATE
+        ${NAMESPACE}Core::${NAMESPACE}Core
+        ${NAMESPACE}Cryptography::${NAMESPACE}Cryptography
+        ssl
+        crypto)
+
+install(TARGETS cgkeygen DESTINATION bin)
