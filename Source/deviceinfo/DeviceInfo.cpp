@@ -53,7 +53,6 @@ deviceinfo_hdcp_type Convert(const Exchange::IDeviceVideoCapabilities::CopyProte
         Exchange::IDeviceVideoCapabilities::CopyProtection lhs;
         deviceinfo_hdcp_type rhs;
     } lut[] = {
-        { Exchange::IDeviceVideoCapabilities::CopyProtection::HDCP_UNAVAILABLE, DEVICEINFO_HDCP_UNAVAILABLE },
         { Exchange::IDeviceVideoCapabilities::CopyProtection::HDCP_14, DEVICEINFO_HDCP_14 },
         { Exchange::IDeviceVideoCapabilities::CopyProtection::HDCP_20, DEVICEINFO_HDCP_20 },
         { Exchange::IDeviceVideoCapabilities::CopyProtection::HDCP_21, DEVICEINFO_HDCP_21 },
@@ -71,7 +70,6 @@ deviceinfo_output_resolution_type Convert(const Exchange::IDeviceVideoCapabiliti
         Exchange::IDeviceVideoCapabilities::ScreenResolution lhs;
         deviceinfo_output_resolution_type rhs;
     } lut[] = {
-        { Exchange::IDeviceVideoCapabilities::ScreenResolution_Unknown, DEVICEINFO_RESOLUTION_UNKNOWN },
         { Exchange::IDeviceVideoCapabilities::ScreenResolution_480i, DEVICEINFO_RESOLUTION_480I },
         { Exchange::IDeviceVideoCapabilities::ScreenResolution_480p, DEVICEINFO_RESOLUTION_480P },
         { Exchange::IDeviceVideoCapabilities::ScreenResolution_720p, DEVICEINFO_RESOLUTION_720P },
@@ -95,15 +93,15 @@ static struct VideoOutLUT {
     Exchange::IDeviceVideoCapabilities::VideoOutput lhs;
     deviceinfo_video_output_type rhs;
 } videoOutLUT[] = {
-    { Exchange::IDeviceVideoCapabilities::VideoOutput::VIDEO_OTHER, DEVICEINFO_VIDEO_OTHER },
-    { Exchange::IDeviceVideoCapabilities::VideoOutput::VIDEO_COMPONENT, DEVICEINFO_VIDEO_COMPONENT },
-    { Exchange::IDeviceVideoCapabilities::VideoOutput::VIDEO_COMPOSITE, DEVICEINFO_VIDEO_COMPOSITE },
-    { Exchange::IDeviceVideoCapabilities::VideoOutput::VIDEO_DISPLAYPORT, DEVICEINFO_VIDEO_DISPLAYPORT },
-    { Exchange::IDeviceVideoCapabilities::VideoOutput::VIDEO_HDMI0, DEVICEINFO_VIDEO_HDMI0 },
-    { Exchange::IDeviceVideoCapabilities::VideoOutput::VIDEO_HDMI1, DEVICEINFO_VIDEO_HDMI1 },
-    { Exchange::IDeviceVideoCapabilities::VideoOutput::VIDEO_RF_MODULATOR, DEVICEINFO_VIDEO_RF_MODULATOR },
-    { Exchange::IDeviceVideoCapabilities::VideoOutput::VIDEO_SCART_RGB, DEVICEINFO_VIDEO_SCART_RGB },
-    { Exchange::IDeviceVideoCapabilities::VideoOutput::VIDEO_SVIDEO, DEVICEINFO_VIDEO_SVIDEO }
+    { Exchange::IDeviceVideoCapabilities::VideoOutput::OTHER, DEVICEINFO_VIDEO_OTHER },
+    { Exchange::IDeviceVideoCapabilities::VideoOutput::COMPONENT, DEVICEINFO_VIDEO_COMPONENT },
+    { Exchange::IDeviceVideoCapabilities::VideoOutput::COMPOSITE, DEVICEINFO_VIDEO_COMPOSITE },
+    { Exchange::IDeviceVideoCapabilities::VideoOutput::DISPLAY_PORT, DEVICEINFO_VIDEO_DISPLAYPORT },
+    { Exchange::IDeviceVideoCapabilities::VideoOutput::HDMI_0, DEVICEINFO_VIDEO_HDMI0 },
+    { Exchange::IDeviceVideoCapabilities::VideoOutput::HDMI_1, DEVICEINFO_VIDEO_HDMI1 },
+    { Exchange::IDeviceVideoCapabilities::VideoOutput::RF_MODULATOR, DEVICEINFO_VIDEO_RF_MODULATOR },
+    { Exchange::IDeviceVideoCapabilities::VideoOutput::SCART_RGB, DEVICEINFO_VIDEO_SCART_RGB },
+    { Exchange::IDeviceVideoCapabilities::VideoOutput::S_VIDEO, DEVICEINFO_VIDEO_SVIDEO }
 };
 
 deviceinfo_video_output_type Convert(const Exchange::IDeviceVideoCapabilities::VideoOutput from)
@@ -121,20 +119,20 @@ Exchange::IDeviceVideoCapabilities::VideoOutput Convert(const deviceinfo_video_o
     while ((index < (sizeof(videoOutLUT) / sizeof(VideoOutLUT))) && (videoOutLUT[index].rhs != from))
         index++;
 
-    return (index < (sizeof(videoOutLUT) / sizeof(VideoOutLUT)) ? videoOutLUT[index].lhs : Exchange::IDeviceVideoCapabilities::VideoOutput::VIDEO_OTHER);
+    return (index < (sizeof(videoOutLUT) / sizeof(VideoOutLUT)) ? videoOutLUT[index].lhs : Exchange::IDeviceVideoCapabilities::VideoOutput::OTHER);
 }
 
 static struct AudioOutLUT {
     Exchange::IDeviceAudioCapabilities::AudioOutput lhs;
     deviceinfo_audio_output_type rhs;
 } audioOutLUT[] = {
-    { Exchange::IDeviceAudioCapabilities::AudioOutput::AUDIO_OTHER, DEVICEINFO_AUDIO_OTHER },
-    { Exchange::IDeviceAudioCapabilities::AudioOutput::AUDIO_ANALOG, DEVICEINFO_AUDIO_ANALOG },
-    { Exchange::IDeviceAudioCapabilities::AudioOutput::AUDIO_DISPLAYPORT, DEVICEINFO_AUDIO_DISPLAYPORT },
-    { Exchange::IDeviceAudioCapabilities::AudioOutput::AUDIO_HDMI0, DEVICEINFO_AUDIO_HDMI0 },
-    { Exchange::IDeviceAudioCapabilities::AudioOutput::AUDIO_HDMI1, DEVICEINFO_AUDIO_HDMI1 },
-    { Exchange::IDeviceAudioCapabilities::AudioOutput::AUDIO_RF_MODULATOR, DEVICEINFO_AUDIO_RF_MODULATOR },
-    { Exchange::IDeviceAudioCapabilities::AudioOutput::AUDIO_SPDIF, DEVICEINFO_AUDIO_SPDIF },
+    { Exchange::IDeviceAudioCapabilities::AudioOutput::OTHER, DEVICEINFO_AUDIO_OTHER },
+    { Exchange::IDeviceAudioCapabilities::AudioOutput::ANALOG, DEVICEINFO_AUDIO_ANALOG },
+    { Exchange::IDeviceAudioCapabilities::AudioOutput::DISPLAY_PORT, DEVICEINFO_AUDIO_DISPLAYPORT },
+    { Exchange::IDeviceAudioCapabilities::AudioOutput::HDMI_0, DEVICEINFO_AUDIO_HDMI0 },
+    { Exchange::IDeviceAudioCapabilities::AudioOutput::HDMI_1, DEVICEINFO_AUDIO_HDMI1 },
+    { Exchange::IDeviceAudioCapabilities::AudioOutput::RF_MODULATOR, DEVICEINFO_AUDIO_RF_MODULATOR },
+    { Exchange::IDeviceAudioCapabilities::AudioOutput::SPDIF, DEVICEINFO_AUDIO_SPDIF },
 };
 
 deviceinfo_audio_output_type Convert(const Exchange::IDeviceAudioCapabilities::AudioOutput from)
@@ -152,7 +150,7 @@ Exchange::IDeviceAudioCapabilities::AudioOutput Convert(const deviceinfo_audio_o
     while ((index < (sizeof(audioOutLUT) / sizeof(AudioOutLUT))) && (audioOutLUT[index].rhs != from))
         index++;
 
-    return (index < (sizeof(audioOutLUT) / sizeof(AudioOutLUT)) ? audioOutLUT[index].lhs : Exchange::IDeviceAudioCapabilities::AudioOutput::AUDIO_OTHER);
+    return (index < (sizeof(audioOutLUT) / sizeof(AudioOutLUT)) ? audioOutLUT[index].lhs : Exchange::IDeviceAudioCapabilities::AudioOutput::OTHER);
 }
 
 deviceinfo_audio_capability_type Convert(const Exchange::IDeviceAudioCapabilities::AudioCapability from)
@@ -161,13 +159,12 @@ deviceinfo_audio_capability_type Convert(const Exchange::IDeviceAudioCapabilitie
         Exchange::IDeviceAudioCapabilities::AudioCapability lhs;
         deviceinfo_audio_capability_type rhs;
     } lut[] = {
-        { Exchange::IDeviceAudioCapabilities::AudioCapability::AUDIOCAPABILITY_NONE, DEVICEINFO_AUDIO_CAPABILITY_NONE },
         { Exchange::IDeviceAudioCapabilities::AudioCapability::ATMOS, DEVICEINFO_AUDIO_CAPABILITY_ATMOS},
         { Exchange::IDeviceAudioCapabilities::AudioCapability::DD, DEVICEINFO_AUDIO_CAPABILITY_DD},
-        { Exchange::IDeviceAudioCapabilities::AudioCapability::DDPLUS, DEVICEINFO_AUDIO_CAPABILITY_DDPLUS},
+        { Exchange::IDeviceAudioCapabilities::AudioCapability::DD_PLUS, DEVICEINFO_AUDIO_CAPABILITY_DDPLUS},
         { Exchange::IDeviceAudioCapabilities::AudioCapability::DAD, DEVICEINFO_AUDIO_CAPABILITY_DAD},
-        { Exchange::IDeviceAudioCapabilities::AudioCapability::DAPV2, DEVICEINFO_AUDIO_CAPABILITY_DAPV2},
-        { Exchange::IDeviceAudioCapabilities::AudioCapability::MS12, DEVICEINFO_AUDIO_CAPABILITY_MS12}
+        { Exchange::IDeviceAudioCapabilities::AudioCapability::DAP_V2, DEVICEINFO_AUDIO_CAPABILITY_DAPV2},
+        { Exchange::IDeviceAudioCapabilities::AudioCapability::MS_12, DEVICEINFO_AUDIO_CAPABILITY_MS12}
     };
     uint8_t index = 0;
     while ((index < (sizeof(lut) / sizeof(LUT))) && (lut[index].lhs != from))
@@ -182,10 +179,9 @@ deviceinfo_audio_ms12_capability_type Convert(const Exchange::IDeviceAudioCapabi
         Exchange::IDeviceAudioCapabilities::MS12Capability lhs;
         deviceinfo_audio_ms12_capability_type rhs;
     } lut[] = {
-        { Exchange::IDeviceAudioCapabilities::MS12Capability::MS12CAPABILITY_NONE, DEVICEINFO_AUDIO_MS12_CAPABILITY_NONE },
-        { Exchange::IDeviceAudioCapabilities::MS12Capability::DOLBYVOLUME, DEVICEINFO_AUDIO_MS12_CAPABILITY_DOLBYVOLUME},
-        { Exchange::IDeviceAudioCapabilities::MS12Capability::INTELIGENTEQUALIZER, DEVICEINFO_AUDIO_MS12_CAPABILITY_INTELIGENTEQUALIZER},
-        { Exchange::IDeviceAudioCapabilities::MS12Capability::DIALOGUEENHANCER, DEVICEINFO_AUDIO_MS12_CAPABILITY_DIALOGUEENHANCER},
+        { Exchange::IDeviceAudioCapabilities::MS12Capability::DOLBY_VOLUME, DEVICEINFO_AUDIO_MS12_CAPABILITY_DOLBYVOLUME},
+        { Exchange::IDeviceAudioCapabilities::MS12Capability::INTELIGENT_EQUALIZER, DEVICEINFO_AUDIO_MS12_CAPABILITY_INTELIGENTEQUALIZER},
+        { Exchange::IDeviceAudioCapabilities::MS12Capability::DIALOGUE_ENHANCER, DEVICEINFO_AUDIO_MS12_CAPABILITY_DIALOGUEENHANCER},
     };
     uint8_t index = 0;
     while ((index < (sizeof(lut) / sizeof(LUT))) && (lut[index].lhs != from))
@@ -200,7 +196,6 @@ deviceinfo_audio_ms12_profile_type Convert(const Exchange::IDeviceAudioCapabilit
         Exchange::IDeviceAudioCapabilities::MS12Profile lhs;
         deviceinfo_audio_ms12_profile_type rhs;
     } lut[] = {
-        { Exchange::IDeviceAudioCapabilities::MS12Profile::MS12PROFILE_NONE, DEVICEINFO_AUDIO_MS12_PROFILE_NONE},
         { Exchange::IDeviceAudioCapabilities::MS12Profile::MUSIC, DEVICEINFO_AUDIO_MS12_PROFILE_MUSIC},
         { Exchange::IDeviceAudioCapabilities::MS12Profile::MOVIE, DEVICEINFO_AUDIO_MS12_PROFILE_MOVIE},
         { Exchange::IDeviceAudioCapabilities::MS12Profile::VOICE, DEVICEINFO_AUDIO_MS12_PROFILE_VOICE}
@@ -210,6 +205,39 @@ deviceinfo_audio_ms12_profile_type Convert(const Exchange::IDeviceAudioCapabilit
         index++;
 
     return (index < (sizeof(lut) / sizeof(LUT)) ? lut[index].rhs : DEVICEINFO_AUDIO_MS12_PROFILE_NONE);
+}
+
+static struct DeviceTypeLUT {
+    Exchange::IDeviceInfo::Type lhs;
+    const TCHAR* rhs;
+} deviceTypeLUT[] = {
+    { Exchange::IDeviceInfo::Type::TV, _T("TV") },
+    { Exchange::IDeviceInfo::Type::IP_STB, _T("IP_STB") },
+    { Exchange::IDeviceInfo::Type::QAM_IP_STB, _T("QAM_IP_STB") },
+    { Exchange::IDeviceInfo::Type::HYBRID, _T("HYBRID") },
+    { Exchange::IDeviceInfo::Type::MEDIA_CLIENT, _T("MEDIA_CLIENT") },
+};
+
+Exchange::IDeviceInfo::Type Convert(const TCHAR* from)
+{
+    uint8_t index = 0;
+
+    while ((index < (sizeof(deviceTypeLUT) / sizeof(DeviceTypeLUT))) && (_tcscmp(deviceTypeLUT[index].rhs, from) != 0)) {
+        index++;
+    }
+
+    return (index < (sizeof(deviceTypeLUT) / sizeof(DeviceTypeLUT)) ? deviceTypeLUT[index].lhs : Exchange::IDeviceInfo::Type::TV);
+}
+
+const TCHAR* Convert(const Exchange::IDeviceInfo::Type& from)
+{
+    uint8_t index = 0;
+
+    while ((index < (sizeof(deviceTypeLUT) / sizeof(DeviceTypeLUT))) && (deviceTypeLUT[index].lhs != from)) {
+        index++;
+    }
+
+    return (index < (sizeof(deviceTypeLUT) / sizeof(DeviceTypeLUT)) ? deviceTypeLUT[index].rhs : _T("TV"));
 }
 
 static string Callsign()
@@ -463,7 +491,7 @@ private:
         }
         else {
             if (_deviceInfoInterface != nullptr) {
-                result = DeviceInfoStatus(_deviceInfoInterface->Sku(sku));
+                result = DeviceInfoStatus(_deviceInfoInterface->ModelID(sku));
                 if (result == deviceinfo_status::DEVICEINFO_OK) {
                     _sku = sku;
                 }
@@ -533,9 +561,10 @@ private:
         }
         else {
             if (_deviceInfoInterface != nullptr) {
-                result = DeviceInfoStatus(_deviceInfoInterface->DeviceType(deviceType));
+                Exchange::IDeviceInfo::Type type = Convert(deviceType.c_str());
+                result = DeviceInfoStatus(_deviceInfoInterface->DeviceType(type));
                 if (result == deviceinfo_status::DEVICEINFO_OK) {
-                    _deviceType = deviceType;
+                    _deviceType = Convert(type);
                 }
             }
         }
@@ -638,7 +667,7 @@ private:
         }
         else {
             if (_deviceInfoInterface != nullptr) {
-                result = DeviceInfoStatus(_deviceInfoInterface->DistributorId(integratorName));
+                result = DeviceInfoStatus(_deviceInfoInterface->DistributorID(integratorName));
                 if (result == deviceinfo_status::DEVICEINFO_OK) {
                     _systemIntegraterName = integratorName;
                 }
