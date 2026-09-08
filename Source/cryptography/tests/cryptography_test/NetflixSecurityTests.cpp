@@ -41,10 +41,13 @@ static WPEFramework::Exchange::INetflixSecurity* nfSecurity = nullptr;
 TEST(NetflixSecurity, Security)
 {
     std::string esn;
-    EXPECT_NE(nfSecurity->EncryptionKey(), 0);
-    EXPECT_NE(nfSecurity->HMACKey(), 0);
-    EXPECT_NE(nfSecurity->WrappingKey(), 0);
-    esn = nfSecurity->ESN();
+    uint32_t encryptionKeyId = 0;
+    uint32_t hmacKeyId = 0;
+    uint32_t wrappingKeyId = 0;
+    EXPECT_EQ(nfSecurity->GetEncryptionKey(encryptionKeyId), WPEFramework::Core::ERROR_NONE);
+    EXPECT_EQ(nfSecurity->GetHMACKey(hmacKeyId), WPEFramework::Core::ERROR_NONE);
+    EXPECT_EQ(nfSecurity->GetWrappingKey(wrappingKeyId), WPEFramework::Core::ERROR_NONE);
+    EXPECT_EQ(nfSecurity->GetESN(esn), WPEFramework::Core::ERROR_NONE);
     EXPECT_NE(esn.length(), 0);
     printf("ESN: %s\n", esn.c_str());
 }

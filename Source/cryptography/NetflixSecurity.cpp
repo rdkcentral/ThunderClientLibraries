@@ -35,7 +35,7 @@ namespace Implementation {
         ~NetflixSecurity() = default;
 
     public:
-        Core::hresult ESN(std::string& esn) const override
+        Core::hresult GetESN(std::string& esn) const override
         {
             uint8_t length = static_cast<uint8_t>(netflix_security_esn(0, nullptr));
             if (length != 0) {
@@ -51,19 +51,19 @@ namespace Implementation {
             return (Core::ERROR_UNAVAILABLE);
         }
 
-        Core::hresult EncryptionKey(uint32_t& encryptionKeyId) const override
+        Core::hresult GetEncryptionKey(uint32_t& encryptionKeyId) const override
         {
             encryptionKeyId = netflix_security_encryption_key();
             return (encryptionKeyId != 0 ? Core::ERROR_NONE : Core::ERROR_UNAVAILABLE);
         }
 
-        Core::hresult HMACKey(uint32_t& hmacKeyId) const override
+        Core::hresult GetHMACKey(uint32_t& hmacKeyId) const override
         {
             hmacKeyId = netflix_security_hmac_key();
             return (hmacKeyId != 0 ? Core::ERROR_NONE : Core::ERROR_UNAVAILABLE);
         }
 
-        Core::hresult WrappingKey(uint32_t& wrappingKeyId) const override
+        Core::hresult GetWrappingKey(uint32_t& wrappingKeyId) const override
         {
             wrappingKeyId = netflix_security_wrapping_key();
             return (wrappingKeyId != 0 ? Core::ERROR_NONE : Core::ERROR_UNAVAILABLE);
