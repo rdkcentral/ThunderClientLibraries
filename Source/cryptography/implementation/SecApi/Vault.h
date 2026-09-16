@@ -33,7 +33,7 @@
 #include "persistent_implementation.h"
 
 #define globalDir "/opt/drm/"
-#define appDir "/opt/drm/vault/"  //TODO:To get this path from client
+#define appDir "/home/private/persist/"  //TODO:To get this path from client
 
 #define DH_PUBLIC_KEY_MAX    (129)
 #define KEYLEN_AES_HMAC_128  (16)
