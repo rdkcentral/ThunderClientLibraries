@@ -54,7 +54,7 @@ namespace Implementation {
 
     public:
 
-        uint32_t Operation(bool encrypt, const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
+        int32_t Operation(bool encrypt, const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
             const uint8_t input[], const uint32_t maxOutputLength, uint8_t output[]) const;
 
         const Sec_CipherAlgorithm AESCipher(const aes_mode mode);

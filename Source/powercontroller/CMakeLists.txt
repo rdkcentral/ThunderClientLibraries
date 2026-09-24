@@ -1,7 +1,7 @@
 # If not stated otherwise in this file or this component's LICENSE file the
 # following copyright and licenses apply:
 #
-# Copyright 2021 Metrological
+# Copyright 2025 RDK Management
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ cmake_minimum_required(VERSION 3.3)
 
 find_package(WPEFramework)
 
-project(DeviceInfo)
+project(PowerController)
 
 project_version(4.4.1)
 
@@ -31,11 +31,11 @@ find_package(${NAMESPACE}Core REQUIRED)
 find_package(${NAMESPACE}COM REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 
-set(PUBLIC_HEADERS "deviceinfo.h")
+set(PUBLIC_HEADERS "power_controller.h")
 
 add_library(${TARGET}  SHARED
     Module.cpp
-    DeviceInfo.cpp
+    power_controller.cpp
 )
 
 target_link_libraries(${TARGET}
@@ -66,8 +66,8 @@ install(
         LIBRARY DESTINATION lib COMPONENT libs      # shared lib
         RUNTIME DESTINATION bin COMPONENT libs      # binaries
         FRAMEWORK DESTINATION bin COMPONENT libs    # for mac
-        PUBLIC_HEADER DESTINATION include/${NAMESPACE}/deviceinfo COMPONENT devel   # headers for mac (note the different component -> different package)
-        INCLUDES DESTINATION include/${NAMESPACE}/deviceinfo # headers
+        PUBLIC_HEADER DESTINATION include/${NAMESPACE}/powercontroller COMPONENT devel   # headers for mac (note the different component -> different package)
+        INCLUDES DESTINATION include/${NAMESPACE}/powercontroller # headers
 )
 
 InstallCMakeConfig(
@@ -75,6 +75,4 @@ InstallCMakeConfig(
 
 InstallPackageConfig(
         TARGETS ${TARGET}
-        DESCRIPTION "communications channel abstraction to get the device properties")
-
-add_subdirectory(device_info)
+        DESCRIPTION "communications channel abstraction for powermanager plugin")

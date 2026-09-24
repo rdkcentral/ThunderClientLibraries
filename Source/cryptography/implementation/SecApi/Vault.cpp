@@ -53,9 +53,36 @@ namespace Implementation {
     /*To release sec processor resource explicitly.Before this call make sure to call Release on hmac, cipher or dh objects if used*/
     void Vault::ProcessorRelease()
     {
+       _lock.Lock();
        if (_secProcHandle != NULL) {
             SecProcessor_Release(_secProcHandle);
             _secProcHandle = NULL;
+        }
+       _lock.Unlock();
+    }
+
+     void Vault::ProcessorAcquire()
+     {
+	     _lock.Lock();
+	     if (_secProcHandle == NULL) {
+		     Sec_Result sec_res = SecProcessor_GetInstance_Directories(&_secProcHandle, globalDir, appDir);
+		     if (sec_res != SEC_RESULT_SUCCESS) {
+			     TRACE_L1(_T("SEC : proccesor instance failed retval= %d\n"),sec_res);
+			     _secProcHandle = NULL;
+		     }
+		     _lastHandle = 0x80000000;
+	     }
+	     _lock.Unlock();
+     }
+
+    void Vault::EnsureProcessor() const
+    {
+        if (_secProcHandle == NULL) {
+            Sec_Result sec_res = SecProcessor_GetInstance_Directories(&_secProcHandle, globalDir, appDir);
+            if (sec_res != SEC_RESULT_SUCCESS) {
+                TRACE_L1(_T("SEC : processor instance failed retval= %d\n"), sec_res);
+                _secProcHandle = NULL;
+            }
         }
     }
 
@@ -75,6 +102,7 @@ namespace Implementation {
         uint16_t size = 0;
 
         _lock.Lock();
+        EnsureProcessor();
         auto it = _items.find(id);
         if (it != _items.end()) {
             if ((allowSealed == true) || (*it).second.IsExportable() == true) {
@@ -125,6 +153,7 @@ namespace Implementation {
         uint32_t id = 0;
 
         _lock.Lock();
+        EnsureProcessor();
             if (size > 0) {
                 id = (_lastHandle + 1);
                 if (id != 0) {
@@ -210,6 +239,7 @@ namespace Implementation {
         uint32_t id = 0;
 
         _lock.Lock();
+        EnsureProcessor();
         SEC_OBJECTID idcheck = 0x0;
         struct IdStore ids;
         string kFile(keyFile);
@@ -271,6 +301,7 @@ namespace Implementation {
         bool ret =false;
 
         _lock.Lock();
+        EnsureProcessor();
         SEC_OBJECTID idcheck = 0x0;
         string kFile(keyFile);
         string fileName = kFile.substr(0,SEC_ID_SIZE);
@@ -314,6 +345,7 @@ namespace Implementation {
         uint32_t id = 0;
 
         _lock.Lock();
+        EnsureProcessor();
         struct IdStore ids;
         Sec_KeyType key = SEC_KEYTYPE_AES_128; //DEFAULT
 
@@ -394,6 +426,7 @@ namespace Implementation {
         uint16_t outSize = 0;
         if (size > 0) {
             _lock.Lock();
+            EnsureProcessor();
             auto it = _items.find(id);
             if (it != _items.end()) {
                 if (((allowSealed == true) || (*it).second.IsExportable() == true) && ((*it).second.KeyLength() != 0)) {
@@ -451,6 +484,7 @@ namespace Implementation {
 
         if (size > 0) {
             _lock.Lock();
+            EnsureProcessor();
             id = (_lastHandle + 1);
             if (id != 0) {
                 SEC_BYTE store[SEC_KEYCONTAINER_MAX_LEN];
@@ -492,6 +526,7 @@ namespace Implementation {
 
         if (size > 0) {
             _lock.Lock();
+            EnsureProcessor();
             auto it = _items.find(id);
             if (it != _items.end()) {
                 SEC_BYTE* buff = const_cast<SEC_BYTE*>((*it).second.Buffer());
@@ -533,6 +568,7 @@ namespace Implementation {
         bool result = false;
 
         _lock.Lock();
+        EnsureProcessor();
         auto it = _items.find(id);
         if (it != _items.end()) {
             IdStore* ids = const_cast<IdStore*>((*it).second.getIdStore());
@@ -567,12 +603,16 @@ extern "C" {
             Implementation::vaultId = CRYPTOGRAPHY_VAULT_NETFLIX;
             break;
         case CRYPTOGRAPHY_VAULT_DEFAULT:
+        case CRYPTOGRAPHY_VAULT_PLATFORM:
            {
                 static Implementation::Vault instance;
                 vault = &(instance);
 
             if (vault != nullptr)
+            {
                 TRACE_L2(_T("SEC :VAULT DEFAULT CASE \n"));
+		vault->ProcessorAcquire();
+	    }
             Implementation::vaultId = CRYPTOGRAPHY_VAULT_DEFAULT; //DEFAULT
             break;
             }
@@ -727,6 +767,14 @@ extern "C" {
             return (WPEFramework::Core::ERROR_NONE);
         }
 
+    }
+
+    void vault_processor_release(void)
+    {
+        VaultImplementation* impl = vault_instance(CRYPTOGRAPHY_VAULT_DEFAULT);
+        if (impl != nullptr) {
+            reinterpret_cast<Implementation::Vault*>(impl)->ProcessorRelease();
+        }
     }
 
     uint32_t persistent_flush(struct VaultImplementation* vault)
