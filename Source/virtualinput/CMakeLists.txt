@@ -21,7 +21,7 @@ find_package(WPEFramework)
 
 project(VirtualInput)
 
-project_version(1.0.0)
+project_version(4.4.1)
 
 set(TARGET ${NAMESPACE}${PROJECT_NAME})
 

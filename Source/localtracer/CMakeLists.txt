@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.7)
 
 find_package(WPEFramework)
 
-project_version(1.0.0)
+project_version(4.4.1)
 
 set(MODULE_NAME ${NAMESPACE}LocalTracer)
 

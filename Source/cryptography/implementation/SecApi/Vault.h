@@ -119,10 +119,12 @@ namespace Implementation {
         uint32_t CreateNamedKey(const char keyFile[],bool exportable ,const key_type keyType);
         bool CheckNamedKey(const char keyFile[]);
         void ProcessorRelease();
+	void ProcessorAcquire();
 
     private:
+        void EnsureProcessor() const;
         mutable WPEFramework::Core::CriticalSection _lock;
-        Sec_ProcessorHandle* _secProcHandle;
+        mutable Sec_ProcessorHandle* _secProcHandle;
         std::map<uint32_t, MapStore> _items;
         uint32_t _lastHandle;
     };

@@ -533,4 +533,12 @@ uint32_t persistent_flush(struct VaultImplementation* /* vault */)
     return (WPEFramework::Core::ERROR_UNAVAILABLE);
 }
 
+void vault_processor_release(void)
+{
+    // OpenSSL vault holds no SecAPI SecProcessor handle across deep sleep;
+    // nothing to release. Provide the symbol so the shared
+    // CryptographyExtAccess plugin links on OpenSSL-vault platforms.
+    // See SecApi/Vault.cpp for the handle-releasing implementation.
+}
+
 } // extern "C"

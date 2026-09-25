@@ -62,7 +62,7 @@ namespace Implementation {
      * @return Length of the bytesWritten as encrypted blob
      *
      *********************************************************************/
-    uint32_t CipherNetflix::Encrypt(const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
+    int32_t CipherNetflix::Encrypt(const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
         const uint8_t input[], const uint32_t maxOutputLength, uint8_t output[]) const
     {
         return (Operation(true, ivLength, iv, inputLength, input, maxOutputLength, output));
@@ -83,7 +83,7 @@ namespace Implementation {
      * @return Length of the bytesWritten as decrypted blob/data
      *
      *********************************************************************/
-    uint32_t CipherNetflix::Decrypt(const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
+    int32_t CipherNetflix::Decrypt(const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
         const uint8_t input[], const uint32_t maxOutputLength, uint8_t output[]) const
     {
         return (Operation(false, ivLength, iv, inputLength, input, maxOutputLength, output));
@@ -105,7 +105,7 @@ namespace Implementation {
      * @return Length of the bytesWritten as encrypted/decrypted blob/data
      *
      *********************************************************************/
-    uint32_t CipherNetflix::Operation(bool encrypt, const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
+    int32_t CipherNetflix::Operation(bool encrypt, const uint8_t ivLength, const uint8_t iv[], const uint32_t inputLength,
         const uint8_t input[], const uint32_t maxOutputLength, uint8_t output[]) const
     {
 
@@ -116,8 +116,8 @@ namespace Implementation {
         std::string outputbuf;
 
         if (inputLength % AES_128_BLOCK_SIZE != 0) {
-            outputbuf.resize(inputLength + (AES_128_BLOCK_SIZE - (inputLength % AES_128_BLOCK_SIZE)));
-            TRACE_L2(_T("SecNetflix_Aescbc adding pad to output buffer %d\n", outputbuf.size()));
+            outputbuf.resize(inputLength + 2 * AES_128_BLOCK_SIZE - (inputLength % AES_128_BLOCK_SIZE));
+            TRACE_L2(_T("SecNetflix_Aescbc adding pad to output buffer %d\n"), outputbuf.size());
         }
         else {
             outputbuf.resize(inputLength + AES_128_BLOCK_SIZE);
@@ -131,14 +131,14 @@ namespace Implementation {
                 input, inputLength, out_buf, outputbuf.size(), &bytesWritten);
 
             if (result != SEC_RESULT_SUCCESS) {
-                TRACE_L1(_T("SecNetflix_Aescbc FAILED : retVal = %d\n", result));
+                TRACE_L1(_T("SecNetflix_Aescbc FAILED : retVal = %d\n"), result);
             }
         }
         else {
-            TRACE_L1(_T("FindKey did not find key handle = %d\n", keyHandle));
+            TRACE_L1(_T("FindKey did not find key handle = %d\n"), keyHandle);
         }
 
-        TRACE_L2(_T("Encrypted message: encdatalen=%u\n", bytesWritten));
+        TRACE_L2(_T("Encrypted message: encdatalen=%u\n"), bytesWritten);
         memcpy(output, out_buf, bytesWritten);
         retVal = bytesWritten;
 

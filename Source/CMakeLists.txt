@@ -58,3 +58,7 @@ endif()
 if(LOCALTRACER)
     add_subdirectory(localtracer)
 endif()
+
+if(POWERCONTROLLER)
+    add_subdirectory(powercontroller)
+endif()
