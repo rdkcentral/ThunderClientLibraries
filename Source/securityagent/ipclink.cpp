@@ -19,6 +19,7 @@
 
 #include "IPCSecurityToken.h"
 #include "securityagent.h"
+#include "TokenResponse.h"
 
 using namespace Thunder;
 
@@ -66,17 +67,12 @@ int GetToken(unsigned short maxLength, unsigned short inLength, unsigned char bu
             uint32_t error = securityAgentInterface->CreateToken(inLength, buffer, token);
 
             if (error == Core::ERROR_NONE) {
-                result = static_cast<uint32_t>(token.length());
-
-                if (result <= maxLength) {
-                    std::copy(std::begin(token), std::end(token), buffer);
-                } else {
-                    TRACE_L1(_T("Received token is too long [%d]."), result);
-                    result = -result;
+                result = SecurityAgent::CopyToken(token, maxLength, buffer);
+                if (result < 0) {
+                    TRACE_L1(_T("Received token does not fit the output buffer."));
                 }
             } else {
-                result = error;
-                result = -result;
+                result = SecurityAgent::MapError(error);
             }
 
             securityAgentInterface->Release();

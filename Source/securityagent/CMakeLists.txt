@@ -81,3 +81,12 @@ InstallCMakeConfig(
 InstallPackageConfig(
         TARGETS ${TARGET} 
         DESCRIPTION "communications channel abstraction to get a SecurityToken over a process boundary." )
+
+option(BUILD_SECURITYAGENT_TESTS "Build SecurityAgent tests" OFF)
+if(BUILD_SECURITYAGENT_TESTS)
+    enable_testing()
+    add_executable(securityagent_token_response_test test_token_response.cpp)
+    target_include_directories(securityagent_token_response_test PRIVATE ${CMAKE_CURRENT_LIST_DIR})
+    set_target_properties(securityagent_token_response_test PROPERTIES CXX_STANDARD ${CXX_STD} CXX_STANDARD_REQUIRED YES)
+    add_test(NAME securityagent_token_response_test COMMAND securityagent_token_response_test)
+endif()
