@@ -38,5 +38,13 @@ int main()
         return 6;
     }
 
+    if (!Thunder::OCDM::ParseSubSamples(nullptr, 0, 0, 0, entries, encryptedLength) || !entries.empty() || encryptedLength != 0) {
+        return 7;
+    }
+
+    if (Thunder::OCDM::ParseSubSamples(nullptr, 6, 1, 1, entries, encryptedLength)) {
+        return 8;
+    }
+
     return 0;
 }
