@@ -17,6 +17,7 @@
  */
 
 #include "../../Module.h"
+#include "OutputBounds.h"
 #include <cipher_implementation.h>
 #include <core/core.h>
 #include <cryptalgo/cryptalgo.h>
@@ -139,8 +140,13 @@ namespace Implementation {
         }
 
         TRACE_L2(_T("Encrypted message: encdatalen=%u\n", bytesWritten));
-        memcpy(output, out_buf, bytesWritten);
-        retVal = bytesWritten;
+        if (Implementation::CanCopyOutput(bytesWritten, maxOutputLength, output)) {
+            memcpy(output, out_buf, bytesWritten);
+            retVal = bytesWritten;
+        }
+        else {
+            retVal = 0;
+        }
 
         return retVal;
     }
