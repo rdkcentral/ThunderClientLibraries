@@ -7,6 +7,10 @@
 int main()
 {
     std::array<unsigned char, 8> output {};
+    if (!Thunder::SecurityAgent::ValidRequest(output.size(), 4, output.data()) || Thunder::SecurityAgent::ValidRequest(output.size(), 9, output.data()) || Thunder::SecurityAgent::ValidRequest(0, 0, nullptr)) {
+        return 1;
+    }
+
     if (Thunder::SecurityAgent::CopyToken("token", output.size(), output.data()) != 5 || output[5] != '\0') {
         return 1;
     }

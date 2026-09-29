@@ -8,6 +8,11 @@
 namespace Thunder {
 namespace SecurityAgent {
 
+inline bool ValidRequest(const uint16_t capacity, const uint16_t inputLength, const unsigned char buffer[])
+{
+    return (buffer != nullptr) && (capacity > 0) && (inputLength <= capacity);
+}
+
 inline int CopyToken(const std::string& token, const uint16_t capacity, unsigned char buffer[])
 {
     if ((buffer == nullptr) || (token.size() >= capacity)) {

@@ -54,6 +54,10 @@ extern "C" {
  */
 int GetToken(unsigned short maxLength, unsigned short inLength, unsigned char buffer[])
 {
+    if (SecurityAgent::ValidRequest(maxLength, inLength, buffer) == false) {
+        return -1;
+    }
+
     auto engine = Core::ProxyType<RPC::InvokeServerType<1, 0, 4>>::Create();
     auto client = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(GetEndPoint().c_str()), Core::ProxyType<Core::IIPCServer>(engine));
 
