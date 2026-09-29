@@ -73,6 +73,9 @@ OpenCDMError opencdm_gstreamer_session_decrypt(struct OpenCDMSession* session, G
                                                 GstBuffer* IV, GstBuffer* keyID, uint32_t initWithLast15)
 {
     OpenCDMError result (ERROR_INVALID_SESSION);
+    if (((subSampleCount == 0) != (subSample == nullptr)) || (subSampleCount > UINT8_MAX)) {
+        return (ERROR_INVALID_DECRYPT_BUFFER);
+    }
     if (session != nullptr) {
         GstMapInfo dataMap;
         if (gst_buffer_map(buffer, &dataMap, (GstMapFlags) GST_MAP_READWRITE) == false) {
@@ -313,7 +316,7 @@ OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* ses
             uint8_t *mappedKeyID = nullptr;
             uint32_t mappedKeyIDSize = 0;
             GstMapInfo keyIDMap;
-            if (keyID != nullptr && gst_buffer_map(keyID, &keyIDMap, (GstMapFlags) GST_MAP_READ) == false) {
+            if ((keyID == nullptr) || (gst_buffer_map(keyID, &keyIDMap, (GstMapFlags) GST_MAP_READ) == false)) {
                 TRACE_L1("Invalid keyID buffer.");
                 gst_buffer_unmap(buffer, &dataMap);
                 gst_buffer_unmap(subSample, &sampleMap);
