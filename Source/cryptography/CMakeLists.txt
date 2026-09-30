@@ -37,6 +37,9 @@ if(NOT APPLE)
 endif()
 
 option(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY "Include explicitly a software based cryptography library" OFF)
+if(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY)
+    message(FATAL_ERROR "The software cryptography backend is disabled until sealed blobs provide authenticated encryption and device-unique keys")
+endif()
 
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(${NAMESPACE}Core REQUIRED)
