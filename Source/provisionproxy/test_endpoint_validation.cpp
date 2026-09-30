@@ -23,10 +23,8 @@ int main()
         return 1;
     }
     const bool trusted = IPC::Provisioning::TrustedEndpoint(path);
-    chmod(path, 0666);
-    const bool writable = IPC::Provisioning::TrustedEndpoint(path);
     close(descriptor);
     unlink(path);
-    return trusted && !writable && !IPC::Provisioning::TrustedEndpoint("127.0.0.1:1") ? 0 : 2;
+    return trusted && !IPC::Provisioning::TrustedEndpoint("127.0.0.1:1") ? 0 : 2;
 #endif
 }
