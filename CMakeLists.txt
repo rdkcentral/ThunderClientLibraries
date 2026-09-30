@@ -46,6 +46,10 @@ option(CDMI
 option(CRYPTOGRAPHY
         "Include the cryptography library." OFF)
 
+if(PLAYERINFO OR DEVICEINFO)
+    message(FATAL_ERROR "PLAYERINFO and DEVICEINFO are disabled until blocking COM-RPC calls are removed from global critical sections")
+endif()
+
 option(INSTALL_TESTS "Install the test applications" OFF)
 
 if (BUILD_REFERENCE)
