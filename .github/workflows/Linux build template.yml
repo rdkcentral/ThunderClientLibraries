@@ -68,8 +68,6 @@ jobs:
         -DCMAKE_C_FLAGS="-m${{matrix.architecture}}" \
         -DCMAKE_INSTALL_PREFIX="${{matrix.build_type}}/install/usr" \
         -DCMAKE_MODULE_PATH="${PWD}/${{matrix.build_type}}/install/usr/include/WPEFramework/Modules" \
-        -DBLUETOOTHAUDIOSINK=ON \
-        -DBLUETOOTHAUDIOSOURCE=ON \
         -DCDMI=ON \
         -DCOMPOSITORCLIENT=ON \
         -DPLUGIN_COMPOSITOR_IMPLEMENTATION=Mesa \
