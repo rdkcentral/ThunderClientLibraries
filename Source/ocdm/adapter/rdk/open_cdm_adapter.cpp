@@ -277,7 +277,9 @@ OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* ses
             if (!value) {
                 TRACE_L1("opencdm_gstreamer_session_decrypt_buffer: Missing IV buffer.");
                 gst_buffer_unmap(buffer, &dataMap);
-                gst_buffer_unmap(subSample, &sampleMap);
+                if (subSample != nullptr) {
+                    gst_buffer_unmap(subSample, &sampleMap);
+                }
                 result = ERROR_INVALID_DECRYPT_BUFFER;
                 goto exit;
             }
@@ -286,7 +288,9 @@ OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* ses
             if ((IV == nullptr) || (gst_buffer_map(IV, &ivMap, (GstMapFlags) GST_MAP_READ) == false)) {
                 TRACE_L1("opencdm_gstreamer_session_decrypt_buffer: Invalid IV buffer.");
                 gst_buffer_unmap(buffer, &dataMap);
-                gst_buffer_unmap(subSample, &sampleMap);
+                if (subSample != nullptr) {
+                    gst_buffer_unmap(subSample, &sampleMap);
+                }
                 result = ERROR_INVALID_DECRYPT_BUFFER;
                 goto exit;
             }
@@ -306,7 +310,9 @@ OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* ses
             if (!value) {
                 TRACE_L1("opencdm_gstreamer_session_decrypt_buffer: Missing KeyId buffer.");
                 gst_buffer_unmap(buffer, &dataMap);
-                gst_buffer_unmap(subSample, &sampleMap);
+                if (subSample != nullptr) {
+                    gst_buffer_unmap(subSample, &sampleMap);
+                }
                 gst_buffer_unmap(IV, &ivMap);
                 result = ERROR_INVALID_DECRYPT_BUFFER;
                 goto exit;
@@ -319,7 +325,9 @@ OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* ses
             if ((keyID == nullptr) || (gst_buffer_map(keyID, &keyIDMap, (GstMapFlags) GST_MAP_READ) == false)) {
                 TRACE_L1("Invalid keyID buffer.");
                 gst_buffer_unmap(buffer, &dataMap);
-                gst_buffer_unmap(subSample, &sampleMap);
+                if (subSample != nullptr) {
+                    gst_buffer_unmap(subSample, &sampleMap);
+                }
                 gst_buffer_unmap(IV, &ivMap);
                 result = ERROR_INVALID_DECRYPT_BUFFER;
                 goto exit;
@@ -396,7 +404,9 @@ OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* ses
             uint32_t total_encrypted_bytes = mappedDataSize;
             if ((subSampleCount > 0) && (Thunder::OCDM::ParseSubSamples(mappedSubSample, mappedSubSampleSize, subSampleCount, mappedDataSize, subSamples, total_encrypted_bytes) == false)) {
                 gst_buffer_unmap(buffer, &dataMap);
-                gst_buffer_unmap(subSample, &sampleMap);
+                if (subSample != nullptr) {
+                    gst_buffer_unmap(subSample, &sampleMap);
+                }
                 gst_buffer_unmap(IV, &ivMap);
                 gst_buffer_unmap(keyID, &keyIDMap);
                 result = ERROR_INVALID_DECRYPT_BUFFER;

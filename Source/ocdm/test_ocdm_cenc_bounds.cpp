@@ -33,9 +33,14 @@ int main()
         return 5;
     }
 
+    const std::vector<uint8_t> maximumCount(255 * 6);
+    if (!Thunder::OCDM::ParseSubSamples(maximumCount.data(), maximumCount.size(), 255, 0, entries, encryptedLength) || entries.size() != 255) {
+        return 6;
+    }
+
     const std::vector<uint8_t> excessiveCount(256 * 6);
     if (Thunder::OCDM::ParseSubSamples(excessiveCount.data(), excessiveCount.size(), 256, 0, entries, encryptedLength)) {
-        return 6;
+        return 7;
     }
 
     if (!Thunder::OCDM::ParseSubSamples(nullptr, 0, 0, 0, entries, encryptedLength) || !entries.empty() || encryptedLength != 0) {
