@@ -237,7 +237,6 @@ void virtualinput_close(void* handle)
 }
 
 void virtualinput_dispose() {
-    Core::Singleton::Dispose();
 }
 
 #ifdef __cplusplus
