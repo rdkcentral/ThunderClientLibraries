@@ -33,10 +33,6 @@ option(DISPLAYINFO
         "Include the displayinfo COMRPC abstraction library." OFF)
 option(GRAPHICSBUFFER
         "Header only library for creating, using graphics buffers." OFF)
-if(GRAPHICSBUFFER)
-    message(WARNING "GRAPHICSBUFFER is excluded until synchronization state is removed from peer-writable shared memory")
-    set(GRAPHICSBUFFER OFF CACHE BOOL "Header only library for creating, using graphics buffers." FORCE)
-endif()
 option(SECURITYAGENT
         "Include the securityagent library." OFF)
 option(PLAYERINFO
