@@ -34,7 +34,8 @@ option(DISPLAYINFO
 option(GRAPHICSBUFFER
         "Header only library for creating, using graphics buffers." OFF)
 if(GRAPHICSBUFFER)
-    message(FATAL_ERROR "GRAPHICSBUFFER is disabled until synchronization state is removed from peer-writable shared memory")
+    message(WARNING "GRAPHICSBUFFER is excluded until synchronization state is removed from peer-writable shared memory")
+    set(GRAPHICSBUFFER OFF CACHE BOOL "Header only library for creating, using graphics buffers." FORCE)
 endif()
 option(SECURITYAGENT
         "Include the securityagent library." OFF)
