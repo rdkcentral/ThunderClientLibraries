@@ -174,3 +174,12 @@ InstallCMakeConfig(
 InstallPackageConfig(
         TARGETS ${TARGET} 
         DESCRIPTION "OCDM library")
+
+option(BUILD_OCDM_ENDPOINT_TESTS "Build OCDM endpoint tests" OFF)
+if(BUILD_OCDM_ENDPOINT_TESTS)
+    enable_testing()
+    add_executable(ocdm_endpoint_test test_endpoint_validation.cpp)
+    target_include_directories(ocdm_endpoint_test PRIVATE ${CMAKE_CURRENT_LIST_DIR})
+    set_target_properties(ocdm_endpoint_test PROPERTIES CXX_STANDARD ${CXX_STD} CXX_STANDARD_REQUIRED YES)
+    add_test(NAME ocdm_endpoint_test COMMAND ocdm_endpoint_test)
+endif()
