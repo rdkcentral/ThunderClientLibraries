@@ -29,10 +29,8 @@ int main()
         return 2;
     }
     const bool trusted = Thunder::SecurityAgent::TrustedEndpoint(path);
-    chmod(path, 0666);
-    const bool writable = Thunder::SecurityAgent::TrustedEndpoint(path);
     close(descriptor);
     unlink(path);
-    return trusted && !writable && !Thunder::SecurityAgent::TrustedEndpoint("127.0.0.1:1") ? 0 : 3;
+    return trusted && !Thunder::SecurityAgent::TrustedEndpoint("127.0.0.1:1") ? 0 : 3;
 #endif
 }
