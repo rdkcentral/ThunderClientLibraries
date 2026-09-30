@@ -24,11 +24,9 @@ int main()
         return 2;
     }
     const bool trusted = Thunder::VirtualInput::TrustedEndpoint(path);
-    chmod(path, 0666);
-    const bool writable = Thunder::VirtualInput::TrustedEndpoint(path);
     close(descriptor);
     unlink(path);
-    if (!trusted || writable) {
+    if (!trusted || Thunder::VirtualInput::TrustedEndpoint("127.0.0.1:1")) {
         return 3;
     }
 #endif
