@@ -47,7 +47,9 @@ option(CRYPTOGRAPHY
         "Include the cryptography library." OFF)
 
 if(PLAYERINFO OR DEVICEINFO)
-    message(FATAL_ERROR "PLAYERINFO and DEVICEINFO are disabled until blocking COM-RPC calls are removed from global critical sections")
+    message(WARNING "PLAYERINFO and DEVICEINFO are excluded until blocking COM-RPC calls are removed from global critical sections")
+    set(PLAYERINFO OFF CACHE BOOL "Include the playerinfo COMRPC abstraction library." FORCE)
+    set(DEVICEINFO OFF CACHE BOOL "Include the deviceinfo COMRPC abstraction library." FORCE)
 endif()
 
 option(INSTALL_TESTS "Install the test applications" OFF)
