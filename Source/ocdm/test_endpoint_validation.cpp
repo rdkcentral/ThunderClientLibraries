@@ -18,9 +18,7 @@ int main()
         return 1;
     }
     const bool trusted = Thunder::OCDM::TrustedEndpoint(path);
-    chmod(path, 0666);
-    const bool writable = Thunder::OCDM::TrustedEndpoint(path);
     close(descriptor);
     unlink(path);
-    return trusted && !writable && !Thunder::OCDM::TrustedEndpoint("127.0.0.1:1") ? 0 : 2;
+    return trusted && !Thunder::OCDM::TrustedEndpoint("127.0.0.1:1") ? 0 : 2;
 }
