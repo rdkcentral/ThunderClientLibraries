@@ -15,14 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if(BLUETOOTHAUDIOSINK)
-    add_subdirectory(bluetoothaudiosink)
-endif()
-
-if(BLUETOOTHAUDIOSOURCE)
-    add_subdirectory(bluetoothaudiosource)
-endif()
-
 if(GRAPHICSBUFFER)
     add_subdirectory(graphicsbuffer)
 endif()
