@@ -21,7 +21,8 @@ message("Setup ${TARGET} v${PROJECT_VERSION}")
 
 set(PLUGIN_COMPOSITOR_IMPLEMENTATION "None" CACHE STRING "Defines which implementation is used")
 if("${PLUGIN_COMPOSITOR_IMPLEMENTATION}" STREQUAL "RPI")
-    message(FATAL_ERROR "The RPI compositor backend is disabled until asynchronous object lifetimes are made ownership-safe")
+    message(WARNING "The RPI compositor backend is excluded until asynchronous object lifetimes are made ownership-safe")
+    set(PLUGIN_COMPOSITOR_IMPLEMENTATION "None" CACHE STRING "Defines which implementation is used" FORCE)
 endif()
 
 find_package(CompileSettingsDebug CONFIG REQUIRED)
