@@ -29,6 +29,7 @@
 #include <provision/DRMInfo.h>
 
 #include "IPCProvision.h"
+#include "ResponseBounds.h"
 MODULE_NAME_ARCHIVE_DECLARATION
 
 using namespace Thunder;
@@ -73,17 +74,9 @@ int GetDeviceId(unsigned short MaxIdLength, char Id[])
             uint32_t error = provisioningInterface->DeviceId(deviceId);
             if (error == Core::ERROR_NONE) {
                 TRACE_L1(_T("Received deviceId '%s'."), deviceId.c_str());
-                result = static_cast<int>(deviceId.size());
-                if (result <= MaxIdLength) {
-                    std::copy(deviceId.begin(), deviceId.end(), Id);
-                } else {
-                    TRACE_L1(_T("Received deviceId is too long [%d]."), result);
-                    result = -result;
-                }
-
+                result = IPC::Provisioning::CopyTextResponse(deviceId, MaxIdLength, Id);
             } else {
-                result = error;
-                result = -result;
+                result = IPC::Provisioning::MapResponseError(error);
             }
 
             provisioningInterface->Release();
@@ -127,7 +120,7 @@ int GetDRMId(const char label[], const unsigned short maxIdLength, char outId[])
 
             uint32_t error = provisioningInterface->DRMId(label, size, buffer);
 
-            if (error == Core::ERROR_NONE) {
+            if ((error == Core::ERROR_NONE) && IPC::Provisioning::ValidBlobLength(size, sizeof(buffer))) {
 
                 // This is a huge encrypted blob, convert it to an uencrypted required info
                 result = ClearBlob(size, reinterpret_cast<const char*>(buffer) , maxIdLength, outId);
