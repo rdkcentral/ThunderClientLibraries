@@ -334,6 +334,7 @@ int main(int argc, char **argv)
 {
     cg = Thunder::Exchange::ICryptography::Instance("");
     int len;
+    bool instance_set = false;
     if (cg != nullptr) {
 
 	for( int i= 1; i < argc; ++i )
@@ -343,16 +344,19 @@ int main(int argc, char **argv)
             {
 		 printf("\nAcquiring Netflix instance\n");
                  vault = cg->Vault(Thunder::Exchange::CryptographyVault::CRYPTOGRAPHY_VAULT_NETFLIX);
+		 instance_set = true;
             }
 	    else if ( (len == 9) && !strncmp( (const char*)argv[i], "--default", len) )
             {
 		 printf("\nAcquiring DEFAULT instance\n");
 	         vault = cg->Vault(Thunder::Exchange::CryptographyVault::CRYPTOGRAPHY_VAULT_DEFAULT);
+		 instance_set = true;
             }
 	    else if ( (len == 10) && !strncmp( (const char*)argv[i], "--platform", len) )
             {
 		 printf("\nAcquiring PLATFORM instance\n");
 		 vault = cg->Vault(Thunder::Exchange::CryptographyVault::CRYPTOGRAPHY_VAULT_PLATFORM);
+		 instance_set = true;
 	    }
 	    else if ( (len == 21) && !strncmp( (const char*)argv[i], "--testdefaultinstance", len) )
             {
@@ -363,9 +367,10 @@ int main(int argc, char **argv)
 		 printf("\nAcquiring PLATFORM instance\n");
 		 vault = cg->Vault(Thunder::Exchange::CryptographyVault::CRYPTOGRAPHY_VAULT_PLATFORM);
 #endif
+		 instance_set = true;
 	     }
         }
-	if (vault == nullptr)
+	if ((vault == nullptr) && (!instance_set))
 	    vault = cg->Vault(Thunder::Exchange::CryptographyVault::CRYPTOGRAPHY_VAULT_NETFLIX);
 
         if (vault != nullptr) {
