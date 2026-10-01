@@ -191,12 +191,6 @@ public:
 
     static void Dispose()
     {
-        ASSERT(_singleton != nullptr);
-
-        if(_singleton != nullptr)
-        {
-            delete _singleton;
-        }
     }
 
 public:
