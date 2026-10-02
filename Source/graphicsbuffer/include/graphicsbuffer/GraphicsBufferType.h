@@ -268,7 +268,11 @@ namespace Graphics {
         public:
             uint8_t Planes() const
             {
-                return (_count);
+                return (std::min(_count, static_cast<uint8_t>(LAYERS)));
+            }
+            bool ValidPlanes() const
+            {
+                return (_count <= LAYERS);
             }
             uint32_t Width() const
             {
@@ -296,12 +300,15 @@ namespace Graphics {
                 ASSERT(index < _count);
                 return (_planes[index]._offset);
             }
-            void Add(const uint32_t stride, const uint32_t offset)
+            bool Add(const uint32_t stride, const uint32_t offset)
             {
-                ASSERT(_count < (sizeof(_planes) / sizeof(PlaneStorage)));
+                if (_count >= LAYERS) {
+                    return false;
+                }
                 _planes[_count]._stride = stride;
                 _planes[_count]._offset = offset;
                 _count++;
+                return true;
             }
             bool Request()
             {
@@ -476,6 +483,7 @@ namespace Graphics {
             , _consumedFd(-1)
             , _storage(nullptr)
         {
+            std::fill(std::begin(_descriptors), std::end(_descriptors), -1);
         }
 
     public:
@@ -496,6 +504,7 @@ namespace Graphics {
             , _consumedFd(-1)
             , _storage(nullptr)
         {
+            std::fill(std::begin(_descriptors), std::end(_descriptors), -1);
             _virtualFd = ::memfd_create(_T("GraphicsBufferType"), MFD_ALLOW_SEALING | MFD_CLOEXEC);
             if (_virtualFd != -1) {
                 int length = sizeof(struct SharedStorageType<PLANES>);
@@ -521,6 +530,7 @@ namespace Graphics {
             , _consumedFd(-1)
             , _storage(nullptr)
         {
+            std::fill(std::begin(_descriptors), std::end(_descriptors), -1);
             Load(descriptors);
         }
         ~SharedBufferType() override
@@ -537,11 +547,14 @@ namespace Graphics {
 
                 ASSERT(_storage != nullptr);
             }
-            // Close all the FileDescriptors handed over to us for the planes.
-            for (uint8_t index = 0; index < _storage->Planes(); index++) {
-                ::close(_descriptors[index]);
-            }
             if (_storage != nullptr) {
+                const uint8_t planes = _storage->Planes();
+                for (uint8_t index = 0; index < planes; index++) {
+                    if (_descriptors[index] >= 0) {
+                        ::close(_descriptors[index]);
+                        _descriptors[index] = -1;
+                    }
+                }
                 delete _storage;
                 _storage = nullptr;
             }
@@ -641,8 +654,13 @@ namespace Graphics {
                 ASSERT(_virtualFd != -1);
 
                 _storage = new (_virtualFd) SharedStorageType<PLANES>();
-                if (_storage == nullptr) {
+                if ((_storage == nullptr) || (_storage->ValidPlanes() == false)) {
+                    if (_storage != nullptr) {
+                        delete _storage;
+                        _storage = nullptr;
+                    }
                     ::close(_virtualFd);
+                    _virtualFd = -1;
                 } else {
                     _producedFd = index->Move();
                     index++;
@@ -665,17 +683,31 @@ namespace Graphics {
         }
         void Add(int fd, const uint32_t stride, const uint32_t offset)
         {
-            uint8_t index = _storage->Planes();
-            ASSERT(fd > 0);
-            ASSERT(index < (sizeof(_descriptors) / sizeof(int)));
-            _descriptors[index] = ::dup(fd);
-            _storage->Add(stride, offset);
+            if ((_storage == nullptr) || (fd < 0)) {
+                return;
+            }
+            const uint8_t index = _storage->Planes();
+            if (index >= PLANES) {
+                return;
+            }
+            const int descriptor = ::dup(fd);
+            if ((descriptor >= 0) && (_storage->Add(stride, offset) == true)) {
+                _descriptors[index] = descriptor;
+            }
+            else if (descriptor >= 0) {
+                ::close(descriptor);
+            }
         }
-        void Planes(Core::PrivilegedRequest::Descriptor descriptors[], const uint8_t size VARIABLE_IS_NOT_USED)
+        void Planes(Core::PrivilegedRequest::Descriptor descriptors[], const uint8_t size)
         {
-            ASSERT(size == _storage->Planes());
-
-            for (uint8_t index = 0; index < _storage->Planes(); index++) {
+            if ((_storage == nullptr) || (descriptors == nullptr)) {
+                return;
+            }
+            const uint8_t planes = _storage->Planes();
+            if ((planes > PLANES) || (size < planes)) {
+                return;
+            }
+            for (uint8_t index = 0; index < planes; index++) {
                 _descriptors[index] = descriptors[index].Move();
             }
         }
