@@ -81,3 +81,12 @@ InstallCMakeConfig(
 InstallPackageConfig(
         TARGETS ${TARGET} 
         DESCRIPTION "communications channel abstraction to get a SecurityToken over a process boundary." )
+
+option(BUILD_SECURITYAGENT_ENDPOINT_TESTS "Build SecurityAgent endpoint tests" OFF)
+if(BUILD_SECURITYAGENT_ENDPOINT_TESTS)
+    enable_testing()
+    add_executable(securityagent_endpoint_test test_endpoint_validation.cpp)
+    target_include_directories(securityagent_endpoint_test PRIVATE ${CMAKE_CURRENT_LIST_DIR})
+    set_target_properties(securityagent_endpoint_test PROPERTIES CXX_STANDARD ${CXX_STD} CXX_STANDARD_REQUIRED YES)
+    add_test(NAME securityagent_endpoint_test COMMAND securityagent_endpoint_test)
+endif()
