@@ -21,6 +21,9 @@
 #define __IPC_PROVISION_H__
 
 #include <core/core.h>
+#include "ProvisionBounds.h"
+
+#include <new>
 
 using namespace Thunder;
 
@@ -61,6 +64,7 @@ namespace Provisioning {
         }
         ~KeyValue()
         {
+            delete[] _buffer;
         }
 
     public:
@@ -96,26 +100,30 @@ namespace Provisioning {
         }
         inline uint16_t Deserialize(const uint8_t stream[], const uint16_t maxLength, const uint32_t offset)
         {
-            uint16_t result = maxLength;
-
-            if ((offset + maxLength) > _maxSize) {
-                _maxSize = 2 * (offset + maxLength);
-                uint8_t* buffer = new uint8_t[_maxSize];
-
-                // We need to expand. Current size does not fit..
-                if (_buffer != nullptr) {
-                    ::memcpy(buffer, _buffer, _filledSize);
-                    delete _buffer;
-                }
-
-                _buffer = buffer;
+            uint32_t required = 0;
+            if (((maxLength != 0) && (stream == nullptr)) || (RequiredCapacity(offset, maxLength, required) == false)) {
+                return 0;
             }
 
-            _filledSize = offset + maxLength;
+            if (required > _maxSize) {
+                const uint32_t capacity = ExpandedCapacity(required);
+                uint8_t* buffer = new (std::nothrow) uint8_t[capacity];
+                if (buffer == nullptr) {
+                    return 0;
+                }
+                if ((_buffer != nullptr) && (_filledSize != 0)) {
+                    ::memcpy(buffer, _buffer, _filledSize);
+                }
+                delete[] _buffer;
+                _buffer = buffer;
+                _maxSize = capacity;
+            }
 
-            ::memcpy(&(_buffer[offset]), stream, maxLength);
-
-            return (result);
+            if (maxLength != 0) {
+                ::memcpy(&(_buffer[offset]), stream, maxLength);
+            }
+            _filledSize = required;
+            return maxLength;
         }
 
     private:
