@@ -18,6 +18,7 @@
  */
 
 #include "../Module.h"
+#include "RenderNodeValidation.h"
 
 extern "C" {
 #include <drm_fourcc.h>
@@ -840,13 +841,13 @@ namespace Linux {
                         renderNode = _remoteDisplay->Port();
                     }
 
-                    if (renderNode.empty()) {
-                        TRACE(Trace::Error, (_T("Remote display did not provide a render node for Display %s"), Name().c_str()));
+                    if ((renderNode.empty()) || !Thunder::Compositor::TrustedRenderNode(renderNode)) {
+                        TRACE(Trace::Error, (_T("Remote display did not provide a trusted render node for Display %s"), Name().c_str()));
                         return;
                     }
 
                     // Open the DRM render node
-                    _gpuId = ::open(renderNode.c_str(), O_RDWR | O_CLOEXEC);
+                    _gpuId = ::open(renderNode.c_str(), O_RDWR | O_CLOEXEC | O_NOFOLLOW);
 
                     if (_gpuId < 0) {
                         TRACE(Trace::Error, (_T("Failed to open render node %s, errno=%d"), renderNode.c_str(), errno));
