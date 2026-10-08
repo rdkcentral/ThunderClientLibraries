@@ -5,6 +5,11 @@ permissions:
 
 on:
   workflow_call:
+    inputs:
+      thunder_client_libraries_ref:
+        required: false
+        type: string
+        default: R5_3
 
 jobs:
   ThunderClientLibraries:
@@ -80,6 +85,7 @@ jobs:
       with:
         path: ThunderClientLibraries
         repository: ${{github.repository_owner}}/ThunderClientLibraries
+        ref: ${{ inputs.thunder_client_libraries_ref }}
 
     - name: Regex ThunderClientLibraries
       if: contains(github.event.pull_request.body, '[Options:')
