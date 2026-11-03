@@ -5,6 +5,12 @@ permissions:
 
 on:
   workflow_call:
+    inputs:
+      source-repository:
+        description: Repository containing the ThunderClientLibraries source
+        required: false
+        type: string
+        default: rdkcentral/ThunderClientLibraries
 
 jobs:
   ThunderClientLibraries:
@@ -57,8 +63,8 @@ jobs:
       uses: actions/checkout@v5
       with:
         path: ThunderClientLibraries
-        repository: ${{github.repository_owner}}/ThunderClientLibraries
-        ref: ${{ github.repository != format('{0}/ThunderClientLibraries', github.repository_owner) && steps.release.outputs.ref || '' }}
+        repository: ${{ inputs.source-repository }}
+        ref: ${{ github.repository != inputs.source-repository && steps.release.outputs.ref || '' }}
 
     - name: Log source revisions
       shell: bash
