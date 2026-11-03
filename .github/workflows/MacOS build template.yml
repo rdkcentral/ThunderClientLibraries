@@ -39,11 +39,31 @@ jobs:
         rm ${{matrix.build_type}}/${{matrix.build_type}}.tar.gz
 
 # ----- Regex & checkout -----
+    - name: Resolve release dependency branch
+      id: release
+      shell: bash
+      env:
+        BUILD_BRANCH: ${{ github.base_ref || github.ref_name }}
+        REF_TYPE: ${{ github.ref_type }}
+      run: |
+        release_ref=
+        if [[ "$REF_TYPE" == 'branch' && "$BUILD_BRANCH" == R* ]]; then
+          release_ref="refs/heads/$BUILD_BRANCH"
+        fi
+        echo "ref=$release_ref" >> "$GITHUB_OUTPUT"
+        echo "Dependency branch: ${release_ref:-repository default}"
+
     - name: Checkout ThunderClientLibraries
       uses: actions/checkout@v5
       with:
         path: ThunderClientLibraries
         repository: ${{github.repository_owner}}/ThunderClientLibraries
+        ref: ${{ github.repository != format('{0}/ThunderClientLibraries', github.repository_owner) && steps.release.outputs.ref || '' }}
+
+    - name: Log source revisions
+      shell: bash
+      run: |
+        git -C ThunderClientLibraries log -1 --format='ThunderClientLibraries: %H'
 
     - name: Regex ThunderClientLibraries
       if: contains(github.event.pull_request.body, '[Options:')
