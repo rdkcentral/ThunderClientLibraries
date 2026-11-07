@@ -422,6 +422,8 @@ namespace Wayland {
 
     Display::SurfaceImplementation::SurfaceImplementation(Display& display, const std::string& name, const uint32_t width, const uint32_t height, ISurface::ICallback* callback)
         : _surface(nullptr)
+        , _xdg_surface(nullptr)
+        , _xdg_toplevel(nullptr)
         , _refcount(1)
         , _level(0)
         , _name(name)
@@ -485,6 +487,8 @@ namespace Wayland {
 
     Display::SurfaceImplementation::SurfaceImplementation(Display& display, const uint32_t id, struct wl_surface* surface)
         : _surface(surface)
+        , _xdg_surface(nullptr)
+        , _xdg_toplevel(nullptr)
         , _refcount(1)
         , _level(2)
         , _name()
@@ -508,6 +512,8 @@ namespace Wayland {
 
     Display::SurfaceImplementation::SurfaceImplementation(Display& display, const uint32_t id, const char* name)
         : _surface(nullptr)
+        , _xdg_surface(nullptr)
+        , _xdg_toplevel(nullptr)
         , _refcount(1)
         , _level(2)
         , _name(name)

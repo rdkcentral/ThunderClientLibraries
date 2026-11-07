@@ -239,8 +239,8 @@ namespace Wayland {
             // of friend definitions.
             struct wl_surface* _surface;
 
-            struct xdg_surface* _xdg_surface;
-            struct xdg_toplevel* _xdg_toplevel;
+            struct xdg_surface* _xdg_surface = nullptr;
+            struct xdg_toplevel* _xdg_toplevel = nullptr;
 
         private:
             friend Display;
@@ -311,6 +311,7 @@ namespace Wayland {
         Display(const std::string& displayName)
             : _display(nullptr)
             , _registry(nullptr)
+            , _compositor(nullptr)
             , _seat_name(0)
             , _seat(nullptr)
             , _seat_registry(nullptr)
@@ -322,6 +323,7 @@ namespace Wayland {
             , _pointer(nullptr)
             , _touch(nullptr)
             , _shell(nullptr)
+            , _wm_base(nullptr)
             , _trigger()
             , _redraw()
             , _tid(0)
@@ -792,7 +794,7 @@ namespace Wayland {
         // Wayland related info
         struct wl_display* _display;
         struct wl_registry* _registry;
-        struct wl_compositor* _compositor;
+        struct wl_compositor* _compositor = nullptr;
         uint32_t _seat_name;
         struct wl_seat* _seat;
         struct wl_registry* _seat_registry;
@@ -804,7 +806,7 @@ namespace Wayland {
         struct wl_pointer* _pointer;
         struct wl_touch* _touch;
         struct wl_shell* _shell;
-        struct xdg_wm_base* _wm_base;
+        struct xdg_wm_base* _wm_base = nullptr;
 
         // KeyBoardInfo
         uint32_t _keyRate;

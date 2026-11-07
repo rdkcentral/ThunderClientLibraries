@@ -282,6 +282,7 @@ private:
     };
 
     Platform()
+        : _cursor(nullptr)
     {
         bcm_host_init();
         string cursor;
@@ -451,7 +452,7 @@ public:
             _cursor->Move(x, y);
         }
     }
-    Cursor* _cursor;
+    Cursor* _cursor = nullptr;
 };
 
 #endif
