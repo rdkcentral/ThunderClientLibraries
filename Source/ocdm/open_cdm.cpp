@@ -19,6 +19,7 @@
 #include "open_cdm.h"
 #include <interfaces/IOCDM.h>
 #include "open_cdm_impl.h"
+#include "EndpointValidation.h"
 
 MODULE_NAME_DECLARATION(BUILD_REFERENCE)
 
@@ -64,16 +65,21 @@ OpenCDMError StringToAllocatedBuffer(const std::string& source, char* destinatio
         TheOne(const TheOne&) = delete;
         TheOne& operator= (const TheOne&) = delete;
 
-        TheOne() {
+        TheOne()
+            : _valid(false)
+        {
             string connector;
             if ((Core::SystemInfo::GetEnvironment(_T("OPEN_CDM_SERVER"), connector) == false) || (connector.empty() == true)) {
                 connector = _T("/tmp/ocdm");
             }
-            Core::SingletonType<OpenCDMAccessor>::Create(connector.c_str());
+            if (OCDM::TrustedEndpoint(connector)) {
+                Core::SingletonType<OpenCDMAccessor>::Create(connector.c_str());
+                _valid = true;
+            }
         }
         ~TheOne() {
 
-            if( Core::SingletonType<OpenCDMAccessor>::Dispose() == true ) {
+            if (_valid && (Core::SingletonType<OpenCDMAccessor>::Dispose() == true)) {
                 // if the accessor was disposed here because the destructor of the static instance was called there
                 // was no proper dispose before (opencdm_dispose and/or Singleton::Dispose). 
                 // The static dispose might be incomplete or have side effects (e.g. Threads could already be killed)
@@ -82,14 +88,16 @@ OpenCDMError StringToAllocatedBuffer(const std::string& source, char* destinatio
         }
 
     public:
-        OpenCDMAccessor& Instance() {
-            return (Core::SingletonType<OpenCDMAccessor>::Instance());
+        OpenCDMAccessor* Instance() {
+            return (_valid ? &(Core::SingletonType<OpenCDMAccessor>::Instance()) : nullptr);
         }
+
+    private:
+        bool _valid;
 
     } singleton;
 
-    OpenCDMAccessor& result = singleton.Instance();
-    return &result;
+    return singleton.Instance();
 }
 
 
