@@ -19,6 +19,7 @@
 
 #include "IPCSecurityToken.h"
 #include "securityagent.h"
+#include "EndpointValidation.h"
 
 using namespace Thunder;
 
@@ -26,13 +27,14 @@ static string GetEndPoint()
 {
     TCHAR* value = ::getenv(_T("SECURITYAGENT_PATH"));
 
-    return (value == nullptr ?
+    const string endpoint(value == nullptr ?
         #ifdef __WINDOWS__
         _T("127.0.0.1:63000")
         #else
         _T("/tmp/SecurityAgent/token")
         #endif
         : value);
+    return SecurityAgent::TrustedEndpoint(endpoint) ? endpoint : string();
 }
 
 extern "C" {
@@ -53,8 +55,13 @@ extern "C" {
  */
 int GetToken(unsigned short maxLength, unsigned short inLength, unsigned char buffer[])
 {
+    const string endpoint(GetEndPoint());
+    if (endpoint.empty()) {
+        return -1;
+    }
+
     auto engine = Core::ProxyType<RPC::InvokeServerType<1, 0, 4>>::Create();
-    auto client = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(GetEndPoint().c_str()), Core::ProxyType<Core::IIPCServer>(engine));
+    auto client = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(endpoint.c_str()), Core::ProxyType<Core::IIPCServer>(engine));
 
     int result = -1;
 
