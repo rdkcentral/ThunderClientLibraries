@@ -29,6 +29,7 @@
 #include <provision/DRMInfo.h>
 
 #include "IPCProvision.h"
+#include "EndpointValidation.h"
 MODULE_NAME_ARCHIVE_DECLARATION
 
 using namespace Thunder;
@@ -38,10 +39,11 @@ static string GetEndPoint()
     TCHAR* value = ::getenv(_T("PROVISION_PATH"));
 
 #ifdef __WINDOWS__
-    return (value == nullptr ? _T("127.0.0.1:7777") : value);
+    const string endpoint(value == nullptr ? _T("127.0.0.1:7777") : value);
 #else
-    return (value == nullptr ? _T("/tmp/provision") : value);
+    const string endpoint(value == nullptr ? _T("/tmp/provision") : value);
 #endif
+    return IPC::Provisioning::TrustedEndpoint(endpoint) ? endpoint : string();
 }
 
 extern "C" {
@@ -61,8 +63,12 @@ extern "C" {
  */
 int GetDeviceId(unsigned short MaxIdLength, char Id[])
 {
+    const string endpoint(GetEndPoint());
+    if (endpoint.empty()) {
+        return -1;
+    }
     auto engine = Core::ProxyType<RPC::InvokeServerType<1, 0, 4>>::Create();
-    auto client = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(GetEndPoint().c_str()), Core::ProxyType<Core::IIPCServer>(engine));
+    auto client = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(endpoint.c_str()), Core::ProxyType<Core::IIPCServer>(engine));
 
     int result = -1;
 
@@ -114,8 +120,12 @@ int GetDeviceId(unsigned short MaxIdLength, char Id[])
 
 int GetDRMId(const char label[], const unsigned short maxIdLength, char outId[])
 {
+    const string endpoint(GetEndPoint());
+    if (endpoint.empty()) {
+        return -1;
+    }
     auto engine = Core::ProxyType<RPC::InvokeServerType<1, 0, 4>>::Create();
-    auto client = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(GetEndPoint().c_str()), Core::ProxyType<Core::IIPCServer>(engine));
+    auto client = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(endpoint.c_str()), Core::ProxyType<Core::IIPCServer>(engine));
 
     int result = -1;
 

@@ -94,3 +94,12 @@ InstallCMakeConfig(
 InstallPackageConfig(
         TARGETS ${TARGET} 
         DESCRIPTION "Link the binairy encryption library and the communications channel to the encrypted provisioning store together." )
+
+option(BUILD_PROVISION_ENDPOINT_TESTS "Build provision endpoint tests" OFF)
+if(BUILD_PROVISION_ENDPOINT_TESTS)
+    enable_testing()
+    add_executable(provision_endpoint_test test_endpoint_validation.cpp)
+    target_include_directories(provision_endpoint_test PRIVATE ${CMAKE_CURRENT_LIST_DIR})
+    set_target_properties(provision_endpoint_test PROPERTIES CXX_STANDARD ${CXX_STD} CXX_STANDARD_REQUIRED YES)
+    add_test(NAME provision_endpoint_test COMMAND provision_endpoint_test)
+endif()
