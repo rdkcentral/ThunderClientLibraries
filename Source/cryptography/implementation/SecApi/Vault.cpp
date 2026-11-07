@@ -21,6 +21,7 @@
 #include <vault_implementation.h>
 #include <cryptalgo/cryptalgo.h>
 #include "Vault.h"
+#include "OutputBounds.h"
 
 namespace Implementation {
 
@@ -419,7 +420,12 @@ namespace Implementation {
                             SecKey_Release(sec_key_aes);
                         }
 
-                        memcpy(blob, &ids, sizeof(ids));
+                        if (CanCopyOutput(sizeof(ids), size, blob)) {
+                            memcpy(blob, &ids, sizeof(ids));
+                        }
+                        else {
+                            outSize = sizeof(ids);
+                        }
                     }
                 }
                 else {
@@ -503,7 +509,9 @@ namespace Implementation {
                 if (sec_res == SEC_RESULT_SUCCESS) {
                     //Copy  to blob
                     outSize = SecStore_GetDataLen(buff);
-                    memcpy(blob, dataOut, outSize);
+                    if (CanCopyOutput(outSize, size, blob)) {
+                        memcpy(blob, dataOut, outSize);
+                    }
                     TRACE_L2(_T("SEC: Retrieved a sealed data blob id 0x%08x of size %i bytes"), id, outSize);
                 }
                 else {

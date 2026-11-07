@@ -18,6 +18,7 @@
  */
 
 #include "Hash.h"
+#include "OutputBounds.h"
 
 /* COTR */
 Implementation::HashTypeNetflix::HashTypeNetflix(const Implementation::VaultNetflix* vault, const uint32_t secretId)
@@ -86,7 +87,7 @@ uint8_t Implementation::HashTypeNetflix::Calculate(const uint8_t maxLength, uint
             uint8_t* data_in = reinterpret_cast<uint8_t*>(&_buffer[0]);
             uint8_t sig_data[maxLength];
             result_sec = SecNetflix_Hmac(_netflixHandle, _secretKey, data_in, _buffer.size(),sig_data, maxLength, &bytesWritten);
-            if (result_sec == SEC_RESULT_SUCCESS) {
+            if ((result_sec == SEC_RESULT_SUCCESS) && Implementation::CanCopyOutput(bytesWritten, maxLength, data)) {
                 memcpy(data, sig_data, bytesWritten);
                 result = bytesWritten;
                 TRACE_L2(_T("SEC:HMAC signature calculated  bytes written is %d and maxLength is %d  \n"), bytesWritten, maxLength);

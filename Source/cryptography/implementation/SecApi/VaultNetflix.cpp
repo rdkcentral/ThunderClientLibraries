@@ -19,6 +19,7 @@
 
 #include "../../Module.h"
 #include "Vault.h"
+#include "OutputBounds.h"
 namespace Implementation {
 
     
@@ -488,7 +489,9 @@ namespace Implementation {
             }
             else {
                 TRACE_L2(_T("Exported Key data size is %d"), bytesWritten);
-                memcpy(blob, blob_data, DH_PUBLIC_KEY_MAX);
+                if (CanCopyOutput(bytesWritten, size, blob)) {
+                    memcpy(blob, blob_data, bytesWritten);
+                }
             }
         }
 
@@ -596,12 +599,12 @@ extern "C" {
         TRACE_L2(_T("SEC :the esnVal value is %s \n"), esnVal.c_str());
         length = esnVal.size();
         TRACE_L2(_T("SEC: the esnval size is %d \n"), length);
-        if (data != nullptr) {
+        if (Implementation::CanCopyOutput(length, max_length, data)) {
             uint8_t* esn_data = reinterpret_cast<uint8_t*>(&esnVal[0]);
             memcpy(data, esn_data, length);
         }
-        else { 
-            TRACE_L1(_T("esn buffer null\n"));
+        else {
+            TRACE_L1(_T("esn output buffer is too small\n"));
         }
         return (length);
     }

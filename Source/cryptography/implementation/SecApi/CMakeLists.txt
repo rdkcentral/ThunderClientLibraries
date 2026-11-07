@@ -48,3 +48,12 @@ target_include_directories(${TARGET}
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/../..>)
+
+option(BUILD_SECAPI_BOUNDS_TESTS "Build SecApi bounds tests" OFF)
+if(BUILD_SECAPI_BOUNDS_TESTS)
+    enable_testing()
+    add_executable(secapi_output_bounds_test test_output_bounds.cpp)
+    target_include_directories(secapi_output_bounds_test PRIVATE ${CMAKE_CURRENT_LIST_DIR})
+    set_target_properties(secapi_output_bounds_test PROPERTIES CXX_STANDARD ${CXX_STD} CXX_STANDARD_REQUIRED YES)
+    add_test(NAME secapi_output_bounds_test COMMAND secapi_output_bounds_test)
+endif()
