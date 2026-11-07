@@ -94,3 +94,12 @@ InstallCMakeConfig(
 InstallPackageConfig(
         TARGETS ${TARGET} 
         DESCRIPTION "Link the binairy encryption library and the communications channel to the encrypted provisioning store together." )
+
+option(BUILD_PROVISION_RESPONSE_TESTS "Build provision response tests" OFF)
+if(BUILD_PROVISION_RESPONSE_TESTS)
+    enable_testing()
+    add_executable(provision_response_test test_response_bounds.cpp)
+    target_include_directories(provision_response_test PRIVATE ${CMAKE_CURRENT_LIST_DIR})
+    set_target_properties(provision_response_test PROPERTIES CXX_STANDARD ${CXX_STD} CXX_STANDARD_REQUIRED YES)
+    add_test(NAME provision_response_test COMMAND provision_response_test)
+endif()
