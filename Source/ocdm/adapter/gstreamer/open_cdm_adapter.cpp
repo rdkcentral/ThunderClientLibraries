@@ -18,11 +18,11 @@
  */
  
 #include <gst/gst.h>
-#include <gst/base/gstbytereader.h>
 
 #include "Module.h"
 #include "CapsParser.h"
 #include "open_cdm_adapter.h"
+#include "../SubSampleParser.h"
 
 inline bool mappedBuffer(GstBuffer *buffer, bool writable, uint8_t **data, uint32_t *size)
 {
@@ -43,6 +43,9 @@ OpenCDMError opencdm_gstreamer_session_decrypt(struct OpenCDMSession* session, G
                                                GstBuffer* IV, GstBuffer* keyID, uint32_t initWithLast15)
 {
     OpenCDMError result (ERROR_INVALID_SESSION);
+    if (((subSampleCount == 0) != (subSampleBuffer == nullptr)) || (subSampleCount > UINT8_MAX)) {
+        return (ERROR_INVALID_DECRYPT_BUFFER);
+    }
 
     if (session != nullptr) {
         GstMapInfo dataMap;
@@ -109,49 +112,35 @@ OpenCDMError opencdm_gstreamer_session_decrypt(struct OpenCDMSession* session, G
             }
             uint8_t *mappedSubSample = reinterpret_cast<uint8_t* >(sampleMap.data);
             uint32_t mappedSubSampleSize = static_cast<uint32_t >(sampleMap.size);
-            GstByteReader* reader = gst_byte_reader_new(mappedSubSample, mappedSubSampleSize);
-            uint16_t inClear = 0;
-            uint32_t inEncrypted = 0;
+            std::vector<SubSampleInfo> subSamples;
             uint32_t totalEncrypted = 0;
-            for (unsigned int position = 0; position < subSampleCount; position++) {
-
-                gst_byte_reader_get_uint16_be(reader, &inClear);
-                gst_byte_reader_get_uint32_be(reader, &inEncrypted);
-                totalEncrypted += inEncrypted;
-            }
-            gst_byte_reader_set_pos(reader, 0);
-
-            uint8_t* encryptedData = reinterpret_cast<uint8_t*>(malloc(totalEncrypted));
-            uint8_t* encryptedDataIter = encryptedData;
-
-            uint32_t index = 0;
-            for (unsigned int position = 0; position < subSampleCount; position++) {
-
-                gst_byte_reader_get_uint16_be(reader, &inClear);
-                gst_byte_reader_get_uint32_be(reader, &inEncrypted);
-
-                memcpy(encryptedDataIter, mappedData + index + inClear, inEncrypted);
-                index += inClear + inEncrypted;
-                encryptedDataIter += inEncrypted;
-            }
-            gst_byte_reader_set_pos(reader, 0);
-
-
-            result = opencdm_session_decrypt(session, encryptedData, totalEncrypted, encScheme, pattern, mappedIV, mappedIVSize, mappedKeyID, mappedKeyIDSize, initWithLast15);
-            // Re-build sub-sample data.
-            index = 0;
-            unsigned total = 0;
-            for (uint32_t position = 0; position < subSampleCount; position++) {
-                gst_byte_reader_get_uint16_be(reader, &inClear);
-                gst_byte_reader_get_uint32_be(reader, &inEncrypted);
-
-                memcpy(mappedData + total + inClear, encryptedData + index, inEncrypted);
-                index += inEncrypted;
-                total += inClear + inEncrypted;
+            if (Thunder::OCDM::ParseSubSamples(mappedSubSample, mappedSubSampleSize, subSampleCount, mappedDataSize, subSamples, totalEncrypted) == false) {
+                gst_buffer_unmap(subSampleBuffer, &sampleMap);
+                if (keyID != nullptr) {
+                    gst_buffer_unmap(keyID, &keyIDMap);
+                }
+                gst_buffer_unmap(IV, &ivMap);
+                gst_buffer_unmap(buffer, &dataMap);
+                return (ERROR_INVALID_DECRYPT_BUFFER);
             }
 
-            gst_byte_reader_free(reader);
-            free(encryptedData);
+            std::vector<uint8_t> encryptedData(totalEncrypted);
+            uint32_t sampleOffset = 0;
+            uint32_t encryptedOffset = 0;
+            for (const auto& entry : subSamples) {
+                memcpy(encryptedData.data() + encryptedOffset, mappedData + sampleOffset + entry.clear_bytes, entry.encrypted_bytes);
+                sampleOffset += entry.clear_bytes + entry.encrypted_bytes;
+                encryptedOffset += entry.encrypted_bytes;
+            }
+
+            result = opencdm_session_decrypt(session, encryptedData.data(), totalEncrypted, encScheme, pattern, mappedIV, mappedIVSize, mappedKeyID, mappedKeyIDSize, initWithLast15);
+            sampleOffset = 0;
+            encryptedOffset = 0;
+            for (const auto& entry : subSamples) {
+                memcpy(mappedData + sampleOffset + entry.clear_bytes, encryptedData.data() + encryptedOffset, entry.encrypted_bytes);
+                sampleOffset += entry.clear_bytes + entry.encrypted_bytes;
+                encryptedOffset += entry.encrypted_bytes;
+            }
             gst_buffer_unmap(subSampleBuffer, &sampleMap);
         } else {
             result = opencdm_session_decrypt(session, mappedData, mappedDataSize, encScheme, pattern, mappedIV, mappedIVSize, mappedKeyID, mappedKeyIDSize, initWithLast15);
@@ -206,12 +195,11 @@ OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* ses
                     goto exit;
                 }
                 subSample = gst_value_get_buffer(value);
-                if (subSample != nullptr && mappedBuffer(subSample, false, &mappedSubSample, &mappedSubSampleSize) == false) {
+                if ((subSample == nullptr) || (subSampleCount > UINT8_MAX) || (mappedBuffer(subSample, false, &mappedSubSample, &mappedSubSampleSize) == false)) {
                     TRACE_L1("opencdm_gstreamer_session_decrypt_buffer: Invalid subsample buffer.");
                     result = ERROR_INVALID_DECRYPT_BUFFER;
                     goto exit;
                 }
-                ASSERT(mappedSubSampleSize==subSampleCount);
             }
 
             //Get IV
@@ -224,7 +212,7 @@ OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* ses
             GstBuffer* IV = gst_value_get_buffer(value);
             uint8_t *mappedIV = nullptr;    //Set the Encryption Scheme and Pattern to defaults.
             uint32_t mappedIVSize = 0;
-            if (mappedBuffer(IV, false, &mappedIV, &mappedIVSize) == false) {
+            if ((IV == nullptr) || (mappedBuffer(IV, false, &mappedIV, &mappedIVSize) == false)) {
                 TRACE_L1("opencdm_gstreamer_session_decrypt_buffer: Invalid IV buffer.");
                 result = ERROR_INVALID_DECRYPT_BUFFER;
                 goto exit;
@@ -240,7 +228,7 @@ OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* ses
             GstBuffer* keyID = gst_value_get_buffer(value);
             uint8_t *mappedKeyID = nullptr;
             uint32_t mappedKeyIDSize = 0;
-            if (keyID != nullptr && mappedBuffer(keyID, false, &mappedKeyID, &mappedKeyIDSize) == false) {
+            if ((keyID == nullptr) || (mappedBuffer(keyID, false, &mappedKeyID, &mappedKeyIDSize) == false)) {
                 TRACE_L1("Invalid keyID buffer.");
                 result = ERROR_INVALID_DECRYPT_BUFFER;
                 goto exit;
@@ -258,18 +246,11 @@ OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* ses
             gst_structure_get_uint(protectionMeta->info, "crypt_byte_block", &pattern.encrypted_blocks);
             gst_structure_get_uint(protectionMeta->info, "skip_byte_block", &pattern.clear_blocks);
 
-            //Create a SubSampleInfo Array with mapping
-            SubSampleInfo * subSampleInfoPtr = nullptr;
-            if (subSample != nullptr) {
-                GstByteReader* reader = gst_byte_reader_new(mappedSubSample, mappedSubSampleSize);
-                subSampleInfoPtr = reinterpret_cast<SubSampleInfo*>(malloc(subSampleCount * sizeof(SubSampleInfo)));
-                for (unsigned int position = 0; position < subSampleCount; position++) {
-
-                    gst_byte_reader_get_uint16_be(reader, &subSampleInfoPtr[position].clear_bytes);
-                    gst_byte_reader_get_uint32_be(reader, &subSampleInfoPtr[position].encrypted_bytes);
-                }
-                gst_byte_reader_set_pos(reader, 0);
-                gst_byte_reader_free(reader);
+            std::vector<SubSampleInfo> subSamples;
+            uint32_t totalEncrypted = mappedDataSize;
+            if ((subSampleCount > 0) && (Thunder::OCDM::ParseSubSamples(mappedSubSample, mappedSubSampleSize, subSampleCount, mappedDataSize, subSamples, totalEncrypted) == false)) {
+                result = ERROR_INVALID_DECRYPT_BUFFER;
+                goto exit;
             }
 
             //Get Stream Properties from GstCaps
@@ -307,7 +288,7 @@ OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* ses
             }
 
             SampleInfo sampleInfo;
-            sampleInfo.subSample = subSampleInfoPtr;
+            sampleInfo.subSample = subSamples.empty() ? nullptr : subSamples.data();
             sampleInfo.subSampleCount = subSampleCount;
             sampleInfo.scheme = encScheme;
             sampleInfo.pattern.clear_blocks = pattern.clear_blocks;
@@ -323,10 +304,6 @@ OpenCDMError opencdm_gstreamer_session_decrypt_buffer(struct OpenCDMSession* ses
                                                 &sampleInfo,
                                                 spPtr);
 
-            //Clean up
-            if(subSampleInfoPtr != nullptr) {
-               free(subSampleInfoPtr);
-           }
         } else {
             TRACE_L1("opencdm_gstreamer_session_decrypt_buffer: Missing Protection Metadata.");
             result = ERROR_INVALID_DECRYPT_BUFFER;

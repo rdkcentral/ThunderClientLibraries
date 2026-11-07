@@ -174,3 +174,12 @@ InstallCMakeConfig(
 InstallPackageConfig(
         TARGETS ${TARGET} 
         DESCRIPTION "OCDM library")
+
+option(BUILD_OCDM_TESTS "Build OCDM tests" OFF)
+if(BUILD_OCDM_TESTS)
+    enable_testing()
+    add_executable(ocdm_cenc_bounds_test test_ocdm_cenc_bounds.cpp)
+    target_include_directories(ocdm_cenc_bounds_test PRIVATE ${CMAKE_CURRENT_LIST_DIR})
+    set_target_properties(ocdm_cenc_bounds_test PROPERTIES CXX_STANDARD ${CXX_STD} CXX_STANDARD_REQUIRED YES)
+    add_test(NAME ocdm_cenc_bounds_test COMMAND ocdm_cenc_bounds_test)
+endif()
