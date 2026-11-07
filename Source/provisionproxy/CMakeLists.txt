@@ -94,3 +94,12 @@ InstallCMakeConfig(
 InstallPackageConfig(
         TARGETS ${TARGET} 
         DESCRIPTION "Link the binairy encryption library and the communications channel to the encrypted provisioning store together." )
+
+option(BUILD_PROVISION_BOUNDS_TESTS "Build provision bounds tests" OFF)
+if(BUILD_PROVISION_BOUNDS_TESTS)
+    enable_testing()
+    add_executable(provision_bounds_test test_provision_bounds.cpp)
+    target_include_directories(provision_bounds_test PRIVATE ${CMAKE_CURRENT_LIST_DIR})
+    set_target_properties(provision_bounds_test PROPERTIES CXX_STANDARD ${CXX_STD} CXX_STANDARD_REQUIRED YES)
+    add_test(NAME provision_bounds_test COMMAND provision_bounds_test)
+endif()
