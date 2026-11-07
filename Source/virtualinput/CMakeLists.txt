@@ -82,6 +82,15 @@ InstallPackageConfig(
         TARGETS ${TARGET}
         DESCRIPTION "An abstraction layer for input virtualisation using an IPC message channel.")
 
+option(BUILD_VIRTUALINPUT_VALIDATION_TESTS "Build virtual input validation tests" OFF)
+if(BUILD_VIRTUALINPUT_VALIDATION_TESTS)
+    enable_testing()
+    add_executable(virtualinput_validation_test test_input_validation.cpp)
+    target_include_directories(virtualinput_validation_test PRIVATE ${CMAKE_CURRENT_LIST_DIR})
+    set_target_properties(virtualinput_validation_test PROPERTIES CXX_STANDARD ${CXX_STD} CXX_STANDARD_REQUIRED YES)
+    add_test(NAME virtualinput_validation_test COMMAND virtualinput_validation_test)
+endif()
+
 if (VIRTUALINPUT_TOOLS)
     add_subdirectory(tools)
 endif()

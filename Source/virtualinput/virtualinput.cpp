@@ -20,6 +20,7 @@
 #include "Module.h"
 #include <plugins/IVirtualInput.h>
 #include "virtualinput.h"
+#include "InputValidation.h"
 
 namespace Thunder {
 namespace VirtualInput{
@@ -43,8 +44,9 @@ namespace VirtualInput{
         virtual void Procedure(Core::IPCChannel& source, Core::ProxyType<Core::IIPC>& data)
         {
             Core::ProxyType<IVirtualInput::KeyMessage> message(data);
-            ASSERT((_callback != nullptr) && (message.IsValid() == true));
-            _callback(static_cast<keyactiontype>(message->Parameters().Action), message->Parameters().Code);
+            if ((_callback != nullptr) && message.IsValid() && ValidKeyAction(message->Parameters().Action)) {
+                _callback(static_cast<keyactiontype>(message->Parameters().Action), message->Parameters().Code);
+            }
             source.ReportResponse(data);
         }
 
@@ -71,8 +73,9 @@ namespace VirtualInput{
         virtual void Procedure(Core::IPCChannel& source, Core::ProxyType<Core::IIPC>& data)
         {
             Core::ProxyType<IVirtualInput::MouseMessage> message(data);
-            ASSERT((_callback != nullptr) && (message.IsValid() == true));
-            _callback(static_cast<mouseactiontype>(message->Parameters().Action), message->Parameters().Button, message->Parameters().Horizontal, message->Parameters().Vertical);
+            if ((_callback != nullptr) && message.IsValid() && ValidMouseAction(message->Parameters().Action)) {
+                _callback(static_cast<mouseactiontype>(message->Parameters().Action), message->Parameters().Button, message->Parameters().Horizontal, message->Parameters().Vertical);
+            }
             source.ReportResponse(data);
         }
 
@@ -99,8 +102,9 @@ namespace VirtualInput{
         virtual void Procedure(Core::IPCChannel& source, Core::ProxyType<Core::IIPC>& data)
         {
             Core::ProxyType<IVirtualInput::TouchMessage> message(data);
-            ASSERT((_callback != nullptr) && (message.IsValid() == true));
-            _callback(static_cast<touchactiontype>(message->Parameters().Action), message->Parameters().Index, message->Parameters().X, message->Parameters().Y);
+            if ((_callback != nullptr) && message.IsValid() && ValidTouchAction(message->Parameters().Action) && ValidTouchIndex(message->Parameters().Index)) {
+                _callback(static_cast<touchactiontype>(message->Parameters().Action), message->Parameters().Index, message->Parameters().X, message->Parameters().Y);
+            }
             source.ReportResponse(data);
         }
 
@@ -226,8 +230,10 @@ using namespace Thunder;
 // Use the Destruct, to destruct it.
 void* virtualinput_open(const char listenerName[], const char connector[], FNKeyEvent keyCallback, FNMouseEvent mouseCallback, FNTouchEvent touchCallback)
 {
+    if ((listenerName == nullptr) || (connector == nullptr) || !VirtualInput::TrustedEndpoint(connector)) {
+        return nullptr;
+    }
     Core::NodeId remoteId(connector);
-
     return (new VirtualInput::Controller(listenerName, remoteId, keyCallback, mouseCallback, touchCallback));
 }
 
