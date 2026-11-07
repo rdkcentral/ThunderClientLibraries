@@ -14,8 +14,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 option(BUILD_CRYPTOGRAPHY_TESTS "Build cryptography test" OFF)
 option(BUILD_CRYPTOGRAPHY_RPC_TESTS "Build cryptography rpc test" OFF)
+option(BUILD_CRYPTOGRAPHY_TEST_KEY_GEN "Build test key generator" OFF)
 
 if (BUILD_CRYPTOGRAPHY_TESTS)
     add_subdirectory(cryptography_test)
@@ -23,4 +25,8 @@ endif()
 
 if (BUILD_CRYPTOGRAPHY_RPC_TESTS)
     add_subdirectory(rpc_cryptography_test)
+endif()
+
+if (BUILD_CRYPTOGRAPHY_TEST_KEY_GEN)
+    add_subdirectory(test_key_generator)
 endif()
