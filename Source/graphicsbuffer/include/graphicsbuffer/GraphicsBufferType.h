@@ -251,10 +251,21 @@ namespace Graphics {
                 , _command(mode::IDLE)
                 , _count(0)
             {
-                if (::pthread_mutex_init(&_mutex, nullptr) != 0) {
-                    // That will be the day, if this fails...
-                    ASSERT(false);
+                pthread_mutexattr_t attributes;
+                int result = ::pthread_mutexattr_init(&attributes);
+                if (result == 0) {
+                    result = ::pthread_mutexattr_setpshared(&attributes, PTHREAD_PROCESS_SHARED);
                 }
+#ifdef PTHREAD_MUTEX_ROBUST
+                if (result == 0) {
+                    result = ::pthread_mutexattr_setrobust(&attributes, PTHREAD_MUTEX_ROBUST);
+                }
+#endif
+                if (result == 0) {
+                    result = ::pthread_mutex_init(&_mutex, &attributes);
+                }
+                ::pthread_mutexattr_destroy(&attributes);
+                ASSERT(result == 0);
             }
             ~SharedStorageType()
             {
@@ -378,6 +389,11 @@ namespace Graphics {
                 structTime.tv_sec += (timeout / 1000) + (structTime.tv_nsec / 1000000000); /* milliseconds to seconds */
                 structTime.tv_nsec = structTime.tv_nsec % 1000000000;
                 int result = pthread_mutex_timedlock(&_mutex, &structTime);
+#ifdef EOWNERDEAD
+                if (result == EOWNERDEAD) {
+                    result = pthread_mutex_consistent(&_mutex);
+                }
+#endif
                 return (result == 0 ? Core::ERROR_NONE : Core::ERROR_TIMEDOUT);
 #endif
             }
