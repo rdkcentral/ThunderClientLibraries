@@ -20,14 +20,17 @@ if(BLUETOOTHAUDIOSINK)
 endif()
 
 if(COMPOSITORCLIENT)
+     message(FATAL_ERROR "Simulated fatal error for compositorclient")
     add_subdirectory(compositorclient)
 endif()
 
 if(DEVICEINFO)
+    message(FATAL_ERROR "Simulated fatal error for deviceinfo")
     add_subdirectory(deviceinfo)
 endif()
 
 if(DISPLAYINFO)
+	 message(FATAL_ERROR "Simulated fatal error for displayinfo")
     add_subdirectory(displayinfo)
 endif()
 
@@ -36,6 +39,7 @@ if(SECURITYAGENT)
 endif()
 
 if(PLAYERINFO)
+     message(FATAL_ERROR "Simulated fatal error for playerinfo")
     add_subdirectory(playerinfo)
 endif()
 
