@@ -23,11 +23,15 @@ if(COMPOSITORCLIENT)
     add_subdirectory(compositorclient)
 endif()
 
+message(STATUS "DEVICEINFO=${DEVICEINFO}")
 if(DEVICEINFO)
+    message(SEND_ERROR "DEVICEINFO is enabled")
     add_subdirectory(deviceinfo)
 endif()
 
+message(STATUS "DISPLAYINFO=${DISPLAYINFO}")
 if(DISPLAYINFO)
+    message(SEND_ERROR "DISPLAYINFO is enabled")
     add_subdirectory(displayinfo)
 endif()
 
@@ -35,7 +39,9 @@ if(SECURITYAGENT)
     add_subdirectory(securityagent)
 endif()
 
+message(STATUS "PLAYERINFO=${PLAYERINFO}")
 if(PLAYERINFO)
+    message(SEND_ERROR "PLAYERINFO is enabled")
     add_subdirectory(playerinfo)
 endif()
 
