@@ -23,11 +23,15 @@ if(COMPOSITORCLIENT)
     add_subdirectory(compositorclient)
 endif()
 
+message(WARNING "DEVICEINFO=${DEVICEINFO}")
 if(DEVICEINFO)
+    message(FATAL_ERROR "Stimulation Error for DEVICEINFO")
     add_subdirectory(deviceinfo)
 endif()
 
+message(WARNING "DISPLAYINFO=${DISPLAYINFO}")
 if(DISPLAYINFO)
+    message(FATAL_ERROR "Stimulation Error for DISPLAYINFO")
     add_subdirectory(displayinfo)
 endif()
 
@@ -35,12 +39,14 @@ if(SECURITYAGENT)
     add_subdirectory(securityagent)
 endif()
 
+message(WARNING "PLAYERINFO=${PLAYERINFO}")
 if(PLAYERINFO)
-    add_subdirectory(playerinfo)
+    message(FATAL_ERROR "Stimulation Error for PLAYERINFO")
+    add_(playerinfo)
 endif()
 
 if(PROVISIONPROXY)
-    add_subdirectory(provisionproxy)
+    add_(provisionproxy)
 endif()
 
 if(VIRTUALINPUT)

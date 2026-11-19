@@ -16,6 +16,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#error "Simulated error for playerinfo"
+
 #include "Module.h"
 
 #include <playerinfo.h>

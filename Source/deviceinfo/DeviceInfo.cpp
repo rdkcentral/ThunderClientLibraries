@@ -17,6 +17,8 @@
 * limitations under the License.
 */ 
 
+#error "Simulated error for deviceinfo"
+
 #include "Module.h"
 #include <vector>
 
