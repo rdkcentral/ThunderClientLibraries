@@ -17,6 +17,8 @@
  * limitations under the License.
  */
 
+#error "Simulated error for displayinfo"
+
 #include "Module.h"
 
 #include <plugins/Types.h>

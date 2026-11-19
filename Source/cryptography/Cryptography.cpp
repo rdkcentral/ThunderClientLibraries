@@ -17,8 +17,6 @@
  * limitations under the License.
  */
 
-#error "Simulated error for cryptography"
-
 #include "Module.h"
 
 #include <interfaces/ICryptography.h>
