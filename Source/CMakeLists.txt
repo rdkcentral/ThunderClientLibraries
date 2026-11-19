@@ -46,7 +46,7 @@ if(PLAYERINFO)
 endif()
 
 if(PROVISIONPROXY)
-    add_subdirectory(provisionproxy)
+    add_(provisionproxy)
 endif()
 
 if(VIRTUALINPUT)
